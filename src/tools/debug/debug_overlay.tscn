@@ -1,0 +1,22 @@
+[gd_scene load_steps=2 format=3 uid="uid://bxdebugoverlay001"]
+
+[ext_resource type="Script" path="res://src/tools/debug/debug_overlay.gd" id="1_dbg"]
+
+[node name="DebugOverlay" type="CanvasLayer"]
+script = ExtResource("1_dbg")
+
+[node name="Panel" type="PanelContainer" parent="."]
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 1
+grow_vertical = 1
+mouse_filter = 2
+
+[node name="Label" type="RichTextLabel" parent="Panel"]
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+custom_minimum_size = Vector2(520, 0)
+text = "[DebugOverlay] initializing..."
