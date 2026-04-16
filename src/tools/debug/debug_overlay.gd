@@ -2,7 +2,7 @@ class_name DebugOverlay
 extends CanvasLayer
 
 # Nur-lesendes Debug-Overlay. Schreibt NICHTS in den Sim-Zustand.
-# Zeigt autoritative (Zeit, Body-Daten) und abgeleitete (View-Distanzen)
+# Zeigt autoritative (Zeit, Body-Daten) und abgeleitete (View, Render)
 # Groessen nebeneinander und kennzeichnet sie entsprechend.
 
 @onready var _label: RichTextLabel = $Panel/Label
@@ -33,9 +33,16 @@ func _build_text() -> String:
 	lines.append("sim_time_s = %.3f   tick_count = %d" % [_time.sim_time_s, _time.tick_count])
 	lines.append("time_scale = %.3f   paused = %s" % [_time.time_scale, str(_time.paused)])
 	lines.append("body count = %d" % _registry.body_count())
-	lines.append("focus_id   = %s  (view)" % str(_bubble.get_focus()))
+
+	var focus_id: StringName = _bubble.get_focus()
+	var focus_view_len: float = 0.0
+	if focus_id != &"":
+		focus_view_len = _bubble.compose_view_position_m(focus_id).length()
+	lines.append("focus_id   = %s  |focus_view| = %.3e m  (muss 0 sein)" \
+			% [str(focus_id), focus_view_len])
+	lines.append("render_scale = %.3e m/unit" % UnitSystem.RENDER_SCALE_M_PER_UNIT)
 	lines.append("")
-	lines.append("[b]Bodies (truth: parent-frame)[/b]")
+	lines.append("[b]Bodies (Wahrheit: parent-frame | abgeleitet: view, render)[/b]")
 	for id in _registry.get_update_order():
 		lines.append(_format_body_line(id))
 	return "\n".join(lines)
@@ -48,14 +55,21 @@ func _format_body_line(id: StringName) -> String:
 		return "  %s: <missing>" % id
 	var parent_txt: String = "(root)" if def.is_root() else str(def.parent_id)
 	var mode_txt: String = OrbitMode.to_string_kind(state.current_mode)
-	var pos: Vector3 = state.position_parent_frame_m
-	var r: float = pos.length()
-	var world_m: Vector3 = _bubble.compose_world_position_m(id)
-	return "  %s  kind=%s  parent=%s  mode=%s  |pf|=%.3e m  world=%.3e m" % [
-		id,
-		BodyType.to_string_kind(def.kind),
-		parent_txt,
-		mode_txt,
-		r,
-		world_m.length(),
-	]
+	var pf_len: float = state.position_parent_frame_m.length()
+	var world_m: Vector3 = _bubble.debug_compose_world_m(id)
+	var view_m: Vector3 = _bubble.compose_view_position_m(id)
+	var render_u: Vector3 = _bubble.to_render_units(view_m)
+	return ("  %s  kind=%s  parent=%s  mode=%s\n"
+		+ "    [truth]  |pf|=%.3e m  |world|=%.3e m\n"
+		+ "    [view]   |view|=%.3e m  |render|=%.3e u\n"
+		+ "    %s") % [
+			id,
+			BodyType.to_string_kind(def.kind),
+			parent_txt,
+			mode_txt,
+			pf_len,
+			world_m.length(),
+			view_m.length(),
+			render_u.length(),
+			_bubble.describe_chain(id),
+		]

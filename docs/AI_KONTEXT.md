@@ -9,7 +9,7 @@ Orbit-Mechanik, mehreren Referenzrahmen und einer lokal detaillierten
 Bubble. Das Projekt ist bewusst als mehrschichtige Simulation aufgesetzt,
 **nicht** als Arcade-Spiel und **nicht** als Tutorial-Scaffold.
 
-Aktueller Stand: **Foundation-Slice**. Fundament, kein Gameplay.
+Aktueller Stand: **Schritt 2 abgeschlossen** — echte Bubble-Transformation.
 
 ## Wichtige Grundsätze
 
@@ -33,12 +33,20 @@ Aktueller Stand: **Foundation-Slice**. Fundament, kein Gameplay.
 - **Keine** neue Logik in `UniverseRegistry`. Die Registry ist
   bewusst schlank (siehe ADR).
 - **Keine** neuen Autoloads ohne ADR-Eintrag in `ARCHITEKTUR.md`.
-- **Keine** Render-Skala (`RENDER_SCALE_M_PER_UNIT`) in Sim-Code.
-  Nur Testbed und BubbleManager dürfen sie kennen.
+- **Keine** Render-Skala (`RENDER_SCALE_M_PER_UNIT`) außerhalb
+  `LocalBubbleManager.to_render_units()`. Testbed und andere Orte
+  rufen nur noch `compose_render_units` auf — sie dividieren nicht
+  selbst.
 - **Keine** Simulationslogik in Visual-Nodes oder im Testbed-Script
   über die reine Projektion hinaus.
-- **Nicht**: versuchte Globalkoordinaten mit einzelnen `float`s über
+- **Nicht** versuchte Globalkoordinaten mit einzelnen `float`s über
   viele AUs hinweg. Genau dafür existiert die Bubble-Schicht.
+- **`debug_compose_world_m` niemals im Render-Pfad oder in
+  Produktionslogik.** Diese Methode ist ausschließlich für Tests und
+  Debug-Prints. Das `debug_`-Präfix ist kein Zufall.
+- **Keine** naive `Vector3`-Addition/Subtraktion über große Distanzen
+  (> ~1e9 m). Stattdessen `LocalBubbleManager`-API nutzen, die intern
+  double-präzise akkumuliert.
 
 ## Wo was lebt
 
@@ -52,9 +60,11 @@ Aktueller Stand: **Foundation-Slice**. Fundament, kein Gameplay.
 - **Registry:** `src/sim/universe/universe_registry.gd` (Autoload,
   schlank!).
 - **Bubble/View:** `src/runtime/local_bubble/local_bubble_manager.gd`
-  (aktuell Identity, siehe `HANDOFF.md`).
+  (LCA-basierte fokus-relative Transformation, double-präzise).
 - **Debug:** `src/tools/debug/debug_overlay.gd`.
 - **Tests:** `src/tests/` mit eigenem CLI-Runner.
+  - `src/tests/orbit/test_orbit.gd` — OrbitMath-Suite
+  - `src/tests/bubble/test_bubble.gd` — Bubble-Suite
 - **Sample-Daten:** `data/sample_system.gd` (Factory-Skript,
   diff-freundlich).
 
@@ -67,12 +77,14 @@ Aktueller Stand: **Foundation-Slice**. Fundament, kein Gameplay.
   nur eine momentane Ableitung.
 - Für neue Tests: `src/tests/<domain>/test_<thema>.gd` mit
   `static func run(ctx)`.
+- Render-Skalierung: **immer** über `to_render_units()` oder
+  `compose_render_units()`, nie direkt durch `RENDER_SCALE_M_PER_UNIT`.
 
 ## Was bewusst fehlt (und nicht aus Versehen)
 
 - Kameradrehung, Input, Spieler, lokale Oberfläche.
-- Echte Bubble-Transformation (Identity bleibt bis zum nächsten Schritt).
 - `NUMERIC_LOCAL`-Modus.
+- Bubble-Aktivierung / Aktiv-Set (Schritt 3).
 - Save/Load, Transit, Cluster-Wechsel, Content.
 
 Wenn ein Nutzer dich fragt, "warum fehlt X", schlage zuerst nach in

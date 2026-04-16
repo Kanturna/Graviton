@@ -98,8 +98,32 @@ Die Verdrahtung passiert pro Szene in deren Root-Script:
 ```
 _ready():
     OrbitService.configure(UniverseRegistry, TimeService)
+    OrbitService.recompute_all_at_time(TimeService.sim_time_s)  # initialer konsistenter Zustand
     LocalBubbleManager.configure(UniverseRegistry)
+    LocalBubbleManager.set_focus(...)
     DebugOverlay.configure(UniverseRegistry, TimeService, LocalBubbleManager)
 ```
 
+`recompute_all_at_time` ist kein Tick — es emittiert kein Signal, treibt
+keine Zeit vorwärts. Es stellt nur sicher, dass alle `BodyState`s vor dem
+ersten `_process`-Frame konsistent befüllt sind.
+
 Kein impliziter `get_node(^"/root/...")`-Griff aus tiefen Skripten.
+
+## Bubble-Verantwortung — ADR
+
+**Entscheidung:** `LocalBubbleManager` ist reine Ableitungsschicht.
+Er speichert keinen eigenen Körperzustand, keinen World-Space-Cache,
+kein Aktiv-Set.
+
+**Präzisionsstrategie:** Fokus-relative Komposition via LCA (Lowest
+Common Ancestor). Parent-Frame-Ketten werden als drei separate
+GDScript-`float`-Variablen (IEEE-754 double) akkumuliert, nicht als
+`Vector3` (float32). Das verhindert Katastrophen-Kanzellation bei
+AU-Distanzen (~18 km Fehler in naiver float32-Subtraktion).
+
+**Fehlerpfad kein LCA:** `Vector3.INF` + `push_error`. Kein stilles
+`ZERO` — semantisch falsch lokalisierte Objekte sollen sichtbar sein.
+
+**Render-Skalierung:** Ausschließlich in `to_render_units(view_m)`.
+Kein anderer Code ruft `RENDER_SCALE_M_PER_UNIT` direkt an.

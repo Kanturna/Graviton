@@ -24,7 +24,8 @@ diese Regeln verstößt, bricht das Fundament.
   Konstantenort.
 - `RENDER_SCALE_M_PER_UNIT = 1e9` ist ausschließlich eine
   Darstellungsgröße. Sie darf **nirgends** in `src/sim/` oder
-  `src/core/` auftauchen. Nur im Testbed-Script und im BubbleManager.
+  `src/core/` auftauchen. Die einzige erlaubte Anwendungsstelle ist
+  `LocalBubbleManager.to_render_units()`.
 
 ## Orbit-Regime
 
@@ -38,27 +39,35 @@ diese Regeln verstößt, bricht das Fundament.
 `OrbitService` ist die **einzige** Stelle, die `BodyState`-Felder
 schreibt. Andere Klassen lesen nur.
 
-## Referenzrahmen und Koordinaten
+## Referenzrahmen und Koordinatenräume
 
-- **Parent-Frame (autoritativ):** `BodyState.position_parent_frame_m`
-  ist die Position eines Körpers relativ zu seinem Parent. Wurzeln
-  haben `parent_id == &""` und sind auf `Vector3.ZERO` fixiert.
-- **World-Space (abgeleitet):** Wird durch Aufsummieren der
-  Parent-Kette in `LocalBubbleManager.compose_world_position_m`
-  berechnet. Nicht gecached, nicht persistiert.
-- **View-Space (abgeleitet):** Ergebnis von `world_to_view_m`. Im
-  Foundation Identity — später Focus-Subtraktion + Skalierung.
-- **Render-Units:** View-Space `/ RENDER_SCALE_M_PER_UNIT`. Nur in
-  `scenes/`.
+| Raum           | Einheit       | Repräsentation                                  | Wahrheit? | Wer darf berechnen              |
+|----------------|---------------|-------------------------------------------------|-----------|---------------------------------|
+| **Sim-Space**  | m             | `BodyState.position_parent_frame_m` (relativ zum direkten Parent) | **ja** | nur `OrbitService` schreibt |
+| **World-Space**| m             | konzeptionell; Summe der Parent-Kette — **niemals als gespeicherter Wert** | nein (abgeleitet) | niemand speichert; nur intern in `LocalBubbleManager` als Double-Tripel |
+| **View-Space** | m             | fokus-relativ; `target_chain - focus_chain` bis LCA | nein (abgeleitet) | `LocalBubbleManager.compose_view_position_m` |
+| **Render-Units** | Godot-Einheit | `Node3D.position` im Testbed               | nein (Projektion) | `LocalBubbleManager.to_render_units` |
+
+**Wichtig:** World-Space existiert als Konzept, aber **nicht als gespeicherter Wert**. Es gibt
+keine öffentliche Methode, die einen `Vector3` in absoluten Weltmetern für den Render-Pfad
+zurückgibt. `debug_compose_world_m` ist die bewusst klobig benannte Ausnahme — ausschließlich
+für Tests und Debug-Prints, erkennbar am `debug_`-Präfix.
 
 Begriffs-Kurzreferenz:
 
 ```
-Sim-Space (Parent-Frame, SI)  ── Wahrheit, in BodyState
-World-Space (komponiert, SI)  ── abgeleitet, via Bubble.compose_*
-View-Space (Bubble-lokal, SI) ── abgeleitet, via Bubble.world_to_view_m
-Render-Units (Godot-Einheit)  ── Testbed-Projektion, visual only
+Sim-Space    (Parent-Frame, SI)  ── Wahrheit, in BodyState
+World-Space  (komponiert, SI)    ── abgeleitet, NIEMALS persistiert
+View-Space   (fokus-relativ, SI) ── abgeleitet, via compose_view_position_m
+Render-Units (Godot-Einheit)     ── Projektion, via to_render_units
 ```
+
+### Präzisionsschutz
+
+`LocalBubbleManager` akkumuliert Parent-Frame-Offsets als drei separate
+GDScript-`float`-Variablen (IEEE-754 double). Vector3-Komponenten sind
+float32 — naive `Vector3`-Subtraktion bei AU-Distanzen erzeugt ~18 km
+Fehler. Die LCA-basierte Doppelakkumulation vermeidet das vollständig.
 
 ## Wurzel-Konvention
 
@@ -93,3 +102,7 @@ Epoch-Relative-Modell (`epoch_s: int` + `offset_s: float`).
 - Kein Speichern von Welt- oder View-Koordinaten.
 - Keine Mathematik in `UniverseRegistry`.
 - Keine neuen Autoloads ohne ADR-Eintrag in `ARCHITEKTUR.md`.
+- `debug_compose_world_m` darf **niemals** im Render-Pfad oder in
+  Produktionslogik erscheinen — nur in Tests und Debug-Prints.
+- Keine `Vector3`-Akkumulation über AU-Distanzen; immer über
+  `_double_sum_to_lca` im `LocalBubbleManager`.

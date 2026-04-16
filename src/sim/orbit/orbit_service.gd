@@ -25,6 +25,21 @@ func configure(registry: Node, time_service: Node) -> void:
 	_configured = true
 
 
+# Wertet alle Bodies zum angegebenen Zeitpunkt aus, ohne einen Tick zu emittieren.
+# Intention: initialen konsistenten Zustand herstellen vor dem ersten Render-Frame.
+# Kein Simulationsfortschritt — TimeService bleibt alleiniger Zeitbesitzer.
+func recompute_all_at_time(t_s: float) -> void:
+	if not _configured:
+		push_warning("OrbitService.recompute_all_at_time: nicht konfiguriert")
+		return
+	for id in _registry.get_update_order():
+		var state: BodyState = _registry.get_state(id)
+		var def: BodyDef = _registry.get_def(id)
+		if state == null or def == null:
+			continue
+		update_body(state, def, t_s)
+
+
 func _exit_tree() -> void:
 	if _time != null and _time.sim_tick.is_connected(_on_sim_tick):
 		_time.sim_tick.disconnect(_on_sim_tick)

@@ -19,10 +19,10 @@ func _ready() -> void:
 	if UniverseRegistry.body_count() == 0:
 		UniverseRegistry.load_from_sample_system()
 	_orbit_service.configure(UniverseRegistry, TimeService)
+	_orbit_service.recompute_all_at_time(TimeService.sim_time_s)
 	_bubble.configure(UniverseRegistry)
 	_bubble.set_focus(&"planet_a")
 	_overlay.configure(UniverseRegistry, TimeService, _bubble)
-	# Damit Planetenbewegung in Echtzeit sichtbar wird.
 	TimeService.set_time_scale(1_000_000.0)
 
 
@@ -35,5 +35,4 @@ func _process(_delta: float) -> void:
 func _sync_visual(id: StringName, node: Node3D) -> void:
 	if node == null:
 		return
-	var view_m: Vector3 = _bubble.compose_view_position_m(id)
-	node.position = view_m / UnitSystem.RENDER_SCALE_M_PER_UNIT
+	node.position = _bubble.compose_render_units(id)
