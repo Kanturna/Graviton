@@ -1,4 +1,4 @@
-# Atraxis — Architektur
+# Graviton — Architektur
 
 Dieses Dokument beschreibt das Fundament. Es ist bewusst kurz und
 normativ. Wenn du etwas hinzufügst, das hier widerspricht, halte zuerst
@@ -15,13 +15,14 @@ versteckter Zustand in Szenen. Keine globale Physik-Engine für Orbits.
 ## Schichten und Abhängigkeitsrichtung
 
 ```
-scenes/     (dünn, nur Projektion)
+scenes/     (dünn, nur Projektion + Composition Root)
    │
    ▼
-src/runtime/       LocalBubbleManager, später Bubble-Logik
+src/runtime/       LocalBubbleManager, BubbleActivationSet
    │
    ▼
-src/sim/           UniverseRegistry, OrbitService, BodyDef/State, OrbitProfile
+src/sim/           UniverseRegistry, OrbitService, LocalOrbitIntegrator,
+                   BodyDef/State, OrbitProfile, OrbitMode
    │
    ▼
 src/core/          TimeService, UnitSystem, OrbitMath, IdRegistry
@@ -107,6 +108,7 @@ _ready():
 
 _process():
     BubbleActivationSet.rebuild()  # explizit, synchron zu frischen BodyStates
+    OrbitService.request_numeric_local_candidates(BubbleActivationSet.get_active_ids())
     ...
 ```
 
@@ -151,3 +153,38 @@ AU-Distanzen (~18 km Fehler in naiver float32-Subtraktion).
 
 **Render-Skalierung:** Ausschließlich in `to_render_units(view_m)`.
 Kein anderer Code ruft `RENDER_SCALE_M_PER_UNIT` direkt an.
+
+## LocalOrbitIntegrator — ADR
+
+**Entscheidung:** `LocalOrbitIntegrator` ist eine eigene Klasse, kein Teil von
+`OrbitService`.
+
+**Grund:** Die Integrationslogik (Velocity Verlet, Gravitationsbeschleunigung) ist
+reine, zustandslose Mathematik — analog zu `OrbitMath.kepler_position`. Sie in
+`OrbitService` einzubetten würde den Service zu einer monolithischen Klasse machen.
+Die Trennung macht die Mathematik isoliert testbar.
+
+**Verantwortung:** Statische pure Funktionen: `gravity_acceleration_mps2()`,
+`step_velocity_verlet()`. Liest und schreibt kein `BodyState`. Kein Autoload.
+Lebt in `src/sim/orbit/` (Orbit-Dynamik-Mathematik, nicht Runtime-Logik).
+
+## Regime-Wechsel-Modell — ADR
+
+**Entscheidung:** Der Wechsel zwischen KEPLER_APPROX und NUMERIC_LOCAL wird durch
+die Szene (Composition Root) ausgelöst, nicht durch OrbitService oder
+BubbleActivationSet selbst.
+
+**Grund:** OrbitService (`sim/`) kennt BubbleActivationSet (`runtime/`) nicht —
+die Layering-Regel verbietet die Rückwärtsabhängigkeit. BubbleActivationSet
+schreibt kein `BodyState` — seine Verantwortung ist Klassifikation. Die Szene
+sieht beide Schichten und bridgt sie explizit.
+
+**API:** `OrbitService.request_numeric_local_candidates(ids)` — Kandidaten-Angebot
+von der Szene. OrbitService filtert intern auf Eligibility (nur KEPLER_APPROX-Profil).
+
+**Eligibility:** AUTHORED_ORBIT-Bodies wechseln nie zu NUMERIC_LOCAL.
+Root-Bodies wechseln nie. Nur KEPLER_APPROX ist eligible.
+
+**Übergangs-Logging:** Beim Austritt (NUMERIC_LOCAL → KEPLER_APPROX) ruft
+OrbitService `push_warning` auf — der Diskontinuitätssprung ist damit explizit
+sichtbar und nicht mit Render-/Bubble-Fehlern verwechselbar.

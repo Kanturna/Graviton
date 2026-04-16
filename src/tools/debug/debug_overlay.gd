@@ -46,6 +46,12 @@ func _build_text() -> String:
 
 	if _activation != null:
 		lines.append("activation   = %s" % _activation.describe())
+		var nl_count: int = 0
+		for id in _registry.get_update_order():
+			var state: BodyState = _registry.get_state(id)
+			if state != null and state.current_mode == OrbitMode.Kind.NUMERIC_LOCAL:
+				nl_count += 1
+		lines.append("NL-Bodies    = %d / %d" % [nl_count, _registry.body_count()])
 	lines.append("")
 	lines.append("[b]Bodies (Wahrheit: parent-frame | abgeleitet: view, render, aktiv)[/b]")
 	for id in _registry.get_update_order():

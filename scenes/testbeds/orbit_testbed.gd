@@ -25,11 +25,14 @@ func _ready() -> void:
 	_bubble.set_focus(&"planet_a")
 	_activation.configure(UniverseRegistry, _bubble)
 	_overlay.configure(UniverseRegistry, TimeService, _bubble, _activation)
-	TimeService.set_time_scale(1_000_000.0)
+	# time_scale 1_000 fuer beobachtbare NUMERIC_LOCAL-Integration.
+	# Bei 1_000_000 akkumuliert Verlet-Numerik zu viele Schritte pro Frame.
+	TimeService.set_time_scale(1_000.0)
 
 
 func _process(_delta: float) -> void:
 	_activation.rebuild()
+	_orbit_service.request_numeric_local_candidates(_activation.get_active_ids())
 	_sync_visual(&"sol", _visual_sol)
 	_sync_visual(&"planet_a", _visual_planet_a)
 	_sync_visual(&"moon_a", _visual_moon_a)

@@ -1,15 +1,15 @@
-# Atraxis — KI-Kontext
+# Graviton — KI-Kontext
 
 Lies das als erstes, wenn du als KI-Agent hier hilfst.
 
-## Was Atraxis ist
+## Was Graviton ist
 
 Eine Godot-4-Weltraum-/Systemsimulation mit großen Distanzen,
 Orbit-Mechanik, mehreren Referenzrahmen und einer lokal detaillierten
 Bubble. Das Projekt ist bewusst als mehrschichtige Simulation aufgesetzt,
 **nicht** als Arcade-Spiel und **nicht** als Tutorial-Scaffold.
 
-Aktueller Stand: **Schritt 2 abgeschlossen** — echte Bubble-Transformation.
+Aktueller Stand: **Schritt 4 abgeschlossen** — NUMERIC_LOCAL / Regime-Wechsel.
 
 ## Wichtige Grundsätze
 
@@ -45,10 +45,15 @@ Aktueller Stand: **Schritt 2 abgeschlossen** — echte Bubble-Transformation.
   Produktionslogik.** Diese Methode ist ausschließlich für Tests und
   Debug-Prints. Das `debug_`-Präfix ist kein Zufall.
 - **`BubbleActivationSet` schreibt keine `BodyState`-Felder.** Aktivierung
-  ist Klassifikation, nicht Simulationswahrheit. `current_mode` bleibt
-  bei `OrbitService` — bis Schritt 4 das explizit ändert.
-- **Fokus ≠ Aktiv-Set.** Der Fokus-Body ist immer aktiv, aber das ist
-  Geometrie (Distanz = 0), keine Identität der Konzepte.
+  ist Klassifikation, nicht Simulationswahrheit. `current_mode` wird nur
+  durch `OrbitService._enter_numeric_local()` / `_exit_numeric_local()` gesetzt.
+- **Fokus ≠ Aktiv-Set ≠ NUMERIC_LOCAL.** Drei orthogonale Konzepte:
+  Fokus (View-Ankerpunkt), Aktiv-Set (geometrische Relevanz), NUMERIC_LOCAL
+  (Simulationsregime). Der Pfad Aktiv-Set → NUMERIC_LOCAL geht durch die Szene.
+- **`LocalOrbitIntegrator` schreibt kein `BodyState`** — er ist pure Mathematik.
+  Nur `OrbitService` schreibt State.
+- **`request_numeric_local_candidates()` ist ein Kandidaten-Angebot**, kein
+  Befehl. OrbitService entscheidet über Eligibility (nur KEPLER_APPROX-Profil).
 - **Keine** naive `Vector3`-Addition/Subtraktion über große Distanzen
   (> ~1e9 m). Stattdessen `LocalBubbleManager`-API nutzen, die intern
   double-präzise akkumuliert.
@@ -62,6 +67,8 @@ Aktueller Stand: **Schritt 2 abgeschlossen** — echte Bubble-Transformation.
 - **Body-Daten:** `src/sim/bodies/`. `BodyDef` = statisch,
   `BodyState` = Laufzeit, nur durch `OrbitService` geschrieben.
 - **Orbit-Update:** `src/sim/orbit/orbit_service.gd`.
+- **Numerische Integration:** `src/sim/orbit/local_orbit_integrator.gd`
+  (pure Mathematik, Velocity Verlet, nur von OrbitService verwendet).
 - **Registry:** `src/sim/universe/universe_registry.gd` (Autoload,
   schlank!).
 - **Bubble/View:** `src/runtime/local_bubble/local_bubble_manager.gd`
@@ -71,7 +78,9 @@ Aktueller Stand: **Schritt 2 abgeschlossen** — echte Bubble-Transformation.
 - **Debug:** `src/tools/debug/debug_overlay.gd`.
 - **Tests:** `src/tests/` mit eigenem CLI-Runner.
   - `src/tests/orbit/test_orbit.gd` — OrbitMath-Suite
+  - `src/tests/orbit/test_numeric_local.gd` — LocalOrbitIntegrator + OrbitService NUMERIC_LOCAL
   - `src/tests/bubble/test_bubble.gd` — Bubble-Suite
+  - `src/tests/bubble/test_activation.gd` — BubbleActivationSet-Suite
 - **Sample-Daten:** `data/sample_system.gd` (Factory-Skript,
   diff-freundlich).
 
@@ -90,9 +99,9 @@ Aktueller Stand: **Schritt 2 abgeschlossen** — echte Bubble-Transformation.
 ## Was bewusst fehlt (und nicht aus Versehen)
 
 - Kameradrehung, Input, Spieler, lokale Oberfläche.
-- `NUMERIC_LOCAL`-Modus.
-- Bubble-Aktivierung / Aktiv-Set (Schritt 3).
+- Kräfte außer Parentgravitation (kein Schub, kein N-Body).
 - Save/Load, Transit, Cluster-Wechsel, Content.
+- Erste Mechanik (Schiff mit Schub) — bewusst Folgeschritt nach Schritt 4.
 
 Wenn ein Nutzer dich fragt, "warum fehlt X", schlage zuerst nach in
 `HANDOFF.md`. Wahrscheinlich ist X bewusst ein Folgeschritt.

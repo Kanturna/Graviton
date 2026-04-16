@@ -1,4 +1,4 @@
-# Atraxis — Simulationsregeln
+# Graviton — Simulationsregeln
 
 Normative Regeln für alle Sim-Beiträge. Wer etwas baut, das gegen
 diese Regeln verstößt, bricht das Fundament.
@@ -29,15 +29,44 @@ diese Regeln verstößt, bricht das Fundament.
 
 ## Orbit-Regime
 
-| Mode              | Status im Foundation | Verwendung                             |
-|-------------------|----------------------|----------------------------------------|
-| `AUTHORED_ORBIT`  | aktiv                | fest vorgegebene Kreisbahnen            |
-| `KEPLER_APPROX`   | aktiv                | analytische Kepler-Lösung ums Parent    |
-| `NUMERIC_LOCAL`   | reserviert           | später: numerische Integration, nur     |
-|                   |                      | für den fokussierten Cluster            |
+| Mode              | Status     | Verwendung                                                   |
+|-------------------|------------|--------------------------------------------------------------|
+| `AUTHORED_ORBIT`  | aktiv      | fest vorgegebene Kreisbahnen                                 |
+| `KEPLER_APPROX`   | aktiv      | analytische Kepler-Lösung ums Parent                         |
+| `NUMERIC_LOCAL`   | aktiv      | Velocity-Verlet-Integration um Parent; nur für Bodies im Aktiv-Set mit KEPLER_APPROX-Profil |
 
 `OrbitService` ist die **einzige** Stelle, die `BodyState`-Felder
 schreibt. Andere Klassen lesen nur.
+
+### NUMERIC_LOCAL — Regime-Wechsel-Semantik
+
+**Eligibility:** Nur Bodies mit `OrbitProfile.mode == KEPLER_APPROX` können zu
+`NUMERIC_LOCAL` wechseln. AUTHORED_ORBIT-Bodies bleiben immer authored. Root-Bodies
+bleiben immer bei ZERO.
+
+**Eintritt (KEPLER_APPROX → NUMERIC_LOCAL):** `OrbitService` initialisiert den
+Integrator-Zustand aus der Kepler-Lösung zum Eintritts-Zeitpunkt (Position +
+Velocity via finite Differenz, ε = 1 s). `BodyState.current_mode` wechselt zu
+`NUMERIC_LOCAL`.
+
+**Austritt (NUMERIC_LOCAL → KEPLER_APPROX):** Beim nächsten Tick wird die
+Kepler-Lösung reevaluiert. Ein kleiner Diskontinuitätssprung ist möglich und
+dokumentiert — `OrbitService` loggt ihn explizit via `push_warning`. Kein stiller
+Datendrift.
+
+**Trigger:** Die Szene (Composition Root) ruft
+`orbit_service.request_numeric_local_candidates(active_ids)` nach jedem
+`BubbleActivationSet.rebuild()` auf. OrbitService entscheidet intern anhand von
+Eligibility, welche davon tatsächlich wechseln.
+
+**Integrator:** Velocity Verlet, zwei Beschleunigungsauswertungen pro Schritt.
+Nur Parentgravitation (`LocalOrbitIntegrator.gravity_acceleration_mps2`).
+Kein N-Body, keine externen Kräfte in diesem Schritt.
+
+**dt-Limitation:** NUMERIC_LOCAL ist stabil bei time_scale ≤ ~1 000 (dt ≈ 1/60 s).
+Bei sehr hoher Zeitbeschleunigung divergiert die numerische Bahn von der
+Kepler-Bahn — erwartetes Verhalten, kein Bug. Bei dt > 300 s (sim) loggt
+OrbitService eine Warnung.
 
 ## Referenzrahmen und Koordinatenräume
 
@@ -101,8 +130,8 @@ Epoch-Relative-Modell (`epoch_s: int` + `offset_s: float`).
 |---|---|---|
 | **Fokus** | View-Ankerpunkt; Zentrum des View-Space | `LocalBubbleManager` |
 | **Aktiv-Set** | Bodies, deren fokus-relative View-Distanz ≤ Aktivierungsradius | `BubbleActivationSet` |
-| **lokal aktiv** | im Aktiv-Set; Vorbereitung für späteren NUMERIC_LOCAL-Modus | `BubbleActivationSet` |
-| **approximiert** | außerhalb Aktiv-Set; bleibt bei AUTHORED_ORBIT / KEPLER_APPROX | (keine Schreibstelle bis Schritt 4) |
+| **lokal aktiv** | im Aktiv-Set; Kandidat für NUMERIC_LOCAL (wenn KEPLER_APPROX-Profil) | `BubbleActivationSet` |
+| **approximiert** | außerhalb Aktiv-Set; bleibt bei AUTHORED_ORBIT / KEPLER_APPROX | `OrbitService` (Kepler-Pfad) |
 
 **Fokus ≠ Aktiv-Set.** Fokus ist eine View-Entscheidung, Aktiv-Set ist eine
 geometrische Relevanzklassifikation. Sie sind orthogonal. Der Fokus-Body ist
@@ -110,7 +139,8 @@ automatisch immer aktiv (View-Distanz = 0), aber das ist Geometrie, keine Regel.
 
 `BubbleActivationSet` schreibt **niemals** `BodyState`. Die Aktivierungsklassifikation
 ist ausschließlich abgeleitet — niemals Simulationswahrheit. `current_mode`-Wechsel
-(KEPLER_APPROX → NUMERIC_LOCAL) kommen erst in Schritt 4.
+(KEPLER_APPROX → NUMERIC_LOCAL) werden durch `OrbitService.request_numeric_local_candidates()`
+ausgelöst, das die Szene nach jedem Rebuild aufruft.
 
 **Klassifikationsgründe** (im `describe()` und DebugOverlay sichtbar):
 - `ACTIVE` — fokus-relativ erreichbar, innerhalb Radius
@@ -130,5 +160,9 @@ ist ausschließlich abgeleitet — niemals Simulationswahrheit. `current_mode`-W
   `_double_sum_to_lca` im `LocalBubbleManager`.
 - `BubbleActivationSet` darf **kein** `BodyState`-Feld schreiben. Die
   Aktivierungsklassifikation ist abgeleitet, nicht autoritativ.
-- `BodyState.current_mode` darf nicht auf `NUMERIC_LOCAL` gesetzt werden,
-  bis Schritt 4 das explizit implementiert.
+- `BodyState.current_mode = NUMERIC_LOCAL` darf nur `OrbitService._enter_numeric_local()`
+  setzen — nie direkt von außen.
+- `LocalOrbitIntegrator` darf **niemals** `BodyState` schreiben; er ist pure Mathematik.
+- AUTHORED_ORBIT-Bodies dürfen nicht zu NUMERIC_LOCAL wechseln.
+- `request_numeric_local_candidates()` ist kein Befehl, sondern ein Kandidaten-Angebot;
+  OrbitService entscheidet über die tatsächliche Eligibility.
