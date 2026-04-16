@@ -1,24 +1,29 @@
 ; Engine configuration file.
-; Atraxis — Godot 4 project file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
 config/name="Atraxis"
 config/description="Weltraum-/Systemsimulation. Foundation-Slice: Zeitdienst, Orbitkern, Registry, Bubble-Stub, Debug-Testbed."
 run/main_scene="res://scenes/bootstrap/main.tscn"
-config/features=PackedStringArray("4.3", "Forward Plus")
+config/features=PackedStringArray("4.6", "Forward Plus")
 
 [autoload]
 
 TimeService="*res://src/core/time/time_service.gd"
 UniverseRegistry="*res://src/sim/universe/universe_registry.gd"
 
-[physics]
+[editor_plugins]
 
-common/physics_ticks_per_second=60
-
-[rendering]
-
-renderer/rendering_method="forward_plus"
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")
