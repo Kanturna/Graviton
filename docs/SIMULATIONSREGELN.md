@@ -95,6 +95,28 @@ für Orbit-Simulation unkritisch. Wenn jemand später in
 Jahrmilliarden hinein will, wechselt `TimeService` auf ein
 Epoch-Relative-Modell (`epoch_s: int` + `offset_s: float`).
 
+## Bubble-Aktivierung
+
+| Begriff | Bedeutung | Wer entscheidet |
+|---|---|---|
+| **Fokus** | View-Ankerpunkt; Zentrum des View-Space | `LocalBubbleManager` |
+| **Aktiv-Set** | Bodies, deren fokus-relative View-Distanz ≤ Aktivierungsradius | `BubbleActivationSet` |
+| **lokal aktiv** | im Aktiv-Set; Vorbereitung für späteren NUMERIC_LOCAL-Modus | `BubbleActivationSet` |
+| **approximiert** | außerhalb Aktiv-Set; bleibt bei AUTHORED_ORBIT / KEPLER_APPROX | (keine Schreibstelle bis Schritt 4) |
+
+**Fokus ≠ Aktiv-Set.** Fokus ist eine View-Entscheidung, Aktiv-Set ist eine
+geometrische Relevanzklassifikation. Sie sind orthogonal. Der Fokus-Body ist
+automatisch immer aktiv (View-Distanz = 0), aber das ist Geometrie, keine Regel.
+
+`BubbleActivationSet` schreibt **niemals** `BodyState`. Die Aktivierungsklassifikation
+ist ausschließlich abgeleitet — niemals Simulationswahrheit. `current_mode`-Wechsel
+(KEPLER_APPROX → NUMERIC_LOCAL) kommen erst in Schritt 4.
+
+**Klassifikationsgründe** (im `describe()` und DebugOverlay sichtbar):
+- `ACTIVE` — fokus-relativ erreichbar, innerhalb Radius
+- `INACTIVE_DISTANT` — fokus-relativ erreichbar, außerhalb Radius
+- `INACTIVE_NO_LCA` — nicht fokus-relativ vergleichbar (anderer Baum)
+
 ## Don'ts
 
 - Keine Physik-Engine (RigidBody, Area etc.) für Orbitdynamik.
@@ -106,3 +128,7 @@ Epoch-Relative-Modell (`epoch_s: int` + `offset_s: float`).
   Produktionslogik erscheinen — nur in Tests und Debug-Prints.
 - Keine `Vector3`-Akkumulation über AU-Distanzen; immer über
   `_double_sum_to_lca` im `LocalBubbleManager`.
+- `BubbleActivationSet` darf **kein** `BodyState`-Feld schreiben. Die
+  Aktivierungsklassifikation ist abgeleitet, nicht autoritativ.
+- `BodyState.current_mode` darf nicht auf `NUMERIC_LOCAL` gesetzt werden,
+  bis Schritt 4 das explizit implementiert.

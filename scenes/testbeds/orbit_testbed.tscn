@@ -1,9 +1,10 @@
-[gd_scene load_steps=10 format=3 uid="uid://atraxistestbed01"]
+[gd_scene load_steps=11 format=3 uid="uid://atraxistestbed01"]
 
 [ext_resource type="Script" path="res://scenes/testbeds/orbit_testbed.gd" id="1_testbed"]
 [ext_resource type="Script" path="res://src/sim/orbit/orbit_service.gd" id="2_orbitsvc"]
 [ext_resource type="Script" path="res://src/runtime/local_bubble/local_bubble_manager.gd" id="3_bubble"]
 [ext_resource type="PackedScene" uid="uid://bxdebugoverlay001" path="res://src/tools/debug/debug_overlay.tscn" id="4_overlay"]
+[ext_resource type="Script" path="res://src/runtime/local_bubble/bubble_activation_set.gd" id="5_activation"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_sol"]
 radius = 10.0
@@ -34,6 +35,9 @@ script = ExtResource("2_orbitsvc")
 
 [node name="LocalBubbleManager" type="Node" parent="."]
 script = ExtResource("3_bubble")
+
+[node name="BubbleActivationSet" type="Node" parent="."]
+script = ExtResource("5_activation")
 
 [node name="Visuals" type="Node3D" parent="."]
 

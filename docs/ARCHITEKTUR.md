@@ -40,6 +40,7 @@ ab. `runtime/` hängt von `sim/` und `core/` ab.
 | Parent-Frame-Position/-Velo  | `BodyState`                                      | nur `OrbitService` |
 | Orbit-Modus pro Body         | `BodyState.current_mode`                         | nur `OrbitService` |
 | Fokus / View                 | `LocalBubbleManager` (Node)                      | nur Bubble-API     |
+| Aktiv-Set (Relevanzklassif.) | `BubbleActivationSet` (Node)                     | nur Activation-API |
 
 Niemals autoritativ:
 `Node.position`, `Node3D.transform`, Welt- oder View-Koordinaten,
@@ -101,7 +102,12 @@ _ready():
     OrbitService.recompute_all_at_time(TimeService.sim_time_s)  # initialer konsistenter Zustand
     LocalBubbleManager.configure(UniverseRegistry)
     LocalBubbleManager.set_focus(...)
-    DebugOverlay.configure(UniverseRegistry, TimeService, LocalBubbleManager)
+    BubbleActivationSet.configure(UniverseRegistry, LocalBubbleManager)
+    DebugOverlay.configure(UniverseRegistry, TimeService, LocalBubbleManager, BubbleActivationSet)
+
+_process():
+    BubbleActivationSet.rebuild()  # explizit, synchron zu frischen BodyStates
+    ...
 ```
 
 `recompute_all_at_time` ist kein Tick — es emittiert kein Signal, treibt
@@ -109,6 +115,24 @@ keine Zeit vorwärts. Es stellt nur sicher, dass alle `BodyState`s vor dem
 ersten `_process`-Frame konsistent befüllt sind.
 
 Kein impliziter `get_node(^"/root/...")`-Griff aus tiefen Skripten.
+
+## BubbleActivationSet — ADR
+
+**Entscheidung:** `BubbleActivationSet` ist eine eigene Klasse, kein Teil von
+`LocalBubbleManager`.
+
+**Grund:** LocalBubbleManager ist View-Ableitung (Koordinaten, Render-Skalierung).
+BubbleActivationSet ist Relevanzklassifikation (geometrische Nähe zum Fokus).
+Beides in eine Klasse wäre eine Gottklasse.
+
+**Verantwortung:** Liest `registry.get_update_order()` und
+`bubble.compose_view_position_m()`. Schreibt nichts. Kein Autoload.
+
+**Rebuild-Strategie:** Explizit pro Frame aus dem Testbed + Auto-Rebuild bei
+`focus_changed`. Bewusste Übergangslösung für kleines N.
+
+**Klassifikation:** Drei explizite Zustände — `ACTIVE`, `INACTIVE_DISTANT`,
+`INACTIVE_NO_LCA`. Kein stilles „inaktiv ist inaktiv".
 
 ## Bubble-Verantwortung — ADR
 

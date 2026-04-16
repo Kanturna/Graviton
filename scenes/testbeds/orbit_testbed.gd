@@ -8,6 +8,7 @@ extends Node3D
 
 @onready var _orbit_service: OrbitService = $OrbitService
 @onready var _bubble: LocalBubbleManager = $LocalBubbleManager
+@onready var _activation: BubbleActivationSet = $BubbleActivationSet
 @onready var _overlay: DebugOverlay = $DebugOverlay
 
 @onready var _visual_sol: Node3D = $Visuals/SolVisual
@@ -22,11 +23,13 @@ func _ready() -> void:
 	_orbit_service.recompute_all_at_time(TimeService.sim_time_s)
 	_bubble.configure(UniverseRegistry)
 	_bubble.set_focus(&"planet_a")
-	_overlay.configure(UniverseRegistry, TimeService, _bubble)
+	_activation.configure(UniverseRegistry, _bubble)
+	_overlay.configure(UniverseRegistry, TimeService, _bubble, _activation)
 	TimeService.set_time_scale(1_000_000.0)
 
 
 func _process(_delta: float) -> void:
+	_activation.rebuild()
 	_sync_visual(&"sol", _visual_sol)
 	_sync_visual(&"planet_a", _visual_planet_a)
 	_sync_visual(&"moon_a", _visual_moon_a)

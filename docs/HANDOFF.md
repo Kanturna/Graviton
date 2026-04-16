@@ -1,6 +1,6 @@
-# Atraxis — Handoff
+# Graviton — Handoff
 
-Stand nach Schritt 2: Echte Bubble-Transformation. Lies das zuerst,
+Stand nach Schritt 3: Bubble-Aktivierung / Aktiv-Set. Lies das zuerst,
 bevor du den nächsten Schritt planst.
 
 ## Welche Ebene ist aktuell autoritativ
@@ -15,6 +15,28 @@ bevor du den nächsten Schritt planst.
 
 Nichts im `scenes/`- oder `src/tools/`-Baum enthält autoritativen
 Simulationszustand.
+
+## Was in Schritt 3 implementiert wurde
+
+### BubbleActivationSet — fokus-relative geometrische Relevanzklassifikation
+
+Neue Klasse: `src/runtime/local_bubble/bubble_activation_set.gd`.
+
+Klassifiziert Bodies nach fokus-relativer View-Distanz in drei explizite Zustände:
+- `ACTIVE` — innerhalb `activation_radius_m` (default: 5.0e8 m)
+- `INACTIVE_DISTANT` — erreichbar, aber außerhalb Radius
+- `INACTIVE_NO_LCA` — nicht fokus-relativ vergleichbar (anderer Baum)
+
+Rebuild: auto bei `focus_changed` + explizit in `_process` (Übergangslösung für kleines N).
+
+Kein Schreiben von `BodyState`. Kein Moduswechsel (erst Schritt 4).
+
+Neue Tests: `src/tests/bubble/test_activation.gd` — 11 Invarianten.
+
+DebugOverlay zeigt: `[ACTIVE]` / `[~approx]` / `[~no-lca]` pro Body,
+Aktivierungsradius und Aktiv-Set-Zusammenfassung oben.
+
+---
 
 ## Was in Schritt 2 implementiert wurde
 
@@ -99,18 +121,23 @@ Neue Suite: `src/tests/bubble/test_bubble.gd`. Invarianten:
   Ursprung. Debug-Overlay zeigt `|focus_view| = 0.000e+00 m`.
 - `body count = 3`, Registry-Update-Order `[sol, planet_a, moon_a]`.
 
+## Welche Ebene ist aktuell autoritativ (aktualisiert nach Schritt 3)
+
+| Ebene | Rolle | Datei |
+|---|---|---|
+| `TimeService` | Wahrheit | `src/core/time/time_service.gd` |
+| `UniverseRegistry` | Wahrheit | `src/sim/universe/universe_registry.gd` |
+| `BodyState` (via `OrbitService`) | Wahrheit | `src/sim/bodies/body_state.gd` |
+| `LocalBubbleManager` | abgeleitet (View) | `src/runtime/local_bubble/local_bubble_manager.gd` |
+| `BubbleActivationSet` | abgeleitet (Relevanzklassifikation) | `src/runtime/local_bubble/bubble_activation_set.gd` |
+| Testbed-Visuals, `DebugOverlay` | anzeigend | `scenes/testbeds/`, `src/tools/debug/` |
+
 ## Logischer nächster Schritt
 
-### Schritt 3 — Bubble-Aktivierung / Aktiv-Set
+### Schritt 4 — NUMERIC_LOCAL / Moduswechsel
 
-Welche Bodies werden fein simuliert (`NUMERIC_LOCAL`, später),
-welche bleiben bei `KEPLER_APPROX`? Einschlusskritierien basierend
-auf Fokus-Radius. LCA-Walker ist bereits vorhanden.
-
-### Schritt 4
-
-Erst dann: `NUMERIC_LOCAL` plus Moduswechsel zwischen `KEPLER_APPROX`
-und lokaler Numerik.
+`OrbitService` soll Bodies im Aktiv-Set auf `NUMERIC_LOCAL` umschalten.
+Erst dann erste Mechaniken (steuerbare Körper mit Kräften) möglich.
 
 Alles, was über diese Schritte hinausgeht (Input, Content, Transit,
-Saves), wartet auf eine stabile Bubble-Aktivierungsschicht.
+Saves), wartet auf eine stabile NUMERIC_LOCAL-Schicht.

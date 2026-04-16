@@ -44,6 +44,11 @@ Aktueller Stand: **Schritt 2 abgeschlossen** — echte Bubble-Transformation.
 - **`debug_compose_world_m` niemals im Render-Pfad oder in
   Produktionslogik.** Diese Methode ist ausschließlich für Tests und
   Debug-Prints. Das `debug_`-Präfix ist kein Zufall.
+- **`BubbleActivationSet` schreibt keine `BodyState`-Felder.** Aktivierung
+  ist Klassifikation, nicht Simulationswahrheit. `current_mode` bleibt
+  bei `OrbitService` — bis Schritt 4 das explizit ändert.
+- **Fokus ≠ Aktiv-Set.** Der Fokus-Body ist immer aktiv, aber das ist
+  Geometrie (Distanz = 0), keine Identität der Konzepte.
 - **Keine** naive `Vector3`-Addition/Subtraktion über große Distanzen
   (> ~1e9 m). Stattdessen `LocalBubbleManager`-API nutzen, die intern
   double-präzise akkumuliert.
@@ -61,6 +66,8 @@ Aktueller Stand: **Schritt 2 abgeschlossen** — echte Bubble-Transformation.
   schlank!).
 - **Bubble/View:** `src/runtime/local_bubble/local_bubble_manager.gd`
   (LCA-basierte fokus-relative Transformation, double-präzise).
+- **Aktiv-Set:** `src/runtime/local_bubble/bubble_activation_set.gd`
+  (fokus-relative geometrische Relevanzklassifikation).
 - **Debug:** `src/tools/debug/debug_overlay.gd`.
 - **Tests:** `src/tests/` mit eigenem CLI-Runner.
   - `src/tests/orbit/test_orbit.gd` — OrbitMath-Suite
