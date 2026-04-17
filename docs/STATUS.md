@@ -39,6 +39,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
 - Close-Up-Zoom kann fokussierte Bodies jetzt auch sichtbar vergroessern,
   statt nur deren Umgebungsabstaende auseinanderzuziehen.
+- Der sichtbare Nahzoom ist nicht mehr frueh an einer niedrigen internen
+  View-/Detail-Grenze gedeckelt.
 - Das Testbed unterstuetzt jetzt auch manuelles Camera-Panning (`W/A/S/D`),
   einen groesseren Zoom-Bereich und staerkere Zeitskalen.
 - Die Darstellung ist bewusst naeher am Look von `Atraxis`, ohne die

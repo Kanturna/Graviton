@@ -264,7 +264,7 @@ func _is_descendant_of(candidate_id: StringName, ancestor_id: StringName) -> boo
 
 
 func _body_detail_factor(id: StringName, def: BodyDef) -> float:
-	var closeup: float = clampf(pow(_zoom_bias, 0.82), 1.0, 8.0)
+	var closeup: float = clampf(pow(_zoom_bias, 0.90), 1.0, 12.0)
 	var weight: float = _body_closeup_weight(id, def)
 	var factor: float = 1.0 + (closeup - 1.0) * weight
 	return clampf(factor, 1.0, _max_body_detail_factor(def.kind))
@@ -300,13 +300,13 @@ func _body_closeup_weight(id: StringName, def: BodyDef) -> float:
 static func _max_body_detail_factor(kind: int) -> float:
 	match kind:
 		BodyType.Kind.BLACK_HOLE:
-			return 2.4
+			return 4.0
 		BodyType.Kind.STAR:
-			return 3.8
+			return 8.5
 		BodyType.Kind.MOON:
-			return 5.0
+			return 12.0
 		_:
-			return 4.8
+			return 10.0
 
 
 func _update_trail(id: StringName, pos: Vector2, reset_trails: bool) -> void:

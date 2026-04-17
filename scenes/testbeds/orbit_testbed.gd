@@ -7,7 +7,7 @@ const ZOOM_BIAS_STEP: float = 1.16
 const MIN_ZOOM_BIAS: float = 0.20
 const MAX_ZOOM_BIAS: float = 12.0
 const MIN_VIEW_SCALE: float = 0.18
-const MAX_VIEW_SCALE: float = 320.0
+const MAX_VIEW_SCALE: float = 4096.0
 const PAN_SPEED_PX_PER_S: float = 960.0
 
 @onready var _orbit_service: OrbitService = $OrbitService

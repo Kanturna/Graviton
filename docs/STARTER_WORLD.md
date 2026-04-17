@@ -51,6 +51,11 @@ Alle Werte sind bewusste Toy-Werte - nicht astrophysikalisch korrekt.
 | Backspace | View zuruecksetzen (Zoom + Pan) |
 | F3 | Debug-Overlay ein/ausblenden |
 
+Hinweis:
+Der starke Nahzoom kann jetzt auch visuell weiter greifen; Bodies und
+Abstaende bleiben nicht mehr frueh an einer niedrigen internen
+Detail-/View-Grenze stehen.
+
 **Zeitskalen-Presets:** 0.25x / 1x / 10x / 50x / 100x / **250x (Default)** / 500x / 1000x / 2500x / 5000x
 
 Bei **250x** (Default):
