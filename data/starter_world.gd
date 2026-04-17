@@ -22,6 +22,9 @@ extends RefCounted
 #   KEPLER_APPROX fuer Planeten: testet die analytische Orbit-Pipeline (OrbitMath.kepler_position).
 #
 # Alle Werte sind bewusste Toy-Werte fuer Debugbarkeit, nicht astrophysikalisch korrekt.
+# Ziel-Hierarchie fuer die Lesbarkeit:
+#   Monde kreisen sichtbar schneller um Planeten als Planeten um Sterne.
+#   Planeten kreisen sichtbar schneller um Sterne als Sterne um obsidian.
 
 
 static func build() -> Array[BodyDef]:
@@ -53,21 +56,24 @@ static func _build_obsidian() -> BodyDef:
 
 
 # --- Sterne (AUTHORED_ORBIT um obsidian) ---
-# T=5e4/9e4 s: bei time_scale=1000 jeweils 50/90 s pro Umlauf sichtbar.
+# T=4e4/7e4 s: Sterne bleiben klar langsamer als ihre Planeten, sind aber
+# im Root-View frueher wahrnehmbar als mit den vorherigen sehr traegen Toy-Werten.
 # phase=PI fuer beta: Sterne starten gegenueberliegend -> sofort erkennbar.
 
 static func _build_alpha() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.AUTHORED_ORBIT
 	prof.authored_radius_m = 1.5e11
-	prof.authored_period_s = 5.0e4
+	prof.authored_period_s = 4.0e4
 	prof.authored_phase_rad = 0.0
 
 	var d := BodyDef.new()
 	d.id = &"alpha"
 	d.display_name = "Alpha"
 	d.kind = BodyType.Kind.STAR
-	d.mass_kg = UnitSystem.SOLAR_MASS_KG
+	# Erhoehte Toy-Masse: haelt kompakte Planetensysteme lesbar und trotzdem
+	# sichtbar schneller als die BH-Sternorbits.
+	d.mass_kg = UnitSystem.SOLAR_MASS_KG * 3.0
 	d.radius_m = 6.957e8
 	d.parent_id = &"obsidian"
 	d.orbit_profile = prof
@@ -78,14 +84,14 @@ static func _build_beta() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.AUTHORED_ORBIT
 	prof.authored_radius_m = 2.5e11
-	prof.authored_period_s = 9.0e4
+	prof.authored_period_s = 7.0e4
 	prof.authored_phase_rad = PI
 
 	var d := BodyDef.new()
 	d.id = &"beta"
 	d.display_name = "Beta"
 	d.kind = BodyType.Kind.STAR
-	d.mass_kg = UnitSystem.SOLAR_MASS_KG
+	d.mass_kg = UnitSystem.SOLAR_MASS_KG * 3.0
 	d.radius_m = 6.957e8
 	d.parent_id = &"obsidian"
 	d.orbit_profile = prof
@@ -93,15 +99,16 @@ static func _build_beta() -> BodyDef:
 
 
 # --- Planeten (KEPLER_APPROX) ---
-# a-Werte so gewaehlt, dass bei RENDER_SCALE=1e9 m/Unit die Planeten
-# klar sichtbar von ihrem Stern getrennt sind (2.5/5 RU vs. Stern-Mesh 0.8 RU).
+# a/e-Werte so gewaehlt, dass bei RENDER_SCALE=1e9 m/Unit die Planeten
+# klar sichtbar von ihrem Stern getrennt sind, dabei aber in der Toy-Hierarchie
+# schneller um den Stern kreisen als der Stern um obsidian.
 # mean_anomaly_epoch_rad unterschiedlich fuer sichtbar verschiedene Startphasen.
 
 static func _build_alpha_i() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
-	prof.semi_major_axis_m = 2.5e9
-	prof.eccentricity = 0.02
+	prof.semi_major_axis_m = 1.4e9
+	prof.eccentricity = 0.08
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
 	prof.argument_periapsis_rad = 0.0
@@ -122,8 +129,8 @@ static func _build_alpha_i() -> BodyDef:
 static func _build_alpha_ii() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
-	prof.semi_major_axis_m = 5.0e9
-	prof.eccentricity = 0.01
+	prof.semi_major_axis_m = 2.2e9
+	prof.eccentricity = 0.05
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
 	prof.argument_periapsis_rad = 0.0
@@ -144,8 +151,8 @@ static func _build_alpha_ii() -> BodyDef:
 static func _build_beta_i() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
-	prof.semi_major_axis_m = 3.0e9
-	prof.eccentricity = 0.03
+	prof.semi_major_axis_m = 1.6e9
+	prof.eccentricity = 0.10
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
 	prof.argument_periapsis_rad = 0.0
@@ -166,8 +173,8 @@ static func _build_beta_i() -> BodyDef:
 static func _build_beta_ii() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
-	prof.semi_major_axis_m = 6.0e9
-	prof.eccentricity = 0.015
+	prof.semi_major_axis_m = 2.8e9
+	prof.eccentricity = 0.06
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
 	prof.argument_periapsis_rad = 0.0
@@ -187,13 +194,13 @@ static func _build_beta_ii() -> BodyDef:
 
 # --- Monde (AUTHORED_ORBIT) ---
 # r/T frei gewaehlt fuer Debugbarkeit: Monde bei 1.2-1.5 RU von Planet (Mesh 0.2 RU),
-# Umlaufzeit 12-15 s bei time_scale=1000.
+# Umlaufzeit 6-8 s bei time_scale=1000 und damit sichtbar schneller als ihre Planeten.
 
 static func _build_alpha_i_m() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.AUTHORED_ORBIT
 	prof.authored_radius_m = 1.5e9
-	prof.authored_period_s = 1.5e4
+	prof.authored_period_s = 8.0e3
 	prof.authored_phase_rad = 0.0
 
 	var d := BodyDef.new()
@@ -211,7 +218,7 @@ static func _build_beta_i_m() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.AUTHORED_ORBIT
 	prof.authored_radius_m = 1.2e9
-	prof.authored_period_s = 1.2e4
+	prof.authored_period_s = 6.0e3
 	prof.authored_phase_rad = 1.5707963
 
 	var d := BodyDef.new()

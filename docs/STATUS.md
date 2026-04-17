@@ -55,6 +55,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   View-/Detail-Grenze gedeckelt.
 - Das Testbed unterstuetzt jetzt auch manuelles Camera-Panning (`W/A/S/D`),
   einen groesseren Zoom-Bereich, klickbaren Fokus und staerkere Zeitskalen.
+- Die Toy-Orbitwerte der `StarterWorld` sind jetzt so getunt, dass Monde
+  sichtbar schneller als Planeten und Planeten sichtbar schneller als ihre
+  Sterne um `obsidian` kreisen; die Planetenbahnen sind zudem leicht
+  elliptischer geworden.
 - Die Darstellung ist bewusst naeher am Look von `Atraxis`, ohne die
   `Graviton`-Architektur zu opfern.
 
@@ -84,8 +88,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Praesentation ist deutlich besser als vorher, aber noch nicht auf
   dem finalen Qualitaetsniveau von `Atraxis`.
 - Orbit-Linienpunkte fuer KEPLER-Orbits werden gleichmaessig in M
-  (mittlere Anomalie) gesampelt - bei geringer Exzentrizitaet (0.01-0.03)
-  kaum sichtbar, aber nicht physikalisch gleichmaessig verteilt.
+  (mittlere Anomalie) gesampelt - bei den aktuellen milden Toy-Ellipsen
+  meist okay, aber nicht physikalisch gleichmaessig verteilt.
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
