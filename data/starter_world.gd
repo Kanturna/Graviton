@@ -104,16 +104,18 @@ static func _build_beta() -> BodyDef:
 # schneller um den Stern kreisen als der Stern um obsidian.
 # e ist bewusst hoeher als in einem "milden" Realismus-Setup, damit die
 # Ellipsen im Testbed auch wirklich erkennbar werden.
+# argument_periapsis_rad ist pro Planet unterschiedlich, damit die Bahnen
+# nicht alle gleich ausgerichtet wie technisch verschobene Kreise wirken.
 # mean_anomaly_epoch_rad unterschiedlich fuer sichtbar verschiedene Startphasen.
 
 static func _build_alpha_i() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
 	prof.semi_major_axis_m = 1.4e9
-	prof.eccentricity = 0.18
+	prof.eccentricity = 0.36
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
-	prof.argument_periapsis_rad = 0.0
+	prof.argument_periapsis_rad = 0.75
 	prof.mean_anomaly_epoch_rad = 0.0
 	prof.epoch_s = 0.0
 
@@ -131,11 +133,11 @@ static func _build_alpha_i() -> BodyDef:
 static func _build_alpha_ii() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
-	prof.semi_major_axis_m = 2.2e9
-	prof.eccentricity = 0.12
+	prof.semi_major_axis_m = 2.52e9
+	prof.eccentricity = 0.22
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
-	prof.argument_periapsis_rad = 0.0
+	prof.argument_periapsis_rad = 2.35
 	prof.mean_anomaly_epoch_rad = 1.05
 	prof.epoch_s = 0.0
 
@@ -154,10 +156,10 @@ static func _build_beta_i() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
 	prof.semi_major_axis_m = 1.6e9
-	prof.eccentricity = 0.20
+	prof.eccentricity = 0.40
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
-	prof.argument_periapsis_rad = 0.0
+	prof.argument_periapsis_rad = 1.55
 	prof.mean_anomaly_epoch_rad = 0.5
 	prof.epoch_s = 0.0
 
@@ -175,11 +177,11 @@ static func _build_beta_i() -> BodyDef:
 static func _build_beta_ii() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
-	prof.semi_major_axis_m = 2.8e9
-	prof.eccentricity = 0.14
+	prof.semi_major_axis_m = 3.25e9
+	prof.eccentricity = 0.28
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
-	prof.argument_periapsis_rad = 0.0
+	prof.argument_periapsis_rad = 3.95
 	prof.mean_anomaly_epoch_rad = 2.0
 	prof.epoch_s = 0.0
 
