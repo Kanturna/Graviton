@@ -1,9 +1,13 @@
-[gd_scene load_steps=5 format=3 uid="uid://atraxistestbed01"]
+[gd_scene load_steps=6 format=3 uid="uid://atraxistestbed01"]
 
 [ext_resource type="Script" path="res://scenes/testbeds/orbit_testbed.gd" id="1_testbed"]
 [ext_resource type="Script" path="res://src/sim/orbit/orbit_service.gd" id="2_orbitsvc"]
 [ext_resource type="Script" path="res://src/runtime/local_bubble/local_bubble_manager.gd" id="3_bubble"]
 [ext_resource type="PackedScene" uid="uid://bxdebugoverlay001" path="res://src/tools/debug/debug_overlay.tscn" id="4_overlay"]
+
+[sub_resource type="Environment" id="Environment_space"]
+background_mode = 1
+background_color = Color(0, 0, 0, 1)
 
 [node name="OrbitTestbed" type="Node3D"]
 script = ExtResource("1_testbed")
@@ -16,9 +20,12 @@ script = ExtResource("3_bubble")
 
 [node name="Visuals" type="Node3D" parent="."]
 
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_space")
+
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.9848078, 0.1736482, 0, -0.1736482, 0.9848078, 0, 80, 450)
-far = 6000.0
+transform = Transform3D(1, 0, 0, 0, 0.9703, 0.2419, 0, -0.2419, 0.9703, 0, 150, 700)
+far = 8000.0
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.7071068, 0.7071068, 0, -0.7071068, 0.7071068, 0, 50, 0)

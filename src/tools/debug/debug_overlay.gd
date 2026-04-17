@@ -51,8 +51,8 @@ func _format_body_line(id: StringName) -> String:
 	var pos: Vector3 = state.position_parent_frame_m
 	var r: float = pos.length()
 	var world_m: Vector3 = _bubble.compose_world_position_m(id)
-	return "  %s  kind=%s  parent=%s  mode=%s  |pf|=%.3e m  world=%.3e m" % [
-		id,
+	return "  %s  kind=%s  parent=%s  mode=%s  |pf|=%.3g m  w=%.3g m" % [
+		String(id),
 		BodyType.to_string_kind(def.kind),
 		parent_txt,
 		mode_txt,

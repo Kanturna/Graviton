@@ -93,11 +93,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 static func _radius_for_kind(kind: BodyType.Kind) -> float:
 	match kind:
-		BodyType.Kind.BLACK_HOLE: return 1.5
-		BodyType.Kind.STAR: return 0.8
-		BodyType.Kind.PLANET: return 0.2
-		BodyType.Kind.MOON: return 0.08
-	return 0.3
+		BodyType.Kind.BLACK_HOLE: return 10.0
+		BodyType.Kind.STAR: return 8.0
+		BodyType.Kind.PLANET: return 2.0
+		BodyType.Kind.MOON: return 1.0
+	return 1.5
 
 
 static func _color_for_kind(kind: BodyType.Kind) -> Color:
