@@ -72,9 +72,11 @@ func _format_body_line(id: StringName) -> String:
 		var thermal_desc: Dictionary = _thermal_service.describe_body(id)
 		var source_id: StringName = thermal_desc.get("source_id", StringName(""))
 		var source_txt: String = "none" if source_id == StringName("") else String(source_id)
-		thermal_txt = "  source=%s  insolation=%s W/m^2" % [
+		thermal_txt = "  source=%s  insolation=%s W/m^2  absorbed=%s W/m^2  teq=%s K" % [
 			source_txt,
 			_format_metric(float(thermal_desc.get("insolation_wpm2", 0.0))),
+			_format_metric(float(thermal_desc.get("absorbed_flux_wpm2", 0.0))),
+			_format_metric(float(thermal_desc.get("equilibrium_temperature_k", 0.0))),
 		]
 	return "  %s  kind=%s  parent=%s  mode=%s  |pf|=%s m  root_local=%s m%s" % [
 		String(id),

@@ -36,8 +36,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `NUMERIC_LOCAL`.
 - `LocalOrbitIntegrator` ist als pure Parent-Only-Mathematik via
   Velocity Verlet implementiert.
-- `ThermalService` liefert jetzt on-demand minimale Insolation aus
-  `luminosity_w`, Parent-Kette und aktuellem `BodyState`.
+- `ThermalService` liefert jetzt on-demand minimale Insolation,
+  global gemittelten absorbierten Fluss und einfache
+  Gleichgewichtstemperatur aus `luminosity_w`, `albedo`, Parent-Kette
+  und aktuellem `BodyState`.
 - Bodies aus einem anderen Root als der aktuelle Fokus liefern bewusst
   `Vector3.INF` und werden im Renderer nicht lokalisiert.
 - `TimeService` und `UniverseRegistry` sind die zentralen Autoloads.
@@ -121,8 +123,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   keinen Stabilitaets-Guardrail fuer hohe `time_scale` im numerischen
   Pfad.
 - `BodyDef` traegt jetzt erste statische Weltmodell-Felder, aber
-  daraus werden bislang nur minimale Insolation-Werte abgeleitet -
-  noch keine Temperatur-, Habitability- oder Atmosphaerenmodelle.
+  daraus werden bislang nur minimale Thermalwerte
+  (Insolation / absorbierter Fluss / `T_eq`) abgeleitet -
+  noch keine Habitability- oder Atmosphaerenmodelle.
 - Der Wish-Pfad fuer `NUMERIC_LOCAL` ist aktuell bewusst um einen Frame
   gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`).
   Das ist im kleinen P5-Slice akzeptiert und fuer spaetere
@@ -143,9 +146,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 - als naechsten grossen Schritt erste abgeleitete planetare
   Zustandsgroessen ueber reine Insolation hinaus angehen
-- als naechsten logischen Derived-Schritt absorbierte Leistung /
-  einfache Temperaturableitung auf Basis von Insolation und spaeter
-  Albedo betrachten
+- als naechsten logischen Derived-Schritt Atmosphaeren-/
+  Greenhouse-/Habitability-Ableitung auf Basis des jetzt etablierten
+  ThermalService betrachten
 - danach den numerischen Pfad um Substepping / High-Speed-Guardrails
   erweitern, wenn hohe `time_scale` oder Radiusrand-Thrashing stoeren
 - spaeter Topologie-Helfer konsolidieren, wenn Bubble-/Activation-

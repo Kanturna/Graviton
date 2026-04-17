@@ -1,10 +1,13 @@
 class_name ThermalService
 extends Node
 
-# Read-only Derived-Service fuer minimale Insolation.
+# Read-only Derived-Service fuer minimale Thermalableitung.
 # Liest BodyState.position_parent_frame_m direkt; der Caller ist dafuer
 # verantwortlich, dass die States nach dem letzten OrbitService-Tick
 # oder recompute_all_at_time() aktuell und konsistent sind.
+# P7 nutzt ein on-demand Null-D-Modell mit uniformer /4-Redistribution
+# (Fast-Rotator-Annahme). rotation_period_s und axial_tilt_rad werden
+# bewusst noch ignoriert.
 
 var _registry: Node = null
 
@@ -18,6 +21,14 @@ func compute_insolation_wpm2(id: StringName) -> float:
 	return float(describe_body(id).get("insolation_wpm2", 0.0))
 
 
+func compute_absorbed_flux_wpm2(id: StringName) -> float:
+	return float(describe_body(id).get("absorbed_flux_wpm2", 0.0))
+
+
+func compute_equilibrium_temperature_k(id: StringName) -> float:
+	return float(describe_body(id).get("equilibrium_temperature_k", 0.0))
+
+
 func describe_body(id: StringName) -> Dictionary:
 	var description: Dictionary = _default_description(id)
 	if _registry == null:
@@ -25,6 +36,9 @@ func describe_body(id: StringName) -> Dictionary:
 
 	var def: BodyDef = _registry.get_def(id)
 	if def == null:
+		return description
+	var albedo: float = def.albedo
+	if not is_finite(albedo) or albedo < 0.0:
 		return description
 
 	var source_id: StringName = _find_luminous_ancestor_id(def.parent_id)
@@ -47,9 +61,15 @@ func describe_body(id: StringName) -> Dictionary:
 	if not is_finite(insolation_wpm2) or insolation_wpm2 < 0.0:
 		return description
 
+	var absorbed_flux_wpm2: float = _compute_absorbed_flux_wpm2_from(insolation_wpm2, albedo)
+	var equilibrium_temperature_k: float = _compute_equilibrium_temperature_k_from(absorbed_flux_wpm2)
+
 	description["source_id"] = source_id
 	description["distance_to_source_m"] = distance_to_source_m
 	description["insolation_wpm2"] = insolation_wpm2
+	description["albedo"] = albedo
+	description["absorbed_flux_wpm2"] = absorbed_flux_wpm2
+	description["equilibrium_temperature_k"] = equilibrium_temperature_k
 	description["has_luminous_ancestor"] = true
 	return description
 
@@ -105,8 +125,36 @@ func _default_description(id: StringName) -> Dictionary:
 		"source_id": StringName(""),
 		"distance_to_source_m": 0.0,
 		"insolation_wpm2": 0.0,
+		"albedo": 0.0,
+		"absorbed_flux_wpm2": 0.0,
+		"equilibrium_temperature_k": 0.0,
 		"has_luminous_ancestor": false,
 	}
+
+
+static func _compute_absorbed_flux_wpm2_from(insolation_wpm2: float, albedo: float) -> float:
+	if not is_finite(insolation_wpm2) or insolation_wpm2 <= 0.0:
+		return 0.0
+	if not is_finite(albedo) or albedo < 0.0:
+		return 0.0
+	if albedo >= 1.0:
+		return 0.0
+	var absorbed_flux_wpm2: float = (1.0 - albedo) * insolation_wpm2 / 4.0
+	if not is_finite(absorbed_flux_wpm2) or absorbed_flux_wpm2 < 0.0:
+		return 0.0
+	return absorbed_flux_wpm2
+
+
+static func _compute_equilibrium_temperature_k_from(absorbed_flux_wpm2: float) -> float:
+	if not is_finite(absorbed_flux_wpm2) or absorbed_flux_wpm2 <= 0.0:
+		return 0.0
+	var equilibrium_temperature_k: float = pow(
+		absorbed_flux_wpm2 / UnitSystem.STEFAN_BOLTZMANN_WPM2K4,
+		0.25
+	)
+	if not is_finite(equilibrium_temperature_k) or equilibrium_temperature_k < 0.0:
+		return 0.0
+	return equilibrium_temperature_k
 
 
 static func _is_finite_vec3(value: Vector3) -> bool:

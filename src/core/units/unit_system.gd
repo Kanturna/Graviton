@@ -12,6 +12,7 @@ const KG: float = 1.0
 
 const AU_M: float = 1.495978707e11
 const G: float = 6.67430e-11
+const STEFAN_BOLTZMANN_WPM2K4: float = 5.670374419e-8
 const SOLAR_MASS_KG: float = 1.98892e30
 const SOLAR_LUMINOSITY_W: float = 3.828e26
 const EARTH_MASS_KG: float = 5.9722e24

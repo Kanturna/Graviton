@@ -165,7 +165,7 @@ Diese Felder sind in P3 reine Datenbasis. Sie beeinflussen noch keine
 Orbit-Berechnung, keine View und noch keine abgeleiteten planetaren
 Zustandswerte.
 
-## Abgeleitete Umweltgroessen - P6 Insolation
+## Abgeleitete Umweltgroessen - P6/P7 ThermalService
 
 `ThermalService` ist der erste read-only Derived-Service ausserhalb von
 Orbit- und Bubble-Kernlogik.
@@ -182,10 +182,22 @@ Der Body wird uebersprungen und blockiert die Suche nicht.
 **Formel:** `F = L / (4 * PI * r^2)` mit `r` aus der Parent-Kette des
 aktuellen `BodyState`.
 
-**Nicht-Ziele in P6:**
-- kein `albedo`-Einfluss
-- keine Temperatur
+**Absorbierter Fluss (P7):**
+`absorbed_flux_wpm2 = (1 - albedo) * F / 4`.
+
+**Gleichgewichtstemperatur (P7):**
+`T_eq = pow(absorbed_flux_wpm2 / sigma, 0.25)` mit
+`sigma = 5.670374419e-8` (`UnitSystem.STEFAN_BOLTZMANN_WPM2K4`).
+
+**Fast-Rotator-Annahme:** Das `/4`-Redistribution-Modell meint global
+gemittelten Fluss und setzt uniforme Oberflaechentemperatur voraus.
+`rotation_period_s` und `axial_tilt_rad` bleiben in diesem Schritt
+bewusst ungenutzt. Fuer langsame Rotatoren oder tidal lock muss das
+Modell spaeter verzweigen.
+
+**Nicht-Ziele in P6/P7:**
 - keine Atmosphaere
+- kein Greenhouse / keine Emissivitaetsvariation
 - keine Jahreszeiten-/Tilt-Geometrie
 - keine Mehrquellen-Summation
 - keine Cross-Root-Suche ausserhalb der Parent-Kette

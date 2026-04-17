@@ -15,7 +15,7 @@ Aktueller Stand:
 - `BodyDef` enthaelt jetzt erste statische Weltmodell-Felder
 - Schritt 3 (`BubbleActivationSet`) ist implementiert
 - Schritt 4 (`NUMERIC_LOCAL`) ist als minimaler Slice implementiert
-- Schritt 5 (`ThermalService` / Insolation) ist als read-only Slice implementiert
+- Schritt 5 (`ThermalService` / Insolation + `T_eq`) ist als read-only Slice implementiert
 - die aktive Praesentation ist ein stilisiertes 2D-Orbit-Testbed
 
 ## Wichtige Grundsaetze
@@ -56,6 +56,7 @@ Aktueller Stand:
 - Weltladen: `src/sim/world/world_loader.gd`
 - Numerische Integration: `src/sim/orbit/local_orbit_integrator.gd`
 - Insolation / Derived-Umweltlogik: `src/sim/thermal/thermal_service.gd`
+- dort jetzt auch absorbierter Fluss und einfache Gleichgewichtstemperatur
 - Registry: `src/sim/universe/universe_registry.gd`
 - Bubble/View: `src/runtime/local_bubble/local_bubble_manager.gd`
 - Bubble-Aktivierung: `src/runtime/local_bubble/bubble_activation_set.gd`

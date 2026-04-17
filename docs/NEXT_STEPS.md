@@ -110,12 +110,27 @@ Erledigt:
 - neue Tests fuer SampleSystem, StarterWorld, Cross-Root-Isolation und
   `describe_body(...)`
 
-## Danach - Planetare Zustandsableitung
+## Prioritaet 7 - Derived Phase B: Absorbierter Fluss / Gleichgewichtstemperatur - erledigt
+
+Ziel:
+Den bestehenden `ThermalService` ohne neuen State-Container um den
+naechsten physikalisch sinnvollen Minimal-Slice erweitern.
+
+Erledigt:
+
+- `compute_absorbed_flux_wpm2(id)` und `compute_equilibrium_temperature_k(id)`
+- `UnitSystem.STEFAN_BOLTZMANN_WPM2K4`
+- Fast-Rotator-/`/4`-Redistribution als explizite Modellannahme
+- Debug-Overlay-Hook fuer `absorbed` und `teq`
+- neue Tests fuer Earth-like-Sanity, Albedo-Grenzen und
+  Temperatur-Ordnungsrelationen
+
+## Danach - Planetare Zustandsableitung / Atmosphaeren
 
 Erst wenn Weltmodell, Loader und Bubble-/Regime-Fundament tragfaehig sind:
 
 - erste abgeleitete planetare Zustandsgroessen
-  - absorbierte Leistung / Temperatur
+  - Atmosphaeren-/Greenhouse-Ableitung auf Basis von `T_eq`
   - einfache Bewohnbarkeits- oder Unwirtlichkeitsmarker
   - spaeter Strahlung / Atmosphaerenklassen / weitere Umweltfaktoren
 

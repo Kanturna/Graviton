@@ -220,13 +220,20 @@ aus bestehender Foundation-Wahrheit und sollte deshalb als eigener,
 leicht testbarer Service neben `OrbitService` leben.
 
 **Verantwortung:** On-demand-Reads auf `BodyDef.luminosity_w`,
-`BodyState.position_parent_frame_m` und Parent-Topologie. Kein Cache,
-kein Tick-Hook, keine `BodyState`-Mutation.
+`BodyDef.albedo`, `BodyState.position_parent_frame_m` und
+Parent-Topologie. Kein Cache, kein Tick-Hook, keine `BodyState`-
+Mutation.
 
 **Quellenregel:** Quelle ist der naechste Ancestor mit
 `luminosity_w > 0.0`. Die Suche startet beim Parent, nicht beim Body
-selbst. `luminosity_w == 0.0` wird in P6 pragmatisch als "keine Quelle"
+selbst. `luminosity_w == 0.0` wird pragmatisch als "keine Quelle"
 behandelt und blockiert die Suche nicht.
+
+**Aktueller Stand:** `ThermalService` liefert jetzt on-demand
+Insolation, global gemittelten absorbierten Fluss und einfache
+Gleichgewichtstemperatur. Das `/4`-Redistribution-Modell ist bewusst
+als Fast-Rotator-Annahme dokumentiert; Atmosphaeren-, Greenhouse- und
+Mehrquellen-Modelle bleiben Folgearbeit.
 
 ## Regime-Wechsel-Modell - ADR
 

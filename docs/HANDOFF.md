@@ -9,7 +9,8 @@
 > felder verbreitert. `BubbleActivationSet` ist jetzt als read-only
 > Runtime-Service implementiert und bridged in einen minimalen
 > `NUMERIC_LOCAL`-Pfad ueber `OrbitService`. `ThermalService` liefert
-> jetzt minimale Insolation on-demand. Fuer die
+> jetzt minimale Thermalableitung on-demand
+> (Insolation / absorbierter Fluss / `T_eq`). Fuer die
 > aktuelle Priorisierung lies zuerst `docs/STATUS.md` und
 > `docs/NEXT_STEPS.md`.
 
@@ -111,17 +112,20 @@ Aktuelle Bausteine:
 - Logging bei Rueckwechseln zu `KEPLER_APPROX`
 - bewusst noch kein Substepping / kein High-Speed-Guardrail
 
-## Schritt 5 - Thermischer Minimal-Slice / Insolation
+## Schritt 5 - Thermischer Minimal-Slice / Insolation + T_eq
 
 Status: implementiert.
 
 Aktuelle Bausteine:
 - `src/sim/thermal/thermal_service.gd`
 - on-demand `compute_insolation_wpm2(id)`
+- on-demand `compute_absorbed_flux_wpm2(id)`
+- on-demand `compute_equilibrium_temperature_k(id)`
 - `describe_body(id)` fuer Debug/Test
 - Quelle = naechster Ancestor mit `luminosity_w > 0.0`
 - keine Selbstbestrahlung; Suche startet beim Parent
-- keine Temperatur, keine Atmosphaere, keine Mehrquellen-Summation
+- `/4`-Redistribution als Fast-Rotator-Annahme
+- keine Atmosphaere, kein Greenhouse, keine Mehrquellen-Summation
 
 ## Verifikation
 
@@ -148,7 +152,8 @@ alle gruen.
 ## Naechster sinnvoller Schritt
 
 Die aktuelle Projekt-Roadmap priorisiert jetzt:
-1. abgeleitete planetare Zustandswerte ueber reine Insolation hinaus
+1. Atmosphaeren-/Greenhouse-Ableitung auf Basis der jetzigen
+   Gleichgewichtstemperatur
 2. danach Stabilitaets-Guardrails fuer den numerischen Pfad
 3. spaeter Generator-/Systemschritte und weitere Foundation-Folgen
 
