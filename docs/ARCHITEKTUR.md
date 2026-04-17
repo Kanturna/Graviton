@@ -95,11 +95,11 @@ Wenn du ueberlegst, der Registry Funktionalitaet hinzuzufuegen, pruefe:
 ## Composition Root
 
 Hinweis:
-Das folgende Snippet beschreibt das Zielbild fuer die naechsten
-Foundation-Bloecke. Der aktuelle Code in
+Das folgende Snippet beschreibt den aktuellen Composition-Root-Stand
+nach Schritt 3. Der aktuelle Code in
 `scenes/testbeds/orbit_testbed.gd` nutzt bereits einen expliziten
-`WorldLoader`, enthaelt aber weiterhin noch kein fertig verdrahtetes
-`BubbleActivationSet` und keinen gelebten
+`WorldLoader` und ein verdrahtetes `BubbleActivationSet`. Nicht
+implementiert bleibt nur noch der gelebte
 `request_numeric_local_candidates(...)`-Pfad im Runtime-Flow.
 
 Die Verdrahtung passiert pro Szene in deren Root-Script:
@@ -112,6 +112,7 @@ _ready():
     LocalBubbleManager.configure(UniverseRegistry)
     LocalBubbleManager.set_focus(...)
     BubbleActivationSet.configure(UniverseRegistry, LocalBubbleManager)
+    BubbleActivationSet.rebuild()
     DebugOverlay.configure(
         UniverseRegistry,
         TimeService,
@@ -153,6 +154,11 @@ kleines N.
 **Klassifikation:** Drei explizite Zustaende - `ACTIVE`,
 `INACTIVE_DISTANT`, `INACTIVE_NO_LCA`. Kein stilles "inaktiv ist
 inaktiv".
+
+**Aktueller Stand:** Implementiert als read-only Runtime-Service in
+`src/runtime/local_bubble/bubble_activation_set.gd`. `classify(id)`
+liest den Zustand des letzten `rebuild()`, und `get_active_ids()`
+folgt der topologischen Registry-Reihenfolge (Parent vor Kind).
 
 ## Bubble-Verantwortung - ADR
 

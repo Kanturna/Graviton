@@ -10,11 +10,11 @@ Bubble. Das Projekt ist bewusst als mehrschichtige Simulation
 aufgesetzt, nicht als Arcade-Spiel und nicht als Tutorial-Scaffold.
 
 Aktueller Stand:
-- Foundation-Schritte 1-2 sind implementiert
+- Foundation-Schritte 1-3 sind implementiert
 - Weltladen laeuft jetzt explizit ueber `WorldLoader`
 - `BodyDef` enthaelt jetzt erste statische Weltmodell-Felder
-- Schritt 3 (`BubbleActivationSet`) und Schritt 4 (`NUMERIC_LOCAL`) sind
-  noch geplant
+- Schritt 3 (`BubbleActivationSet`) ist implementiert
+- Schritt 4 (`NUMERIC_LOCAL`) bleibt noch geplant
 - die aktive Praesentation ist ein stilisiertes 2D-Orbit-Testbed
 
 ## Wichtige Grundsaetze
@@ -34,7 +34,7 @@ Aktueller Stand:
 - Keine Render-Skala (`RENDER_SCALE_M_PER_UNIT`) in `src/sim/` oder `src/core/`.
 - Keine Simulationslogik in Visual-Nodes oder im Testbed-Script ueber reine Projektion hinaus.
 - `compose_root_local_position_m` nur in Tests und Debug-Overlay.
-- `BubbleActivationSet` schreibt spaeter keine `BodyState`-Felder.
+- `BubbleActivationSet` schreibt keine `BodyState`-Felder.
 - Fokus, Aktiv-Set und `NUMERIC_LOCAL` sind drei verschiedene Konzepte.
 - `LocalOrbitIntegrator` wird spaeter pure Mathematik sein und kein `BodyState` schreiben.
 - Keine naive `Vector3`-Addition/Subtraktion ueber grosse Distanzen (> ~1e9 m).
@@ -55,6 +55,7 @@ Aktueller Stand:
 - Numerische Integration spaeter: `src/sim/orbit/local_orbit_integrator.gd`
 - Registry: `src/sim/universe/universe_registry.gd`
 - Bubble/View: `src/runtime/local_bubble/local_bubble_manager.gd`
+- Bubble-Aktivierung: `src/runtime/local_bubble/bubble_activation_set.gd`
 - Debug: `src/tools/debug/debug_overlay.gd`
 - Rendering: `src/tools/rendering/`
 - Tests: `src/tests/`

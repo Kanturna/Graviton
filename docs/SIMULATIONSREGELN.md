@@ -41,9 +41,11 @@ schreibt. Andere Klassen lesen nur.
 
 ### NUMERIC_LOCAL - geplante Regime-Wechsel-Semantik
 
-> **Nicht implementiert.** `LocalOrbitIntegrator`, `BubbleActivationSet`
-> und `request_numeric_local_candidates()` existieren nicht. Dieser
-> Abschnitt beschreibt die geplante Architektur.
+> **Teilweise implementiert.** `BubbleActivationSet` existiert jetzt als
+> read-only Aktivierungs-/Relevanzklassifikation. Nicht implementiert
+> bleiben `LocalOrbitIntegrator` und
+> `request_numeric_local_candidates()`. Dieser Abschnitt beschreibt die
+> noch offene Regime-Wechsel-Architektur.
 
 **Eligibility:** Nur Bodies mit `OrbitProfile.mode == KEPLER_APPROX`
 koennen zu `NUMERIC_LOCAL` wechseln. `AUTHORED_ORBIT`-Bodies bleiben
@@ -169,29 +171,26 @@ Orbit-Simulation unkritisch. Wenn jemand spaeter in Jahrmilliarden
 hinein will, wechselt `TimeService` auf ein Epoch-Relative-Modell
 (`epoch_s: int` + `offset_s: float`).
 
-## Bubble-Aktivierung (geplante Architektur)
+## Bubble-Aktivierung
 
-> **Hinweis:** Der `BubbleActivationSet`-Layer und `NUMERIC_LOCAL`-
-> Regime sind als Architektur beschrieben, aber noch nicht
-> implementiert. `LocalBubbleManager` liefert bereits die Step-2-
-> Bubble-Komposition; `NUMERIC_LOCAL` erzeugt aktuell nur eine Warnung
-> in `OrbitService`.
+> **Hinweis:** `BubbleActivationSet` ist jetzt als read-only
+> Runtime-Service implementiert. Nicht implementiert bleibt die
+> eigentliche `NUMERIC_LOCAL`-Anbindung in `OrbitService`.
 
 | Begriff | Bedeutung | Wer entscheidet |
 |---|---|---|
 | **Fokus** | View-Ankerpunkt; Zentrum des View-Space | `LocalBubbleManager` |
-| **Aktiv-Set** | Bodies, deren fokus-relative View-Distanz <= Aktivierungsradius | `BubbleActivationSet` (geplant) |
-| **lokal aktiv** | im Aktiv-Set; Kandidat fuer `NUMERIC_LOCAL` (wenn `KEPLER_APPROX`-Profil) | `BubbleActivationSet` (geplant) |
+| **Aktiv-Set** | Bodies, deren fokus-relative View-Distanz <= Aktivierungsradius | `BubbleActivationSet` |
+| **lokal aktiv** | im Aktiv-Set; Kandidat fuer `NUMERIC_LOCAL` (wenn `KEPLER_APPROX`-Profil) | `BubbleActivationSet` |
 | **approximiert** | ausserhalb Aktiv-Set; bleibt bei `AUTHORED_ORBIT` / `KEPLER_APPROX` | `OrbitService` (Kepler-Pfad) |
 
 **Fokus != Aktiv-Set.** Fokus ist eine View-Entscheidung,
 Aktiv-Set ist eine geometrische Relevanzklassifikation. Sie sind
 orthogonal.
 
-Wenn `BubbleActivationSet` implementiert wird, gilt: Es schreibt
-**niemals** `BodyState`. `current_mode`-Wechsel
-(`KEPLER_APPROX -> NUMERIC_LOCAL`) werden durch
-`OrbitService.request_numeric_local_candidates()` ausgeloest.
+`BubbleActivationSet` schreibt **niemals** `BodyState`.
+`current_mode`-Wechsel (`KEPLER_APPROX -> NUMERIC_LOCAL`) werden spaeter
+durch `OrbitService.request_numeric_local_candidates()` ausgeloest.
 
 **Klassifikationsgruende** (geplant):
 
@@ -210,9 +209,8 @@ Wenn `BubbleActivationSet` implementiert wird, gilt: Es schreibt
   nur in Tests und Debug-Prints.
 - Keine Rueckkehr zu naiver `Vector3`-Subtraktion ueber AU-Distanzen fuer
   fokus-relative Darstellung (Step-2-LCA-Pfad beibehalten).
-- Wenn `BubbleActivationSet` implementiert wird: Es darf **kein**
-  `BodyState`-Feld schreiben - Aktivierungsklassifikation ist
-  abgeleitet.
+- `BubbleActivationSet` darf **kein** `BodyState`-Feld schreiben -
+  Aktivierungsklassifikation ist abgeleitet.
 - Wenn `NUMERIC_LOCAL` implementiert wird:
   `BodyState.current_mode`-Wechsel darf nur durch `OrbitService`
   erfolgen - nie direkt von aussen.

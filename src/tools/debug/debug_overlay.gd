@@ -10,12 +10,14 @@ extends CanvasLayer
 var _registry: Node = null
 var _time: Node = null
 var _bubble: Node = null
+var _activation_set: Node = null
 
 
-func configure(registry: Node, time_service: Node, bubble: Node) -> void:
+func configure(registry: Node, time_service: Node, bubble: Node, activation_set: Node = null) -> void:
 	_registry = registry
 	_time = time_service
 	_bubble = bubble
+	_activation_set = activation_set
 
 
 func _process(_delta: float) -> void:
@@ -34,6 +36,15 @@ func _build_text() -> String:
 	lines.append("time_scale = %.3f   paused = %s" % [_time.time_scale, str(_time.paused)])
 	lines.append("body count = %d" % _registry.body_count())
 	lines.append("focus_id   = %s  (view)" % str(_bubble.get_focus()))
+	if _activation_set != null:
+		var activation_desc: Dictionary = _activation_set.describe()
+		lines.append(
+			"activation_radius_m = %s   active_count = %d"
+			% [
+				_format_metric(float(activation_desc.get("activation_radius_m", 0.0))),
+				int(activation_desc.get("active_count", 0))
+			]
+		)
 	lines.append("")
 	lines.append("[b]Bodies (truth: parent-frame)[/b]")
 	for id in _registry.get_update_order():
@@ -51,13 +62,17 @@ func _format_body_line(id: StringName) -> String:
 	var pos: Vector3 = state.position_parent_frame_m
 	var r: float = pos.length()
 	var root_local_m: Vector3 = _bubble.compose_root_local_position_m(id)
-	return "  %s  kind=%s  parent=%s  mode=%s  |pf|=%s m  root_local=%s m" % [
+	var activation_txt: String = ""
+	if _activation_set != null:
+		activation_txt = "  activation=%s" % _activation_set.to_string_state(_activation_set.classify(id))
+	return "  %s  kind=%s  parent=%s  mode=%s  |pf|=%s m  root_local=%s m%s" % [
 		String(id),
 		BodyType.to_string_kind(def.kind),
 		parent_txt,
 		mode_txt,
 		_format_metric(r),
 		_format_optional_metric(root_local_m),
+		activation_txt,
 	]
 
 

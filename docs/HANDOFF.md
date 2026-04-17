@@ -2,11 +2,12 @@
 
 > Aktueller Stand (2026-04-17):
 > Die Praesentationsschicht ist ein stilisiertes 2D-Orbit-Testbed.
-> Foundation-Schritt 2 ist implementiert, und das Testbed laedt Welten
-> jetzt explizit ueber `WorldLoader` statt direkt aus der Registry.
+> Foundation-Schritte 2-3 sind implementiert, und das Testbed laedt
+> Welten jetzt explizit ueber `WorldLoader` statt direkt aus der
+> Registry.
 > Das Weltmodell in `BodyDef` ist jetzt um erste statische Umgebungs-
-> felder verbreitert. `BubbleActivationSet` und `NUMERIC_LOCAL` bleiben
-> geplant. Fuer die
+> felder verbreitert. `BubbleActivationSet` ist jetzt als read-only
+> Runtime-Service implementiert; `NUMERIC_LOCAL` bleibt geplant. Fuer die
 > aktuelle Priorisierung lies zuerst `docs/STATUS.md` und
 > `docs/NEXT_STEPS.md`.
 
@@ -22,7 +23,7 @@
 | `BodyDef` | statische Weltdefinition | `src/sim/bodies/body_def.gd` |
 | `BodyState` via `OrbitService` | Wahrheit | `src/sim/bodies/body_state.gd`, `src/sim/orbit/orbit_service.gd` |
 | `LocalBubbleManager` | abgeleitet (View) | `src/runtime/local_bubble/local_bubble_manager.gd` |
-| `BubbleActivationSet` | abgeleitet (geplant) | `src/runtime/local_bubble/bubble_activation_set.gd` |
+| `BubbleActivationSet` | abgeleitet (read-only) | `src/runtime/local_bubble/bubble_activation_set.gd` |
 | Testbed-Visuals und `DebugOverlay` | anzeigend | `scenes/testbeds/`, `src/tools/debug/` |
 
 Nichts im `scenes/`- oder `src/tools/`-Baum enthaelt autoritativen
@@ -82,15 +83,14 @@ Wichtige Semantik:
 
 ## Schritt 3 - BubbleActivationSet
 
-Status: geplant, nicht implementiert.
+Status: implementiert.
 
-Geplante Verantwortung:
+Verantwortung:
 - Klassifikation in `ACTIVE`, `INACTIVE_DISTANT`, `INACTIVE_NO_LCA`
 - liest Bubble/View-Distanzen
 - schreibt keine `BodyState`-Felder
-
-Geplante Datei:
-- `src/runtime/local_bubble/bubble_activation_set.gd`
+- `classify(id)` spiegelt den Zustand des letzten `rebuild()` wider
+- `get_active_ids()` folgt der topologischen Registry-Reihenfolge
 
 ## Schritt 4 - NUMERIC_LOCAL / Regime-Wechsel
 
@@ -110,21 +110,23 @@ Headless-Testlauf:
 godot --path . --headless --script res://src/tests/test_runner.gd --quit
 ```
 
-Erwarteter Stand nach P1:
+Erwarteter Stand nach P4:
 - `test_orbit`
 - `test_registry`
 - `test_starter_world`
 - `test_local_bubble_step2`
 - `test_world_loader`
+- `test_body_def_world_model`
+- `test_bubble_activation_set`
 
 alle gruen.
 
 ## Naechster sinnvoller Schritt
 
 Die aktuelle Projekt-Roadmap priorisiert jetzt:
-1. `BubbleActivationSet`
-2. danach `NUMERIC_LOCAL`
-3. danach erste abgeleitete planetare Zustandswerte
+1. `NUMERIC_LOCAL`
+2. danach erste abgeleitete planetare Zustandswerte
+3. spaeter Generator-/Systemschritte und weitere Foundation-Folgen
 
 Die Architektur-Schritte 3 und 4 bleiben wichtig, aber der naechste
 Roadmap-Hebel liegt jetzt im Aktivierungs-/Regime-Fundament auf Basis

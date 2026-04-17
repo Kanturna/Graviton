@@ -28,6 +28,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `orbit_testbed.gd` laedt nicht mehr direkt `StarterWorld`.
 - `BodyDef` enthaelt jetzt erste statische Weltmodell-Felder fuer
   Rotation, Achsneigung, Leuchtkraft und Albedo.
+- `BubbleActivationSet` klassifiziert Bodies jetzt read-only relativ
+  zum aktuellen Fokus in `ACTIVE`, `INACTIVE_DISTANT` und
+  `INACTIVE_NO_LCA`.
 - Bodies aus einem anderen Root als der aktuelle Fokus liefern bewusst
   `Vector3.INF` und werden im Renderer nicht lokalisiert.
 - `TimeService` und `UniverseRegistry` sind die zentralen Autoloads.
@@ -77,6 +80,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tests/sim/test_world_loader.gd`
 - `src/sim/bodies/body_def.gd`
 - `src/tests/sim/test_body_def_world_model.gd`
+- `src/runtime/local_bubble/bubble_activation_set.gd`
+- `src/tests/runtime/test_bubble_activation_set.gd`
 - `docs/SIMULATIONSREGELN.md`
 - `src/runtime/local_bubble/local_bubble_manager.gd`
 - `src/tests/runtime/test_local_bubble_step2.gd`
@@ -89,15 +94,17 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Bekannte offene Punkte
 
-- Schritt 2 ist jetzt implementiert; Schritte 3-4 bleiben als
-  Architektur dokumentiert, aber noch nicht im Code vorhanden
-  (`BubbleActivationSet`, `LocalOrbitIntegrator`, `NUMERIC_LOCAL`-
-  Regime).
+- Schritte 1-3 sind jetzt implementiert; als grosser Foundation-Block
+  offen bleibt vor allem noch Schritt 4
+  (`LocalOrbitIntegrator`, `NUMERIC_LOCAL`-Regime).
 - `LocalBubbleManager` liefert jetzt die dokumentierte LCA-/
   praezisionsbewusste Bubble-Komposition fuer same-root-Faelle.
+- `BubbleActivationSet` ist jetzt implementiert, wird im Testbed pro
+  Frame rebuilt und dient vorerst nur Debug-/Relevanzklassifikation,
+  noch ohne `OrbitService`-Anbindung.
 - Das Projekt ist topologisch offen fuer mehrere Root-Systeme und hat
-  jetzt eine explizite Loader-Schicht, aber noch kein Aktivierungs-
-  system fuer mehrere schwarze Loecher.
+  jetzt eine explizite Loader- und Aktivierungsschicht, aber noch
+  keinen Regime-Wechsel auf Basis dieser Aktivierung.
 - `BodyDef` traegt jetzt erste statische Weltmodell-Felder, aber
   daraus werden noch keine abgeleiteten planetaren Zustandswerte
   berechnet.
@@ -115,8 +122,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- anschliessend Aktivierungs- und Regime-Schritte (`BubbleActivationSet`,
-  `NUMERIC_LOCAL`) auf der jetzt sauberen Bubble-Basis angehen
+- als naechsten grossen Schritt `NUMERIC_LOCAL` /
+  `LocalOrbitIntegrator` auf Basis des jetzt vorhandenen
+  `BubbleActivationSet` angehen
 - danach erste abgeleitete planetare Zustandsgroessen auf Basis des
   jetzt breiteren Weltmodells angehen
 - spaeter Topologie-Helfer konsolidieren, wenn Bubble-/Activation-

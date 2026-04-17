@@ -58,10 +58,24 @@ Erledigt:
 - neue Validierungs- und BodyDef-World-Model-Tests ergaenzt
 - weiterhin noch keine abgeleiteten Temperatur-/Habitability-Systeme
 
-## Danach - Foundation Phase D: Aktivierung und Regime
+## Prioritaet 4 - Foundation Phase D: BubbleActivationSet - erledigt
 
-- `BubbleActivationSet`
-- spaeter `NUMERIC_LOCAL` / `LocalOrbitIntegrator`
+Ziel:
+Bodies relativ zum aktuellen Fokus read-only in Aktivierungszustaende
+klassifizieren, ohne schon Regime-Wechsel oder `BodyState`-Mutation
+einzufuehren.
+
+Erledigt:
+
+- `BubbleActivationSet` als eigener Runtime-Service
+- Klassifikation in `ACTIVE`, `INACTIVE_DISTANT`, `INACTIVE_NO_LCA`
+- Debug-Overlay-Hook fuer Aktivierungsradius und Body-States
+- neue Runtime-Tests fuer Multi-Root, Boundary-Fall `radius = 0.0` und
+  Auto-Rebuild bei `focus_changed`
+
+## Danach - Foundation Phase D: Regime-Wechsel
+
+- `NUMERIC_LOCAL` / `LocalOrbitIntegrator`
 - Tests fuer Regime-Wechsel, Praezision und Multi-Root-Komposition
 - spaeter Topologie-Helfer sinnvoll zentralisieren, wenn die
   Activation-/Mehrwurzel-Pfade stabil sind

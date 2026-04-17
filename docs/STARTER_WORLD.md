@@ -108,9 +108,12 @@ Frame gerendert wird. Alle Bodies starten mit konsistenten Positionen statt Defa
 
 ## Aktuelle Einschraenkungen
 
-- `LocalBubbleManager` nutzt bereits eine einfache Fokus-Subtraktion fuer
-  die Darstellung, aber noch keine volle Bubble-/LCA-Logik.
+- `LocalBubbleManager` nutzt jetzt die Step-2-LCA-Komposition fuer die
+  fokus-relative Darstellung; Bodies aus anderen Roots liefern bewusst
+  `Vector3.INF`.
 - `NUMERIC_LOCAL` ist nicht implementiert - Planeten bleiben bei `KEPLER_APPROX`.
-- Es gibt noch kein `BubbleActivationSet`.
+- `BubbleActivationSet` ist jetzt read-only implementiert, wird im
+  Testbed pro Frame rebuilt und klassifiziert Bodies relativ zum Fokus,
+  triggert aber noch keine Regime-Wechsel.
 
 Diese Limits sind bewusst. Die spaeteren Architektur-Schritte bauen darauf auf.

@@ -10,7 +10,7 @@ ist.
 |---|---|---|
 | 1 | TimeService, UnitSystem, OrbitMath, BodyDef/State, UniverseRegistry, OrbitService (AUTHORED_ORBIT + KEPLER_APPROX), StarterWorld, 2D-Testbed, Tests | **implementiert** |
 | 2 | LocalBubbleManager (LCA, double-praezise), `compose_view_position_m` fokus-relativ | **implementiert** |
-| 3 | BubbleActivationSet (ACTIVE / INACTIVE_DISTANT / INACTIVE_NO_LCA), `rebuild()`, `describe()` | dokumentiert, nicht implementiert |
+| 3 | BubbleActivationSet (ACTIVE / INACTIVE_DISTANT / INACTIVE_NO_LCA), `rebuild()`, `describe()` | **implementiert** |
 | 4 | LocalOrbitIntegrator (Velocity Verlet), NUMERIC_LOCAL-Regime, Regime-Wechsel-Logging | dokumentiert, nicht implementiert |
 
 ## Ergaenzender Foundation-Block
