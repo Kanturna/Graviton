@@ -57,8 +57,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   einen groesseren Zoom-Bereich, klickbaren Fokus und staerkere Zeitskalen.
 - Die Toy-Orbitwerte der `StarterWorld` sind jetzt so getunt, dass Monde
   sichtbar schneller als Planeten und Planeten sichtbar schneller als ihre
-  Sterne um `obsidian` kreisen; die Planetenbahnen sind zudem leicht
-  elliptischer geworden.
+  Sterne um `obsidian` kreisen; die Planetenbahnen sind zudem jetzt klarer
+  elliptisch sichtbar und die Monde sitzen wieder deutlich enger an ihren
+  Planeten.
 - Die Darstellung ist bewusst naeher am Look von `Atraxis`, ohne die
   `Graviton`-Architektur zu opfern.
 

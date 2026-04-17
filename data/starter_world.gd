@@ -102,13 +102,15 @@ static func _build_beta() -> BodyDef:
 # a/e-Werte so gewaehlt, dass bei RENDER_SCALE=1e9 m/Unit die Planeten
 # klar sichtbar von ihrem Stern getrennt sind, dabei aber in der Toy-Hierarchie
 # schneller um den Stern kreisen als der Stern um obsidian.
+# e ist bewusst hoeher als in einem "milden" Realismus-Setup, damit die
+# Ellipsen im Testbed auch wirklich erkennbar werden.
 # mean_anomaly_epoch_rad unterschiedlich fuer sichtbar verschiedene Startphasen.
 
 static func _build_alpha_i() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
 	prof.semi_major_axis_m = 1.4e9
-	prof.eccentricity = 0.08
+	prof.eccentricity = 0.18
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
 	prof.argument_periapsis_rad = 0.0
@@ -130,7 +132,7 @@ static func _build_alpha_ii() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
 	prof.semi_major_axis_m = 2.2e9
-	prof.eccentricity = 0.05
+	prof.eccentricity = 0.12
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
 	prof.argument_periapsis_rad = 0.0
@@ -152,7 +154,7 @@ static func _build_beta_i() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
 	prof.semi_major_axis_m = 1.6e9
-	prof.eccentricity = 0.10
+	prof.eccentricity = 0.20
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
 	prof.argument_periapsis_rad = 0.0
@@ -174,7 +176,7 @@ static func _build_beta_ii() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
 	prof.semi_major_axis_m = 2.8e9
-	prof.eccentricity = 0.06
+	prof.eccentricity = 0.14
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
 	prof.argument_periapsis_rad = 0.0
@@ -193,13 +195,14 @@ static func _build_beta_ii() -> BodyDef:
 
 
 # --- Monde (AUTHORED_ORBIT) ---
-# r/T frei gewaehlt fuer Debugbarkeit: Monde bei 1.2-1.5 RU von Planet (Mesh 0.2 RU),
-# Umlaufzeit 6-8 s bei time_scale=1000 und damit sichtbar schneller als ihre Planeten.
+# r/T frei gewaehlt fuer Debugbarkeit: Monde bleiben sichtbar, sitzen jetzt aber
+# deutlich enger an ihren Planeten, damit sie lokal gebunden wirken und nicht
+# visuell bis in Sternnaehe ausgreifen.
 
 static func _build_alpha_i_m() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.AUTHORED_ORBIT
-	prof.authored_radius_m = 1.5e9
+	prof.authored_radius_m = 3.0e8
 	prof.authored_period_s = 8.0e3
 	prof.authored_phase_rad = 0.0
 
@@ -217,7 +220,7 @@ static func _build_alpha_i_m() -> BodyDef:
 static func _build_beta_i_m() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.AUTHORED_ORBIT
-	prof.authored_radius_m = 1.2e9
+	prof.authored_radius_m = 2.4e8
 	prof.authored_period_s = 6.0e3
 	prof.authored_phase_rad = 1.5707963
 

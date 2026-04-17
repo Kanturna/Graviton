@@ -10,12 +10,12 @@ Alle Werte sind bewusste Toy-Werte - nicht astrophysikalisch korrekt.
 | obsidian | BLACK_HOLE | root | - | mass=2e33 kg | Toy-Masse ~1000 Solarmassen; als Wurzel immer bei ZERO |
 | alpha | STAR | AUTHORED_ORBIT | obsidian | r=1.5e11 m, T=4e4 s | AUTHORED: etwas schnellerer Root-View; Parentmasse frei |
 | beta | STAR | AUTHORED_ORBIT | obsidian | r=2.5e11 m, T=7e4 s, phase=PI | phase=PI -> Sterne starten gegenueberliegend; sofort erkennbar |
-| alpha_i | PLANET | KEPLER_APPROX | alpha | a=1.4e9 m, e=0.08 | kompakter, sichtbar elliptischer, schneller als alpha |
-| alpha_ii | PLANET | KEPLER_APPROX | alpha | a=2.2e9 m, e=0.05, M0=1.05 | aeussere Alpha-Bahn, aber weiter schneller als alpha |
-| alpha_i_m | MOON | AUTHORED_ORBIT | alpha_i | r=1.5e9 m, T=8e3 s | 1.5 RU vom Planeten; klar schneller als alpha_i |
-| beta_i | PLANET | KEPLER_APPROX | beta | a=1.6e9 m, e=0.10, M0=0.5 | kompakt und sichtbar elliptischer |
-| beta_ii | PLANET | KEPLER_APPROX | beta | a=2.8e9 m, e=0.06, M0=2.0 | aeussere Beta-Bahn; weiter lesbar im lokalen Fokus |
-| beta_i_m | MOON | AUTHORED_ORBIT | beta_i | r=1.2e9 m, T=6e3 s, phase=PI/2 | schnellster sichtbarer Orbit; versetzt zu alpha_i_m |
+| alpha_i | PLANET | KEPLER_APPROX | alpha | a=1.4e9 m, e=0.18 | kompakter, jetzt klarer elliptisch sichtbar |
+| alpha_ii | PLANET | KEPLER_APPROX | alpha | a=2.2e9 m, e=0.12, M0=1.05 | aeussere Alpha-Bahn, weiter schneller als alpha |
+| alpha_i_m | MOON | AUTHORED_ORBIT | alpha_i | r=3.0e8 m, T=8e3 s | enger an alpha_i gebunden; klar schneller als alpha_i |
+| beta_i | PLANET | KEPLER_APPROX | beta | a=1.6e9 m, e=0.20, M0=0.5 | kompakt und jetzt deutlich elliptischer |
+| beta_ii | PLANET | KEPLER_APPROX | beta | a=2.8e9 m, e=0.14, M0=2.0 | aeussere Beta-Bahn; weiter lesbar im lokalen Fokus |
+| beta_i_m | MOON | AUTHORED_ORBIT | beta_i | r=2.4e8 m, T=6e3 s, phase=PI/2 | enger am Planeten; schnellster sichtbarer Orbit |
 
 ## Orbit-Modus-Entscheidungen
 
@@ -34,7 +34,7 @@ Alle Werte sind bewusste Toy-Werte - nicht astrophysikalisch korrekt.
 |---|---|---|---|
 | alpha/beta von obsidian | 150 / 250 | 0.8 | ~149 / 249 RU |
 | Planeten von Stern | 1.4-2.8 | 0.2 | >=1.2 RU |
-| Monde von Planet | 1.2-1.5 | 0.08 | >=0.8 RU |
+| Monde von Planet | 0.24-0.3 | 0.08 | >=0.16 RU |
 
 ## Testbed-Steuerung
 
@@ -62,8 +62,10 @@ Orbit-Hierarchie:
 
 - Monde sind im Starter-World-Tuning bewusst die schnellsten sichtbaren Orbits.
 - Planeten kreisen sichtbar schneller um ihre Sterne als die Sterne um `obsidian`.
-- Die Planetenbahnen sind jetzt auch leicht elliptischer, damit die lokale Bahnform
-  nicht wie ein perfekter Kreis-Testfall wirkt.
+- Die Planetenbahnen sind jetzt deutlich genug elliptisch, dass ihre Bahnform
+  im Testbed nicht mehr wie ein perfekter Kreis-Testfall wirkt.
+- Die Monde sitzen wieder deutlich enger an ihren Planeten, damit sie lokal
+  gebunden wirken und nicht visuell bis in Sternnaehe ausgreifen.
 
 Zoom-Semantik:
 
