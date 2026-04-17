@@ -94,12 +94,28 @@ Erledigt:
 - neue Tests fuer Integrator, Idempotenz, Replace-Semantik und
   Regime-Wechsel
 
+## Prioritaet 6 - Derived Phase A: Insolation / ThermalService - erledigt
+
+Ziel:
+Den ersten read-only Derived-Service ausserhalb von Orbit-/Bubble-
+Kernlogik einfuehren und minimale Insolation direkt aus Foundation-
+Wahrheit ableiten.
+
+Erledigt:
+
+- `ThermalService` als on-demand-Service im `src/sim/`-Layer
+- Quellenregel: naechster leuchtender Ancestor mit `luminosity_w > 0.0`
+- keine Selbstbestrahlung; die Suche startet beim Parent
+- Debug-Overlay-Hook fuer `insolation` und `source`
+- neue Tests fuer SampleSystem, StarterWorld, Cross-Root-Isolation und
+  `describe_body(...)`
+
 ## Danach - Planetare Zustandsableitung
 
 Erst wenn Weltmodell, Loader und Bubble-/Regime-Fundament tragfaehig sind:
 
 - erste abgeleitete planetare Zustandsgroessen
-  - Insolation / Temperatur
+  - absorbierte Leistung / Temperatur
   - einfache Bewohnbarkeits- oder Unwirtlichkeitsmarker
   - spaeter Strahlung / Atmosphaerenklassen / weitere Umweltfaktoren
 

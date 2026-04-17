@@ -12,6 +12,7 @@ ist.
 | 2 | LocalBubbleManager (LCA, double-praezise), `compose_view_position_m` fokus-relativ | **implementiert** |
 | 3 | BubbleActivationSet (ACTIVE / INACTIVE_DISTANT / INACTIVE_NO_LCA), `rebuild()`, `describe()` | **implementiert** |
 | 4 | LocalOrbitIntegrator (Velocity Verlet), NUMERIC_LOCAL-Regime, Regime-Wechsel-Logging | **implementiert (minimal)** |
+| 5 | ThermalService (on-demand Insolation, naechster leuchtender Ancestor, `describe_body()`) | **implementiert (minimal)** |
 
 ## Ergaenzender Foundation-Block
 
@@ -24,7 +25,7 @@ ist.
 ## Naechster Fokus
 
 - planetare Zustandsableitung auf Basis der jetzt vorhandenen
-  Weltmodell-Felder
+  Weltmodell-Felder ueber reine Insolation hinaus
 - spaeter Stabilitaets-Guardrails fuer `NUMERIC_LOCAL`
   (Substepping / High-Speed-Limits / Anti-Thrashing)
 

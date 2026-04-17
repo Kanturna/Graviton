@@ -15,6 +15,7 @@ const PAN_SPEED_PX_PER_S: float = 960.0
 
 @onready var _world_loader = $WorldLoader
 @onready var _orbit_service: OrbitService = $OrbitService
+@onready var _thermal_service = $ThermalService
 @onready var _bubble: LocalBubbleManager = $LocalBubbleManager
 @onready var _activation_set = $BubbleActivationSet
 @onready var _renderer: OrbitViewRenderer = $WorldRoot
@@ -62,8 +63,9 @@ func _ready() -> void:
 	_activation_set.rebuild()
 	_orbit_service.request_numeric_local_candidates(_activation_set.get_active_ids())
 	_orbit_service.recompute_all_at_time(TimeService.sim_time_s)
+	_thermal_service.configure(UniverseRegistry)
 	_renderer.configure(UniverseRegistry, _bubble)
-	_debug_overlay.configure(UniverseRegistry, TimeService, _bubble, _activation_set)
+	_debug_overlay.configure(UniverseRegistry, TimeService, _bubble, _activation_set, _thermal_service)
 	_debug_overlay.visible = false
 
 	_configure_speed_slider()

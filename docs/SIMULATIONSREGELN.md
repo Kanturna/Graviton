@@ -165,6 +165,36 @@ Diese Felder sind in P3 reine Datenbasis. Sie beeinflussen noch keine
 Orbit-Berechnung, keine View und noch keine abgeleiteten planetaren
 Zustandswerte.
 
+## Abgeleitete Umweltgroessen - P6 Insolation
+
+`ThermalService` ist der erste read-only Derived-Service ausserhalb von
+Orbit- und Bubble-Kernlogik.
+
+**Bereitstellung:** on-demand, kein Cache, kein `ThermalState`,
+kein `rebuild()`.
+
+**Quelle:** der naechste Ancestor mit `luminosity_w > 0.0`.
+Die Suche startet beim Parent, nie beim Body selbst.
+
+**`luminosity_w == 0.0`:** bedeutet in P6 pragmatisch "keine Quelle".
+Der Body wird uebersprungen und blockiert die Suche nicht.
+
+**Formel:** `F = L / (4 * PI * r^2)` mit `r` aus der Parent-Kette des
+aktuellen `BodyState`.
+
+**Nicht-Ziele in P6:**
+- kein `albedo`-Einfluss
+- keine Temperatur
+- keine Atmosphaere
+- keine Jahreszeiten-/Tilt-Geometrie
+- keine Mehrquellen-Summation
+- keine Cross-Root-Suche ausserhalb der Parent-Kette
+
+**Caller-Contract:** `ThermalService` liest
+`BodyState.position_parent_frame_m` direkt. Der Caller muss
+sicherstellen, dass die States nach dem letzten `OrbitService`-Tick
+oder `recompute_all_at_time()` aktuell sind.
+
 ## Determinismus
 
 - Jede Orbit-Evaluation ist eine pure Funktion von

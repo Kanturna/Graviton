@@ -36,6 +36,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `NUMERIC_LOCAL`.
 - `LocalOrbitIntegrator` ist als pure Parent-Only-Mathematik via
   Velocity Verlet implementiert.
+- `ThermalService` liefert jetzt on-demand minimale Insolation aus
+  `luminosity_w`, Parent-Kette und aktuellem `BodyState`.
 - Bodies aus einem anderen Root als der aktuelle Fokus liefern bewusst
   `Vector3.INF` und werden im Renderer nicht lokalisiert.
 - `TimeService` und `UniverseRegistry` sind die zentralen Autoloads.
@@ -90,6 +92,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/sim/orbit/local_orbit_integrator.gd`
 - `src/tests/orbit/test_local_orbit_integrator.gd`
 - `src/tests/sim/test_orbit_service_numeric_local.gd`
+- `src/sim/thermal/thermal_service.gd`
+- `src/tests/sim/test_thermal_service.gd`
 - `docs/SIMULATIONSREGELN.md`
 - `src/runtime/local_bubble/local_bubble_manager.gd`
 - `src/tests/runtime/test_local_bubble_step2.gd`
@@ -117,8 +121,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   keinen Stabilitaets-Guardrail fuer hohe `time_scale` im numerischen
   Pfad.
 - `BodyDef` traegt jetzt erste statische Weltmodell-Felder, aber
-  daraus werden noch keine abgeleiteten planetaren Zustandswerte
-  berechnet.
+  daraus werden bislang nur minimale Insolation-Werte abgeleitet -
+  noch keine Temperatur-, Habitability- oder Atmosphaerenmodelle.
 - Der Wish-Pfad fuer `NUMERIC_LOCAL` ist aktuell bewusst um einen Frame
   gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`).
   Das ist im kleinen P5-Slice akzeptiert und fuer spaetere
@@ -138,7 +142,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
 - als naechsten grossen Schritt erste abgeleitete planetare
-  Zustandsgroessen auf Basis des jetzt breiteren Weltmodells angehen
+  Zustandsgroessen ueber reine Insolation hinaus angehen
+- als naechsten logischen Derived-Schritt absorbierte Leistung /
+  einfache Temperaturableitung auf Basis von Insolation und spaeter
+  Albedo betrachten
 - danach den numerischen Pfad um Substepping / High-Speed-Guardrails
   erweitern, wenn hohe `time_scale` oder Radiusrand-Thrashing stoeren
 - spaeter Topologie-Helfer konsolidieren, wenn Bubble-/Activation-

@@ -22,6 +22,7 @@ src/runtime/       LocalBubbleManager, BubbleActivationSet
    |
    v
 src/sim/           UniverseRegistry, WorldLoader, OrbitService, LocalOrbitIntegrator,
+                   ThermalService,
                    BodyDef/State, OrbitProfile, OrbitMode
    |
    v
@@ -116,11 +117,13 @@ _ready():
         BubbleActivationSet.get_active_ids()
     )
     OrbitService.recompute_all_at_time(TimeService.sim_time_s)
+    ThermalService.configure(UniverseRegistry)
     DebugOverlay.configure(
         UniverseRegistry,
         TimeService,
         LocalBubbleManager,
-        BubbleActivationSet
+        BubbleActivationSet,
+        ThermalService
     )
 
 _process():
@@ -205,6 +208,25 @@ schreibt kein `BodyState`. Kein Autoload.
 **Aktueller Stand:** Implementiert als minimaler Parent-Only-Integrator
 in `src/sim/orbit/local_orbit_integrator.gd`. Kein Substepping, kein
 High-Speed-Guardrail, keine N-Body-Kraefte.
+
+## ThermalService - ADR
+
+**Entscheidung:** `ThermalService` ist ein eigener read-only
+Derived-Service im `sim/`-Layer.
+
+**Grund:** Insolation ist weder View-Ableitung (`runtime/`) noch
+autoritative Sim-Wahrheit (`BodyState`). Sie ist eine abgeleitete Groesse
+aus bestehender Foundation-Wahrheit und sollte deshalb als eigener,
+leicht testbarer Service neben `OrbitService` leben.
+
+**Verantwortung:** On-demand-Reads auf `BodyDef.luminosity_w`,
+`BodyState.position_parent_frame_m` und Parent-Topologie. Kein Cache,
+kein Tick-Hook, keine `BodyState`-Mutation.
+
+**Quellenregel:** Quelle ist der naechste Ancestor mit
+`luminosity_w > 0.0`. Die Suche startet beim Parent, nicht beim Body
+selbst. `luminosity_w == 0.0` wird in P6 pragmatisch als "keine Quelle"
+behandelt und blockiert die Suche nicht.
 
 ## Regime-Wechsel-Modell - ADR
 

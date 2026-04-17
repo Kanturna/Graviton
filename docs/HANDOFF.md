@@ -8,7 +8,8 @@
 > Das Weltmodell in `BodyDef` ist jetzt um erste statische Umgebungs-
 > felder verbreitert. `BubbleActivationSet` ist jetzt als read-only
 > Runtime-Service implementiert und bridged in einen minimalen
-> `NUMERIC_LOCAL`-Pfad ueber `OrbitService`. Fuer die
+> `NUMERIC_LOCAL`-Pfad ueber `OrbitService`. `ThermalService` liefert
+> jetzt minimale Insolation on-demand. Fuer die
 > aktuelle Priorisierung lies zuerst `docs/STATUS.md` und
 > `docs/NEXT_STEPS.md`.
 
@@ -23,6 +24,7 @@
 | `WorldLoader` | Sim-Factory / Weltladepfad | `src/sim/world/world_loader.gd` |
 | `BodyDef` | statische Weltdefinition | `src/sim/bodies/body_def.gd` |
 | `BodyState` via `OrbitService` | Wahrheit | `src/sim/bodies/body_state.gd`, `src/sim/orbit/orbit_service.gd` |
+| `ThermalService` | abgeleitet (read-only) | `src/sim/thermal/thermal_service.gd` |
 | `LocalBubbleManager` | abgeleitet (View) | `src/runtime/local_bubble/local_bubble_manager.gd` |
 | `BubbleActivationSet` | abgeleitet (read-only) | `src/runtime/local_bubble/bubble_activation_set.gd` |
 | Testbed-Visuals und `DebugOverlay` | anzeigend | `scenes/testbeds/`, `src/tools/debug/` |
@@ -109,6 +111,18 @@ Aktuelle Bausteine:
 - Logging bei Rueckwechseln zu `KEPLER_APPROX`
 - bewusst noch kein Substepping / kein High-Speed-Guardrail
 
+## Schritt 5 - Thermischer Minimal-Slice / Insolation
+
+Status: implementiert.
+
+Aktuelle Bausteine:
+- `src/sim/thermal/thermal_service.gd`
+- on-demand `compute_insolation_wpm2(id)`
+- `describe_body(id)` fuer Debug/Test
+- Quelle = naechster Ancestor mit `luminosity_w > 0.0`
+- keine Selbstbestrahlung; Suche startet beim Parent
+- keine Temperatur, keine Atmosphaere, keine Mehrquellen-Summation
+
 ## Verifikation
 
 Headless-Testlauf:
@@ -127,13 +141,14 @@ Erwarteter Stand nach P5:
 - `test_body_def_world_model`
 - `test_bubble_activation_set`
 - `test_orbit_service_numeric_local`
+- `test_thermal_service`
 
 alle gruen.
 
 ## Naechster sinnvoller Schritt
 
 Die aktuelle Projekt-Roadmap priorisiert jetzt:
-1. erste abgeleitete planetare Zustandswerte
+1. abgeleitete planetare Zustandswerte ueber reine Insolation hinaus
 2. danach Stabilitaets-Guardrails fuer den numerischen Pfad
 3. spaeter Generator-/Systemschritte und weitere Foundation-Folgen
 

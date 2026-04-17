@@ -11,13 +11,15 @@ var _registry: Node = null
 var _time: Node = null
 var _bubble: Node = null
 var _activation_set: Node = null
+var _thermal_service: Node = null
 
 
-func configure(registry: Node, time_service: Node, bubble: Node, activation_set: Node = null) -> void:
+func configure(registry: Node, time_service: Node, bubble: Node, activation_set: Node = null, thermal_service: Node = null) -> void:
 	_registry = registry
 	_time = time_service
 	_bubble = bubble
 	_activation_set = activation_set
+	_thermal_service = thermal_service
 
 
 func _process(_delta: float) -> void:
@@ -65,6 +67,15 @@ func _format_body_line(id: StringName) -> String:
 	var activation_txt: String = ""
 	if _activation_set != null:
 		activation_txt = "  activation=%s" % _activation_set.to_string_state(_activation_set.classify(id))
+	var thermal_txt: String = ""
+	if _thermal_service != null:
+		var thermal_desc: Dictionary = _thermal_service.describe_body(id)
+		var source_id: StringName = thermal_desc.get("source_id", StringName(""))
+		var source_txt: String = "none" if source_id == StringName("") else String(source_id)
+		thermal_txt = "  source=%s  insolation=%s W/m^2" % [
+			source_txt,
+			_format_metric(float(thermal_desc.get("insolation_wpm2", 0.0))),
+		]
 	return "  %s  kind=%s  parent=%s  mode=%s  |pf|=%s m  root_local=%s m%s" % [
 		String(id),
 		BodyType.to_string_kind(def.kind),
@@ -72,7 +83,7 @@ func _format_body_line(id: StringName) -> String:
 		mode_txt,
 		_format_metric(r),
 		_format_optional_metric(root_local_m),
-		activation_txt,
+		activation_txt + thermal_txt,
 	]
 
 
