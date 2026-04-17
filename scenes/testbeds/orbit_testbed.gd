@@ -111,6 +111,7 @@ func _set_focus(body_id: StringName, immediate: bool = false) -> void:
 		return
 	_bubble.set_focus(body_id)
 	_renderer.set_focus(body_id)
+	_renderer.clear_trails()
 	_refresh_target_view()
 	if immediate:
 		_apply_view_transform(true)

@@ -45,9 +45,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Wichtige zuletzt geaenderte Dateien
 
-- `scenes/testbeds/orbit_testbed.gd`
+- `src/tools/rendering/orbit_view_renderer.gd` — Fokus-Zoom-Logik bereinigt
+- `scenes/testbeds/orbit_testbed.gd` — Trail-Reset bei Fokus-Wechsel
 - `scenes/testbeds/orbit_testbed.tscn`
-- `src/tools/rendering/orbit_view_renderer.gd`
 - `src/tools/rendering/orbit_body_visual.gd`
 - `src/tools/rendering/space_backdrop.gd`
 - `src/tools/debug/debug_overlay.gd`
@@ -61,6 +61,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Runtime noch nicht aktiv genutzt.
 - Die Praesentation ist deutlich besser als vorher, aber noch nicht auf
   dem finalen Qualitaetsniveau von `Atraxis`.
+- Orbit-Linienpunkte fuer KEPLER-Orbits werden gleichmaessig in M
+  (mittlere Anomalie) gesampelt — bei geringer Exzentrizitaet (0.01-0.03)
+  kaum sichtbar, aber nicht physikalisch gleichmaessig verteilt.
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 

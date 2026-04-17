@@ -16,6 +16,20 @@ Betroffene Kandidaten:
 - `docs/SIMULATIONSREGELN.md`
 - `docs/GODOT_UMSETZUNGSPLAN.md`
 
+## Prioritaet 1b - View-Cleanup (teils erledigt)
+
+Erledigt:
+
+- `get_focus_frame` Radius-Inflation bei Nicht-BH-Fokus behoben
+- Trail-Reset bei Fokus-Wechsel implementiert
+
+Noch offen (niedrige Prioritaet):
+
+- `_build_orbit_points` AUTHORED-Pfad nutzt API unidomatisch
+  (phase=t*TAU, period=1.0 statt Zeit-Sweep) — funktional korrekt
+- KEPLER-Orbit-Punkte gleichmaessig in M gesampelt statt physikalisch
+  aequidistant — bei Exzentrizitaet 0.01-0.03 visuell kaum relevant
+
 ## Prioritaet 2 - Zweiter Visual-Pass
 
 Ziel:

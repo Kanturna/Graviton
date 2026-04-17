@@ -35,6 +35,24 @@ Konsequenz:
 - Nicht blind alles auf `Vector2` umstellen
 - Erst unterscheiden zwischen Sim-Mathematik und Praesentationscode
 
+## 2026-04-17 - Zoom-Frame berechnet nur Fokus + direkte Kinder
+
+`get_focus_frame` in `OrbitViewRenderer` beschraenkt die Radius-Berechnung
+auf den Fokus-Koerper selbst und seine direkten Kinder. Vorfahren und
+Enkel-Koerper aus `related_ids` werden fuer den Zoom-Frame uebersprungen.
+
+Konsequenz:
+
+- BH-Fokus: zeigt beide Sterne (direkte Kinder von obsidian) vollstaendig
+- Stern-Fokus: zeigt das Planetensystem des Sterns (~5-10 RU Rahmen)
+- Planet-Fokus: zeigt den Planeten und seine Monde
+- Mond-Fokus: enger Rahmen um den Mond; Planet und Stern sind durch
+  den Mindest-Radius von 8 RU sichtbar, setzen aber den Zoom nicht
+
+Hintergrund: In Step-1 (Identity-Bubble, Weltkoordinaten) fuehren
+Vorfahren-Koerper im Zoom-Rahmen zu System-weiter Aufloesung, da ihre
+Distanz vom Fokus in absoluten Koordinaten gross ist.
+
 ## 2026-04-17 - Repo braucht kanonische Kurz-Dokumente
 
 Damit kuenftige Agenten nicht jedes Mal denselben Kontext aus Prompts

@@ -59,11 +59,17 @@ func get_focus_frame(focus_id: StringName) -> Dictionary:
 	var related_ids: Array[StringName] = _related_ids_for_focus(focus_id)
 
 	for id in related_ids:
+		var def: BodyDef = _registry.get_def(id)
+		# Only the focus body and its direct children set the zoom frame.
+		# Ancestors and grandchildren are in related_ids for visual context but
+		# must not drive zoom — in world-space coordinates they are far away and
+		# would inflate the radius to system-wide scale even for moon/planet focus.
+		if id != focus_id and (def == null or def.parent_id != focus_id):
+			continue
 		var pos: Vector2 = get_body_view_position_ru(id)
 		radius = maxf(radius, pos.distance_to(center) + 2.0)
-
-		var def: BodyDef = _registry.get_def(id)
-		if def != null and not def.is_root():
+		# Orbit extent only for direct children (not the focus body's own orbit).
+		if id != focus_id and def != null and not def.is_root():
 			var parent_center: Vector2 = get_body_view_position_ru(def.parent_id)
 			radius = maxf(radius, parent_center.distance_to(center) + _orbit_extent_ru(def))
 
