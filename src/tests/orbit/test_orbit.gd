@@ -16,7 +16,12 @@ static func _test_solve_kepler_basic(ctx) -> void:
 	var e_anom: float = OrbitMath.solve_kepler(0.0, 0.0)
 	ctx.assert_almost(e_anom, 0.0, 1.0e-9, "solve_kepler(0, 0) == 0")
 	var e2: float = OrbitMath.solve_kepler(PI, 0.0)
-	ctx.assert_almost(e2, PI, 1.0e-6, "solve_kepler(PI, 0) == PI")
+	# Erwartet -PI wegen der halboffenen Normalisierung [-PI, PI); physikalisch
+	# ist das aequivalent zu PI.
+	ctx.assert_almost(e2, -PI, 1.0e-6, "solve_kepler(PI, 0) canonicalizes to -PI")
+	var m_wrapped: float = wrapf(PI, -PI, PI)
+	var residual: float = e2 - 0.0 * sin(e2) - m_wrapped
+	ctx.assert_almost(residual, 0.0, 1.0e-9, "solve_kepler(PI, 0) residual")
 
 
 static func _test_solve_kepler_converges(ctx) -> void:

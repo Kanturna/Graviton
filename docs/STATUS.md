@@ -64,6 +64,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Wichtige zuletzt geaenderte Dateien
 
+- `src/core/math/orbit_math.gd`
+- `src/tests/orbit/test_orbit.gd`
+- `docs/SIMULATIONSREGELN.md`
 - `src/runtime/local_bubble/local_bubble_manager.gd`
 - `src/tools/rendering/orbit_view_renderer.gd`
 - `scenes/testbeds/orbit_testbed.gd`
@@ -74,9 +77,6 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Bekannte offene Punkte
 
-- Der Headless-Testlauf ist aktuell nicht komplett gruen:
-  `src/tests/orbit/test_orbit.gd` scheitert zurzeit an der Frage,
-  ob `solve_kepler(PI, 0)` als `PI` oder `-PI` zurueckkommt.
 - Schritte 2-4 sind als Architektur dokumentiert, aber noch nicht
   implementiert (`BubbleActivationSet`, `LocalOrbitIntegrator`,
   `NUMERIC_LOCAL`-Regime).
@@ -100,7 +100,6 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- erst die Test-Baseline wieder komplett gruen bekommen
 - den dokumentierten Step-2-Pfad fuer Bubble-/Frame-Komposition
   priorisieren, bevor neue grosse Gameplay- oder Visual-Bloecke kommen
 - Weltladen ueber eine explizite Loader-/World-Schicht statt direkt im

@@ -2,18 +2,19 @@
 
 Stand: 2026-04-17
 
-## Prioritaet 0 - Test-Baseline wieder gruen machen
+## Prioritaet 0 - Test-Baseline wieder gruen machen - erledigt
 
 Ziel:
-Die Foundation soll vor den naechsten groesseren Architektur-Schritten
-wieder eine saubere gruenen Test-Basis haben.
+Die Foundation sollte vor den naechsten groesseren Architektur-Schritten
+wieder eine saubere gruene Test-Basis haben.
 
-Gemeinte Richtung:
+Erledigt:
 
-- realen Test-Fail in `src/tests/orbit/test_orbit.gd` bereinigen
-- semantisch klar entscheiden, ob `solve_kepler(PI, 0)` als `PI` oder
-  `-PI` behandelt wird
-- danach Testlauf wieder als verlaessliche Basis nutzen
+- `solve_kepler(PI, 0)` als bewusste signed-range-Konvention
+  `[-PI, PI)` festgezogen
+- Orbit-Test auf kanonischen Rueckgabewert plus Residual-Check
+  umgestellt
+- Test-Baseline wieder als verlaessliche Basis hergestellt
 
 ## Prioritaet 1 - Foundation Phase A: Step 2 Bubble / Frame-Modell
 

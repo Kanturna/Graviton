@@ -11,6 +11,9 @@ const _KEPLER_DEFAULT_MAX_ITER: int = 32
 
 # Loest die Kepler-Gleichung M = E - e * sin(E) iterativ per Newton.
 # Rueckgabe: exzentrische Anomalie E in Radiant.
+# Die Funktion normalisiert signed Winkel auf die kanonische Range
+# [-PI, PI). Deshalb wird der Randfall PI als -PI repraesentiert â€” das
+# ist eine Darstellungsentscheidung, kein physikalischer Unterschied.
 static func solve_kepler(mean_anomaly: float, eccentricity: float,
 		tolerance: float = _KEPLER_DEFAULT_TOL,
 		max_iter: int = _KEPLER_DEFAULT_MAX_ITER) -> float:
