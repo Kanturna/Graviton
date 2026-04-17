@@ -47,7 +47,7 @@ Alle Werte sind bewusste Toy-Werte - nicht astrophysikalisch korrekt.
 | `E` / `]` | Zeitskala schneller (Preset hoch) |
 | `W/A/S/D` | Kamera manuell verschieben |
 | Space | Pause / Weiter |
-| Mausrad | Zoom ein/aus (Bias 0.2x-8x) |
+| Mausrad | Zoom ein/aus (Bias 0.2x-12x) |
 | Backspace | View zuruecksetzen (Zoom + Pan) |
 | F3 | Debug-Overlay ein/ausblenden |
 

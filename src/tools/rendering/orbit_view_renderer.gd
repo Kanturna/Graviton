@@ -21,6 +21,7 @@ var _trail_histories: Dictionary = {}
 
 var _world_scale: float = 1.0
 var _focus_id: StringName = &""
+var _zoom_bias: float = 1.0
 
 
 func configure(registry: Node, bubble: Node) -> void:
@@ -43,6 +44,10 @@ func set_world_scale(value: float) -> void:
 	_apply_line_widths()
 
 
+func set_zoom_bias(value: float) -> void:
+	_zoom_bias = maxf(value, 0.01)
+
+
 func get_body_view_position_ru(id: StringName) -> Vector2:
 	if _bubble == null:
 		return Vector2.ZERO
@@ -54,8 +59,9 @@ func get_focus_frame(focus_id: StringName) -> Dictionary:
 	if _registry == null or not _registry.has_body(focus_id):
 		return {"center": Vector2.ZERO, "radius": 120.0}
 
+	var focus_def: BodyDef = _registry.get_def(focus_id)
 	var center: Vector2 = get_body_view_position_ru(focus_id)
-	var radius: float = 8.0
+	var radius: float = _minimum_focus_radius_ru(focus_def)
 	var related_ids: Array[StringName] = _related_ids_for_focus(focus_id)
 
 	for id in related_ids:
@@ -75,7 +81,7 @@ func get_focus_frame(focus_id: StringName) -> Dictionary:
 
 	return {
 		"center": center,
-		"radius": radius * 1.18,
+		"radius": radius * _focus_frame_margin(focus_def),
 	}
 
 
@@ -151,11 +157,17 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 		return
 
 	for id in _registry.get_update_order():
+		var def: BodyDef = _registry.get_def(id)
+		if def == null:
+			continue
+
 		var pos: Vector2 = get_body_view_position_ru(id)
-		var visual: Node2D = _body_visuals.get(id, null)
+		var visual: OrbitBodyVisual = _body_visuals.get(id, null)
 		if visual != null:
 			visual.position = pos
-			visual.scale = Vector2.ONE / _world_scale
+			var detail_factor: float = _body_detail_factor(id, def)
+			visual.scale = Vector2.ONE * (detail_factor / _world_scale)
+			visual.set_detail_factor(detail_factor)
 
 		var orbit_entry: Dictionary = _orbit_visuals.get(id, {})
 		if not orbit_entry.is_empty():
@@ -244,6 +256,52 @@ func _is_descendant_of(candidate_id: StringName, ancestor_id: StringName) -> boo
 		cursor = cursor_def.parent_id
 		hop_limit -= 1
 	return false
+
+
+func _body_detail_factor(id: StringName, def: BodyDef) -> float:
+	var closeup: float = clampf(pow(_zoom_bias, 0.82), 1.0, 8.0)
+	var weight: float = _body_closeup_weight(id, def)
+	var factor: float = 1.0 + (closeup - 1.0) * weight
+	return clampf(factor, 1.0, _max_body_detail_factor(def.kind))
+
+
+func _body_closeup_weight(id: StringName, def: BodyDef) -> float:
+	if id == _focus_id:
+		match def.kind:
+			BodyType.Kind.BLACK_HOLE:
+				return 0.42
+			BodyType.Kind.STAR:
+				return 0.72
+			BodyType.Kind.MOON:
+				return 1.08
+			_:
+				return 0.96
+
+	if def.parent_id == _focus_id:
+		match def.kind:
+			BodyType.Kind.MOON:
+				return 0.48
+			BodyType.Kind.PLANET:
+				return 0.42
+			_:
+				return 0.28
+
+	if _is_descendant_of(id, _focus_id):
+		return 0.24
+
+	return 0.0
+
+
+static func _max_body_detail_factor(kind: int) -> float:
+	match kind:
+		BodyType.Kind.BLACK_HOLE:
+			return 2.4
+		BodyType.Kind.STAR:
+			return 3.8
+		BodyType.Kind.MOON:
+			return 5.0
+		_:
+			return 4.8
 
 
 func _update_trail(id: StringName, pos: Vector2, reset_trails: bool) -> void:
@@ -375,6 +433,34 @@ static func _dict_keys_to_string_names(source: Dictionary) -> Array[StringName]:
 	for key in source.keys():
 		out.append(key)
 	return out
+
+
+static func _minimum_focus_radius_ru(focus_def: BodyDef) -> float:
+	if focus_def == null:
+		return 8.0
+	match focus_def.kind:
+		BodyType.Kind.BLACK_HOLE:
+			return 12.0
+		BodyType.Kind.STAR:
+			return 4.6
+		BodyType.Kind.MOON:
+			return 1.8
+		_:
+			return 2.8
+
+
+static func _focus_frame_margin(focus_def: BodyDef) -> float:
+	if focus_def == null:
+		return 1.18
+	match focus_def.kind:
+		BodyType.Kind.BLACK_HOLE:
+			return 1.16
+		BodyType.Kind.STAR:
+			return 1.10
+		BodyType.Kind.MOON:
+			return 1.04
+		_:
+			return 1.06
 
 
 static func _orbit_extent_ru(def: BodyDef) -> float:

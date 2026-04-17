@@ -5,14 +5,14 @@ const VIEWPORT_RADIUS_FACTOR: float = 0.38
 const VIEW_SMOOTHNESS: float = 10.0
 const ZOOM_BIAS_STEP: float = 1.16
 const MIN_ZOOM_BIAS: float = 0.20
-const MAX_ZOOM_BIAS: float = 8.0
+const MAX_ZOOM_BIAS: float = 12.0
 const MIN_VIEW_SCALE: float = 0.18
-const MAX_VIEW_SCALE: float = 64.0
+const MAX_VIEW_SCALE: float = 320.0
 const PAN_SPEED_PX_PER_S: float = 960.0
 
 @onready var _orbit_service: OrbitService = $OrbitService
 @onready var _bubble: LocalBubbleManager = $LocalBubbleManager
-@onready var _renderer: Node2D = $WorldRoot
+@onready var _renderer: OrbitViewRenderer = $WorldRoot
 @onready var _debug_overlay: DebugOverlay = $DebugOverlay
 
 @onready var _focus_value: Label = $HudLayer/TopPanel/Margin/VBox/FocusValue
@@ -125,6 +125,7 @@ func _set_focus(body_id: StringName, immediate: bool = false) -> void:
 
 
 func _refresh_target_view() -> void:
+	_renderer.set_zoom_bias(_zoom_bias)
 	var frame: Dictionary = _renderer.get_focus_frame(_bubble.get_focus())
 	var viewport_size: Vector2 = get_viewport_rect().size
 	var focus_center: Vector2 = frame.get("center", Vector2.ZERO)
