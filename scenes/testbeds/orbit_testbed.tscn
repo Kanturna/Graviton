@@ -1,30 +1,9 @@
-[gd_scene load_steps=10 format=3 uid="uid://atraxistestbed01"]
+[gd_scene load_steps=5 format=3 uid="uid://atraxistestbed01"]
 
 [ext_resource type="Script" path="res://scenes/testbeds/orbit_testbed.gd" id="1_testbed"]
 [ext_resource type="Script" path="res://src/sim/orbit/orbit_service.gd" id="2_orbitsvc"]
 [ext_resource type="Script" path="res://src/runtime/local_bubble/local_bubble_manager.gd" id="3_bubble"]
 [ext_resource type="PackedScene" uid="uid://bxdebugoverlay001" path="res://src/tools/debug/debug_overlay.tscn" id="4_overlay"]
-
-[sub_resource type="SphereMesh" id="SphereMesh_sol"]
-radius = 10.0
-height = 20.0
-
-[sub_resource type="SphereMesh" id="SphereMesh_planet"]
-radius = 2.0
-height = 4.0
-
-[sub_resource type="SphereMesh" id="SphereMesh_moon"]
-radius = 1.0
-height = 2.0
-
-[sub_resource type="StandardMaterial3D" id="Mat_sun"]
-albedo_color = Color(1, 0.85, 0.35, 1)
-emission_enabled = true
-emission = Color(1, 0.8, 0.2, 1)
-emission_energy_multiplier = 1.5
-
-[sub_resource type="StandardMaterial3D" id="Mat_planet"]
-albedo_color = Color(0.3, 0.55, 0.9, 1)
 
 [node name="OrbitTestbed" type="Node3D"]
 script = ExtResource("1_testbed")
@@ -37,20 +16,9 @@ script = ExtResource("3_bubble")
 
 [node name="Visuals" type="Node3D" parent="."]
 
-[node name="SolVisual" type="MeshInstance3D" parent="Visuals"]
-mesh = SubResource("SphereMesh_sol")
-surface_material_override/0 = SubResource("Mat_sun")
-
-[node name="PlanetAVisual" type="MeshInstance3D" parent="Visuals"]
-mesh = SubResource("SphereMesh_planet")
-surface_material_override/0 = SubResource("Mat_planet")
-
-[node name="MoonAVisual" type="MeshInstance3D" parent="Visuals"]
-mesh = SubResource("SphereMesh_moon")
-
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.9396926, 0.3420201, 0, -0.3420201, 0.9396926, 0, 120, 320)
-far = 5000.0
+transform = Transform3D(1, 0, 0, 0, 0.9848078, 0.1736482, 0, -0.1736482, 0.9848078, 0, 80, 450)
+far = 6000.0
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.7071068, 0.7071068, 0, -0.7071068, 0.7071068, 0, 50, 0)

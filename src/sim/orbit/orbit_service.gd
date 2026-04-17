@@ -80,6 +80,17 @@ func _update_authored(state: BodyState, profile: OrbitProfile, t_s: float) -> vo
 	state.current_mode = OrbitMode.Kind.AUTHORED_ORBIT
 
 
+func recompute_all_at_time(t_s: float) -> void:
+	if not _configured:
+		return
+	for id in _registry.get_update_order():
+		var state: BodyState = _registry.get_state(id)
+		var def: BodyDef = _registry.get_def(id)
+		if state == null or def == null:
+			continue
+		update_body(state, def, t_s)
+
+
 func _update_kepler(state: BodyState, def: BodyDef, profile: OrbitProfile, t_s: float) -> void:
 	var parent: BodyDef = _registry.get_def(def.parent_id)
 	var mu: float = 0.0

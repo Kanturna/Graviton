@@ -9,6 +9,8 @@ enum Kind {
 	MOON,
 	STATION,
 	ASTEROID,
+	# Schwarzes Loch. Wahrheit: mass_kg; als Simulationswurzel liegt Position bei ZERO.
+	BLACK_HOLE,
 	# Steuerbarer Koerper (z. B. Schiff). Bewegungssemantik noch undefiniert — Design-Gate vor Schritt 5.
 	CONTROLLED,
 }
@@ -21,5 +23,6 @@ static func to_string_kind(k: Kind) -> String:
 		Kind.MOON: return "MOON"
 		Kind.STATION: return "STATION"
 		Kind.ASTEROID: return "ASTEROID"
+		Kind.BLACK_HOLE: return "BLACK_HOLE"
 		Kind.CONTROLLED: return "CONTROLLED"
 	return "UNKNOWN"

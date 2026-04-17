@@ -110,6 +110,14 @@ func load_from_sample_system() -> void:
 		register_body(d)
 
 
+func load_from_starter_world() -> void:
+	if not defs_by_id.is_empty():
+		return
+	var defs: Array[BodyDef] = StarterWorld.build()
+	for d in defs:
+		register_body(d)
+
+
 # Topologischer Sort nach parent_id. Parents landen vor Kindern.
 # Wurzeln (parent_id == &"") zuerst. Kleines N, einfache Kahn-Variante.
 func _recompute_update_order() -> void:
