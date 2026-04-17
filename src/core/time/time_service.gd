@@ -3,9 +3,8 @@ extends Node
 # Autoload. Einzige autoritative Quelle fuer Simulationszeit.
 #
 # Kontrakt:
-#   - sim_tick(dt) wird IMMER mit dt == FIXED_DT emittiert.
-#   - Eine Aenderung von time_scale veraendert NICHT dt, sondern die
-#     Anzahl Ticks pro physics-Frame. Sub-1-Scales werden akkumuliert.
+#   - sim_tick(dt) wird hoechstens einmal pro physics-Frame emittiert.
+#   - Eine Aenderung von time_scale skaliert das simulierte dt pro Frame.
 #   - sim_time_s waechst streng monoton, nur durch diesen Service.
 #   - Keine andere Klasse darf sim_time_s schreiben.
 
@@ -20,26 +19,24 @@ var tick_count: int = 0
 var time_scale: float = 1.0
 var paused: bool = false
 
-var _scale_accum: float = 0.0
-
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if paused:
 		return
-	_scale_accum += maxf(0.0, time_scale)
-	while _scale_accum >= 1.0:
-		_scale_accum -= 1.0
-		_emit_tick()
+	var sim_dt: float = delta * maxf(0.0, time_scale)
+	if sim_dt <= 0.0:
+		return
+	_emit_tick(sim_dt)
 
 
-func _emit_tick() -> void:
-	sim_time_s += FIXED_DT
+func _emit_tick(sim_dt: float) -> void:
+	sim_time_s += sim_dt
 	tick_count += 1
-	sim_tick.emit(FIXED_DT)
+	sim_tick.emit(sim_dt)
 
 
 func set_time_scale(s: float) -> void:
@@ -60,4 +57,3 @@ func set_paused(p: bool) -> void:
 func reset() -> void:
 	sim_time_s = 0.0
 	tick_count = 0
-	_scale_accum = 0.0

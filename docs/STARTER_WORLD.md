@@ -69,6 +69,12 @@ HUD:
 - zeigt jetzt Fokus, Sim-Zeit, Tick-Count, FPS, Speed-Multiplikator, Speed-Preset-Stufe, Zoom und Run/Pause-Status
 - Speed kann jetzt zusaetzlich ueber einen logarithmischen HUD-Slider geregelt werden; Hotkeys und Slider bleiben synchron
 
+Hinweis zur Sim-Speed:
+
+- Hohe `time_scale`-Werte skalieren jetzt das simulierte `dt` pro Physics-Frame,
+  statt hunderte Einzel-Ticks pro Frame zu emittieren. Das haelt hohe Speedstufen
+  deutlich fluessiger.
+
 **Zeitskalen-Presets:** 0.25x / 1x / 10x / 50x / 100x / **250x (Default)** / 500x / 1000x / 2500x / 5000x
 
 Bei **250x** (Default):

@@ -30,7 +30,7 @@ func _process(_delta: float) -> void:
 func _build_text() -> String:
 	var lines: Array[String] = []
 	lines.append("[b]Graviton Testbed[/b]")
-	lines.append("sim_time_s = %.3f   tick_count = %d" % [_time.sim_time_s, _time.tick_count])
+	lines.append("sim_time_s = %.3f   step_count = %d" % [_time.sim_time_s, _time.tick_count])
 	lines.append("time_scale = %.3f   paused = %s" % [_time.time_scale, str(_time.paused)])
 	lines.append("body count = %d" % _registry.body_count())
 	lines.append("focus_id   = %s  (view)" % str(_bubble.get_focus()))

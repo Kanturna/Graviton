@@ -173,7 +173,7 @@ func _update_hud() -> void:
 	var fps: int = Engine.get_frames_per_second()
 	var speed_step_label: String = _time_scale_step_label(TimeService.time_scale)
 	_focus_value.text = "Focus: %s" % focus_name
-	_time_value.text = "T+ %.2f d   ticks %d   FPS %d" % [sim_days, TimeService.tick_count, fps]
+	_time_value.text = "T+ %.2f d   steps %d   FPS %d" % [sim_days, TimeService.tick_count, fps]
 	_scale_value.text = "Speed x%s   Preset %s   Zoom %.0f%%" % [
 		_stripped_float(TimeService.time_scale),
 		speed_step_label,

@@ -6,13 +6,13 @@ diese Regeln verstößt, bricht das Fundament.
 ## Zeit
 
 - Einzige Quelle: `TimeService` (Autoload).
-- Fixed Timestep: `FIXED_DT = 1/60 s`. Jedes `sim_tick`-Signal wird
-  **immer** mit `dt == FIXED_DT` emittiert.
-- `time_scale` wirkt als **Tick-Multiplikator** pro physics-Frame,
-  nicht als Skalierung von `dt`:
-  - `time_scale == 1.0` → 1 Tick pro Frame.
-  - `time_scale == 3.0` → 3 Ticks pro Frame.
-  - `time_scale == 0.5` → akkumuliert, emittiert Tick jede 2. Frame.
+- Physics-Basis: `FIXED_DT = 1/60 s` ist die Referenz-Frequenz des
+  Physics-Loops.
+- `TimeService` emittiert `sim_tick(dt)` hoechstens **einmal pro physics-Frame**.
+- `time_scale` wirkt als **Skalierung des simulierten dt pro Frame**:
+  - `time_scale == 1.0` → `sim_tick(1/60 s)` pro Frame.
+  - `time_scale == 3.0` → `sim_tick(3/60 s)` pro Frame.
+  - `time_scale == 0.5` → `sim_tick(0.5/60 s)` pro Frame.
 - `paused == true` unterdrückt alle Ticks.
 - `sim_time_s` wächst streng monoton; nur `TimeService.reset()`
   setzt ihn zurück (ausschließlich für Tests).
@@ -67,10 +67,11 @@ Eligibility, welche davon tatsächlich wechseln.
 Nur Parentgravitation (`LocalOrbitIntegrator.gravity_acceleration_mps2`).
 Kein N-Body, keine externen Kräfte in diesem Schritt.
 
-**dt-Limitation:** NUMERIC_LOCAL ist stabil bei time_scale ≤ ~1 000 (dt ≈ 1/60 s).
-Bei sehr hoher Zeitbeschleunigung divergiert die numerische Bahn von der
-Kepler-Bahn — erwartetes Verhalten, kein Bug. Bei dt > 300 s (sim) loggt
-OrbitService eine Warnung.
+**dt-Limitation:** Wenn `NUMERIC_LOCAL` spaeter eingefuehrt wird, steigt bei
+hohem `time_scale` direkt das simulierte `dt` pro Frame. Dann braucht die
+numerische Bahn voraussichtlich Substepping oder einen High-Speed-Guardrail.
+Fuer den aktuellen Foundation-Stand mit analytischen Orbit-Profilen ist das
+kein Problem.
 
 **CONTROLLED-Bodies:** Für `BodyType.Kind.CONTROLLED` sind Regime-Wechsel-Regeln
 noch nicht definiert — das ist ein bewusster Design-Gate vor Schritt 5. Die
