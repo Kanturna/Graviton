@@ -10,6 +10,8 @@ extends RefCounted
 # abgeleitete Groessen und werden durch LocalBubbleManager komponiert.
 
 var id: StringName = &""
+# Lese-Kopie von BodyDef.parent_id. Wird einmalig im Konstruktor gesetzt,
+# danach unveraenderlich. Einzige Wahrheit: BodyDef.parent_id.
 var parent_id: StringName = &""
 var position_parent_frame_m: Vector3 = Vector3.ZERO
 var velocity_parent_frame_mps: Vector3 = Vector3.ZERO

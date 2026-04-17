@@ -14,8 +14,8 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="Atraxis"
-config/description="Weltraum-/Systemsimulation. Foundation-Slice: Zeitdienst, Orbitkern, Registry, Bubble-Stub, Debug-Testbed."
+config/name="Graviton"
+config/description="Weltraum-/Systemsimulation. Foundation-Slice (Schritte 1–4): Orbitkern, Bubble/LCA, BubbleActivationSet, NUMERIC_LOCAL-Integrator."
 run/main_scene="res://scenes/bootstrap/main.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 

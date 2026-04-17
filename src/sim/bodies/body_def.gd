@@ -10,6 +10,8 @@ extends Resource
 @export var kind: int = BodyType.Kind.PLANET
 @export var mass_kg: float = 0.0
 @export var radius_m: float = 0.0
+# Definiert den Frame-Parent dieses Koerpers. BodyState.parent_id spiegelt
+# diesen Wert zur Laufzeit wider (Lesekopie, nie separat beschrieben).
 @export var parent_id: StringName = &""
 @export var orbit_profile: OrbitProfile = null
 

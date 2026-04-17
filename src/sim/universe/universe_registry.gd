@@ -33,6 +33,10 @@ func register_body(def: BodyDef) -> BodyState:
 	assert(def != null, "register_body: def is null")
 	assert(def.is_valid(), "register_body: def invalid (id=%s)" % def.id)
 	assert(not defs_by_id.has(def.id), "register_body: duplicate id %s" % def.id)
+	# Diagnostik: Parent zur Zeit der Registrierung noch nicht bekannt.
+	# Kein assert — Batch-Registrierung kann valide in Topologie-Reihenfolge laufen.
+	if def.parent_id != StringName("") and not defs_by_id.has(def.parent_id):
+		push_warning("UniverseRegistry.register_body: parent '%s' noch nicht registriert fuer '%s'" % [def.parent_id, def.id])
 
 	ids.claim_authored(def.id)
 	defs_by_id[def.id] = def

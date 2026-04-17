@@ -9,6 +9,8 @@ enum Kind {
 	MOON,
 	STATION,
 	ASTEROID,
+	# Steuerbarer Koerper (z. B. Schiff). Bewegungssemantik noch undefiniert — Design-Gate vor Schritt 5.
+	CONTROLLED,
 }
 
 
@@ -19,4 +21,5 @@ static func to_string_kind(k: Kind) -> String:
 		Kind.MOON: return "MOON"
 		Kind.STATION: return "STATION"
 		Kind.ASTEROID: return "ASTEROID"
+		Kind.CONTROLLED: return "CONTROLLED"
 	return "UNKNOWN"

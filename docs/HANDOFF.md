@@ -1,100 +1,156 @@
-# Atraxis — Handoff
+# Graviton — Handoff
 
-Stand nach dem ersten Foundation-Slice. Lies das zuerst, bevor du
-den nächsten Schritt planst.
+Stand nach Schritt 4: NUMERIC_LOCAL / Regime-Wechsel. Lies das zuerst,
+bevor du den nächsten Schritt planst.
 
 ## Welche Ebene ist aktuell autoritativ
 
-| Ebene                          | Rolle         | Datei                                                        |
-|--------------------------------|---------------|--------------------------------------------------------------|
-| `TimeService`                  | Wahrheit      | `src/core/time/time_service.gd`                              |
-| `UniverseRegistry`             | Wahrheit      | `src/sim/universe/universe_registry.gd`                      |
-| `BodyState` (via `OrbitService`) | Wahrheit    | `src/sim/bodies/body_state.gd`, `src/sim/orbit/orbit_service.gd` |
-| `LocalBubbleManager`           | abgeleitet    | `src/runtime/local_bubble/local_bubble_manager.gd`           |
-| Testbed-Visuals, `DebugOverlay`, `Node3D.position`s | abgeleitet / anzeigend | `scenes/testbeds/`, `src/tools/debug/` |
+| Ebene | Rolle | Datei |
+|---|---|---|
+| `TimeService` | Wahrheit | `src/core/time/time_service.gd` |
+| `UniverseRegistry` | Wahrheit | `src/sim/universe/universe_registry.gd` |
+| `BodyState` (via `OrbitService`) | Wahrheit | `src/sim/bodies/body_state.gd`, `src/sim/orbit/orbit_service.gd` |
+| `LocalBubbleManager` | abgeleitet (View) | `src/runtime/local_bubble/local_bubble_manager.gd` |
+| `BubbleActivationSet` | abgeleitet (Relevanzklassifikation) | `src/runtime/local_bubble/bubble_activation_set.gd` |
+| Testbed-Visuals, `DebugOverlay` | anzeigend | `scenes/testbeds/`, `src/tools/debug/` |
 
 Nichts im `scenes/`- oder `src/tools/`-Baum enthält autoritativen
 Simulationszustand.
 
-## Begriffe, die nur Render-/View-Space bedeuten
+## Was in Schritt 4 implementiert wurde
 
-- `LocalBubbleManager.world_to_view_m`, `view_to_world_m`,
-  `compose_view_position_m` → View-Space, aktuell Identity.
-- `Node3D.position` im Testbed → Render-Units (View-Space durch
-  `RENDER_SCALE_M_PER_UNIT` geteilt).
-- Alles unter `scenes/testbeds/orbit_testbed.tscn` → `Visuals/` ist
-  reine Projektion. Keine Logik dort.
-- `RENDER_SCALE_M_PER_UNIT` aus `UnitSystem` → Render-only, darf in
-  `src/sim/` und `src/core/` **nicht** auftauchen.
+### LocalOrbitIntegrator — reine Integrations-Mathematik
 
-## Bewusste Platzhalter
+Neue Klasse: `src/sim/orbit/local_orbit_integrator.gd`.
 
-- `LocalBubbleManager.world_to_view_m` ist **Identity**. Das ist
-  **kein** finales Design, sondern ein architektonischer Stub. Der
-  nächste Schritt ersetzt ihn durch Focus-Offset-Subtraktion plus
-  konfigurierbare Skalierung.
-- `OrbitMode.Kind.NUMERIC_LOCAL` existiert als Enum-Wert. `OrbitService`
-  behandelt ihn aktuell nur mit einer Warnung — bewusst nicht
-  implementiert.
-- Velocity in `BodyState` wird durch finite Differenz geschätzt
-  (aktuelle minus vorherige Position). Für die Foundation-Tests
-  reicht das; `NUMERIC_LOCAL` wird später eine echte Velocity-Quelle
-  einführen.
-- Kein Input, keine Kamera-Steuerung. Kamera im Testbed ist
-  statisch.
+Statische pure Funktionen, kein Zustand:
+- `gravity_acceleration_mps2(pos_m, parent_mu) → Vector3`
+- `step_velocity_verlet(pos_m, vel_mps, parent_mu, dt_s) → {pos, vel}`
 
-## Was konkret existiert
+Velocity Verlet (zweite Ordnung, zeitreversibel, zwei a-Auswertungen/Schritt).
+Nur Parentgravitation. Kein N-Body, keine externen Kräfte.
 
-- `project.godot` (2 Autoloads: `TimeService`, `UniverseRegistry`).
-- `src/core/time/time_service.gd` — fixed-dt Tick, time_scale als
-  Multiplikator.
-- `src/core/units/unit_system.gd` — SI-Konstanten + Render-Skala.
-- `src/core/ids/id_registry.gd` — IDs mit authored/runtime-Trennung.
-- `src/core/math/orbit_math.gd` — pure Kepler-/Kreis-Mathematik.
-- `src/sim/bodies/{body_type, body_def, body_state}.gd`.
-- `src/sim/orbit/{orbit_mode, orbit_profile, orbit_service}.gd`.
-- `src/sim/universe/universe_registry.gd` (schlank, siehe ADR).
-- `src/runtime/local_bubble/local_bubble_manager.gd` (Identity-Stub).
-- `src/tools/debug/debug_overlay.gd|.tscn`.
-- `src/tests/test_runner.gd` + `src/tests/orbit/test_orbit.gd`.
-- `scenes/bootstrap/main.gd|.tscn` (Entry, leitet ins Testbed).
-- `scenes/testbeds/orbit_testbed.gd|.tscn`.
-- `data/sample_system.gd` (Sol / Planet A / Moon A).
+### OrbitService — NUMERIC_LOCAL-Pfad + Regime-Wechsel
+
+Neue öffentliche Methode: `request_numeric_local_candidates(ids: Array[StringName])`.
+Wird von der Szene nach jedem `BubbleActivationSet.rebuild()` aufgerufen.
+OrbitService filtert intern auf Eligibility (nur KEPLER_APPROX-Profil).
+
+Neue private Methoden:
+- `_enter_numeric_local()` — initialisiert Zustand aus Kepler, setzt `current_mode = NUMERIC_LOCAL`
+- `_exit_numeric_local()` — loggt Sprung via `push_warning`, setzt `current_mode = KEPLER_APPROX`
+- `_update_numeric_local()` — Verlet-Integration pro Tick
+- `_kepler_velocity_at()` — finite Differenz (ε = 1.0 s) für Eintrittszustand
+
+Eligibility-Regel:
+- KEPLER_APPROX-Bodies: eligible
+- AUTHORED_ORBIT-Bodies: nie eligible (immer authored)
+- Root-Bodies: nie eligible
+
+### Composition Root (Testbed) — Bridge
+
+`orbit_testbed.gd._process()` ruft jetzt:
+```gdscript
+_activation.rebuild()
+_orbit_service.request_numeric_local_candidates(_activation.get_active_ids())
+```
+
+`time_scale` auf 1 000 gesetzt (statt 1 000 000) — NUMERIC_LOCAL-Integration
+ist bei 1M× zu instabil für beobachtbare Verifikation.
+
+### DebugOverlay
+
+Neuer Header-Eintrag: `NL-Bodies = X / Y` — zeigt, wie viele Bodies aktuell
+numerisch integriert werden.
+
+### Tests
+
+Neue Suite: `src/tests/orbit/test_numeric_local.gd` — 10 Invarianten:
+1. Bekannter Gravitationswert bei 1 AU
+2. Singularitätsschutz (pos = ZERO → ZERO)
+3. Kreisbahn-Radiusstabilität (< 0.5 % Drift nach 1 000 Schritten)
+4. Energieerhalt (< 1 % Änderung nach 1 Umlauf)
+5. Positionskontinuität beim Eintritt (< 100 m Sprung)
+6. AUTHORED_ORBIT nie in `_numeric_local_ids`
+7. Root-Body nie in `_numeric_local_ids`
+8. Austritt: Set leer, nächster Tick → KEPLER_APPROX
+9. Keine Mutation durch `request_numeric_local_candidates` allein
+10. `current_mode` bleibt NUMERIC_LOCAL nach mehreren Ticks
+
+---
+
+## Was in Schritt 3 implementiert wurde
+
+### BubbleActivationSet — fokus-relative geometrische Relevanzklassifikation
+
+Neue Klasse: `src/runtime/local_bubble/bubble_activation_set.gd`.
+
+Klassifiziert Bodies nach fokus-relativer View-Distanz in drei explizite Zustände:
+- `ACTIVE` — innerhalb `activation_radius_m` (default: 5.0e8 m)
+- `INACTIVE_DISTANT` — erreichbar, aber außerhalb Radius
+- `INACTIVE_NO_LCA` — nicht fokus-relativ vergleichbar (anderer Baum)
+
+Neue Tests: `src/tests/bubble/test_activation.gd` — 11 Invarianten.
+
+---
+
+## Was in Schritt 2 implementiert wurde
+
+### LocalBubbleManager — LCA-basierte fokus-relative Transformation
+
+Ersetzte den Identity-Stub durch echte fokus-relative Komposition via LCA
+(Lowest Common Ancestor). Akkumuliert Parent-Frame-Ketten als drei separate
+`float`-Variablen (IEEE-754 double) statt `Vector3` (float32), um
+Katastrophen-Kanzellation bei AU-Distanzen zu vermeiden.
+
+- `compose_view_position_m(id)` — fokus-relative Position in Metern
+- `compose_render_units(id)` — direkte Projektion für `Node3D.position`
+- `to_render_units(view_m)` — einzige erlaubte RENDER_SCALE-Anwendungsstelle
+- `debug_compose_world_m(id)` — nur für Tests/Debug, nie in Produktionslogik
+
+Neue Tests: `src/tests/bubble/test_bubble.gd`.
+
+---
 
 ## Was bewusst NICHT existiert
 
 - Keine Kamera-Steuerung, kein Player-Input.
-- Keine lokale Oberfläche, kein Transit, keine Cluster.
-- Keine globale Gravitation für viele Bodies.
+- Kein Schiff, keine Kräfte außer Parentgravitation.
+- Kein LOD, kein Culling, keine Cluster-/Transitlogik.
+- Kein N-Body.
 - Kein Save/Load.
-- Kein GUT / kein größeres Test-Framework.
+- Kein GUT / kein größeres Test-Framework (custom runner; GUT installiert aber nicht genutzt).
 - Keine `.tres`-Dateien für Bodies — bewusst, siehe Daten-first-ADR.
-- Keine Content-/Lore-Dateien.
 
 ## Verifikation
 
-- `godot --path . --headless --script res://src/tests/test_runner.gd --quit`
-  → Exit 0, alle Asserts grün.
-- Projekt starten im Editor → Bootstrap lädt, Testbed zeigt drei
-  Kugeln. Planet bewegt sich sichtbar, Mond umrundet Planet. Das
-  Debug-Overlay listet `sim_time_s` (wachsend), Body-Count 3,
-  Parent-IDs, Modi, Parent-Frame-Beträge und Welt-Beträge.
-- Registry-Update-Order muss `[sol, planet_a, moon_a]` sein
-  (Parent-vor-Kind).
+```
+godot --path . --headless --script res://src/tests/test_runner.gd --quit
+```
+
+Exit 0, alle Asserts grün (orbit + numeric_local + bubble + activation + registry Suite).
+
+Testbed starten (time_scale = 1 000):
+- Overlay zeigt `planet_a: mode=NUMERIC_LOCAL`, `NL-Bodies = 1 / 3`
+- `moon_a: mode=AUTHORED_ORBIT` (unverändert)
+- Aktivierungsradius auf 0 → planet_a wechselt auf `KEPLER_APPROX`, Sprung im Log
 
 ## Logischer nächster Schritt
 
-1. **Echte Bubble-Transformation.** `LocalBubbleManager.world_to_view_m`
-   subtrahiert die Welt-Position des Fokus und skaliert so, dass
-   Render-Präzision auch bei AU-Distanzen stabil bleibt. Der Fokus
-   wird der einzige "nahe" Punkt für Render und Gameplay.
-2. **`NUMERIC_LOCAL` für den fokussierten Körper.** Semi-implicit-Euler
-   oder Leapfrog, ausschließlich für den Cluster innerhalb der Bubble.
-   Umschaltlogik: `KEPLER_APPROX` ↔ `NUMERIC_LOCAL` auf Basis des
-   Fokus.
-3. **Erweiterter Test-Runner.** Suiten pro Domäne (`bodies/`,
-   `universe/`, `bubble/`). Vielleicht später GUT-Migration, sobald
-   die Test-Menge > ~20 Suiten erreicht.
+### Design-Gate vor Schritt 5 — Erste Mechanik (Schiff mit Schub)
 
-Alles, was über diese drei Schritte hinausgeht (Input, Content,
-Transit, Saves), wartet bewusst auf eine stabile Bubble-Schicht.
+Nach Schritt 4 ist das Projekt bereit, die erste Mechanik **bewusst zu definieren**
+(nicht sofort zu bauen). Ein expliziter kleiner Designschritt steht davor:
+
+- Welchen Body-Typ braucht ein Schiff? (`CONTROLLED` in `BodyType.Kind` ist vorbereitet,
+  trägt aber noch keine Bewegungssemantik)
+- Wie wird Schub als Kraft in den Verlet-Integrator eingespeist?
+- Wo lebt die forces-API? (Erweiterung in OrbitService oder neuer Layer?)
+- Welcher Input-Layer ist nötig?
+- Wer darf `parent_id` eines CONTROLLED-Bodies ändern (Andocken)?
+
+Erst wenn dieser Designschritt abgeschlossen ist, sollte mit der Implementierung
+begonnen werden.
+
+Alles, was darüber hinausgeht (Oberfläche, Transit, Content, Save/Load),
+wartet auf eine stabile Mechanik-Schicht.

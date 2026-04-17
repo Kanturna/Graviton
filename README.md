@@ -1,22 +1,23 @@
-# Atraxis
+# Graviton
 
 Godot 4 Weltraum-/Systemsimulation. Dieses Repository enthält den
-**Foundation-Slice**: das architektonische Fundament, **kein Gameplay**.
+**Foundation-Slice** (Schritte 1–4): das architektonische Fundament, **kein Gameplay**.
 
 ## Was dieser Stand liefert
 
 - Saubere Schichten: `core/` → `sim/` → `runtime/` → `scenes/`
-- Autoritative Zeit, Orbitkern (AUTHORED_ORBIT, KEPLER_APPROX), Body-Registry
-- Lokalisierungs-/View-Stub (`LocalBubbleManager`, aktuell Identity)
-- Minimaler CLI-Test-Runner mit Orbit-Math-Unit-Tests
+- Autoritative Zeit, Orbitkern (AUTHORED_ORBIT, KEPLER_APPROX), Body-Registry (Schritt 1)
+- Fokus-relative Bubble-Transformation, LCA-basiert, double-präzise (Schritt 2)
+- BubbleActivationSet: geometrische Relevanzklassifikation (ACTIVE / INACTIVE_DISTANT / INACTIVE_NO_LCA) (Schritt 3)
+- NUMERIC_LOCAL-Regime: Velocity-Verlet-Integrator, Regime-Wechsel mit Logging (Schritt 4)
 - Debug-Testbed mit Sonne / Planet / Mond als Projektion der Wahrheit
+- Vier Test-Suiten (orbit, bubble, activation, numeric_local) über CLI-Runner
 
 ## Was dieser Stand NICHT ist
 
 - Kein Spielprototyp, keine Kamerasteuerung, keine lokale Oberfläche
-- Keine echte Bubble-Transformation (Identity-Stub, nächster Schritt)
-- Keine `NUMERIC_LOCAL`-Implementierung (Enum reserviert)
 - Keine Transit-/Clusterlogik, kein Save/Load, kein Content
+- Keine Kräfte außer Parentgravitation (kein Schub, kein N-Body)
 
 ## Architektur in einem Satz
 
@@ -37,7 +38,7 @@ Im Godot-Editor:
 Unit-Tests via Kommandozeile:
 
 ```
-godot --headless --script res://src/tests/test_runner.gd --quit
+godot --path . --headless --script res://src/tests/test_runner.gd --quit
 ```
 
 Exit-Code `0` bei grünem Lauf.
@@ -45,7 +46,7 @@ Exit-Code `0` bei grünem Lauf.
 ## Verzeichnis-Überblick
 
 ```
-docs/        Architektur, Simulationsregeln, KI-Kontext, Handoff
+docs/        Architektur, Simulationsregeln, KI-Kontext, Handoff, Umsetzungsplan
 src/core/    Zeit, Einheiten, IDs, Math (Schicht ohne Abhängigkeiten)
 src/sim/     Bodies, Orbit, Universe (autoritative Sim-Schicht)
 src/runtime/ Lokalisierung / Bubble (abgeleitete View-Ebene)
@@ -57,6 +58,6 @@ data/        Factory-Skripte für konkrete Systeme
 
 ## Nächster Schritt
 
-Siehe [`docs/HANDOFF.md`](docs/HANDOFF.md). Kurz: echte
-Bubble-Transformation (Focus-Subtraktion + Skalierung) für
-Render-Präzision über AU-Distanzen.
+Siehe [`docs/HANDOFF.md`](docs/HANDOFF.md). Kurz: bewusster Design-Gate
+vor erster Mechanik (Schiff/Schub) — vier offene Designfragen müssen
+explizit beantwortet werden, bevor Schritt 5 beginnt.
