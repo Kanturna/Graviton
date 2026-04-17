@@ -54,14 +54,24 @@ Alle Werte sind bewusste Toy-Werte — nicht astrophysikalisch korrekt.
 | Home | Fokus zurück auf obsidian (Gesamtüberblick) |
 | `[` | Zeitskala langsamer (Preset ↓) |
 | `]` | Zeitskala schneller (Preset ↑) |
+| Space | Pause / Weiter |
+| Mausrad | Zoom ein/aus (Bias 0.55×–2.4×) |
+| Backspace | Zoom-Bias zurücksetzen |
+| F3 | Debug-Overlay ein/ausblenden |
 
-**Zeitskalen-Presets:** 100× / 500× / 1000× (Default) / 5000× / 10000×
+**Zeitskalen-Presets:** 0.25× / 1× / 10× / 50× / 100× / **250× (Default)** / 500× / 1000×
 
-Bei **1000×** (Default):
+Bei **250×** (Default):
+- Monde: ~48–60 s/Umlauf
+- Innere Planeten: ~4–6 min/Umlauf
+- Sterne: ~3–6 min/Umlauf
+- Äußere Planeten: ~10–17 min/Umlauf
+
+Bei **1000×**:
 - Monde: ~12–15 s/Umlauf
 - Innere Planeten: ~68–90 s/Umlauf
 - Sterne: ~50–90 s/Umlauf
-- Äußere Planeten: ~3–4 min/Umlauf (sichtbar, aber langsam)
+- Äußere Planeten: ~3–4 min/Umlauf
 
 ## Initialzustand
 
