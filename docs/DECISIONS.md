@@ -63,3 +63,28 @@ rekonstruieren muessen, gibt es drei kurze kanonische Dateien:
 - `docs/DECISIONS.md`
 
 Ergaenzt durch `AGENTS.md` im Repo-Root.
+
+## 2026-04-17 - Planetare Zustaende und Systemgenerator sind spaetere Sim-Ziele
+
+`Graviton` soll spaeter nicht nur feste Testsysteme zeigen, sondern auch
+prozedural erzeugte Mehrkoerper-Systeme mit planetaren Zustaenden tragen.
+
+Geplante Richtung:
+
+- Generator entscheidet spaeter probabilistisch ueber:
+  - Anzahl schwarzer Loecher / Root-Systeme
+  - Anzahl Sterne pro Root-System
+  - Anzahl Planeten pro Stern
+  - Wahrscheinlichkeit fuer Monde
+  - Orbit-Parameter wie Achsen, Exzentrizitaeten und Ausrichtungen
+- Nicht jeder Planet soll automatisch "fruchtbar" oder bewohnbar sein.
+- Planetare Zustaende wie Temperatur, Bewohnbarkeit oder andere
+  Umweltfaktoren sollen aus Simulationsparametern ableitbar werden.
+
+Wichtige Einordnung:
+
+- Die jetzt sichtbaren Toy-Ellipsen im `StarterWorld` sind dafuer ein
+  frueher visueller Vorlaeufer, aber noch kein Planetenzustands-System.
+- Jahreszeiten sollen spaeter nicht nur ueber Bahnellipsen gedacht werden;
+  fuer erdaehnliche Welten ist Achsneigung langfristig die wichtigere
+  Simulationsgrundlage.

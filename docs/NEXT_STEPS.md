@@ -56,3 +56,15 @@ Erst nach dem View- und Doku-Cleanup:
 
 - Design-Gate fuer steuerbare Bodies / Schub / erste Mechanik
 - keine ueberhastete Gameplay-Implementierung vor sauberer Festlegung
+
+## Spaeter - Prozedurale Systeme und planetare Zustaende
+
+Wenn das aktuelle Testbed und die Kern-Sim stabil genug sind:
+
+- Generator-Konzept fuer Root-Systeme, Sterne, Planeten und Monde
+- Zufallsbereiche fuer Orbitachsen, Exzentrizitaeten und Orientierungen
+- erste planetare Zustandsgroessen ableiten:
+  - Temperatur / Naehe zum Stern
+  - einfache Bewohnbarkeits- oder Unwirtlichkeitsmarker
+- Jahreszeiten spaeter nicht nur ueber Bahnellipse, sondern vor allem
+  ueber Achsneigung und Strahlungsgeometrie denken
