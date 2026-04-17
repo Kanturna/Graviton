@@ -13,11 +13,11 @@ extends Node
 # einfach `position`, damit im Code sichtbar bleibt, dass wir View-Space
 # beschreiben, nicht Sim-Space.
 #
-# FOUNDATION-STAND (bewusster Platzhalter):
-#   world_to_view_m und view_to_world_m sind Identitaet. Die eigentliche
-#   Bubble-Transformation (Focus-Subtraktion + Skalierung zur Wahrung
-#   der Render-Praezision ueber grosse Distanzen) ist der NAECHSTE Schritt
-#   nach diesem Foundation-Slice.
+# AKTUELLER STAND:
+#   world_to_view_m und view_to_world_m nutzen eine einfache
+#   Focus-Subtraktion. Das stabilisiert die Praesentation beim
+#   Fokussieren bewegter Bodies, ohne bereits die volle Bubble-/LCA-
+#   Logik aus den spaeteren Architektur-Schritten einzufuehren.
 
 signal focus_changed(new_id: StringName)
 
@@ -59,15 +59,21 @@ func compose_world_position_m(id: StringName) -> Vector3:
 	return accum
 
 
-# Welt -> View. Foundation-Identity. Interface steht fuer spaeteren Ausbau.
+# Welt -> View. Einfache fokus-relative Ableitung.
 func world_to_view_m(world_m: Vector3) -> Vector3:
-	return world_m
+	return world_m - _focus_world_position_m()
 
 
 func view_to_world_m(view_m: Vector3) -> Vector3:
-	return view_m
+	return view_m + _focus_world_position_m()
 
 
 # Komfort: komplette Pipeline id -> view_m.
 func compose_view_position_m(id: StringName) -> Vector3:
 	return world_to_view_m(compose_world_position_m(id))
+
+
+func _focus_world_position_m() -> Vector3:
+	if _registry == null or _focus_id == StringName("") or not _registry.has_body(_focus_id):
+		return Vector3.ZERO
+	return compose_world_position_m(_focus_id)

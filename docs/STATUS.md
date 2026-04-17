@@ -18,12 +18,14 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ### Simulation / Architektur
 
-- Foundation-Schritt 1 ist implementiert (OrbitService AUTHORED_ORBIT +
-  KEPLER_APPROX, Identity-Bubble, StarterWorld). Schritte 2–4 sind als
-  Architektur dokumentiert, aber noch nicht im Code vorhanden.
+- Foundation-Schritt 1 ist implementiert (OrbitService `AUTHORED_ORBIT` +
+  `KEPLER_APPROX`, StarterWorld).
+- `LocalBubbleManager` nutzt jetzt eine einfache fokus-relative
+  View-Transformation, damit fokussierte Bodies visuell stabil liegen.
+- Die volle Bubble-/LCA-Logik aus den spaeteren Architektur-Schritten ist
+  noch nicht implementiert.
 - `TimeService` und `UniverseRegistry` sind die zentralen Autoloads.
 - `OrbitService` schreibt autoritativ die `BodyState`-Positionsdaten.
-- `LocalBubbleManager` liefert abgeleitete fokus-relative Positionen.
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 
@@ -49,8 +51,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Wichtige zuletzt geaenderte Dateien
 
-- `src/tools/rendering/orbit_view_renderer.gd` — Fokus-Zoom-Logik bereinigt
-- `scenes/testbeds/orbit_testbed.gd` — Trail-Reset bei Fokus-Wechsel
+- `src/runtime/local_bubble/local_bubble_manager.gd` - fokus-relative View-Stabilisierung
+- `src/tools/rendering/orbit_view_renderer.gd` - Fokus-Zoom-Logik und Fokus-Gewichtung
+- `scenes/testbeds/orbit_testbed.gd` - Trail-Reset, Pan/Zoom-Controls, groessere Zeitspanne
 - `scenes/testbeds/orbit_testbed.tscn`
 - `src/tools/rendering/orbit_body_visual.gd`
 - `src/tools/rendering/space_backdrop.gd`
@@ -58,17 +61,17 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Bekannte offene Punkte
 
-- Schritte 2–4 sind als Architektur dokumentiert, aber noch nicht implementiert
-  (`BubbleActivationSet`, `LocalOrbitIntegrator`, NUMERIC_LOCAL-Regime).
+- Schritte 2-4 sind als Architektur dokumentiert, aber noch nicht implementiert
+  (`BubbleActivationSet`, `LocalOrbitIntegrator`, `NUMERIC_LOCAL`-Regime).
 - `phantom_camera` ist im Projekt vorhanden, wird aber in der aktuellen
   Runtime noch nicht aktiv genutzt.
 - Die Praesentation ist deutlich besser als vorher, aber noch nicht auf
   dem finalen Qualitaetsniveau von `Atraxis`.
 - Orbit-Linienpunkte fuer KEPLER-Orbits werden gleichmaessig in M
-  (mittlere Anomalie) gesampelt — bei geringer Exzentrizitaet (0.01-0.03)
+  (mittlere Anomalie) gesampelt - bei geringer Exzentrizitaet (0.01-0.03)
   kaum sichtbar, aber nicht physikalisch gleichmaessig verteilt.
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- zweiten Visual-Pass fuer Rendering/HUD machen
+- Fokus-Zittern und lokale Lesbarkeit im Testbed weiter verifizieren
 - danach wieder staerker auf Gameplay-/Mechanik-Design fokussieren
