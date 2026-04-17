@@ -20,7 +20,7 @@ void fragment() {
 	           + sin(angle * 3.0 + TIME * 0.38) * 0.024;
 	float t_w = clamp(t + warp * t, 0.0, 1.2);
 
-	// Proper limb darkening: center bright, edge ~26% dimmer (matches real solar disc)
+	// Proper limb darkening: center bright, edge ~26% dimmer
 	float limb = 1.0 - 0.26 * pow(t_w, 1.7);
 
 	// Radial color temperature: center near-white, edge warmer/more saturated
@@ -28,11 +28,15 @@ void fragment() {
 	vec3 edge_col = vec3(1.0, 0.76, 0.28);
 	vec3 col = mix(center_col, edge_col, pow(t_w, 1.8)) * limb;
 
-	// Granulation / convection cell animation — three overlapping sin products
-	float gran = sin(n_xy.x * 10.0 + TIME * 1.90) * sin(n_xy.y * 8.5 - TIME * 1.40) * 0.50
-	           + sin(n_xy.x * 16.0 - TIME * 2.80) * sin(n_xy.y * 13.0 + TIME * 2.10) * 0.30
-	           + sin((n_xy.x * 1.2 + n_xy.y * 0.8) * 7.0 + TIME * 1.10) * 0.20;
-	gran = gran * (1.0 - t * 0.65) * 0.065;
+	// Sharpened granulation cells with higher contrast
+	// Two sin-product layers create a cell-like pattern
+	float cell1 = sin(n_xy.x * 9.0 + TIME * 3.2) * sin(n_xy.y * 8.0 - TIME * 2.6);
+	float cell2 = sin(n_xy.x * 14.0 - TIME * 4.1) * sin(n_xy.y * 11.0 + TIME * 3.0);
+	float cell_raw = cell1 * 0.55 + cell2 * 0.45;
+	// Push toward ±1 for sharper, more distinct cell boundaries
+	float abs_raw = abs(cell_raw);
+	float cell_sharp = sign(cell_raw) * (1.0 - pow(1.0 - abs_raw, 1.5));
+	float gran = cell_sharp * (1.0 - t * 0.65) * 0.18;
 	col *= 1.0 + gran;
 
 	// Corona rim glow
