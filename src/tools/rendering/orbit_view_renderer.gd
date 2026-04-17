@@ -228,7 +228,10 @@ func _focus_emphasis_for(id: StringName, focus_def: BodyDef) -> Dictionary:
 		return {"body": 1.0, "orbit": 1.0, "trail": 1.0}
 
 	if def.parent_id == focus_def.id:
-		return {"body": 1.0, "orbit": 1.0, "trail": 1.0}
+		var child_trail_alpha: float = 1.0
+		if focus_def.kind == BodyType.Kind.PLANET or focus_def.kind == BodyType.Kind.MOON:
+			child_trail_alpha = clampf(0.40 / maxf(_zoom_bias * 0.40, 1.0), 0.02, 0.40)
+		return {"body": 1.0, "orbit": 1.0, "trail": child_trail_alpha}
 
 	if _is_descendant_of(id, focus_def.id):
 		return {"body": 0.90, "orbit": 0.80, "trail": 0.86}
