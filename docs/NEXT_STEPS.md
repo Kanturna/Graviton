@@ -4,13 +4,17 @@ Stand: 2026-04-17
 
 ## Prioritaet 1 - Doku-Drift bereinigen ✓ erledigt
 
-Bereinigt:
+Bereinigt (zwei Passes):
 
-- `docs/HANDOFF.md` — Statushinweis ergänzt, Verifikationssektion korrigiert
-- `docs/AI_KONTEXT.md` — Render-API-Regeln, Testliste, Dateiverweise aktualisiert
-- `docs/SIMULATIONSREGELN.md` — Render-Scale-Regel, Präzisionsschutz,
-  Bubble-Aktivierung als "noch nicht implementiert" gekennzeichnet
+- `docs/HANDOFF.md` — Steps 2–4 klar als geplant/nicht vorhanden markiert;
+  Step-2-API-Liste korrigiert; "Logischer nächster Schritt" auf aktuellen Stand gebracht
+- `docs/AI_KONTEXT.md` — Node3D→Node2D, `local_orbit_integrator` als geplant,
+  Don'ts um Step-2–4-Marker ergänzt, double-präzise Bubble-Beschreibung korrigiert
+- `docs/SIMULATIONSREGELN.md` — NUMERIC_LOCAL-Status auf geplant gesetzt,
+  Regime-Wechsel-Abschnitt mit Callout versehen, Koordinatenräume-Tabelle bereinigt,
+  Kurzreferenz und Methodenname korrigiert
 - `docs/GODOT_UMSETZUNGSPLAN.md` — Schritte-Tabelle mit Code-Stand ergänzt
+- `docs/STATUS.md` — offene Punkte aktualisiert
 
 ## Prioritaet 1b - View-Cleanup (teils erledigt)
 

@@ -16,7 +16,7 @@ Die aktive Präsentation ist ein stilisiertes **2D-Orbit-Testbed** (umgebaut nac
 
 1. **Daten sind Wahrheit, Nodes sind Darstellung.**
    Jede Körperposition lebt in `BodyState.position_parent_frame_m`.
-   `Node3D.position` im Testbed ist nur Projektion.
+   `Node2D.position` im 2D-Testbed ist nur Projektion.
 2. **Schichten respektieren.** `core/` < `sim/` < `runtime/` <
    `scenes/`. Keine Rückwärtsabhängigkeit.
 3. **Eine Wahrheit pro Ebene.** Siehe Tabelle in `ARCHITEKTUR.md`.
@@ -45,19 +45,18 @@ Die aktive Präsentation ist ein stilisiertes **2D-Orbit-Testbed** (umgebaut nac
 - **`compose_world_position_m` nur in Tests und Debug-Overlay.**
   Die Methode liefert Weltkoordinaten — nützlich für Diagnose,
   aber nie als Grundlage für Render- oder Spiellogik.
-- **`BubbleActivationSet` schreibt keine `BodyState`-Felder.** Aktivierung
-  ist Klassifikation, nicht Simulationswahrheit. `current_mode` wird nur
-  durch `OrbitService._enter_numeric_local()` / `_exit_numeric_local()` gesetzt.
-- **Fokus ≠ Aktiv-Set ≠ NUMERIC_LOCAL.** Drei orthogonale Konzepte:
+- **`BubbleActivationSet` schreibt keine `BodyState`-Felder** *(geplant, nicht vorhanden).*
+  Aktivierung ist Klassifikation, nicht Simulationswahrheit.
+- **Fokus ≠ Aktiv-Set ≠ NUMERIC_LOCAL.** Drei orthogonale Konzepte *(Steps 2–4, geplant):*
   Fokus (View-Ankerpunkt), Aktiv-Set (geometrische Relevanz), NUMERIC_LOCAL
   (Simulationsregime). Der Pfad Aktiv-Set → NUMERIC_LOCAL geht durch die Szene.
-- **`LocalOrbitIntegrator` schreibt kein `BodyState`** — er ist pure Mathematik.
-  Nur `OrbitService` schreibt State.
+- **`LocalOrbitIntegrator` schreibt kein `BodyState`** *(geplant, nicht vorhanden)* —
+  er ist pure Mathematik. Nur `OrbitService` schreibt State.
 - **`request_numeric_local_candidates()` ist ein Kandidaten-Angebot**, kein
-  Befehl. OrbitService entscheidet über Eligibility (nur KEPLER_APPROX-Profil).
+  Befehl *(geplant, nicht vorhanden).* OrbitService entscheidet über Eligibility.
 - **Keine** naive `Vector3`-Addition/Subtraktion über große Distanzen
-  (> ~1e9 m). Stattdessen `LocalBubbleManager`-API nutzen, die intern
-  double-präzise akkumuliert.
+  (> ~1e9 m). Der aktuelle `LocalBubbleManager` ist ein Identity-Stub (Step 1) —
+  LCA-basierte Double-Präzision ist für Schritt 2 geplant.
 
 ## Wo was lebt
 
@@ -69,7 +68,7 @@ Die aktive Präsentation ist ein stilisiertes **2D-Orbit-Testbed** (umgebaut nac
   `BodyState` = Laufzeit, nur durch `OrbitService` geschrieben.
 - **Orbit-Update:** `src/sim/orbit/orbit_service.gd`.
 - **Numerische Integration:** `src/sim/orbit/local_orbit_integrator.gd`
-  (pure Mathematik, Velocity Verlet, nur von OrbitService verwendet).
+  *(geplant, nicht vorhanden — Schritt 4)*
 - **Registry:** `src/sim/universe/universe_registry.gd` (Autoload,
   schlank!).
 - **Bubble/View:** `src/runtime/local_bubble/local_bubble_manager.gd`
@@ -102,7 +101,7 @@ Die aktive Präsentation ist ein stilisiertes **2D-Orbit-Testbed** (umgebaut nac
 - Kameradrehung, Input, Spieler, lokale Oberfläche.
 - Kräfte außer Parentgravitation (kein Schub, kein N-Body).
 - Save/Load, Transit, Cluster-Wechsel, Content.
-- Erste Mechanik (Schiff mit Schub) — bewusst Folgeschritt nach Schritt 4,
+- Erste Mechanik (Schiff mit Schub) — bewusst erst nach Schritt 4 (noch nicht implementiert),
   mit explizitem Design-Gate davor.
 
 Wenn ein Nutzer dich fragt, "warum fehlt X", schlage zuerst nach in

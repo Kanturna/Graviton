@@ -10,7 +10,7 @@
 
 ---
 
-Stand der Sim-Dokumentation: Schritt 4 — NUMERIC_LOCAL / Regime-Wechsel.
+Architektur-Zieldokumentation: Schritte 1–4 (Step 1 implementiert, 2–4 geplant).
 
 ## Welche Ebene ist aktuell autoritativ
 
@@ -20,104 +20,94 @@ Stand der Sim-Dokumentation: Schritt 4 — NUMERIC_LOCAL / Regime-Wechsel.
 | `UniverseRegistry` | Wahrheit | `src/sim/universe/universe_registry.gd` |
 | `BodyState` (via `OrbitService`) | Wahrheit | `src/sim/bodies/body_state.gd`, `src/sim/orbit/orbit_service.gd` |
 | `LocalBubbleManager` | abgeleitet (View) | `src/runtime/local_bubble/local_bubble_manager.gd` |
-| `BubbleActivationSet` | abgeleitet (Relevanzklassifikation) | `src/runtime/local_bubble/bubble_activation_set.gd` |
+| `BubbleActivationSet` | abgeleitet (Relevanzklassifikation) — **geplant, nicht vorhanden** | `src/runtime/local_bubble/bubble_activation_set.gd` |
 | Testbed-Visuals, `DebugOverlay` | anzeigend | `scenes/testbeds/`, `src/tools/debug/` |
 
 Nichts im `scenes/`- oder `src/tools/`-Baum enthält autoritativen
 Simulationszustand.
 
-## Was in Schritt 4 implementiert wurde
+## Architekturplan Schritt 4 — NUMERIC_LOCAL / Regime-Wechsel
 
-### LocalOrbitIntegrator — reine Integrations-Mathematik
+> **Nicht implementiert.** `OrbitService` enthält aktuell nur `push_warning`
+> für NUMERIC_LOCAL-Bodies. Die folgenden Klassen und Methoden existieren noch nicht.
 
-Neue Klasse: `src/sim/orbit/local_orbit_integrator.gd`.
+### LocalOrbitIntegrator — geplante Klasse
+
+Datei: `src/sim/orbit/local_orbit_integrator.gd` *(nicht vorhanden)*
 
 Statische pure Funktionen, kein Zustand:
 - `gravity_acceleration_mps2(pos_m, parent_mu) → Vector3`
 - `step_velocity_verlet(pos_m, vel_mps, parent_mu, dt_s) → {pos, vel}`
 
-Velocity Verlet (zweite Ordnung, zeitreversibel, zwei a-Auswertungen/Schritt).
-Nur Parentgravitation. Kein N-Body, keine externen Kräfte.
+Velocity Verlet (zweite Ordnung, zeitreversibel). Nur Parentgravitation,
+kein N-Body, keine externen Kräfte.
 
-### OrbitService — NUMERIC_LOCAL-Pfad + Regime-Wechsel
+### OrbitService — geplante NUMERIC_LOCAL-Erweiterung
 
-Neue öffentliche Methode: `request_numeric_local_candidates(ids: Array[StringName])`.
-Wird von der Szene nach jedem `BubbleActivationSet.rebuild()` aufgerufen.
-OrbitService filtert intern auf Eligibility (nur KEPLER_APPROX-Profil).
+Neue Methode: `request_numeric_local_candidates(ids: Array[StringName])`.
+Wird nach jedem `BubbleActivationSet.rebuild()` aufgerufen.
+OrbitService filtert auf Eligibility (nur KEPLER_APPROX-Profil).
 
-Neue private Methoden:
-- `_enter_numeric_local()` — initialisiert Zustand aus Kepler, setzt `current_mode = NUMERIC_LOCAL`
-- `_exit_numeric_local()` — loggt Sprung via `push_warning`, setzt `current_mode = KEPLER_APPROX`
-- `_update_numeric_local()` — Verlet-Integration pro Tick
-- `_kepler_velocity_at()` — finite Differenz (ε = 1.0 s) für Eintrittszustand
-
-Eligibility-Regel:
+Eligibility-Regeln:
 - KEPLER_APPROX-Bodies: eligible
-- AUTHORED_ORBIT-Bodies: nie eligible (immer authored)
+- AUTHORED_ORBIT-Bodies: nie eligible
 - Root-Bodies: nie eligible
 
-### Composition Root (Testbed) — Bridge
+### Tests Schritt 4 (geplant)
 
-`orbit_testbed.gd._process()` ruft jetzt:
-```gdscript
-_activation.rebuild()
-_orbit_service.request_numeric_local_candidates(_activation.get_active_ids())
-```
-
-`time_scale` auf 1 000 gesetzt (statt 1 000 000) — NUMERIC_LOCAL-Integration
-ist bei 1M× zu instabil für beobachtbare Verifikation.
-
-### DebugOverlay
-
-Neuer Header-Eintrag: `NL-Bodies = X / Y` — zeigt, wie viele Bodies aktuell
-numerisch integriert werden.
-
-### Tests
-
-Neue Suite: `src/tests/orbit/test_numeric_local.gd` — 10 Invarianten:
-1. Bekannter Gravitationswert bei 1 AU
-2. Singularitätsschutz (pos = ZERO → ZERO)
-3. Kreisbahn-Radiusstabilität (< 0.5 % Drift nach 1 000 Schritten)
-4. Energieerhalt (< 1 % Änderung nach 1 Umlauf)
-5. Positionskontinuität beim Eintritt (< 100 m Sprung)
-6. AUTHORED_ORBIT nie in `_numeric_local_ids`
-7. Root-Body nie in `_numeric_local_ids`
-8. Austritt: Set leer, nächster Tick → KEPLER_APPROX
-9. Keine Mutation durch `request_numeric_local_candidates` allein
-10. `current_mode` bleibt NUMERIC_LOCAL nach mehreren Ticks
+Suite: `src/tests/orbit/test_numeric_local.gd` *(nicht vorhanden)*
+Geplante Invarianten: Gravitationswert bei 1 AU, Singularitätsschutz,
+Kreisbahn-Radiusstabilität, Energieerhalt, Positionskontinuität beim Eintritt,
+Eligibility-Constraints, Regime-Wechsel-Semantik.
 
 ---
 
-## Was in Schritt 3 implementiert wurde
+## Architekturplan Schritt 3 — BubbleActivationSet
 
-### BubbleActivationSet — fokus-relative geometrische Relevanzklassifikation
+> **Nicht implementiert.** `src/runtime/local_bubble/bubble_activation_set.gd`
+> existiert nicht. Die folgenden Klassen und Tests sind geplant, nicht vorhanden.
 
-Neue Klasse: `src/runtime/local_bubble/bubble_activation_set.gd`.
+### BubbleActivationSet — geplante Klasse
+
+Datei: `src/runtime/local_bubble/bubble_activation_set.gd` *(nicht vorhanden)*
 
 Klassifiziert Bodies nach fokus-relativer View-Distanz in drei explizite Zustände:
 - `ACTIVE` — innerhalb `activation_radius_m` (default: 5.0e8 m)
 - `INACTIVE_DISTANT` — erreichbar, aber außerhalb Radius
 - `INACTIVE_NO_LCA` — nicht fokus-relativ vergleichbar (anderer Baum)
 
-Neue Tests: `src/tests/bubble/test_activation.gd` — 11 Invarianten.
+### Tests Schritt 3 (geplant)
+
+Suite: `src/tests/bubble/test_activation.gd` *(nicht vorhanden)* — 11 geplante Invarianten.
 
 ---
 
-## Was in Schritt 2 implementiert wurde
+## Architekturplan Schritt 2 — LocalBubbleManager LCA
 
-### LocalBubbleManager — LCA-basierte fokus-relative Transformation
+> **Nicht implementiert.** Der aktuelle `LocalBubbleManager` ist ein Identity-Stub
+> (Step 1). Die LCA-basierte Transformation und die folgenden Methoden existieren noch nicht.
 
-Ersetzte den Identity-Stub durch echte fokus-relative Komposition via LCA
-(Lowest Common Ancestor). Akkumuliert Parent-Frame-Ketten als drei separate
-`float`-Variablen (IEEE-754 double) statt `Vector3` (float32), um
-Katastrophen-Kanzellation bei AU-Distanzen zu vermeiden.
+### LocalBubbleManager — geplante LCA-Erweiterung
 
-- `compose_view_position_m(id)` — fokus-relative Position in Metern
-- `compose_render_units(id)` — direkte Projektion für `Node3D.position`
-- `to_render_units(view_m)` — einzige erlaubte RENDER_SCALE-Anwendungsstelle
-- `debug_compose_world_m(id)` — nur für Tests/Debug, nie in Produktionslogik
+Datei: `src/runtime/local_bubble/local_bubble_manager.gd` *(vorhanden, aber Identity-Stub)*
 
-Neue Tests: `src/tests/bubble/test_bubble.gd`.
+Geplante Erweiterung: echte fokus-relative Komposition via LCA (Lowest Common
+Ancestor). Akkumuliert Parent-Frame-Ketten als drei separate `float`-Variablen
+(IEEE-754 double) statt `Vector3` (float32), um Katastrophen-Kanzellation bei
+AU-Distanzen zu vermeiden.
+
+Geplante neue Methoden:
+
+- `compose_render_units(id)` — direkte Projektion für `Node2D.position` *(nicht vorhanden)*
+- `to_render_units(view_m)` — einzige erlaubte RENDER_SCALE-Anwendungsstelle *(nicht vorhanden)*
+- `debug_compose_world_m(id)` — nur für Tests/Debug *(nicht vorhanden)*
+
+Bereits vorhanden (Step 1): `compose_view_position_m(id)`, `compose_world_position_m(id)`,
+`get_focus()`, `set_focus(id)`.
+
+### Tests Schritt 2 (geplant)
+
+Suite: `src/tests/bubble/test_bubble.gd` *(nicht vorhanden)*
 
 ---
 
@@ -146,10 +136,14 @@ Exit 0, alle Asserts grün (test_orbit + test_registry + test_starter_world Suit
 
 ## Logischer nächster Schritt
 
+Aktuell: Schritte 2–4 sind als Architektur dokumentiert, aber nicht im Code vorhanden.
+Der naheliegende nächste Implementierungsschritt ist Schritt 2 (LocalBubbleManager LCA),
+dann 3 (BubbleActivationSet), dann 4 (NUMERIC_LOCAL / Velocity Verlet).
+
 ### Design-Gate vor Schritt 5 — Erste Mechanik (Schiff mit Schub)
 
-Nach Schritt 4 ist das Projekt bereit, die erste Mechanik **bewusst zu definieren**
-(nicht sofort zu bauen). Ein expliziter kleiner Designschritt steht davor:
+Erst nach Abschluss von Schritt 4 steht ein expliziter Designschritt an, bevor mit
+Mechanik-Implementierung begonnen wird:
 
 - Welchen Body-Typ braucht ein Schiff? (`CONTROLLED` in `BodyType.Kind` ist vorbereitet,
   trägt aber noch keine Bewegungssemantik)
@@ -157,9 +151,6 @@ Nach Schritt 4 ist das Projekt bereit, die erste Mechanik **bewusst zu definiere
 - Wo lebt die forces-API? (Erweiterung in OrbitService oder neuer Layer?)
 - Welcher Input-Layer ist nötig?
 - Wer darf `parent_id` eines CONTROLLED-Bodies ändern (Andocken)?
-
-Erst wenn dieser Designschritt abgeschlossen ist, sollte mit der Implementierung
-begonnen werden.
 
 Alles, was darüber hinausgeht (Oberfläche, Transit, Content, Save/Load),
 wartet auf eine stabile Mechanik-Schicht.

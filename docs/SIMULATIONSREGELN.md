@@ -29,16 +29,20 @@ diese Regeln verstößt, bricht das Fundament.
 
 ## Orbit-Regime
 
-| Mode              | Status     | Verwendung                                                   |
-|-------------------|------------|--------------------------------------------------------------|
-| `AUTHORED_ORBIT`  | aktiv      | fest vorgegebene Kreisbahnen                                 |
-| `KEPLER_APPROX`   | aktiv      | analytische Kepler-Lösung ums Parent                         |
-| `NUMERIC_LOCAL`   | aktiv      | Velocity-Verlet-Integration um Parent; nur für Bodies im Aktiv-Set mit KEPLER_APPROX-Profil |
+| Mode              | Status      | Verwendung                                                   |
+|-------------------|-------------|--------------------------------------------------------------|
+| `AUTHORED_ORBIT`  | aktiv       | fest vorgegebene Kreisbahnen                                 |
+| `KEPLER_APPROX`   | aktiv       | analytische Kepler-Lösung ums Parent                         |
+| `NUMERIC_LOCAL`   | **geplant** | Velocity-Verlet-Integration um Parent; nur für Bodies im Aktiv-Set mit KEPLER_APPROX-Profil |
 
 `OrbitService` ist die **einzige** Stelle, die `BodyState`-Felder
 schreibt. Andere Klassen lesen nur.
 
-### NUMERIC_LOCAL — Regime-Wechsel-Semantik
+### NUMERIC_LOCAL — geplante Regime-Wechsel-Semantik
+
+> **Nicht implementiert.** `LocalOrbitIntegrator`, `BubbleActivationSet` und
+> `request_numeric_local_candidates()` existieren nicht. Dieser Abschnitt beschreibt
+> die geplante Architektur.
 
 **Eligibility:** Nur Bodies mit `OrbitProfile.mode == KEPLER_APPROX` können zu
 `NUMERIC_LOCAL` wechseln. AUTHORED_ORBIT-Bodies bleiben immer authored. Root-Bodies
@@ -76,17 +80,17 @@ anwendbar ist, hängt vom Bewegungsmodell ab.
 
 ## Referenzrahmen und Koordinatenräume
 
-| Raum           | Einheit       | Repräsentation                                  | Wahrheit? | Wer darf berechnen              |
-|----------------|---------------|-------------------------------------------------|-----------|---------------------------------|
-| **Sim-Space**  | m             | `BodyState.position_parent_frame_m` (relativ zum direkten Parent) | **ja** | nur `OrbitService` schreibt |
-| **World-Space**| m             | konzeptionell; Summe der Parent-Kette — **niemals als gespeicherter Wert** | nein (abgeleitet) | niemand speichert; nur intern in `LocalBubbleManager` als Double-Tripel |
-| **View-Space** | m             | fokus-relativ; `target_chain - focus_chain` bis LCA | nein (abgeleitet) | `LocalBubbleManager.compose_view_position_m` |
-| **Render-Units** | Godot-Einheit | `Node2D.position` im 2D-Testbed            | nein (Projektion) | `src/tools/rendering/` (teilt durch `RENDER_SCALE_M_PER_UNIT`) |
+| Raum | Einheit | Repräsentation | Wahrheit? | Wer darf berechnen |
+| --- | --- | --- | --- | --- |
+| **Sim-Space** | m | `BodyState.position_parent_frame_m` (relativ zum direkten Parent) | **ja** | nur `OrbitService` schreibt |
+| **World-Space** | m | konzeptionell; Summe der Parent-Kette — **niemals als gespeicherter Wert** | nein (abgeleitet) | niemand speichert; `compose_world_position_m` nur für Tests/Debug (Identity-Stub in Step 1) |
+| **View-Space** | m | fokus-relativ; aktuell Identity-Stub (Step 1), geplant: LCA-Komposition | nein (abgeleitet) | `LocalBubbleManager.compose_view_position_m` |
+| **Render-Units** | Godot-Einheit | `Node2D.position` im 2D-Testbed | nein (Projektion) | `src/tools/rendering/` (teilt durch `RENDER_SCALE_M_PER_UNIT`) |
 
 **Wichtig:** World-Space existiert als Konzept, aber **nicht als gespeicherter Wert**. Es gibt
 keine öffentliche Methode, die einen `Vector3` in absoluten Weltmetern für den Render-Pfad
-zurückgibt. `debug_compose_world_m` ist die bewusst klobig benannte Ausnahme — ausschließlich
-für Tests und Debug-Prints, erkennbar am `debug_`-Präfix.
+zurückgibt. `compose_world_position_m` ist für Tests und Debug-Prints vorgesehen —
+nie im Render-Pfad.
 
 Begriffs-Kurzreferenz:
 
@@ -94,7 +98,7 @@ Begriffs-Kurzreferenz:
 Sim-Space    (Parent-Frame, SI)  ── Wahrheit, in BodyState
 World-Space  (komponiert, SI)    ── abgeleitet, NIEMALS persistiert
 View-Space   (fokus-relativ, SI) ── abgeleitet, via compose_view_position_m
-Render-Units (Godot-Einheit)     ── Projektion, via to_render_units
+Render-Units (Godot-Einheit)     ── Projektion, via RENDER_SCALE_M_PER_UNIT
 ```
 
 ### Präzisionshinweis

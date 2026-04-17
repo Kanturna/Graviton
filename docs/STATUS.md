@@ -56,9 +56,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Bekannte offene Punkte
 
-- Einige aeltere Doku-Dateien enthalten noch historische Hinweise auf
-  das fruehere 3D-Testbed oder auf APIs, die inzwischen nicht mehr die
-  gelebte View-Schicht beschreiben.
+- Schritte 2–4 sind als Architektur dokumentiert, aber noch nicht implementiert
+  (`BubbleActivationSet`, `LocalOrbitIntegrator`, NUMERIC_LOCAL-Regime).
 - `phantom_camera` ist im Projekt vorhanden, wird aber in der aktuellen
   Runtime noch nicht aktiv genutzt.
 - Die Praesentation ist deutlich besser als vorher, aber noch nicht auf
@@ -69,6 +68,5 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- Dokumentationsdrift aufraeumen
 - zweiten Visual-Pass fuer Rendering/HUD machen
 - danach wieder staerker auf Gameplay-/Mechanik-Design fokussieren
