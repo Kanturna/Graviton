@@ -2,7 +2,6 @@ class_name OrbitViewRenderer
 extends Node2D
 
 const ORBIT_SAMPLE_COUNT: int = 120
-const ORBIT_LINE_WIDTH_PX: float = 1.35
 const TRAIL_LINE_WIDTH_PX: float = 2.0
 const MIN_TRAIL_STEP_PX: float = 1.2
 
@@ -123,11 +122,12 @@ func _rebuild_visuals() -> void:
 			_orbit_visuals[id] = {
 				"line": orbit_line,
 				"parent_id": def.parent_id,
+				"kind": def.kind,
 			}
 
 		var trail_line := AntialiasedLine2D.new()
 		trail_line.name = "%sTrail" % id
-		trail_line.default_color = _trail_color(def.kind)
+		trail_line.gradient = _trail_gradient(def.kind)
 		trail_line.z_index = -2
 		_trail_layer.add_child(trail_line)
 		_trail_visuals[id] = trail_line
@@ -197,8 +197,9 @@ func _apply_line_widths() -> void:
 			line.width = TRAIL_LINE_WIDTH_PX / _world_scale
 	for entry in _orbit_visuals.values():
 		var line: AntialiasedLine2D = entry.get("line", null)
+		var kind: int = entry.get("kind", BodyType.Kind.PLANET)
 		if line != null:
-			line.width = ORBIT_LINE_WIDTH_PX / _world_scale
+			line.width = _orbit_line_width(kind) / _world_scale
 
 
 func _build_orbit_points(def: BodyDef) -> PackedVector2Array:
@@ -340,11 +341,11 @@ static func _orbit_color(kind: int) -> Color:
 		BodyType.Kind.BLACK_HOLE:
 			return Color(0.72, 0.38, 0.90, 0.22)
 		BodyType.Kind.STAR:
-			return Color(1.0, 0.86, 0.46, 0.20)
+			return Color(1.0, 0.86, 0.46, 0.16)
 		BodyType.Kind.MOON:
-			return Color(0.85, 0.89, 0.97, 0.12)
+			return Color(0.85, 0.89, 0.97, 0.16)
 		_:
-			return Color(0.42, 0.62, 0.94, 0.17)
+			return Color(0.42, 0.62, 0.94, 0.28)
 
 
 static func _trail_color(kind: int) -> Color:
@@ -357,3 +358,23 @@ static func _trail_color(kind: int) -> Color:
 			return Color(0.86, 0.90, 0.98, 0.30)
 		_:
 			return Color(0.48, 0.72, 1.0, 0.34)
+
+
+static func _trail_gradient(kind: int) -> Gradient:
+	var base: Color = _trail_color(kind)
+	var grad := Gradient.new()
+	grad.set_color(0, Color(base.r, base.g, base.b, 0.0))
+	grad.set_color(1, base)
+	return grad
+
+
+static func _orbit_line_width(kind: int) -> float:
+	match kind:
+		BodyType.Kind.PLANET:
+			return 1.65
+		BodyType.Kind.STAR:
+			return 1.05
+		BodyType.Kind.MOON:
+			return 1.15
+		_:
+			return 1.35

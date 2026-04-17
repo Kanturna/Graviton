@@ -101,12 +101,14 @@ text = "Graviton"
 
 [node name="Subtitle" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
 layout_mode = 2
+visible = false
 theme_override_colors/font_color = Color(0.654902, 0.772549, 0.937255, 0.784314)
 text = "Stylized Orbit View"
 
 [node name="FocusValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
+theme_override_font_sizes/font_size = 16
 text = "Focus:"
 
 [node name="TimeValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
