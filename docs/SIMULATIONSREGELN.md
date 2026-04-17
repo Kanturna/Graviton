@@ -34,18 +34,17 @@ diese Regeln verstoesst, bricht das Fundament.
 |------------------|-------------|------------|
 | `AUTHORED_ORBIT` | aktiv       | fest vorgegebene Kreisbahnen |
 | `KEPLER_APPROX`  | aktiv       | analytische Kepler-Loesung ums Parent |
-| `NUMERIC_LOCAL`  | **geplant** | Velocity-Verlet-Integration um Parent; nur fuer Bodies im Aktiv-Set mit `KEPLER_APPROX`-Profil |
+| `NUMERIC_LOCAL`  | aktiv (minimal) | Velocity-Verlet-Integration um Parent; nur fuer Bodies im Aktiv-Set mit `KEPLER_APPROX`-Profil |
 
 `OrbitService` ist die **einzige** Stelle, die `BodyState`-Felder
 schreibt. Andere Klassen lesen nur.
 
-### NUMERIC_LOCAL - geplante Regime-Wechsel-Semantik
+### NUMERIC_LOCAL - aktuelle Regime-Wechsel-Semantik
 
-> **Teilweise implementiert.** `BubbleActivationSet` existiert jetzt als
-> read-only Aktivierungs-/Relevanzklassifikation. Nicht implementiert
-> bleiben `LocalOrbitIntegrator` und
-> `request_numeric_local_candidates()`. Dieser Abschnitt beschreibt die
-> noch offene Regime-Wechsel-Architektur.
+> **Minimal implementiert.** `BubbleActivationSet` bleibt read-only
+> Aktivierungs-/Relevanzklassifikation. Die eigentliche Regime-Bruecke
+> lebt jetzt in `OrbitService.request_numeric_local_candidates()` plus
+> `LocalOrbitIntegrator`.
 
 **Eligibility:** Nur Bodies mit `OrbitProfile.mode == KEPLER_APPROX`
 koennen zu `NUMERIC_LOCAL` wechseln. `AUTHORED_ORBIT`-Bodies bleiben
@@ -53,33 +52,47 @@ immer authored. Root-Bodies bleiben immer bei `ZERO`.
 
 **Eintritt (KEPLER_APPROX -> NUMERIC_LOCAL):** `OrbitService`
 initialisiert den Integrator-Zustand aus der Kepler-Loesung zum
-Eintritts-Zeitpunkt (Position + Velocity via finite Differenz, eps = 1 s).
-`BodyState.current_mode` wechselt zu `NUMERIC_LOCAL`.
+Eintritts-Zeitpunkt (Position + Velocity via zentraler finite Differenz,
+`VELOCITY_SEED_EPSILON_S = 1.0`). Im Eintritts-Tick wird noch nicht
+weiter integriert. `BodyState.current_mode` wechselt zu
+`NUMERIC_LOCAL`.
 
 **Austritt (NUMERIC_LOCAL -> KEPLER_APPROX):** Beim naechsten Tick wird
 die Kepler-Loesung reevaluiert. Ein kleiner Diskontinuitaetssprung ist
 moeglich und dokumentiert - `OrbitService` loggt ihn explizit via
-`push_warning`. Kein stiller Datendrift.
+`push_warning` inklusive Positions- und Velocity-Delta. Kein stiller
+Datendrift.
 
 **Trigger:** Die Szene (Composition Root) ruft
 `orbit_service.request_numeric_local_candidates(active_ids)` nach jedem
 `BubbleActivationSet.rebuild()` auf. `OrbitService` entscheidet intern
 anhand von Eligibility, welche davon tatsaechlich wechseln.
 
+**Request-Semantik:** Jeder Aufruf ersetzt das bisherige Wunsch-Set
+vollstaendig. Ein identischer erneuter Request auf einen bereits
+numerischen Body darf keinen Neu-Eintritt und kein Reseeding ausloesen.
+
 **Integrator:** Velocity Verlet, zwei Beschleunigungsauswertungen pro
 Schritt. Nur Parentgravitation
 (`LocalOrbitIntegrator.gravity_acceleration_mps2`). Kein N-Body, keine
 externen Kraefte in diesem Schritt.
 
-**dt-Limitation:** Wenn `NUMERIC_LOCAL` spaeter eingefuehrt wird,
-steigt bei hohem `time_scale` direkt das simulierte `dt` pro Frame.
-Dann braucht die numerische Bahn voraussichtlich Substepping oder einen
-High-Speed-Guardrail. Fuer den aktuellen Foundation-Stand mit
-analytischen Orbit-Profilen ist das kein Problem.
+**Ein-Frame-Versatz:** Das Aktivierungs-Wish entsteht aktuell in
+`_process()`, der eigentliche `sim_tick` laeuft in `_physics_process()`.
+Dadurch bedient der Wish aus Frame `T` den Tick in Frame `T+1`. Bei
+hohen `time_scale` kann das am Aktivierungsrand zu Entry/Exit-Thrashing
+fuehren. Das ist bewusst akzeptierte offene Schuld fuer einen spaeteren
+Guardrail-/Substep-Schritt.
+
+**dt-Limitation:** `NUMERIC_LOCAL` nutzt in diesem minimalen Slice weder
+Substepping noch einen High-Speed-Guardrail. Bei grossen `dt` steigt
+deshalb das Risiko numerischer Drift oder Regime-Thrashing. Das ist ein
+bewusster Folgepunkt, kein uebersehener Bug.
 
 **CONTROLLED-Bodies:** Fuer `BodyType.Kind.CONTROLLED` sind
 Regime-Wechsel-Regeln noch nicht definiert - das ist ein bewusster
-Design-Gate vor Schritt 5. Die Eligibility-Regel der aktuellen Phase
+Design-Gate vor der spaeteren CONTROLLED-/Schub-Schicht. Die
+Eligibility-Regel der aktuellen Phase
 (nur `KEPLER_APPROX`-Profil -> `NUMERIC_LOCAL`) beschreibt
 passiv-orbitierende Bodies. Ob sie direkt auf kontrollierte Bodies
 anwendbar ist, haengt vom Bewegungsmodell ab.
@@ -174,8 +187,9 @@ hinein will, wechselt `TimeService` auf ein Epoch-Relative-Modell
 ## Bubble-Aktivierung
 
 > **Hinweis:** `BubbleActivationSet` ist jetzt als read-only
-> Runtime-Service implementiert. Nicht implementiert bleibt die
-> eigentliche `NUMERIC_LOCAL`-Anbindung in `OrbitService`.
+> Runtime-Service implementiert und wird durch die Szene in
+> `OrbitService.request_numeric_local_candidates()` gebridged. Es
+> schreibt selbst weiterhin keine `BodyState`-Felder.
 
 | Begriff | Bedeutung | Wer entscheidet |
 |---|---|---|
@@ -189,10 +203,11 @@ Aktiv-Set ist eine geometrische Relevanzklassifikation. Sie sind
 orthogonal.
 
 `BubbleActivationSet` schreibt **niemals** `BodyState`.
-`current_mode`-Wechsel (`KEPLER_APPROX -> NUMERIC_LOCAL`) werden spaeter
-durch `OrbitService.request_numeric_local_candidates()` ausgeloest.
+`current_mode`-Wechsel (`KEPLER_APPROX -> NUMERIC_LOCAL`) werden
+ausschliesslich durch `OrbitService.request_numeric_local_candidates()`
+plus den naechsten Sim-Tick ausgeloest.
 
-**Klassifikationsgruende** (geplant):
+**Klassifikationsgruende** (aktueller Stand):
 
 - `ACTIVE` - fokus-relativ erreichbar, innerhalb Radius
 - `INACTIVE_DISTANT` - fokus-relativ erreichbar, ausserhalb Radius
@@ -211,9 +226,8 @@ durch `OrbitService.request_numeric_local_candidates()` ausgeloest.
   fokus-relative Darstellung (Step-2-LCA-Pfad beibehalten).
 - `BubbleActivationSet` darf **kein** `BodyState`-Feld schreiben -
   Aktivierungsklassifikation ist abgeleitet.
-- Wenn `NUMERIC_LOCAL` implementiert wird:
-  `BodyState.current_mode`-Wechsel darf nur durch `OrbitService`
+- `BodyState.current_mode`-Wechsel duerfen nur durch `OrbitService`
   erfolgen - nie direkt von aussen.
 - `AUTHORED_ORBIT`-Bodies duerfen nicht zu `NUMERIC_LOCAL` wechseln.
-- Wenn `LocalOrbitIntegrator` implementiert wird: Er darf **niemals**
-  `BodyState` schreiben - er ist pure Mathematik.
+- `LocalOrbitIntegrator` darf **niemals** `BodyState` schreiben - er
+  ist pure Mathematik.

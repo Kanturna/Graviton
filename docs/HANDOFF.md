@@ -1,13 +1,14 @@
 # Graviton - Handoff
 
-> Aktueller Stand (2026-04-17):
+> Aktueller Stand (2026-04-18):
 > Die Praesentationsschicht ist ein stilisiertes 2D-Orbit-Testbed.
-> Foundation-Schritte 2-3 sind implementiert, und das Testbed laedt
+> Foundation-Schritte 2-4 sind implementiert, und das Testbed laedt
 > Welten jetzt explizit ueber `WorldLoader` statt direkt aus der
 > Registry.
 > Das Weltmodell in `BodyDef` ist jetzt um erste statische Umgebungs-
 > felder verbreitert. `BubbleActivationSet` ist jetzt als read-only
-> Runtime-Service implementiert; `NUMERIC_LOCAL` bleibt geplant. Fuer die
+> Runtime-Service implementiert und bridged in einen minimalen
+> `NUMERIC_LOCAL`-Pfad ueber `OrbitService`. Fuer die
 > aktuelle Priorisierung lies zuerst `docs/STATUS.md` und
 > `docs/NEXT_STEPS.md`.
 
@@ -94,13 +95,19 @@ Verantwortung:
 
 ## Schritt 4 - NUMERIC_LOCAL / Regime-Wechsel
 
-Status: geplant, nicht implementiert.
+Status: minimal implementiert.
 
-Geplante Bausteine:
+Aktuelle Bausteine:
 - `src/sim/orbit/local_orbit_integrator.gd`
 - `OrbitService.request_numeric_local_candidates(ids)`
 - Eligibility nur fuer `KEPLER_APPROX`
+- `OrbitProfile.mode` bleibt unveraendert; nur
+  `BodyState.current_mode` toggelt
+- analytisches Velocity-Seeding via zentraler finite Differenz
+  (`VELOCITY_SEED_EPSILON_S = 1.0`)
+- Velocity-Verlet nur mit Parentgravitation
 - Logging bei Rueckwechseln zu `KEPLER_APPROX`
+- bewusst noch kein Substepping / kein High-Speed-Guardrail
 
 ## Verifikation
 
@@ -110,22 +117,24 @@ Headless-Testlauf:
 godot --path . --headless --script res://src/tests/test_runner.gd --quit
 ```
 
-Erwarteter Stand nach P4:
+Erwarteter Stand nach P5:
 - `test_orbit`
+- `test_local_orbit_integrator`
 - `test_registry`
 - `test_starter_world`
 - `test_local_bubble_step2`
 - `test_world_loader`
 - `test_body_def_world_model`
 - `test_bubble_activation_set`
+- `test_orbit_service_numeric_local`
 
 alle gruen.
 
 ## Naechster sinnvoller Schritt
 
 Die aktuelle Projekt-Roadmap priorisiert jetzt:
-1. `NUMERIC_LOCAL`
-2. danach erste abgeleitete planetare Zustandswerte
+1. erste abgeleitete planetare Zustandswerte
+2. danach Stabilitaets-Guardrails fuer den numerischen Pfad
 3. spaeter Generator-/Systemschritte und weitere Foundation-Folgen
 
 Die Architektur-Schritte 3 und 4 bleiben wichtig, aber der naechste
@@ -141,5 +150,5 @@ des jetzt verbreiterten Weltmodells.
 - keine prozedurale Generator-Schicht
 
 Erst nach einer stabilen Foundation aus Loader, Weltmodell,
-Bubble-Aktivierung und spaeterem Regime-Wechsel sollten Mechanik- oder
-Content-Schichten dazukommen.
+Bubble-Aktivierung und minimal implementiertem Regime-Wechsel sollten
+Mechanik- oder Content-Schichten dazukommen.

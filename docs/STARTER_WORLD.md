@@ -111,9 +111,14 @@ Frame gerendert wird. Alle Bodies starten mit konsistenten Positionen statt Defa
 - `LocalBubbleManager` nutzt jetzt die Step-2-LCA-Komposition fuer die
   fokus-relative Darstellung; Bodies aus anderen Roots liefern bewusst
   `Vector3.INF`.
-- `NUMERIC_LOCAL` ist nicht implementiert - Planeten bleiben bei `KEPLER_APPROX`.
 - `BubbleActivationSet` ist jetzt read-only implementiert, wird im
-  Testbed pro Frame rebuilt und klassifiziert Bodies relativ zum Fokus,
-  triggert aber noch keine Regime-Wechsel.
+  Testbed pro Frame rebuilt und klassifiziert Bodies relativ zum Fokus.
+- Der minimale `NUMERIC_LOCAL`-Slice ist jetzt implementiert:
+  eligible `KEPLER_APPROX`-Planeten koennen ueber das Aktiv-Set in den
+  numerischen Parent-Only-Pfad wechseln; Sterne und Monde bleiben in
+  der StarterWorld authored.
+- Fuer hohe `time_scale` gibt es im numerischen Pfad noch keinen
+  Substepping-/Guardrail-Schritt. Das ist eine bekannte Folgeaufgabe,
+  kein versteckter Fehler dieser Toy-Welt.
 
 Diese Limits sind bewusst. Die spaeteren Architektur-Schritte bauen darauf auf.

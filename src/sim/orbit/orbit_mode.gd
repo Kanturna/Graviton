@@ -2,9 +2,9 @@ class_name OrbitMode
 extends RefCounted
 
 # Enum-Namespace fuer Orbit-Regime. Nicht instanziieren.
-# AUTHORED_ORBIT  — fest vorgegebene Kreisbahn, deterministisch.
-# KEPLER_APPROX   — analytische Kepler-Loesung ums Parent.
-# NUMERIC_LOCAL   — reserviert, nicht in diesem Foundation-Slice implementiert.
+# AUTHORED_ORBIT  - fest vorgegebene Kreisbahn, deterministisch.
+# KEPLER_APPROX   - analytische Kepler-Loesung ums Parent.
+# NUMERIC_LOCAL   - minimaler numerischer Parent-Only-Pfad via Velocity Verlet.
 
 enum Kind {
 	AUTHORED_ORBIT,

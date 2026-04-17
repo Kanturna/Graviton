@@ -1,6 +1,6 @@
 # Graviton - Status
 
-Stand: 2026-04-17
+Stand: 2026-04-18
 
 ## Kurzfassung
 
@@ -31,6 +31,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `BubbleActivationSet` klassifiziert Bodies jetzt read-only relativ
   zum aktuellen Fokus in `ACTIVE`, `INACTIVE_DISTANT` und
   `INACTIVE_NO_LCA`.
+- `OrbitService` bridged das aktuelle Aktiv-Set jetzt explizit in den
+  Sim-Layer und schaltet eligible `KEPLER_APPROX`-Bodies minimal auf
+  `NUMERIC_LOCAL`.
+- `LocalOrbitIntegrator` ist als pure Parent-Only-Mathematik via
+  Velocity Verlet implementiert.
 - Bodies aus einem anderen Root als der aktuelle Fokus liefern bewusst
   `Vector3.INF` und werden im Renderer nicht lokalisiert.
 - `TimeService` und `UniverseRegistry` sind die zentralen Autoloads.
@@ -82,6 +87,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tests/sim/test_body_def_world_model.gd`
 - `src/runtime/local_bubble/bubble_activation_set.gd`
 - `src/tests/runtime/test_bubble_activation_set.gd`
+- `src/sim/orbit/local_orbit_integrator.gd`
+- `src/tests/orbit/test_local_orbit_integrator.gd`
+- `src/tests/sim/test_orbit_service_numeric_local.gd`
 - `docs/SIMULATIONSREGELN.md`
 - `src/runtime/local_bubble/local_bubble_manager.gd`
 - `src/tests/runtime/test_local_bubble_step2.gd`
@@ -94,20 +102,27 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Bekannte offene Punkte
 
-- Schritte 1-3 sind jetzt implementiert; als grosser Foundation-Block
-  offen bleibt vor allem noch Schritt 4
-  (`LocalOrbitIntegrator`, `NUMERIC_LOCAL`-Regime).
+- Schritte 1-4 sind jetzt minimal implementiert; der groesste offene
+  Folgepunkt im Regime-Fundament ist nicht mehr der erste
+  `NUMERIC_LOCAL`-Slice, sondern dessen spaeterer
+  Stabilitaets-Guardrail (Substepping / High-Speed-Limits /
+  Anti-Thrashing).
 - `LocalBubbleManager` liefert jetzt die dokumentierte LCA-/
   praezisionsbewusste Bubble-Komposition fuer same-root-Faelle.
 - `BubbleActivationSet` ist jetzt implementiert, wird im Testbed pro
-  Frame rebuilt und dient vorerst nur Debug-/Relevanzklassifikation,
-  noch ohne `OrbitService`-Anbindung.
+  Frame rebuilt und wird jetzt read-only als Wish-Quelle fuer
+  `OrbitService.request_numeric_local_candidates(...)` genutzt.
 - Das Projekt ist topologisch offen fuer mehrere Root-Systeme und hat
   jetzt eine explizite Loader- und Aktivierungsschicht, aber noch
-  keinen Regime-Wechsel auf Basis dieser Aktivierung.
+  keinen Stabilitaets-Guardrail fuer hohe `time_scale` im numerischen
+  Pfad.
 - `BodyDef` traegt jetzt erste statische Weltmodell-Felder, aber
   daraus werden noch keine abgeleiteten planetaren Zustandswerte
   berechnet.
+- Der Wish-Pfad fuer `NUMERIC_LOCAL` ist aktuell bewusst um einen Frame
+  gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`).
+  Das ist im kleinen P5-Slice akzeptiert und fuer spaetere
+  Guardrail-Arbeit dokumentiert.
 - Topologie-Helfer liegen aktuell noch an mehreren Stellen
   (`OrbitViewRenderer`, `LocalBubbleManager`, Debug/Test-Helfer) und
   koennen spaeter sinnvoll zentralisiert werden.
@@ -122,10 +137,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- als naechsten grossen Schritt `NUMERIC_LOCAL` /
-  `LocalOrbitIntegrator` auf Basis des jetzt vorhandenen
-  `BubbleActivationSet` angehen
-- danach erste abgeleitete planetare Zustandsgroessen auf Basis des
-  jetzt breiteren Weltmodells angehen
+- als naechsten grossen Schritt erste abgeleitete planetare
+  Zustandsgroessen auf Basis des jetzt breiteren Weltmodells angehen
+- danach den numerischen Pfad um Substepping / High-Speed-Guardrails
+  erweitern, wenn hohe `time_scale` oder Radiusrand-Thrashing stoeren
 - spaeter Topologie-Helfer konsolidieren, wenn Bubble-/Activation-
   Schicht und Mehrwurzel-Pfade stabil sind

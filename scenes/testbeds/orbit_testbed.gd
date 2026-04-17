@@ -60,6 +60,8 @@ func _ready() -> void:
 	_bubble.set_focus(_focus_order[_focus_index])
 	_activation_set.configure(UniverseRegistry, _bubble)
 	_activation_set.rebuild()
+	_orbit_service.request_numeric_local_candidates(_activation_set.get_active_ids())
+	_orbit_service.recompute_all_at_time(TimeService.sim_time_s)
 	_renderer.configure(UniverseRegistry, _bubble)
 	_debug_overlay.configure(UniverseRegistry, TimeService, _bubble, _activation_set)
 	_debug_overlay.visible = false
@@ -74,11 +76,12 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	# P4: activation_set wird bereits klassifiziert, aber noch nicht fuer
-	# NUMERIC_LOCAL konsumiert. Der per-frame-Rebuild bleibt bewusst
-	# parallel zum Auto-Rebuild auf focus_changed, damit Callback-Pfade im
-	# selben Frame konsistente Klassifikationen sehen.
+	# P5: activation_set wird jetzt read-only klassifiziert und direkt als
+	# Wish-Set in OrbitService gebridged. Der per-frame-Rebuild bleibt
+	# bewusst parallel zum Auto-Rebuild auf focus_changed, damit
+	# Callback-Pfade im selben Frame konsistente Klassifikationen sehen.
 	_activation_set.rebuild()
+	_orbit_service.request_numeric_local_candidates(_activation_set.get_active_ids())
 	_update_manual_pan(delta)
 	_refresh_target_view()
 	_apply_view_transform(false, delta)

@@ -96,10 +96,9 @@ Wenn du ueberlegst, der Registry Funktionalitaet hinzuzufuegen, pruefe:
 
 Hinweis:
 Das folgende Snippet beschreibt den aktuellen Composition-Root-Stand
-nach Schritt 3. Der aktuelle Code in
+nach Schritt 4. Der aktuelle Code in
 `scenes/testbeds/orbit_testbed.gd` nutzt bereits einen expliziten
-`WorldLoader` und ein verdrahtetes `BubbleActivationSet`. Nicht
-implementiert bleibt nur noch der gelebte
+`WorldLoader`, ein verdrahtetes `BubbleActivationSet` und den gelebten
 `request_numeric_local_candidates(...)`-Pfad im Runtime-Flow.
 
 Die Verdrahtung passiert pro Szene in deren Root-Script:
@@ -113,6 +112,10 @@ _ready():
     LocalBubbleManager.set_focus(...)
     BubbleActivationSet.configure(UniverseRegistry, LocalBubbleManager)
     BubbleActivationSet.rebuild()
+    OrbitService.request_numeric_local_candidates(
+        BubbleActivationSet.get_active_ids()
+    )
+    OrbitService.recompute_all_at_time(TimeService.sim_time_s)
     DebugOverlay.configure(
         UniverseRegistry,
         TimeService,
@@ -199,6 +202,10 @@ wuerde den Service zu einer monolithischen Klasse machen.
 `gravity_acceleration_mps2()` und `step_velocity_verlet()`. Liest und
 schreibt kein `BodyState`. Kein Autoload.
 
+**Aktueller Stand:** Implementiert als minimaler Parent-Only-Integrator
+in `src/sim/orbit/local_orbit_integrator.gd`. Kein Substepping, kein
+High-Speed-Guardrail, keine N-Body-Kraefte.
+
 ## Regime-Wechsel-Modell - ADR
 
 **Entscheidung:** Der Wechsel zwischen `KEPLER_APPROX` und
@@ -213,7 +220,7 @@ beide Schichten und bridged sie explizit.
 
 **API:** `OrbitService.request_numeric_local_candidates(ids)` -
 Kandidaten-Angebot von der Szene. `OrbitService` filtert intern auf
-Eligibility.
+Eligibility und ersetzt das Wunsch-Set bei jedem Aufruf vollstaendig.
 
 **Eligibility:** `AUTHORED_ORBIT`-Bodies wechseln nie zu
 `NUMERIC_LOCAL`. Root-Bodies wechseln nie. Nur `KEPLER_APPROX` ist
@@ -222,6 +229,16 @@ eligible.
 **Uebergangs-Logging:** Beim Austritt (`NUMERIC_LOCAL` ->
 `KEPLER_APPROX`) ruft `OrbitService` `push_warning` auf, damit
 Diskontinuitaeten sichtbar bleiben.
+
+**Eintritts-Seeding:** Beim Eintritt in `NUMERIC_LOCAL` seedet
+`OrbitService` Position und Velocity aus der analytischen Kepler-Loesung
+am aktuellen `t_s`. Velocity wird per zentraler finite Differenz mit
+`VELOCITY_SEED_EPSILON_S = 1.0` berechnet.
+
+**Bekannte Rest-Limitation:** Der Wish-Pfad entsteht aktuell in
+`_process()`, der eigentliche Sim-Tick in `_physics_process()`. Dieser
+Ein-Frame-Versatz bleibt fuer den minimalen Slice bewusst stehen und
+wird spaeter ueber Guardrails / Substepping adressiert.
 
 ## Frame-Modell - ADR (vorlaeufig)
 
@@ -246,8 +263,8 @@ erstellen statt diesen still zu erweitern.
 ## Kontrollierbare Bodies - Design-Gate
 
 `BodyType.Kind.CONTROLLED` ist strukturell vorbereitet, aber semantisch
-noch nicht festgelegt. Bewusst offene Fragen fuer den Designschritt vor
-Schritt 5:
+noch nicht festgelegt. Bewusst offene Fragen fuer den spaeteren
+Designschritt vor einer CONTROLLED-/Schub-Schicht:
 
 - Hat ein `CONTROLLED`-Body immer ein `OrbitProfile`?
 - Ist ein `CONTROLLED`-Body automatisch `NUMERIC_LOCAL`-eligible?

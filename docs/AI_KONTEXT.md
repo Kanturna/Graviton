@@ -10,11 +10,11 @@ Bubble. Das Projekt ist bewusst als mehrschichtige Simulation
 aufgesetzt, nicht als Arcade-Spiel und nicht als Tutorial-Scaffold.
 
 Aktueller Stand:
-- Foundation-Schritte 1-3 sind implementiert
+- Foundation-Schritte 1-4 sind implementiert
 - Weltladen laeuft jetzt explizit ueber `WorldLoader`
 - `BodyDef` enthaelt jetzt erste statische Weltmodell-Felder
 - Schritt 3 (`BubbleActivationSet`) ist implementiert
-- Schritt 4 (`NUMERIC_LOCAL`) bleibt noch geplant
+- Schritt 4 (`NUMERIC_LOCAL`) ist als minimaler Slice implementiert
 - die aktive Praesentation ist ein stilisiertes 2D-Orbit-Testbed
 
 ## Wichtige Grundsaetze
@@ -36,7 +36,7 @@ Aktueller Stand:
 - `compose_root_local_position_m` nur in Tests und Debug-Overlay.
 - `BubbleActivationSet` schreibt keine `BodyState`-Felder.
 - Fokus, Aktiv-Set und `NUMERIC_LOCAL` sind drei verschiedene Konzepte.
-- `LocalOrbitIntegrator` wird spaeter pure Mathematik sein und kein `BodyState` schreiben.
+- `LocalOrbitIntegrator` ist pure Mathematik und schreibt kein `BodyState`.
 - Keine naive `Vector3`-Addition/Subtraktion ueber grosse Distanzen (> ~1e9 m).
   `LocalBubbleManager` nutzt dafuer jetzt den Step-2-LCA-Pfad; diese
   Praezisionsentscheidung darf nicht wieder durch einen globalen
@@ -52,7 +52,7 @@ Aktueller Stand:
   `rotation_period_s`, `axial_tilt_rad`, `luminosity_w`, `albedo`
 - Orbit-Update: `src/sim/orbit/orbit_service.gd`
 - Weltladen: `src/sim/world/world_loader.gd`
-- Numerische Integration spaeter: `src/sim/orbit/local_orbit_integrator.gd`
+- Numerische Integration: `src/sim/orbit/local_orbit_integrator.gd`
 - Registry: `src/sim/universe/universe_registry.gd`
 - Bubble/View: `src/runtime/local_bubble/local_bubble_manager.gd`
 - Bubble-Aktivierung: `src/runtime/local_bubble/bubble_activation_set.gd`
@@ -77,7 +77,8 @@ Aktueller Stand:
 - Kameradrehung, Player-Input, lokale Oberflaechen
 - Kraefte ausser Parentgravitation
 - Save/Load, Transit, Cluster-Wechsel, Content
-- Schiffe mit Schub - bewusst erst nach Schritt 4 und einem expliziten Design-Gate
+- Schiffe mit Schub - bewusst erst nach dem aktuellen NUMERIC_LOCAL-Slice
+  und einem expliziten Design-Gate
 
 Wenn ein Nutzer fragt, warum etwas fehlt, schlage zuerst in
 `docs/HANDOFF.md` und `docs/NEXT_STEPS.md` nach. Meist ist es ein

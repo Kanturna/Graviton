@@ -1,6 +1,6 @@
 # Graviton - Next Steps
 
-Stand: 2026-04-17
+Stand: 2026-04-18
 
 ## Prioritaet 0 - Test-Baseline wieder gruen machen - erledigt
 
@@ -73,21 +73,43 @@ Erledigt:
 - neue Runtime-Tests fuer Multi-Root, Boundary-Fall `radius = 0.0` und
   Auto-Rebuild bei `focus_changed`
 
-## Danach - Foundation Phase D: Regime-Wechsel
+## Prioritaet 5 - Foundation Phase D: Regime-Wechsel / NUMERIC_LOCAL - erledigt
 
-- `NUMERIC_LOCAL` / `LocalOrbitIntegrator`
-- Tests fuer Regime-Wechsel, Praezision und Multi-Root-Komposition
-- spaeter Topologie-Helfer sinnvoll zentralisieren, wenn die
-  Activation-/Mehrwurzel-Pfade stabil sind
+Ziel:
+Das Aktiv-Set aus der Bubble-Schicht als expliziten Wunsch in den
+Sim-Layer bridgen und einen minimalen numerischen Parent-Only-Pfad fuer
+eligible `KEPLER_APPROX`-Bodies einziehen.
+
+Erledigt:
+
+- `LocalOrbitIntegrator` als pure Mathematik im `src/sim/`-Layer
+- `OrbitService.request_numeric_local_candidates(ids)` als
+  Replace-API fuer das aktuelle Wunsch-Set
+- Regime-Wechsel nur ueber `BodyState.current_mode`, nicht ueber
+  `OrbitProfile.mode`
+- analytisches Velocity-Seeding via zentraler finite Differenz
+  (`VELOCITY_SEED_EPSILON_S = 1.0`)
+- Exit-Warnings mit Positions-/Velocity-Deltas beim Rueckwechsel auf
+  `KEPLER_APPROX`
+- neue Tests fuer Integrator, Idempotenz, Replace-Semantik und
+  Regime-Wechsel
 
 ## Danach - Planetare Zustandsableitung
 
-Erst wenn Weltmodell, Loader und Bubble-Fundament tragfaehig sind:
+Erst wenn Weltmodell, Loader und Bubble-/Regime-Fundament tragfaehig sind:
 
 - erste abgeleitete planetare Zustandsgroessen
   - Insolation / Temperatur
   - einfache Bewohnbarkeits- oder Unwirtlichkeitsmarker
   - spaeter Strahlung / Atmosphaerenklassen / weitere Umweltfaktoren
+
+## Offene Folgeaufgabe - Stabilitaets-Guardrail fuer NUMERIC_LOCAL
+
+- spaeter Substepping / High-Speed-Guardrail fuer hohe `time_scale`
+- moegliche Hysterese oder andere Anti-Thrashing-Massnahmen am
+  Aktivierungsrand
+- spaeter Topologie-Helfer sinnvoll zentralisieren, wenn die
+  Activation-/Mehrwurzel-Pfade stabil sind
 
 ## Spaeter - Prozedurale Systeme
 
