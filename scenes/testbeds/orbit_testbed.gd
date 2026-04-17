@@ -8,6 +8,7 @@ const MIN_ZOOM_BIAS: float = 0.20
 const MAX_ZOOM_BIAS: float = 24.0
 const ABSOLUTE_MIN_VIEW_SCALE: float = 0.18
 const MIN_DYNAMIC_MAX_VIEW_SCALE: float = 32768.0
+const GLOBAL_OVERVIEW_RADIUS_FACTOR: float = 1.75
 const PAN_SPEED_PX_PER_S: float = 960.0
 
 @onready var _orbit_service: OrbitService = $OrbitService
@@ -213,7 +214,7 @@ func _global_overview_scale(viewport_size: Vector2) -> float:
 		return ABSOLUTE_MIN_VIEW_SCALE
 
 	var frame: Dictionary = _renderer.get_focus_frame(root_id)
-	var root_radius: float = maxf(float(frame.get("radius", 1.0)), 1.0)
+	var root_radius: float = maxf(float(frame.get("radius", 1.0)), 1.0) * GLOBAL_OVERVIEW_RADIUS_FACTOR
 	return maxf(_fit_scale_for_radius(root_radius, viewport_size), ABSOLUTE_MIN_VIEW_SCALE)
 
 

@@ -40,6 +40,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
 - Unter `100%` kann die Ansicht jetzt von jedem Fokus aus wieder bis zum
   globalen Systemueberblick herauszoomen.
+- Auch der Root-/BH-Fokus kann jetzt unter `100%` noch weiter auf einen
+  extra weiten Gesamtueberblick herauszoomen.
 - `100%` bleibt der lokale Fokus-Fit; der Nahzoom reicht jetzt bis `2400%`.
 - Root-Fokus und globaler Ueberblick werden jetzt dynamisch ueber den
   Root-Body bestimmt statt implizit ueber `obsidian`.

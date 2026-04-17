@@ -60,7 +60,7 @@ Detail-/View-Grenze stehen.
 Zoom-Semantik:
 
 - `100%` = lokaler Fokus-Fit
-- `20%` = globaler Ueberblick, auch von Stern-/Planeten-/Mondfokus aus
+- `20%` = globaler Ueberblick mit zusaetzlichem Weitwinkel, auch von Stern-/Planeten-/Mondfokus aus
 - `2400%` = tieferer Close-up-Zoom ohne fruehen internen Scale-Cap
 
 HUD:
