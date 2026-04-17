@@ -44,19 +44,19 @@ Erledigt:
   transaktionalen Loader-Pfad
 - `UniverseRegistry` ist wieder auf Registry-Scope zurueckgefuehrt
 
-## Prioritaet 3 - Foundation Phase C: World Model verbreitern
+## Prioritaet 3 - Foundation Phase C: World Model verbreitern - erledigt
 
 Ziel:
 Die statische Simulationswahrheit fuer Bodies so erweitern, dass
 spaetere planetare Zustaende, Generatoren und echte Mehrsystem-Welten
 auf einer sauberen Datenbasis aufsetzen koennen.
 
-Gemeinte Richtung:
+Erledigt:
 
-- `BodyDef` um fehlende statische Welt-/Physikfelder erweitern
-  (z. B. Rotation, Achsneigung, Luminositaet, Albedo)
-- bestehende Toy-Welten mit Defaults kompatibel halten
-- noch keine abgeleiteten Temperatur-/Habitability-Systeme einbauen
+- `BodyDef` um Rotation, Achsneigung, Leuchtkraft und Albedo erweitert
+- Referenzwelten explizit mit ersten Weltmodell-Werten befuellt
+- neue Validierungs- und BodyDef-World-Model-Tests ergaenzt
+- weiterhin noch keine abgeleiteten Temperatur-/Habitability-Systeme
 
 ## Danach - Foundation Phase D: Aktivierung und Regime
 

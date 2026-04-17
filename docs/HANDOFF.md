@@ -4,7 +4,9 @@
 > Die Praesentationsschicht ist ein stilisiertes 2D-Orbit-Testbed.
 > Foundation-Schritt 2 ist implementiert, und das Testbed laedt Welten
 > jetzt explizit ueber `WorldLoader` statt direkt aus der Registry.
-> `BubbleActivationSet` und `NUMERIC_LOCAL` bleiben geplant. Fuer die
+> Das Weltmodell in `BodyDef` ist jetzt um erste statische Umgebungs-
+> felder verbreitert. `BubbleActivationSet` und `NUMERIC_LOCAL` bleiben
+> geplant. Fuer die
 > aktuelle Priorisierung lies zuerst `docs/STATUS.md` und
 > `docs/NEXT_STEPS.md`.
 
@@ -17,6 +19,7 @@
 | `TimeService` | Wahrheit | `src/core/time/time_service.gd` |
 | `UniverseRegistry` | Wahrheit | `src/sim/universe/universe_registry.gd` |
 | `WorldLoader` | Sim-Factory / Weltladepfad | `src/sim/world/world_loader.gd` |
+| `BodyDef` | statische Weltdefinition | `src/sim/bodies/body_def.gd` |
 | `BodyState` via `OrbitService` | Wahrheit | `src/sim/bodies/body_state.gd`, `src/sim/orbit/orbit_service.gd` |
 | `LocalBubbleManager` | abgeleitet (View) | `src/runtime/local_bubble/local_bubble_manager.gd` |
 | `BubbleActivationSet` | abgeleitet (geplant) | `src/runtime/local_bubble/bubble_activation_set.gd` |
@@ -60,6 +63,23 @@ Wichtige Semantik:
   und in Array-Reihenfolge registrieren
 - bei Fehlern bleibt die Registry unveraendert
 
+## Weltmodell / BodyDef
+
+Status: implementiert.
+
+Aktuelle zusaetzliche Felder in `src/sim/bodies/body_def.gd`:
+- `rotation_period_s`
+- `axial_tilt_rad`
+- `luminosity_w`
+- `albedo`
+
+Wichtige Semantik:
+- reine statische Datenbasis, noch ohne Wirkung auf Orbit, View oder HUD
+- `rotation_period_s` ist sidereal gemeint
+- `axial_tilt_rad` bezieht sich auf die Orbit-Ebene des Bodies um seinen Parent
+- `luminosity_w = 0.0` bleibt in der aktuellen Phase bewusst doppeldeutig
+- `albedo` ist auf `0.0 .. 1.0` begrenzt
+
 ## Schritt 3 - BubbleActivationSet
 
 Status: geplant, nicht implementiert.
@@ -102,13 +122,13 @@ alle gruen.
 ## Naechster sinnvoller Schritt
 
 Die aktuelle Projekt-Roadmap priorisiert jetzt:
-1. `BodyDef` / Weltmodell verbreitern
-2. danach `BubbleActivationSet`
-3. danach `NUMERIC_LOCAL`
+1. `BubbleActivationSet`
+2. danach `NUMERIC_LOCAL`
+3. danach erste abgeleitete planetare Zustandswerte
 
 Die Architektur-Schritte 3 und 4 bleiben wichtig, aber der naechste
-Roadmap-Hebel liegt jetzt im breiteren Weltmodell statt nochmals im
-Loader-/Bubble-Grundaufbau.
+Roadmap-Hebel liegt jetzt im Aktivierungs-/Regime-Fundament auf Basis
+des jetzt verbreiterten Weltmodells.
 
 ## Was bewusst noch fehlt
 

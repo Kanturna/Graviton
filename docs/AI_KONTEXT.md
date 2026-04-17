@@ -12,6 +12,7 @@ aufgesetzt, nicht als Arcade-Spiel und nicht als Tutorial-Scaffold.
 Aktueller Stand:
 - Foundation-Schritte 1-2 sind implementiert
 - Weltladen laeuft jetzt explizit ueber `WorldLoader`
+- `BodyDef` enthaelt jetzt erste statische Weltmodell-Felder
 - Schritt 3 (`BubbleActivationSet`) und Schritt 4 (`NUMERIC_LOCAL`) sind
   noch geplant
 - die aktive Praesentation ist ein stilisiertes 2D-Orbit-Testbed
@@ -47,6 +48,8 @@ Aktueller Stand:
 - Einheiten/Konstanten: `src/core/units/unit_system.gd`
 - Orbit-Mathematik: `src/core/math/orbit_math.gd`
 - Body-Daten: `src/sim/bodies/`
+- Weltmodell aktuell zusaetzlich in `BodyDef`:
+  `rotation_period_s`, `axial_tilt_rad`, `luminosity_w`, `albedo`
 - Orbit-Update: `src/sim/orbit/orbit_service.gd`
 - Weltladen: `src/sim/world/world_loader.gd`
 - Numerische Integration spaeter: `src/sim/orbit/local_orbit_integrator.gd`

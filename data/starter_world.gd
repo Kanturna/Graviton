@@ -50,6 +50,10 @@ static func _build_obsidian() -> BodyDef:
 	d.kind = BodyType.Kind.BLACK_HOLE
 	d.mass_kg = 2.0e33
 	d.radius_m = 3.0e9
+	d.rotation_period_s = 0.0
+	d.axial_tilt_rad = 0.0
+	d.luminosity_w = 0.0
+	d.albedo = 0.0
 	d.parent_id = &""
 	d.orbit_profile = null
 	return d
@@ -59,6 +63,9 @@ static func _build_obsidian() -> BodyDef:
 # T=4e4/7e4 s: Sterne bleiben klar langsamer als ihre Planeten, sind aber
 # im Root-View frueher wahrnehmbar als mit den vorherigen sehr traegen Toy-Werten.
 # phase=PI fuer beta: Sterne starten gegenueberliegend -> sofort erkennbar.
+# `3.0 * SOLAR_LUMINOSITY_W` ist bewusst Toy-Luminositaet und wird hier
+# nicht aus der Sternmasse abgeleitet. Debug-Lesbarkeit hat Vorrang vor
+# astrophysikalischer Genauigkeit.
 
 static func _build_alpha() -> BodyDef:
 	var prof := OrbitProfile.new()
@@ -75,6 +82,10 @@ static func _build_alpha() -> BodyDef:
 	# sichtbar schneller als die BH-Sternorbits.
 	d.mass_kg = UnitSystem.SOLAR_MASS_KG * 3.0
 	d.radius_m = 6.957e8
+	d.rotation_period_s = 25.0 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.0
+	d.luminosity_w = 3.0 * UnitSystem.SOLAR_LUMINOSITY_W
+	d.albedo = 0.0
 	d.parent_id = &"obsidian"
 	d.orbit_profile = prof
 	return d
@@ -93,6 +104,10 @@ static func _build_beta() -> BodyDef:
 	d.kind = BodyType.Kind.STAR
 	d.mass_kg = UnitSystem.SOLAR_MASS_KG * 3.0
 	d.radius_m = 6.957e8
+	d.rotation_period_s = 25.0 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.0
+	d.luminosity_w = 3.0 * UnitSystem.SOLAR_LUMINOSITY_W
+	d.albedo = 0.0
 	d.parent_id = &"obsidian"
 	d.orbit_profile = prof
 	return d
@@ -125,6 +140,10 @@ static func _build_alpha_i() -> BodyDef:
 	d.kind = BodyType.Kind.PLANET
 	d.mass_kg = UnitSystem.EARTH_MASS_KG
 	d.radius_m = 6.371e6
+	d.rotation_period_s = 0.80 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.18
+	d.luminosity_w = 0.0
+	d.albedo = 0.28
 	d.parent_id = &"alpha"
 	d.orbit_profile = prof
 	return d
@@ -147,6 +166,10 @@ static func _build_alpha_ii() -> BodyDef:
 	d.kind = BodyType.Kind.PLANET
 	d.mass_kg = UnitSystem.EARTH_MASS_KG
 	d.radius_m = 6.371e6
+	d.rotation_period_s = 1.30 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.52
+	d.luminosity_w = 0.0
+	d.albedo = 0.36
 	d.parent_id = &"alpha"
 	d.orbit_profile = prof
 	return d
@@ -169,6 +192,10 @@ static func _build_beta_i() -> BodyDef:
 	d.kind = BodyType.Kind.PLANET
 	d.mass_kg = UnitSystem.EARTH_MASS_KG
 	d.radius_m = 6.371e6
+	d.rotation_period_s = 0.90 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.30
+	d.luminosity_w = 0.0
+	d.albedo = 0.34
 	d.parent_id = &"beta"
 	d.orbit_profile = prof
 	return d
@@ -191,6 +218,10 @@ static func _build_beta_ii() -> BodyDef:
 	d.kind = BodyType.Kind.PLANET
 	d.mass_kg = UnitSystem.EARTH_MASS_KG
 	d.radius_m = 6.371e6
+	d.rotation_period_s = 1.60 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.61
+	d.luminosity_w = 0.0
+	d.albedo = 0.42
 	d.parent_id = &"beta"
 	d.orbit_profile = prof
 	return d

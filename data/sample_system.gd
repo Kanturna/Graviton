@@ -26,6 +26,10 @@ static func _build_sol() -> BodyDef:
 	d.kind = BodyType.Kind.STAR
 	d.mass_kg = UnitSystem.SOLAR_MASS_KG
 	d.radius_m = 6.957e8
+	d.rotation_period_s = 25.0 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.0
+	d.luminosity_w = 1.0 * UnitSystem.SOLAR_LUMINOSITY_W
+	d.albedo = 0.0
 	d.parent_id = &""
 	d.orbit_profile = null
 	return d
@@ -48,6 +52,10 @@ static func _build_planet_a() -> BodyDef:
 	d.kind = BodyType.Kind.PLANET
 	d.mass_kg = UnitSystem.EARTH_MASS_KG
 	d.radius_m = 6.371e6
+	d.rotation_period_s = 1.0 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.4091
+	d.luminosity_w = 0.0
+	d.albedo = 0.30
 	d.parent_id = &"sol"
 	d.orbit_profile = prof
 	return d

@@ -26,6 +26,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Fokus-Subtraktion.
 - `WorldLoader` laedt benannte Welten jetzt explizit im `sim/`-Layer;
   `orbit_testbed.gd` laedt nicht mehr direkt `StarterWorld`.
+- `BodyDef` enthaelt jetzt erste statische Weltmodell-Felder fuer
+  Rotation, Achsneigung, Leuchtkraft und Albedo.
 - Bodies aus einem anderen Root als der aktuelle Fokus liefern bewusst
   `Vector3.INF` und werden im Renderer nicht lokalisiert.
 - `TimeService` und `UniverseRegistry` sind die zentralen Autoloads.
@@ -73,6 +75,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tests/orbit/test_orbit.gd`
 - `src/sim/world/world_loader.gd`
 - `src/tests/sim/test_world_loader.gd`
+- `src/sim/bodies/body_def.gd`
+- `src/tests/sim/test_body_def_world_model.gd`
 - `docs/SIMULATIONSREGELN.md`
 - `src/runtime/local_bubble/local_bubble_manager.gd`
 - `src/tests/runtime/test_local_bubble_step2.gd`
@@ -94,9 +98,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Das Projekt ist topologisch offen fuer mehrere Root-Systeme und hat
   jetzt eine explizite Loader-Schicht, aber noch kein Aktivierungs-
   system fuer mehrere schwarze Loecher.
-- `BodyDef` ist fuer aktuelle Orbit-/Toy-Welten ausreichend, aber noch
-  zu schmal fuer spaetere planetare Zustaende, Generatoren und
-  Weltparameter wie Rotation, Achsneigung oder Luminositaet.
+- `BodyDef` traegt jetzt erste statische Weltmodell-Felder, aber
+  daraus werden noch keine abgeleiteten planetaren Zustandswerte
+  berechnet.
 - Topologie-Helfer liegen aktuell noch an mehreren Stellen
   (`OrbitViewRenderer`, `LocalBubbleManager`, Debug/Test-Helfer) und
   koennen spaeter sinnvoll zentralisiert werden.
@@ -111,9 +115,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- `BodyDef` / Weltmodell fuer spaetere planetare Zustaende und
-  Generatoren verbreitern
 - anschliessend Aktivierungs- und Regime-Schritte (`BubbleActivationSet`,
   `NUMERIC_LOCAL`) auf der jetzt sauberen Bubble-Basis angehen
+- danach erste abgeleitete planetare Zustandsgroessen auf Basis des
+  jetzt breiteren Weltmodells angehen
 - spaeter Topologie-Helfer konsolidieren, wenn Bubble-/Activation-
   Schicht und Mehrwurzel-Pfade stabil sind

@@ -14,6 +14,7 @@ static func run(ctx) -> void:
 	_test_kind_assignments(ctx)
 	_test_parent_chains_valid(ctx)
 	_test_topological_order(ctx)
+	_test_world_model_fields(ctx)
 	_test_authored_positions_finite(ctx)
 	_test_kepler_positions_finite(ctx)
 	_test_positions_differ_over_time(ctx)
@@ -96,6 +97,19 @@ static func _test_topological_order(ctx) -> void:
 	ctx.assert_true(i[&"beta"] < i[&"beta_i"], "beta < beta_i")
 	ctx.assert_true(i[&"beta_i"] < i[&"beta_i_m"], "beta_i < beta_i_m")
 	reg.free()
+
+
+static func _test_world_model_fields(ctx) -> void:
+	var by_id := _defs_by_id()
+	ctx.assert_almost(by_id[&"obsidian"].luminosity_w, 0.0, 1.0e-9, "obsidian luminosity_w == 0")
+	ctx.assert_almost(by_id[&"alpha"].rotation_period_s, 25.0 * UnitSystem.DAY_S, 1.0e-6, "alpha rotation_period_s gesetzt")
+	ctx.assert_almost(by_id[&"alpha"].luminosity_w, 3.0 * UnitSystem.SOLAR_LUMINOSITY_W, 1.0e12, "alpha luminosity_w gesetzt")
+	ctx.assert_almost(by_id[&"alpha_i"].rotation_period_s, 0.80 * UnitSystem.DAY_S, 1.0e-6, "alpha_i rotation_period_s gesetzt")
+	ctx.assert_almost(by_id[&"alpha_i"].axial_tilt_rad, 0.18, 1.0e-9, "alpha_i axial_tilt_rad gesetzt")
+	ctx.assert_almost(by_id[&"alpha_i"].albedo, 0.28, 1.0e-9, "alpha_i albedo gesetzt")
+	ctx.assert_almost(by_id[&"beta_ii"].rotation_period_s, 1.60 * UnitSystem.DAY_S, 1.0e-6, "beta_ii rotation_period_s gesetzt")
+	ctx.assert_almost(by_id[&"beta_ii"].axial_tilt_rad, 0.61, 1.0e-9, "beta_ii axial_tilt_rad gesetzt")
+	ctx.assert_almost(by_id[&"beta_ii"].albedo, 0.42, 1.0e-9, "beta_ii albedo gesetzt")
 
 
 static func _test_authored_positions_finite(ctx) -> void:

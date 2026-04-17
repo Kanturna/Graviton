@@ -133,6 +133,23 @@ Wenn spaeter multiple voneinander entkoppelte Systeme modelliert
 werden, bekommt jedes System eine eigene Wurzel - die Topologie
 bleibt ein Wald, keine globale Vollverbindung.
 
+## Statisches Weltmodell in `BodyDef`
+
+- `rotation_period_s`: sidereale Rotationsperiode in Sekunden, also
+  relativ zum Fixsternhimmel. `0.0` bedeutet in der aktuellen Phase:
+  nicht gesetzt / noch nicht relevant.
+- `axial_tilt_rad`: axiale Neigung relativ zur Orbit-Ebene des Bodies
+  um seinen Parent. `0.0` bedeutet: keine Neigung / Aequator liegt in
+  der Orbitebene.
+- `luminosity_w`: intrinsische Leuchtkraft in Watt. `0.0` bleibt in P3
+  bewusst doppeldeutig: entweder nicht-leuchtend oder noch nicht
+  modelliert.
+- `albedo`: dimensionsloser Reflexionswert im Bereich `0.0 .. 1.0`.
+
+Diese Felder sind in P3 reine Datenbasis. Sie beeinflussen noch keine
+Orbit-Berechnung, keine View und noch keine abgeleiteten planetaren
+Zustandswerte.
+
 ## Determinismus
 
 - Jede Orbit-Evaluation ist eine pure Funktion von
