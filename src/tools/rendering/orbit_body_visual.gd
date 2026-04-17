@@ -70,8 +70,11 @@ func _draw() -> void:
 	# BLACK_HOLE has no _overlay — draw focus rings in parent
 	if _is_focused and _overlay == null:
 		var fr: float = _focus_ring_radius()
-		draw_arc(Vector2.ZERO, fr, 0.0, TAU, 72, Color(0.95, 0.98, 1.0, 0.55), 1.2, true)
-		draw_arc(Vector2.ZERO, fr + 3.5, 0.0, TAU, 72, Color(0.80, 0.90, 1.0, 0.16), 1.0, true)
+		var ring_fade: float = clampf(1.0 - (_detail_factor - 2.0) / 5.0, 0.0, 1.0)
+		draw_arc(Vector2.ZERO, fr, 0.0, TAU, 72,
+			Color(0.95, 0.98, 1.0, 0.55 * ring_fade), 1.2, true)
+		draw_arc(Vector2.ZERO, fr + 3.5, 0.0, TAU, 72,
+			Color(0.80, 0.90, 1.0, 0.16 * ring_fade), 1.0, true)
 
 
 func _on_overlay_draw() -> void:
@@ -84,8 +87,11 @@ func _on_overlay_draw() -> void:
 			_draw_star_overlay()
 	if _is_focused:
 		var fr: float = _focus_ring_radius()
-		_overlay.draw_arc(Vector2.ZERO, fr, 0.0, TAU, 72, Color(0.95, 0.98, 1.0, 0.55), 1.2, true)
-		_overlay.draw_arc(Vector2.ZERO, fr + 3.5, 0.0, TAU, 72, Color(0.80, 0.90, 1.0, 0.16), 1.0, true)
+		var ring_fade: float = clampf(1.0 - (_detail_factor - 2.0) / 5.0, 0.0, 1.0)
+		_overlay.draw_arc(Vector2.ZERO, fr, 0.0, TAU, 72,
+			Color(0.95, 0.98, 1.0, 0.55 * ring_fade), 1.2, true)
+		_overlay.draw_arc(Vector2.ZERO, fr + 3.5, 0.0, TAU, 72,
+			Color(0.80, 0.90, 1.0, 0.16 * ring_fade), 1.0, true)
 
 
 func _draw_black_hole() -> void:
@@ -122,8 +128,14 @@ func _draw_planet_overlay() -> void:
 
 func _draw_moon_overlay() -> void:
 	if _detail_factor > 1.25:
-		_overlay.draw_circle(Vector2(-1.4, -0.5), 0.7, Color(0.70, 0.75, 0.84, 0.42))
-		_overlay.draw_circle(Vector2(0.9, 1.2), 0.55, Color(0.72, 0.77, 0.86, 0.34))
+		_overlay.draw_circle(Vector2(-1.4, -0.5), 0.70, Color(0.70, 0.75, 0.84, 0.38))
+		_overlay.draw_circle(Vector2(0.9, 1.2), 0.55, Color(0.72, 0.77, 0.86, 0.30))
+	if _detail_factor > 1.80:
+		_overlay.draw_circle(Vector2(1.6, -0.9), 0.45, Color(0.68, 0.73, 0.82, 0.28))
+		_overlay.draw_circle(Vector2(-0.5, 1.6), 0.35, Color(0.71, 0.76, 0.84, 0.24))
+	if _detail_factor > 2.80:
+		_overlay.draw_circle(Vector2(-1.8, 1.1), 0.28, Color(0.73, 0.78, 0.86, 0.22))
+		_overlay.draw_circle(Vector2(0.3, -1.5), 0.22, Color(0.69, 0.74, 0.83, 0.20))
 
 
 func _draw_star_overlay() -> void:
@@ -170,4 +182,8 @@ static func _make_sphere_material(kind: int) -> ShaderMaterial:
 			Color(0.82, 0.86, 0.93) if is_moon else Color(0.42, 0.69, 1.0))
 		mat.set_shader_parameter("atmo_color",
 			Color(0.85, 0.90, 1.0) if is_moon else Color(0.54, 0.78, 1.0))
+		mat.set_shader_parameter("rotation_speed", 0.04 if is_moon else 0.06)
+		mat.set_shader_parameter("surface_freq", 13.0 if is_moon else 8.0)
+		mat.set_shader_parameter("surface_var_strength", 0.05 if is_moon else 0.09)
+		mat.set_shader_parameter("polar_tint_strength", 0.0 if is_moon else 0.20)
 	return mat
