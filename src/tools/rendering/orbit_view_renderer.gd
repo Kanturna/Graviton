@@ -45,7 +45,11 @@ func set_world_scale(value: float) -> void:
 
 
 func set_zoom_bias(value: float) -> void:
-	_zoom_bias = maxf(value, 0.01)
+	var new_val: float = maxf(value, 0.01)
+	if is_equal_approx(new_val, _zoom_bias):
+		return
+	_zoom_bias = new_val
+	_apply_focus_emphasis()
 
 
 func get_body_view_position_ru(id: StringName) -> Vector2:
@@ -216,7 +220,8 @@ func _focus_emphasis_for(id: StringName, focus_def: BodyDef) -> Dictionary:
 		return {"body": 1.0, "orbit": 1.0, "trail": 1.0}
 
 	if id == focus_def.id:
-		return {"body": 1.0, "orbit": 0.30, "trail": 0.92}
+		var focus_orbit_alpha: float = clampf(0.28 / maxf(_zoom_bias * 0.45, 1.0), 0.04, 0.28)
+		return {"body": 1.0, "orbit": focus_orbit_alpha, "trail": 0.92}
 
 	var def: BodyDef = _registry.get_def(id)
 	if def == null:

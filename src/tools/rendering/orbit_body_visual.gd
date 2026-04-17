@@ -65,22 +65,28 @@ func _draw_star() -> void:
 
 
 func _draw_planet() -> void:
+	var df_t: float = clampf((_detail_factor - 1.0) / 2.5, 0.0, 1.0)
 	draw_circle(Vector2.ZERO, 10.5, Color(0.30, 0.56, 0.96, 0.15))
 	if _detail_factor > 1.20:
 		draw_arc(Vector2.ZERO, 6.5, -1.55, 1.25, 36, Color(0.78, 0.89, 1.0, 0.28), 1.0, true)
 	draw_circle(Vector2.ZERO, 5.8, Color(0.42, 0.69, 1.0, 0.95))
 	if _detail_factor > 1.60:
 		draw_arc(Vector2.ZERO, 4.3, 0.65, 2.45, 28, Color(0.18, 0.36, 0.72, 0.26), 0.9, true)
+	draw_circle(Vector2(-1.8, -1.8), 2.5, Color(0.78, 0.90, 1.0, lerpf(0.18, 0.50, df_t)))
 	draw_circle(Vector2.ZERO, 2.2, Color(0.74, 0.88, 1.0, 0.42))
+	draw_circle(Vector2(2.2, 2.2), 5.5, Color(0.0, 0.03, 0.10, lerpf(0.10, 0.36, df_t)))
 
 
 func _draw_moon() -> void:
+	var df_t: float = clampf((_detail_factor - 1.0) / 2.5, 0.0, 1.0)
 	draw_circle(Vector2.ZERO, 6.0, Color(0.83, 0.88, 0.96, 0.07))
 	draw_circle(Vector2.ZERO, 3.8, Color(0.82, 0.86, 0.93, 0.92))
 	if _detail_factor > 1.25:
 		draw_circle(Vector2(-1.4, -0.5), 0.7, Color(0.70, 0.75, 0.84, 0.42))
 		draw_circle(Vector2(0.9, 1.2), 0.55, Color(0.72, 0.77, 0.86, 0.34))
+	draw_circle(Vector2(-1.1, -1.0), 1.5, Color(0.96, 0.98, 1.0, lerpf(0.14, 0.46, df_t)))
 	draw_circle(Vector2.ZERO, 1.6, Color(0.96, 0.98, 1.0, 0.35))
+	draw_circle(Vector2(1.8, 1.8), 3.5, Color(0.0, 0.02, 0.08, lerpf(0.08, 0.32, df_t)))
 
 
 func _focus_ring_radius() -> float:
