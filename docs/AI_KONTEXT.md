@@ -11,6 +11,7 @@ aufgesetzt, nicht als Arcade-Spiel und nicht als Tutorial-Scaffold.
 
 Aktueller Stand:
 - Foundation-Schritte 1-2 sind implementiert
+- Weltladen laeuft jetzt explizit ueber `WorldLoader`
 - Schritt 3 (`BubbleActivationSet`) und Schritt 4 (`NUMERIC_LOCAL`) sind
   noch geplant
 - die aktive Praesentation ist ein stilisiertes 2D-Orbit-Testbed
@@ -47,13 +48,14 @@ Aktueller Stand:
 - Orbit-Mathematik: `src/core/math/orbit_math.gd`
 - Body-Daten: `src/sim/bodies/`
 - Orbit-Update: `src/sim/orbit/orbit_service.gd`
+- Weltladen: `src/sim/world/world_loader.gd`
 - Numerische Integration spaeter: `src/sim/orbit/local_orbit_integrator.gd`
 - Registry: `src/sim/universe/universe_registry.gd`
 - Bubble/View: `src/runtime/local_bubble/local_bubble_manager.gd`
 - Debug: `src/tools/debug/debug_overlay.gd`
 - Rendering: `src/tools/rendering/`
 - Tests: `src/tests/`
-- Welt-Daten: `data/starter_world.gd`
+- Welt-Daten: `data/starter_world.gd`, `data/sample_system.gd`
 
 ## Wenn du etwas aenderst
 

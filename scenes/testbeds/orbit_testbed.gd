@@ -11,6 +11,9 @@ const MIN_DYNAMIC_MAX_VIEW_SCALE: float = 32768.0
 const GLOBAL_OVERVIEW_RADIUS_FACTOR: float = 1.75
 const PAN_SPEED_PX_PER_S: float = 960.0
 
+@export_enum("starter_world", "sample_system") var initial_world_id: String = "starter_world"
+
+@onready var _world_loader = $WorldLoader
 @onready var _orbit_service: OrbitService = $OrbitService
 @onready var _bubble: LocalBubbleManager = $LocalBubbleManager
 @onready var _renderer: OrbitViewRenderer = $WorldRoot
@@ -39,7 +42,11 @@ func _ready() -> void:
 	TimeService.reset()
 	TimeService.set_paused(false)
 	UniverseRegistry.clear()
-	UniverseRegistry.load_from_starter_world()
+	if not _world_loader.load_named_world(StringName(initial_world_id), UniverseRegistry):
+		push_error("OrbitTestbed: failed to load initial world '%s'" % initial_world_id)
+		set_process(false)
+		set_process_unhandled_input(false)
+		return
 
 	_focus_order = UniverseRegistry.get_update_order()
 	var root_id: StringName = _root_focus_id()
@@ -49,6 +56,7 @@ func _ready() -> void:
 	_orbit_service.recompute_all_at_time(TimeService.sim_time_s)
 
 	_bubble.configure(UniverseRegistry)
+	_bubble.set_focus(_focus_order[_focus_index])
 	_renderer.configure(UniverseRegistry, _bubble)
 	_debug_overlay.configure(UniverseRegistry, TimeService, _bubble)
 	_debug_overlay.visible = false

@@ -21,7 +21,7 @@ scenes/     (duenn, nur Projektion + Composition Root)
 src/runtime/       LocalBubbleManager, BubbleActivationSet
    |
    v
-src/sim/           UniverseRegistry, OrbitService, LocalOrbitIntegrator,
+src/sim/           UniverseRegistry, WorldLoader, OrbitService, LocalOrbitIntegrator,
                    BodyDef/State, OrbitProfile, OrbitMode
    |
    v
@@ -59,8 +59,9 @@ Visuals im Testbed, Debug-Overlay-Anzeigen.
 - Jeder weitere Autoload erhoeht globale Kopplung und erschwert Tests.
 
 **Nicht Autoload (bewusste Entscheidung):**
-- `OrbitService` und `LocalBubbleManager` werden in der Testbed-Szene
-  als Kind-Nodes instanziiert und per `configure()` explizit verdrahtet.
+- `WorldLoader`, `OrbitService` und `LocalBubbleManager` werden in der
+  Testbed-Szene als Kind-Nodes instanziiert und per `configure()` oder
+  explizitem Methodenaufruf verdrahtet.
 - Vorteil: explizite Abhaengigkeiten, testbar, lokal auswechselbar.
 
 Eine Erweiterung der Autoload-Liste braucht einen neuen ADR-Abschnitt
@@ -94,9 +95,10 @@ Wenn du ueberlegst, der Registry Funktionalitaet hinzuzufuegen, pruefe:
 ## Composition Root
 
 Hinweis:
-Das folgende Snippet beschreibt das Zielbild fuer die Schritte 2-4. Der
-aktuelle Code in `scenes/testbeds/orbit_testbed.gd` ist noch einfacher
-und enthaelt insbesondere noch kein fertig verdrahtetes
+Das folgende Snippet beschreibt das Zielbild fuer die naechsten
+Foundation-Bloecke. Der aktuelle Code in
+`scenes/testbeds/orbit_testbed.gd` nutzt bereits einen expliziten
+`WorldLoader`, enthaelt aber weiterhin noch kein fertig verdrahtetes
 `BubbleActivationSet` und keinen gelebten
 `request_numeric_local_candidates(...)`-Pfad im Runtime-Flow.
 
@@ -104,6 +106,7 @@ Die Verdrahtung passiert pro Szene in deren Root-Script:
 
 ```gdscript
 _ready():
+    WorldLoader.load_named_world(&"starter_world", UniverseRegistry)
     OrbitService.configure(UniverseRegistry, TimeService)
     OrbitService.recompute_all_at_time(TimeService.sim_time_s)
     LocalBubbleManager.configure(UniverseRegistry)

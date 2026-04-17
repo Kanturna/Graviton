@@ -29,18 +29,20 @@ Erledigt:
 - root-lokale Debug-Hilfe `compose_root_local_position_m`
 - Renderer-Toleranz fuer nicht-finite Bodies inkl. Trail-Cleanup
 
-## Prioritaet 2 - Foundation Phase B: WorldLoader / Weltwahl explizit machen
+## Prioritaet 2 - Foundation Phase B: WorldLoader / Weltwahl explizit machen - erledigt
 
 Ziel:
 Das Testbed soll nicht mehr direkt eine bestimmte Welt hart laden,
 sondern eine explizite Loader-/World-Schicht nutzen.
 
-Gemeinte Richtung:
+Erledigt:
 
-- Weltladen aus `orbit_testbed.gd` herausziehen
-- `StarterWorld` und spaetere Weltvarianten ueber einen klaren Loader
-  anbinden
-- spaetere Multi-Root- / Generator-Welten vorbereiten
+- neuer `WorldLoader` als Node-Service im `src/sim/`-Layer
+- `orbit_testbed.gd` laedt Welten jetzt explizit ueber
+  `initial_world_id`
+- `starter_world` und `sample_system` laufen ueber denselben
+  transaktionalen Loader-Pfad
+- `UniverseRegistry` ist wieder auf Registry-Scope zurueckgefuehrt
 
 ## Prioritaet 3 - Foundation Phase C: World Model verbreitern
 
@@ -61,6 +63,8 @@ Gemeinte Richtung:
 - `BubbleActivationSet`
 - spaeter `NUMERIC_LOCAL` / `LocalOrbitIntegrator`
 - Tests fuer Regime-Wechsel, Praezision und Multi-Root-Komposition
+- spaeter Topologie-Helfer sinnvoll zentralisieren, wenn die
+  Activation-/Mehrwurzel-Pfade stabil sind
 
 ## Danach - Planetare Zustandsableitung
 

@@ -13,6 +13,14 @@ ist.
 | 3 | BubbleActivationSet (ACTIVE / INACTIVE_DISTANT / INACTIVE_NO_LCA), `rebuild()`, `describe()` | dokumentiert, nicht implementiert |
 | 4 | LocalOrbitIntegrator (Velocity Verlet), NUMERIC_LOCAL-Regime, Regime-Wechsel-Logging | dokumentiert, nicht implementiert |
 
+## Ergaenzender Foundation-Block
+
+- `WorldLoader` / explizite Weltwahl: **implementiert**
+  - `src/sim/world/world_loader.gd`
+  - `orbit_testbed.gd` laedt Welten jetzt explizit ueber
+    `initial_world_id`
+  - benannte Referenzwelten: `starter_world`, `sample_system`
+
 ## Design-Gate vor Schritt 5
 
 Vor der ersten Mechanik-Implementierung steht ein expliziter

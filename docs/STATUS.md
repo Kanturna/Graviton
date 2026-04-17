@@ -24,6 +24,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `LocalBubbleManager` nutzt jetzt die dokumentierte Step-2-
   Bubble-Komposition via LCA statt der frueheren einfachen
   Fokus-Subtraktion.
+- `WorldLoader` laedt benannte Welten jetzt explizit im `sim/`-Layer;
+  `orbit_testbed.gd` laedt nicht mehr direkt `StarterWorld`.
 - Bodies aus einem anderen Root als der aktuelle Fokus liefern bewusst
   `Vector3.INF` und werden im Renderer nicht lokalisiert.
 - `TimeService` und `UniverseRegistry` sind die zentralen Autoloads.
@@ -51,6 +53,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Root-Body bestimmt statt implizit ueber `obsidian`.
 - Das Testbed unterstuetzt Camera-Panning, klickbaren Fokus und
   staerkere Zeitskalen.
+- Das Testbed kann jetzt explizit zwischen `starter_world` und
+  `sample_system` als Referenzwelten umgeschaltet werden.
 - Die Toy-Orbitwerte der `StarterWorld` sind jetzt so getunt, dass Monde
   sichtbar schneller als Planeten und Planeten sichtbar schneller als
   ihre Sterne um `obsidian` kreisen; die Planetenbahnen sind zudem
@@ -67,8 +71,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 - `src/core/math/orbit_math.gd`
 - `src/tests/orbit/test_orbit.gd`
+- `src/sim/world/world_loader.gd`
+- `src/tests/sim/test_world_loader.gd`
 - `docs/SIMULATIONSREGELN.md`
 - `src/runtime/local_bubble/local_bubble_manager.gd`
+- `src/tests/runtime/test_local_bubble_step2.gd`
 - `src/tools/rendering/orbit_view_renderer.gd`
 - `scenes/testbeds/orbit_testbed.gd`
 - `scenes/testbeds/orbit_testbed.tscn`
@@ -84,12 +91,15 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Regime).
 - `LocalBubbleManager` liefert jetzt die dokumentierte LCA-/
   praezisionsbewusste Bubble-Komposition fuer same-root-Faelle.
-- Das Projekt ist topologisch offen fuer mehrere Root-Systeme, hat aber
-  noch keine echte Welt-/Loader-Schicht und noch kein Aktivierungs-
+- Das Projekt ist topologisch offen fuer mehrere Root-Systeme und hat
+  jetzt eine explizite Loader-Schicht, aber noch kein Aktivierungs-
   system fuer mehrere schwarze Loecher.
 - `BodyDef` ist fuer aktuelle Orbit-/Toy-Welten ausreichend, aber noch
   zu schmal fuer spaetere planetare Zustaende, Generatoren und
   Weltparameter wie Rotation, Achsneigung oder Luminositaet.
+- Topologie-Helfer liegen aktuell noch an mehreren Stellen
+  (`OrbitViewRenderer`, `LocalBubbleManager`, Debug/Test-Helfer) und
+  koennen spaeter sinnvoll zentralisiert werden.
 - `phantom_camera` ist im Projekt vorhanden, wird aber in der aktuellen
   Runtime noch nicht aktiv genutzt.
 - Die Praesentation ist fuer das aktuelle Testbed gut genug; der
@@ -101,9 +111,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- Weltladen ueber eine explizite Loader-/World-Schicht statt direkt im
-  Testbed organisieren
-- danach `BodyDef` / Weltmodell fuer spaetere planetare Zustaende und
+- `BodyDef` / Weltmodell fuer spaetere planetare Zustaende und
   Generatoren verbreitern
 - anschliessend Aktivierungs- und Regime-Schritte (`BubbleActivationSet`,
   `NUMERIC_LOCAL`) auf der jetzt sauberen Bubble-Basis angehen
+- spaeter Topologie-Helfer konsolidieren, wenn Bubble-/Activation-
+  Schicht und Mehrwurzel-Pfade stabil sind

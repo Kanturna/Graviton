@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://atraxistestbed01"]
+[gd_scene load_steps=11 format=3 uid="uid://atraxistestbed01"]
 
 [ext_resource type="Script" path="res://scenes/testbeds/orbit_testbed.gd" id="1_testbed"]
 [ext_resource type="Script" path="res://src/sim/orbit/orbit_service.gd" id="2_orbitsvc"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://src/tools/rendering/orbit_view_renderer.gd" id="4_renderer"]
 [ext_resource type="Script" path="res://src/tools/rendering/space_backdrop.gd" id="5_backdrop"]
 [ext_resource type="PackedScene" uid="uid://bxdebugoverlay001" path="res://src/tools/debug/debug_overlay.tscn" id="6_overlay"]
+[ext_resource type="Script" path="res://src/sim/world/world_loader.gd" id="7_worldloader"]
 
 [sub_resource type="StyleBoxFlat" id="1_panel_style"]
 bg_color = Color(0.0352941, 0.0509804, 0.0941176, 0.811765)
@@ -46,6 +47,9 @@ script = ExtResource("1_testbed")
 
 [node name="OrbitService" type="Node" parent="."]
 script = ExtResource("2_orbitsvc")
+
+[node name="WorldLoader" type="Node" parent="."]
+script = ExtResource("7_worldloader")
 
 [node name="LocalBubbleManager" type="Node" parent="."]
 script = ExtResource("3_bubble")
