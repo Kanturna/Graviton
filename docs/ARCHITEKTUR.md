@@ -1,7 +1,7 @@
-# Graviton — Architektur
+# Graviton - Architektur
 
 Dieses Dokument beschreibt das Fundament. Es ist bewusst kurz und
-normativ. Wenn du etwas hinzufügst, das hier widerspricht, halte zuerst
+normativ. Wenn du etwas hinzufuegst, das hier widerspricht, halte zuerst
 an und frage.
 
 ## Leitidee
@@ -10,215 +10,239 @@ an und frage.
 > Nodes, Transforms und Render-Koordinaten sind immer abgeleitet.
 
 Konsequenz: kein `Node.position` als Simulationsquelle. Kein
-versteckter Zustand in Szenen. Keine globale Physik-Engine für Orbits.
+versteckter Zustand in Szenen. Keine globale Physik-Engine fuer Orbits.
 
-## Schichten und Abhängigkeitsrichtung
+## Schichten und Abhaengigkeitsrichtung
 
-```
-scenes/     (dünn, nur Projektion + Composition Root)
-   │
-   ▼
+```text
+scenes/     (duenn, nur Projektion + Composition Root)
+   |
+   v
 src/runtime/       LocalBubbleManager, BubbleActivationSet
-   │
-   ▼
+   |
+   v
 src/sim/           UniverseRegistry, OrbitService, LocalOrbitIntegrator,
                    BodyDef/State, OrbitProfile, OrbitMode
-   │
-   ▼
+   |
+   v
 src/core/          TimeService, UnitSystem, OrbitMath, IdRegistry
 ```
 
-Abhängigkeiten zeigen streng nach unten. `core/` kennt weder
-`sim/` noch `runtime/` noch `scenes/`. `sim/` hängt nur von `core/`
-ab. `runtime/` hängt von `sim/` und `core/` ab.
+Abhaengigkeiten zeigen streng nach unten. `core/` kennt weder `sim/`
+noch `runtime/` noch `scenes/`. `sim/` haengt nur von `core/` ab.
+`runtime/` haengt von `sim/` und `core/` ab.
 
-## Wer ist autoritativ wofür
+## Wer ist autoritativ wofuer
 
-| Thema                        | Autoritative Quelle                              | Schreibrecht       |
-|------------------------------|--------------------------------------------------|--------------------|
-| Simulationszeit              | `TimeService` (Autoload)                         | nur TimeService    |
-| Bekannte Bodies & Topologie  | `UniverseRegistry` (Autoload)                    | nur Registry-API   |
-| Parent-Frame-Position/-Velo  | `BodyState`                                      | nur `OrbitService` |
-| Orbit-Modus pro Body         | `BodyState.current_mode`                         | nur `OrbitService` |
-| Fokus / View                 | `LocalBubbleManager` (Node)                      | nur Bubble-API     |
-| Aktiv-Set (Relevanzklassif.) | `BubbleActivationSet` (Node)                     | nur Activation-API |
+| Thema                        | Autoritative Quelle           | Schreibrecht       |
+|-----------------------------|-------------------------------|--------------------|
+| Simulationszeit             | `TimeService` (Autoload)      | nur TimeService    |
+| Bekannte Bodies & Topologie | `UniverseRegistry` (Autoload) | nur Registry-API   |
+| Parent-Frame-Position/-Velo | `BodyState`                   | nur `OrbitService` |
+| Orbit-Modus pro Body        | `BodyState.current_mode`      | nur `OrbitService` |
+| Fokus / View                | `LocalBubbleManager` (Node)   | nur Bubble-API     |
+| Aktiv-Set                   | `BubbleActivationSet` (Node)  | nur Activation-API |
 
 Niemals autoritativ:
 `Node.position`, `Node3D.transform`, Welt- oder View-Koordinaten,
 Visuals im Testbed, Debug-Overlay-Anzeigen.
 
-## Autoloads — ADR
+## Autoloads - ADR
 
-**Entscheidung:** Genau zwei Autoloads — `TimeService` und
-`UniverseRegistry`. Alles andere ist regulärer Szenengraph.
+**Entscheidung:** Genau zwei Autoloads - `TimeService` und
+`UniverseRegistry`. Alles andere ist regulaerer Szenengraph.
 
-**Gründe:**
+**Gruende:**
 - `TimeService` treibt den gesamten Tick; ohne Zeit keine Simulation.
-- `UniverseRegistry` muss szenenübergreifend persistent sein (Bubble
+- `UniverseRegistry` muss szenenuebergreifend persistent sein (Bubble
   wechselt, Universum nicht).
-- Jeder weitere Autoload erhöht globale Kopplung, erschwert Tests.
+- Jeder weitere Autoload erhoeht globale Kopplung und erschwert Tests.
 
 **Nicht Autoload (bewusste Entscheidung):**
 - `OrbitService` und `LocalBubbleManager` werden in der Testbed-Szene
   als Kind-Nodes instanziiert und per `configure()` explizit verdrahtet.
-- Vorteil: explizite Abhängigkeiten, testbar, lokal auswechselbar.
+- Vorteil: explizite Abhaengigkeiten, testbar, lokal auswechselbar.
 
 Eine Erweiterung der Autoload-Liste braucht einen neuen ADR-Abschnitt
 hier.
 
-## UniverseRegistry-Schlankheit — ADR
+## UniverseRegistry-Schlankheit - ADR
 
-**Entscheidung:** Die Registry hält ausschließlich Defs, States, IDs,
-Update-Order und Signale. Keine Simulationslogik, keine Koordinaten-
-berechnung, keine Mathematik.
+**Entscheidung:** Die Registry haelt ausschliesslich Defs, States, IDs,
+Update-Order und Signale. Keine Simulationslogik, keine
+Koordinatenberechnung, keine Mathematik.
 
 **Grund:** Jeder Extra-Zweck in der Registry zieht Verantwortlichkeit
 aus ihrem eigentlichen Zuhause und macht sie zum heimlichen
-Alles-Singleton. Das ist genau der "Architekturwuchs", den wir
-vermeiden.
+Alles-Singleton. Das ist genau der Architekturwuchs, den wir vermeiden.
 
-Wenn du überlegst, der Registry Funktionalität hinzuzufügen, prüfe:
+Wenn du ueberlegst, der Registry Funktionalitaet hinzuzufuegen, pruefe:
 
-- Positions-/Velocity-Logik → gehört in `OrbitService`.
-- Welt-/Render-Koordinaten → gehört in `LocalBubbleManager`.
-- Zeit-Fortschritt → gehört in `TimeService`.
-- Mathematik → gehört in `core/math/`.
+- Positions-/Velocity-Logik -> gehoert in `OrbitService`
+- Welt-/Render-Koordinaten -> gehoert in `LocalBubbleManager`
+- Zeit-Fortschritt -> gehoert in `TimeService`
+- Mathematik -> gehoert in `core/math/`
 
 ## Daten-first
 
-- `BodyDef` und `OrbitProfile` sind `Resource`-Klassen (typisiert,
-  inspektable). Ihre **Instanzen** werden im Foundation aber aus
-  `data/sample_system.gd` (Factory) erzeugt, nicht aus `.tres`.
-  Grund: diff-freundlich, reviewbar, KI-lesbar.
-- `BodyState` ist `RefCounted` — reiner Laufzeitzustand, nicht
+- `BodyDef` und `OrbitProfile` sind `Resource`-Klassen. Ihre Instanzen
+  werden im Foundation aber aus `data/*.gd`-Factories erzeugt, nicht aus
+  `.tres`.
+- `BodyState` ist `RefCounted` - reiner Laufzeitzustand, nicht
   serialisiert, nicht als Asset.
 
 ## Composition Root
+
+Hinweis:
+Das folgende Snippet beschreibt das Zielbild fuer die Schritte 2-4. Der
+aktuelle Code in `scenes/testbeds/orbit_testbed.gd` ist noch einfacher
+und enthaelt insbesondere noch kein fertig verdrahtetes
+`BubbleActivationSet` und keinen gelebten
+`request_numeric_local_candidates(...)`-Pfad im Runtime-Flow.
 
 Die Verdrahtung passiert pro Szene in deren Root-Script:
 
 ```gdscript
 _ready():
     OrbitService.configure(UniverseRegistry, TimeService)
-    OrbitService.recompute_all_at_time(TimeService.sim_time_s)  # initialer konsistenter Zustand
+    OrbitService.recompute_all_at_time(TimeService.sim_time_s)
     LocalBubbleManager.configure(UniverseRegistry)
     LocalBubbleManager.set_focus(...)
     BubbleActivationSet.configure(UniverseRegistry, LocalBubbleManager)
-    DebugOverlay.configure(UniverseRegistry, TimeService, LocalBubbleManager, BubbleActivationSet)
+    DebugOverlay.configure(
+        UniverseRegistry,
+        TimeService,
+        LocalBubbleManager,
+        BubbleActivationSet
+    )
 
 _process():
-    BubbleActivationSet.rebuild()  # explizit, synchron zu frischen BodyStates
-    OrbitService.request_numeric_local_candidates(BubbleActivationSet.get_active_ids())
+    BubbleActivationSet.rebuild()
+    OrbitService.request_numeric_local_candidates(
+        BubbleActivationSet.get_active_ids()
+    )
     ...
 ```
 
-`recompute_all_at_time` ist kein Tick — es emittiert kein Signal, treibt
-keine Zeit vorwärts. Es stellt nur sicher, dass alle `BodyState`s vor dem
-ersten `_process`-Frame konsistent befüllt sind.
+`recompute_all_at_time` ist kein Tick - es emittiert kein Signal und
+treibt keine Zeit vorwaerts. Es stellt nur sicher, dass alle
+`BodyState`s vor dem ersten `_process`-Frame konsistent befuellt sind.
 
-Kein impliziter `get_node(^"/root/...")`-Griff aus tiefen Skripten.
+Kein impliziter `get_node("/root/...")`-Griff aus tiefen Skripten.
 
-## BubbleActivationSet — ADR
+## BubbleActivationSet - ADR
 
-**Entscheidung:** `BubbleActivationSet` ist eine eigene Klasse, kein Teil von
-`LocalBubbleManager`.
+**Entscheidung:** `BubbleActivationSet` ist eine eigene Klasse, kein Teil
+von `LocalBubbleManager`.
 
-**Grund:** LocalBubbleManager ist View-Ableitung (Koordinaten, Render-Skalierung).
-BubbleActivationSet ist Relevanzklassifikation (geometrische Nähe zum Fokus).
-Beides in eine Klasse wäre eine Gottklasse.
+**Grund:** `LocalBubbleManager` ist View-Ableitung (Koordinaten,
+Render-Skalierung). `BubbleActivationSet` ist Relevanzklassifikation
+(geometrische Naehe zum Fokus). Beides in eine Klasse zu legen, waere
+eine Gottklasse.
 
 **Verantwortung:** Liest `registry.get_update_order()` und
 `bubble.compose_view_position_m()`. Schreibt nichts. Kein Autoload.
 
-**Rebuild-Strategie:** Explizit pro Frame aus dem Testbed + Auto-Rebuild bei
-`focus_changed`. Bewusste Übergangslösung für kleines N.
+**Rebuild-Strategie:** Explizit pro Frame aus dem Testbed plus
+Auto-Rebuild bei `focus_changed`. Bewusste Uebergangsloesung fuer
+kleines N.
 
-**Klassifikation:** Drei explizite Zustände — `ACTIVE`, `INACTIVE_DISTANT`,
-`INACTIVE_NO_LCA`. Kein stilles „inaktiv ist inaktiv".
+**Klassifikation:** Drei explizite Zustaende - `ACTIVE`,
+`INACTIVE_DISTANT`, `INACTIVE_NO_LCA`. Kein stilles "inaktiv ist
+inaktiv".
 
-## Bubble-Verantwortung — ADR
+## Bubble-Verantwortung - ADR
 
 **Entscheidung:** `LocalBubbleManager` ist reine Ableitungsschicht.
-Er speichert keinen eigenen Körperzustand, keinen World-Space-Cache,
+Er speichert keinen eigenen Koerperzustand, keinen World-Space-Cache und
 kein Aktiv-Set.
 
-**Präzisionsstrategie:** Fokus-relative Komposition via LCA (Lowest
+**Zielbild fuer Schritt 2:** Fokus-relative Komposition via LCA (Lowest
 Common Ancestor). Parent-Frame-Ketten werden als drei separate
 GDScript-`float`-Variablen (IEEE-754 double) akkumuliert, nicht als
 `Vector3` (float32). Das verhindert Katastrophen-Kanzellation bei
-AU-Distanzen (~18 km Fehler in naiver float32-Subtraktion).
+AU-Distanzen.
 
-**Fehlerpfad kein LCA:** `Vector3.INF` + `push_error`. Kein stilles
-`ZERO` — semantisch falsch lokalisierte Objekte sollen sichtbar sein.
+**Aktueller Stand:** `LocalBubbleManager` ist im Code noch die einfache
+fokus-relative Step-1-Variante und nicht diese vollstaendige
+praezisionsbewusste LCA-Komposition.
 
-**Render-Skalierung:** Ausschließlich in `to_render_units(view_m)`.
+**Fehlerpfad kein LCA:** `Vector3.INF` plus `push_error`. Kein stilles
+`ZERO` - semantisch falsch lokalisierte Objekte sollen sichtbar sein.
+
+**Render-Skalierung:** Ausschliesslich in `to_render_units(view_m)`.
 Kein anderer Code ruft `RENDER_SCALE_M_PER_UNIT` direkt an.
 
-## LocalOrbitIntegrator — ADR
+## LocalOrbitIntegrator - ADR
 
-**Entscheidung:** `LocalOrbitIntegrator` ist eine eigene Klasse, kein Teil von
-`OrbitService`.
+**Entscheidung:** `LocalOrbitIntegrator` ist eine eigene Klasse, kein
+Teil von `OrbitService`.
 
-**Grund:** Die Integrationslogik (Velocity Verlet, Gravitationsbeschleunigung) ist
-reine, zustandslose Mathematik — analog zu `OrbitMath.kepler_position`. Sie in
-`OrbitService` einzubetten würde den Service zu einer monolithischen Klasse machen.
-Die Trennung macht die Mathematik isoliert testbar.
+**Grund:** Die Integrationslogik (z. B. Velocity Verlet,
+Gravitationsbeschleunigung) ist reine, zustandslose Mathematik - analog
+zu `OrbitMath.kepler_position`. Sie in `OrbitService` einzubetten,
+wuerde den Service zu einer monolithischen Klasse machen.
 
-**Verantwortung:** Statische pure Funktionen: `gravity_acceleration_mps2()`,
-`step_velocity_verlet()`. Liest und schreibt kein `BodyState`. Kein Autoload.
-Lebt in `src/sim/orbit/` (Orbit-Dynamik-Mathematik, nicht Runtime-Logik).
+**Verantwortung:** Statische pure Funktionen wie
+`gravity_acceleration_mps2()` und `step_velocity_verlet()`. Liest und
+schreibt kein `BodyState`. Kein Autoload.
 
-## Regime-Wechsel-Modell — ADR
+## Regime-Wechsel-Modell - ADR
 
-**Entscheidung:** Der Wechsel zwischen KEPLER_APPROX und NUMERIC_LOCAL wird durch
-die Szene (Composition Root) ausgelöst, nicht durch OrbitService oder
-BubbleActivationSet selbst.
+**Entscheidung:** Der Wechsel zwischen `KEPLER_APPROX` und
+`NUMERIC_LOCAL` wird durch die Szene (Composition Root) ausgeloest, nicht
+durch `OrbitService` oder `BubbleActivationSet` selbst.
 
-**Grund:** OrbitService (`sim/`) kennt BubbleActivationSet (`runtime/`) nicht —
-die Layering-Regel verbietet die Rückwärtsabhängigkeit. BubbleActivationSet
-schreibt kein `BodyState` — seine Verantwortung ist Klassifikation. Die Szene
-sieht beide Schichten und bridgt sie explizit.
+**Grund:** `OrbitService` (`sim/`) kennt `BubbleActivationSet`
+(`runtime/`) nicht - die Layering-Regel verbietet diese
+Rueckwaertsabhaengigkeit. `BubbleActivationSet` schreibt kein
+`BodyState`; seine Verantwortung ist Klassifikation. Die Szene sieht
+beide Schichten und bridged sie explizit.
 
-**API:** `OrbitService.request_numeric_local_candidates(ids)` — Kandidaten-Angebot
-von der Szene. OrbitService filtert intern auf Eligibility (nur KEPLER_APPROX-Profil).
+**API:** `OrbitService.request_numeric_local_candidates(ids)` -
+Kandidaten-Angebot von der Szene. `OrbitService` filtert intern auf
+Eligibility.
 
-**Eligibility:** AUTHORED_ORBIT-Bodies wechseln nie zu NUMERIC_LOCAL.
-Root-Bodies wechseln nie. Nur KEPLER_APPROX ist eligible.
+**Eligibility:** `AUTHORED_ORBIT`-Bodies wechseln nie zu
+`NUMERIC_LOCAL`. Root-Bodies wechseln nie. Nur `KEPLER_APPROX` ist
+eligible.
 
-**Übergangs-Logging:** Beim Austritt (NUMERIC_LOCAL → KEPLER_APPROX) ruft
-OrbitService `push_warning` auf — der Diskontinuitätssprung ist damit explizit
-sichtbar und nicht mit Render-/Bubble-Fehlern verwechselbar.
+**Uebergangs-Logging:** Beim Austritt (`NUMERIC_LOCAL` ->
+`KEPLER_APPROX`) ruft `OrbitService` `push_warning` auf, damit
+Diskontinuitaeten sichtbar bleiben.
 
-## Frame-Modell — ADR (vorläufig)
+## Frame-Modell - ADR (vorlaeufig)
 
-**Entscheidung (Schritte 1–4):** Ein Body fungiert als Referenzrahmen für seine
-Kinder. Die `parent_id`-Hierarchie in `BodyDef`/`BodyState` definiert den
-Frame-Graphen. Es existiert kein separates FrameDef-Konzept.
+**Entscheidung (Schritte 1-4):** Ein Body fungiert als Referenzrahmen
+fuer seine Kinder. Die `parent_id`-Hierarchie in `BodyDef`/`BodyState`
+definiert den Frame-Graphen. Es existiert kein separates `FrameDef`.
 
-**Grund:** In der aktuellen Phase bestehen Frames ausschließlich aus
-Himmelskörpern. Ein separates FrameDef würde eine Abstraktionsebene einführen,
-die erst nötig wird, wenn Frames ohne Massebeitrag (z. B. Ankerpunkte, stationäre
-Bahnstationen) benötigt werden.
+**Grund:** In der aktuellen Phase bestehen Frames ausschliesslich aus
+Himmelskoerpern. Ein separates `FrameDef` wuerde eine
+Abstraktionsebene einfuehren, die erst noetig wird, wenn Frames ohne
+Massebeitrag benoetigt werden.
 
-**Vorläufig — bewusst offene Fragen:**
-- Brauchen wir später Frames ohne klassischen Himmelskörper?
+**Vorlaeufig - bewusst offene Fragen:**
+- Brauchen wir spaeter Frames ohne klassischen Himmelskoerper?
 - Wie werden Docking/Attachment/Surface-Frames modelliert?
-- Ist Body == Frame dauerhaft richtig oder nur eine Phase-Entscheidung?
-- Wie wird Reparenting (Wechsel des Parent) gehandhabt?
+- Ist `Body == Frame` dauerhaft richtig oder nur eine Phasenentscheidung?
+- Wie wird Reparenting gehandhabt?
 
-**Wenn eine dieser Fragen beantwortet werden muss:** Neuen ADR-Abschnitt erstellen
-statt diesen still zu erweitern.
+Wenn eine dieser Fragen beantwortet werden muss, neuen ADR-Abschnitt
+erstellen statt diesen still zu erweitern.
 
-## Kontrollierbare Bodies — Design-Gate
+## Kontrollierbare Bodies - Design-Gate
 
 `BodyType.Kind.CONTROLLED` ist strukturell vorbereitet, aber semantisch
-noch nicht festgelegt. Bewusst offene Fragen für den Designschritt vor
+noch nicht festgelegt. Bewusst offene Fragen fuer den Designschritt vor
 Schritt 5:
 
-- Hat ein CONTROLLED-Body immer ein `OrbitProfile`?
-- Ist ein CONTROLLED-Body automatisch NUMERIC_LOCAL-eligible?
-- Wo lebt die forces-/command-API — in `OrbitService` oder einem neuen Layer?
-- Wer darf `parent_id` eines CONTROLLED-Bodies ändern (z. B. beim Andocken)?
+- Hat ein `CONTROLLED`-Body immer ein `OrbitProfile`?
+- Ist ein `CONTROLLED`-Body automatisch `NUMERIC_LOCAL`-eligible?
+- Wo lebt die forces-/command-API - in `OrbitService` oder in einem
+  neuen Layer?
+- Wer darf `parent_id` eines `CONTROLLED`-Bodies aendern
+  (z. B. beim Andocken)?
 
-Diese Fragen werden im expliziten Designschritt vor Schritt 5 beantwortet.
-Bis dahin gilt: `CONTROLLED` ist nur ein Typ-Tag, keine Verhaltensgarantie.
+Bis dahin gilt: `CONTROLLED` ist nur ein Typ-Tag, keine
+Verhaltensgarantie.

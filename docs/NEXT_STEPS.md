@@ -2,69 +2,83 @@
 
 Stand: 2026-04-17
 
-## Prioritaet 1 - Doku-Drift bereinigen ✓ erledigt
-
-Bereinigt (zwei Passes):
-
-- `docs/HANDOFF.md` — Steps 2–4 klar als geplant/nicht vorhanden markiert;
-  Step-2-API-Liste korrigiert; "Logischer nächster Schritt" auf aktuellen Stand gebracht
-- `docs/AI_KONTEXT.md` — Node3D→Node2D, `local_orbit_integrator` als geplant,
-  Don'ts um Step-2–4-Marker ergänzt, double-präzise Bubble-Beschreibung korrigiert
-- `docs/SIMULATIONSREGELN.md` — NUMERIC_LOCAL-Status auf geplant gesetzt,
-  Regime-Wechsel-Abschnitt mit Callout versehen, Koordinatenräume-Tabelle bereinigt,
-  Kurzreferenz und Methodenname korrigiert
-- `docs/GODOT_UMSETZUNGSPLAN.md` — Schritte-Tabelle mit Code-Stand ergänzt
-- `docs/STATUS.md` — offene Punkte aktualisiert
-
-## Prioritaet 1b - View-Cleanup (teils erledigt)
-
-Erledigt:
-
-- `get_focus_frame` Radius-Inflation bei Nicht-BH-Fokus behoben
-- Trail-Reset bei Fokus-Wechsel implementiert
-
-Noch offen (niedrige Prioritaet):
-
-- `_build_orbit_points` AUTHORED-Pfad nutzt API unidomatisch
-  (phase=t*TAU, period=1.0 statt Zeit-Sweep) — funktional korrekt
-- KEPLER-Orbit-Punkte gleichmaessig in M gesampelt statt physikalisch
-  aequidistant — bei Exzentrizitaet 0.01-0.03 visuell kaum relevant
-
-## Prioritaet 2 - Zweiter Visual-Pass
+## Prioritaet 0 - Test-Baseline wieder gruen machen
 
 Ziel:
-Die neue 2D-Praesentation soll noch naeher an den Qualitaetseindruck von
-`Atraxis` kommen.
+Die Foundation soll vor den naechsten groesseren Architektur-Schritten
+wieder eine saubere gruenen Test-Basis haben.
 
-Wahrscheinliche Themen:
+Gemeinte Richtung:
 
-- feinere Trails
-- bessere Orbit-Linien
-- staerkeres Tiefengefuehl / Layering
-- hochwertigeres HUD
-- visuelle Balance zwischen Lesbarkeit und Atmosphaere
+- realen Test-Fail in `src/tests/orbit/test_orbit.gd` bereinigen
+- semantisch klar entscheiden, ob `solve_kepler(PI, 0)` als `PI` oder
+  `-PI` behandelt wird
+- danach Testlauf wieder als verlaessliche Basis nutzen
 
-## Prioritaet 3 - Addon-Nutzung bewusst entscheiden
+## Prioritaet 1 - Foundation Phase A: Step 2 Bubble / Frame-Modell
 
 Ziel:
-Klaeren, ob `phantom_camera` wirklich gebraucht wird oder aktuell nur
-mitgeschleppt wird.
+Den aktuellen `LocalBubbleManager` von Fokus-Subtraktion in Richtung des
+dokumentierten Step-2-Zielbilds weiterbringen.
 
-## Spaeter - Mechanik-Design fortsetzen
+Gemeinte Richtung:
 
-Erst nach dem View- und Doku-Cleanup:
+- LCA-/praezisionsbewusste Komposition
+- multi-root-tauglicher Frame-/Bubble-Layer
+- keine erneute Vermischung von View und autoritativer
+  Simulationswahrheit
 
-- Design-Gate fuer steuerbare Bodies / Schub / erste Mechanik
-- keine ueberhastete Gameplay-Implementierung vor sauberer Festlegung
+## Prioritaet 2 - Foundation Phase B: WorldLoader / Weltwahl explizit machen
 
-## Spaeter - Prozedurale Systeme und planetare Zustaende
+Ziel:
+Das Testbed soll nicht mehr direkt eine bestimmte Welt hart laden,
+sondern eine explizite Loader-/World-Schicht nutzen.
 
-Wenn das aktuelle Testbed und die Kern-Sim stabil genug sind:
+Gemeinte Richtung:
+
+- Weltladen aus `orbit_testbed.gd` herausziehen
+- `StarterWorld` und spaetere Weltvarianten ueber einen klaren Loader
+  anbinden
+- spaetere Multi-Root- / Generator-Welten vorbereiten
+
+## Prioritaet 3 - Foundation Phase C: World Model verbreitern
+
+Ziel:
+Die statische Simulationswahrheit fuer Bodies so erweitern, dass
+spaetere planetare Zustaende, Generatoren und echte Mehrsystem-Welten
+auf einer sauberen Datenbasis aufsetzen koennen.
+
+Gemeinte Richtung:
+
+- `BodyDef` um fehlende statische Welt-/Physikfelder erweitern
+  (z. B. Rotation, Achsneigung, Luminositaet, Albedo)
+- bestehende Toy-Welten mit Defaults kompatibel halten
+- noch keine abgeleiteten Temperatur-/Habitability-Systeme einbauen
+
+## Danach - Foundation Phase D: Aktivierung und Regime
+
+- `BubbleActivationSet`
+- spaeter `NUMERIC_LOCAL` / `LocalOrbitIntegrator`
+- Tests fuer Regime-Wechsel, Praezision und Multi-Root-Komposition
+
+## Danach - Planetare Zustandsableitung
+
+Erst wenn Weltmodell, Loader und Bubble-Fundament tragfaehig sind:
+
+- erste abgeleitete planetare Zustandsgroessen
+  - Insolation / Temperatur
+  - einfache Bewohnbarkeits- oder Unwirtlichkeitsmarker
+  - spaeter Strahlung / Atmosphaerenklassen / weitere Umweltfaktoren
+
+## Spaeter - Prozedurale Systeme
 
 - Generator-Konzept fuer Root-Systeme, Sterne, Planeten und Monde
 - Zufallsbereiche fuer Orbitachsen, Exzentrizitaeten und Orientierungen
-- erste planetare Zustandsgroessen ableiten:
-  - Temperatur / Naehe zum Stern
-  - einfache Bewohnbarkeits- oder Unwirtlichkeitsmarker
-- Jahreszeiten spaeter nicht nur ueber Bahnellipse, sondern vor allem
-  ueber Achsneigung und Strahlungsgeometrie denken
+- deterministische Seeds / reproduzierbare Welten
+
+## Bewusst nicht jetzt
+
+- kein weiterer grosser Visual-Pass
+- keine neue Gameplay-/Schiffs-/Fraktionsschicht
+- keine ueberhastete Generator-Spielerei ohne sauberes Weltmodell
+- keine Ausweitung der Autoload-Liste

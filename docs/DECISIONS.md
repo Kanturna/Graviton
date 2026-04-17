@@ -1,5 +1,37 @@
 # Graviton - Decisions
 
+## 2026-04-17 - Naechste Kernphase ist World Model + Loader + Bubble Foundations
+
+Die naechste groessere Projektphase priorisiert nicht weitere Visual-
+Politur oder fruehes Gameplay, sondern das Fundament fuer spaetere
+Welt-/Systemsimulation.
+
+Gemeinter Arbeitsblock:
+
+- `LocalBubbleManager` wird von der aktuellen einfachen Fokus-
+  Subtraktion in Richtung des dokumentierten Step-2-Zielbilds
+  (LCA-/praezisionsbewusste Bubble) weiterentwickelt.
+- Das Laden einer Welt wird aus dem Testbed in eine explizite
+  Loader-/World-Schicht gezogen.
+- `BodyDef` wird additiv um fehlende statische Welt-/Physikfelder
+  erweitert (z. B. Rotation, Achsneigung, Luminositaet, Albedo).
+
+Konsequenz:
+
+- Mehrere Root-Systeme / mehrere schwarze Loecher werden als echte
+  spaetere Zielrichtung ernst genommen.
+- Planetare Zustaende und prozedurale Welterzeugung bekommen damit ein
+  tragfaehiges Daten- und Frame-Fundament.
+- Weitere groeessere Visual-Paesse, Gameplay-Features oder Content-
+  Systeme sind gegenueber diesem Fundament aktuell nachrangig.
+
+Praezisierung:
+
+- In der Ausfuehrungsreihenfolge hat der Bubble-/Frame-Schritt Vorrang,
+  weil er den groessten aktuellen Architektur-Vision-Gap schliesst.
+- Die Erweiterung von `BodyDef` ist weiterhin wichtig, aber additiv und
+  kann parallel oder direkt im Anschluss folgen.
+
 ## 2026-04-17 - Sim und View bleiben strikt getrennt
 
 Die Architektur von `Graviton` bleibt wichtiger als ein schneller
@@ -85,6 +117,6 @@ Wichtige Einordnung:
 
 - Die jetzt sichtbaren Toy-Ellipsen im `StarterWorld` sind dafuer ein
   frueher visueller Vorlaeufer, aber noch kein Planetenzustands-System.
-- Jahreszeiten sollen spaeter nicht nur ueber Bahnellipsen gedacht werden;
-  fuer erdaehnliche Welten ist Achsneigung langfristig die wichtigere
-  Simulationsgrundlage.
+- Jahreszeiten sollen spaeter nicht nur ueber Bahnellipsen gedacht
+  werden; fuer erdaehnliche Welten ist Achsneigung langfristig die
+  wichtigere Simulationsgrundlage.

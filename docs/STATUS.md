@@ -5,7 +5,8 @@ Stand: 2026-04-17
 ## Kurzfassung
 
 `Graviton` hat aktuell eine saubere Foundation-Architektur fuer eine
-Weltraum-/Systemsimulation und eine erste stilisierte 2D-Praesentationsschicht.
+Weltraum-/Systemsimulation und eine erste stilisierte 2D-
+Praesentationsschicht.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -20,7 +21,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 - Foundation-Schritt 1 ist implementiert (OrbitService `AUTHORED_ORBIT` +
   `KEPLER_APPROX`, StarterWorld).
-- `LocalBubbleManager` nutzt jetzt eine einfache fokus-relative
+- `LocalBubbleManager` nutzt aktuell noch eine einfache fokus-relative
   View-Transformation, damit fokussierte Bodies visuell stabil liegen.
 - Die volle Bubble-/LCA-Logik aus den spaeteren Architektur-Schritten ist
   noch nicht implementiert.
@@ -36,32 +37,23 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Bodies werden jetzt als 2D-Visuals mit Glow, Orbit-Linien und Trails
   dargestellt.
 - Es gibt ein HUD fuer Fokus, Sim-Zeit, Zeitskala und Status.
-- Das HUD zeigt jetzt zusaetzlich FPS und die aktuelle Speed-Preset-Stufe.
-- Die Sim-Speed kann jetzt auch ueber einen logarithmischen HUD-Slider geregelt werden.
-- Hohe Speedstufen erzeugen jetzt keinen Tick-Sturm pro Frame mehr; `time_scale`
-  skaliert das simulierte `dt` pro Physics-Frame und laeuft dadurch deutlich
-  fluessiger.
+- Das HUD zeigt zusaetzlich FPS und die aktuelle Speed-Preset-Stufe.
+- Die Sim-Speed kann ueber einen logarithmischen HUD-Slider geregelt
+  werden.
+- Hohe Speedstufen erzeugen keinen Tick-Sturm pro Frame mehr;
+  `time_scale` skaliert das simulierte `dt` pro Physics-Frame.
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
-- Unter `100%` kann die Ansicht jetzt von jedem Fokus aus wieder bis zum
-  globalen Systemueberblick herauszoomen.
-- Auch der Root-/BH-Fokus kann jetzt unter `100%` noch weiter auf einen
-  extra weiten Gesamtueberblick herauszoomen.
-- `100%` bleibt der lokale Fokus-Fit; der Nahzoom reicht jetzt bis `2400%`.
-- Root-Fokus und globaler Ueberblick werden jetzt dynamisch ueber den
+- Unter `100%` kann die Ansicht von jedem Fokus aus bis zum globalen
+  Systemueberblick herauszoomen.
+- `100%` bleibt der lokale Fokus-Fit; der Nahzoom reicht bis `2400%`.
+- Root-Fokus und globaler Ueberblick werden dynamisch ueber den
   Root-Body bestimmt statt implizit ueber `obsidian`.
-- Close-Up-Zoom kann fokussierte Bodies jetzt auch sichtbar vergroessern,
-  statt nur deren Umgebungsabstaende auseinanderzuziehen.
-- Der sichtbare Nahzoom ist nicht mehr frueh an einer niedrigen internen
-  View-/Detail-Grenze gedeckelt.
-- Das Testbed unterstuetzt jetzt auch manuelles Camera-Panning (`W/A/S/D`),
-  einen groesseren Zoom-Bereich, klickbaren Fokus und staerkere Zeitskalen.
+- Das Testbed unterstuetzt Camera-Panning, klickbaren Fokus und
+  staerkere Zeitskalen.
 - Die Toy-Orbitwerte der `StarterWorld` sind jetzt so getunt, dass Monde
-  sichtbar schneller als Planeten und Planeten sichtbar schneller als ihre
-  Sterne um `obsidian` kreisen; die Planetenbahnen sind zudem jetzt klarer
-  elliptisch sichtbar, pro Planet unterschiedlich ausgerichtet und die Monde
-  sitzen wieder deutlich enger an ihren Planeten.
-- Die Darstellung ist bewusst naeher am Look von `Atraxis`, ohne die
-  `Graviton`-Architektur zu opfern.
+  sichtbar schneller als Planeten und Planeten sichtbar schneller als
+  ihre Sterne um `obsidian` kreisen; die Planetenbahnen sind zudem
+  sichtbar elliptischer und pro Planet unterschiedlich ausgerichtet.
 
 ## Ziel dieser Praesentationsschicht
 
@@ -72,9 +64,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Wichtige zuletzt geaenderte Dateien
 
-- `src/runtime/local_bubble/local_bubble_manager.gd` - fokus-relative View-Stabilisierung
-- `src/tools/rendering/orbit_view_renderer.gd` - Fokus-Zoom-Logik und Fokus-Gewichtung
-- `scenes/testbeds/orbit_testbed.gd` - Trail-Reset, globale Zoom-Out-Semantik, 2400%-Close-up
+- `src/runtime/local_bubble/local_bubble_manager.gd`
+- `src/tools/rendering/orbit_view_renderer.gd`
+- `scenes/testbeds/orbit_testbed.gd`
 - `scenes/testbeds/orbit_testbed.tscn`
 - `src/tools/rendering/orbit_body_visual.gd`
 - `src/tools/rendering/space_backdrop.gd`
@@ -82,17 +74,36 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Bekannte offene Punkte
 
-- Schritte 2-4 sind als Architektur dokumentiert, aber noch nicht implementiert
-  (`BubbleActivationSet`, `LocalOrbitIntegrator`, `NUMERIC_LOCAL`-Regime).
+- Der Headless-Testlauf ist aktuell nicht komplett gruen:
+  `src/tests/orbit/test_orbit.gd` scheitert zurzeit an der Frage,
+  ob `solve_kepler(PI, 0)` als `PI` oder `-PI` zurueckkommt.
+- Schritte 2-4 sind als Architektur dokumentiert, aber noch nicht
+  implementiert (`BubbleActivationSet`, `LocalOrbitIntegrator`,
+  `NUMERIC_LOCAL`-Regime).
+- `LocalBubbleManager` ist weiterhin nur die einfache fokus-relative
+  Step-1-Loesung und noch nicht die dokumentierte LCA-/
+  praezisionsbewusstere Bubble-Komposition.
+- Das Projekt ist topologisch offen fuer mehrere Root-Systeme, hat aber
+  noch keine echte Welt-/Loader-Schicht und noch kein sauberes
+  Multi-Root-Frame-Modell fuer mehrere schwarze Loecher.
+- `BodyDef` ist fuer aktuelle Orbit-/Toy-Welten ausreichend, aber noch
+  zu schmal fuer spaetere planetare Zustaende, Generatoren und
+  Weltparameter wie Rotation, Achsneigung oder Luminositaet.
 - `phantom_camera` ist im Projekt vorhanden, wird aber in der aktuellen
   Runtime noch nicht aktiv genutzt.
-- Die Praesentation ist deutlich besser als vorher, aber noch nicht auf
-  dem finalen Qualitaetsniveau von `Atraxis`.
+- Die Praesentation ist fuer das aktuelle Testbed gut genug; der
+  groesste Engpass liegt momentan nicht mehr im Look, sondern im
+  Welt-/Frame- und Regime-Fundament.
 - Orbit-Linienpunkte fuer KEPLER-Orbits werden gleichmaessig in M
-  (mittlere Anomalie) gesampelt - bei den aktuellen milden Toy-Ellipsen
-  meist okay, aber nicht physikalisch gleichmaessig verteilt.
+  (mittlere Anomalie) gesampelt - bei den aktuellen Toy-Ellipsen meist
+  okay, aber nicht physikalisch gleichmaessig verteilt.
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- Fokus-Zittern und lokale Lesbarkeit im Testbed weiter verifizieren
-- danach wieder staerker auf Gameplay-/Mechanik-Design fokussieren
+- erst die Test-Baseline wieder komplett gruen bekommen
+- den dokumentierten Step-2-Pfad fuer Bubble-/Frame-Komposition
+  priorisieren, bevor neue grosse Gameplay- oder Visual-Bloecke kommen
+- Weltladen ueber eine explizite Loader-/World-Schicht statt direkt im
+  Testbed organisieren
+- danach `BodyDef` / Weltmodell fuer spaetere planetare Zustaende und
+  Generatoren verbreitern
