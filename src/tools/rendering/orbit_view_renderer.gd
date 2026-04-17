@@ -52,6 +52,38 @@ func set_zoom_bias(value: float) -> void:
 	_apply_focus_emphasis()
 
 
+func pick_body_at_screen(screen_pos: Vector2) -> StringName:
+	if _registry == null:
+		return StringName("")
+
+	var best_id: StringName = StringName("")
+	var best_score: float = INF
+	var best_priority: int = -1
+
+	for id in _registry.get_update_order():
+		var visual: OrbitBodyVisual = _body_visuals.get(id, null)
+		var def: BodyDef = _registry.get_def(id)
+		if visual == null or def == null:
+			continue
+
+		var canvas_xform: Transform2D = visual.get_global_transform_with_canvas()
+		var center: Vector2 = canvas_xform.origin
+		var scale_x: float = canvas_xform.x.length()
+		var radius_px: float = _pick_radius_local(def.kind) * scale_x + 8.0
+		var dist: float = center.distance_to(screen_pos)
+		if dist > radius_px:
+			continue
+
+		var score: float = dist / maxf(radius_px, 1.0)
+		var priority: int = _pick_priority(def.kind)
+		if score < best_score or (is_equal_approx(score, best_score) and priority > best_priority):
+			best_id = id
+			best_score = score
+			best_priority = priority
+
+	return best_id
+
+
 func get_body_view_position_ru(id: StringName) -> Vector2:
 	if _bubble == null:
 		return Vector2.ZERO
@@ -552,3 +584,27 @@ static func _orbit_line_width(kind: int) -> float:
 			return 1.15
 		_:
 			return 1.35
+
+
+static func _pick_radius_local(kind: int) -> float:
+	match kind:
+		BodyType.Kind.BLACK_HOLE:
+			return 20.0
+		BodyType.Kind.STAR:
+			return 22.0
+		BodyType.Kind.MOON:
+			return 8.0
+		_:
+			return 11.0
+
+
+static func _pick_priority(kind: int) -> int:
+	match kind:
+		BodyType.Kind.MOON:
+			return 3
+		BodyType.Kind.PLANET:
+			return 2
+		BodyType.Kind.STAR:
+			return 1
+		_:
+			return 0

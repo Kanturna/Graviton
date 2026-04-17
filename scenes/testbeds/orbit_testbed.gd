@@ -78,11 +78,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				_focus_index = maxi(_focus_order.find(root_id), 0)
 				_set_focus(_focus_order[_focus_index])
 				get_viewport().set_input_as_handled()
-			KEY_Q, KEY_BRACKETLEFT:
+			KEY_Q, KEY_BRACKETLEFT, KEY_PAGEDOWN:
 				_time_scale_index = maxi(_time_scale_index - 1, 0)
 				TimeService.set_time_scale(TIME_SCALE_PRESETS[_time_scale_index])
 				get_viewport().set_input_as_handled()
-			KEY_E, KEY_BRACKETRIGHT:
+			KEY_E, KEY_BRACKETRIGHT, KEY_PAGEUP:
 				_time_scale_index = mini(_time_scale_index + 1, TIME_SCALE_PRESETS.size() - 1)
 				TimeService.set_time_scale(TIME_SCALE_PRESETS[_time_scale_index])
 				get_viewport().set_input_as_handled()
@@ -99,6 +99,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event is InputEventMouseButton and event.pressed:
 		match event.button_index:
+			MOUSE_BUTTON_LEFT:
+				var picked_id: StringName = _renderer.pick_body_at_screen(event.position)
+				if picked_id != StringName(""):
+					_focus_index = maxi(_focus_order.find(picked_id), 0)
+					_set_focus(picked_id)
+					get_viewport().set_input_as_handled()
 			MOUSE_BUTTON_WHEEL_UP:
 				_zoom_bias = minf(_zoom_bias * ZOOM_BIAS_STEP, MAX_ZOOM_BIAS)
 				get_viewport().set_input_as_handled()
@@ -161,17 +167,20 @@ func _update_hud() -> void:
 		focus_name = focus_def.display_name
 
 	var sim_days: float = TimeService.sim_time_s / UnitSystem.DAY_S
+	var fps: int = Engine.get_frames_per_second()
+	var speed_step_label: String = "%d/%d" % [_time_scale_index + 1, TIME_SCALE_PRESETS.size()]
 	_focus_value.text = "Focus: %s" % focus_name
-	_time_value.text = "T+ %.2f d   ticks %d" % [sim_days, TimeService.tick_count]
-	_scale_value.text = "Speed x%s   Zoom %.0f%%" % [
+	_time_value.text = "T+ %.2f d   ticks %d   FPS %d" % [sim_days, TimeService.tick_count, fps]
+	_scale_value.text = "Speed x%s   Step %s   Zoom %.0f%%" % [
 		_stripped_float(TimeService.time_scale),
+		speed_step_label,
 		_zoom_bias * 100.0
 	]
 	_mode_value.text = "Bodies %d   %s" % [
 		UniverseRegistry.body_count(),
 		"Paused" if TimeService.paused else "Running"
 	]
-	_hint_label.text = "Tab / Shift+Tab focus   Q/E speed   WASD pan   Wheel zoom (20%-2400%)   Backspace reset view   Space pause   F3 debug"
+	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Q/E or PgUp/PgDn speed   WASD pan   Wheel zoom (20%-2400%)   Backspace reset view   Space pause   F3 debug"
 
 
 func _update_manual_pan(delta: float) -> void:

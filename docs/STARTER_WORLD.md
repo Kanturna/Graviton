@@ -42,9 +42,10 @@ Alle Werte sind bewusste Toy-Werte - nicht astrophysikalisch korrekt.
 |---|---|
 | Tab | Fokus vorwaerts (Root -> alpha -> ... -> beta_i_m) |
 | Shift+Tab | Fokus rueckwaerts |
+| Linksklick auf Body | Fokus direkt auf den angeklickten Body |
 | Home | Fokus zurueck auf den Root-Body / Gesamtueberblick |
-| `Q` / `[` | Zeitskala langsamer (Preset runter) |
-| `E` / `]` | Zeitskala schneller (Preset hoch) |
+| `Q` / `[` / PageDown | Zeitskala langsamer (Preset runter) |
+| `E` / `]` / PageUp | Zeitskala schneller (Preset hoch) |
 | `W/A/S/D` | Kamera manuell verschieben |
 | Space | Pause / Weiter |
 | Mausrad | Zoom ein/aus (20%-2400%) |
@@ -61,6 +62,10 @@ Zoom-Semantik:
 - `100%` = lokaler Fokus-Fit
 - `20%` = globaler Ueberblick, auch von Stern-/Planeten-/Mondfokus aus
 - `2400%` = tieferer Close-up-Zoom ohne fruehen internen Scale-Cap
+
+HUD:
+
+- zeigt jetzt Fokus, Sim-Zeit, Tick-Count, FPS, Speed-Multiplikator, Speed-Preset-Stufe, Zoom und Run/Pause-Status
 
 **Zeitskalen-Presets:** 0.25x / 1x / 10x / 50x / 100x / **250x (Default)** / 500x / 1000x / 2500x / 5000x
 

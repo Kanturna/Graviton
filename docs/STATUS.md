@@ -36,6 +36,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Bodies werden jetzt als 2D-Visuals mit Glow, Orbit-Linien und Trails
   dargestellt.
 - Es gibt ein HUD fuer Fokus, Sim-Zeit, Zeitskala und Status.
+- Das HUD zeigt jetzt zusaetzlich FPS und die aktuelle Speed-Preset-Stufe.
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
 - Unter `100%` kann die Ansicht jetzt von jedem Fokus aus wieder bis zum
   globalen Systemueberblick herauszoomen.
@@ -47,7 +48,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Der sichtbare Nahzoom ist nicht mehr frueh an einer niedrigen internen
   View-/Detail-Grenze gedeckelt.
 - Das Testbed unterstuetzt jetzt auch manuelles Camera-Panning (`W/A/S/D`),
-  einen groesseren Zoom-Bereich und staerkere Zeitskalen.
+  einen groesseren Zoom-Bereich, klickbaren Fokus und staerkere Zeitskalen.
 - Die Darstellung ist bewusst naeher am Look von `Atraxis`, ohne die
   `Graviton`-Architektur zu opfern.
 
