@@ -45,10 +45,19 @@ void fragment() {
 	float g1 = sin(p.x * 0.48 + p.y * 0.88     - TIME * 0.71);
 	float g2 = sin(p.x * 0.52 - p.y * 0.85     + TIME * 0.43);
 	float cell_raw = (g0 * 1.00 + g1 * 0.90 + g2 * 0.85) / 2.75;
-	float abs_raw = abs(cell_raw);
-	float cell_sharp = sign(cell_raw) * (1.0 - pow(1.0 - abs_raw, 2.0));
-	float gran = cell_sharp * (1.0 - t * 0.65) * mix(0.06, 0.18, df_t);
+	// Asymmetric granulation morphology — broad bright upwelling centers,
+	// thin dark downwelling lanes. Mirrors solar convection: hot plasma pools
+	// separated by a narrower cool network. Lane contrast dominates (0.60 vs 1.35).
+	float cell_pos = max(0.0, cell_raw);
+	float cell_neg = max(0.0, -cell_raw);
+	float bright = pow(cell_pos, 0.65);   // broad, soft hot centers
+	float dark   = pow(cell_neg, 2.40);   // narrow, hard cool lanes
+	float asym = bright * 0.60 - dark * 1.35;
+	float gran = asym * (1.0 - t * 0.65) * mix(0.06, 0.18, df_t);
 	col *= 1.0 + gran;
+	// Temperature tint: lanes pick up a warmer/redder hue, bright centers stay near white
+	// df_t-gated so the tint is inactive in overview, subtle at close-up
+	col *= mix(vec3(1.0), vec3(1.0, 0.90, 0.72), max(0.0, -asym) * mix(0.0, 0.55, df_t));
 
 	// Corona rim glow
 	float rim = pow(max(0.0, 1.0 - abs(t_w - 1.0) * 5.5), 2.0) * 0.48;
