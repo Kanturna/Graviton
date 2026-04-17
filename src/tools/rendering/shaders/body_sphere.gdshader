@@ -11,6 +11,9 @@ uniform float surface_var_strength = 0.06;
 uniform float polar_tint_strength = 0.18;
 uniform float band_strength = 0.36;   // planet: atmospheric bands; 0 for moon
 uniform float patch_strength = 0.0;   // moon: albedo patches; 0 for planet
+// Rotation domain: 0.0 = screen-plane (features orbit disk center; moon legacy)
+//                  1.0 = spherical Y-axis (features traverse limb to limb; planet)
+uniform float spherical_mix = 0.0;
 
 void fragment() {
 	vec2 uv = UV - vec2(0.5);
@@ -35,10 +38,18 @@ void fragment() {
 	rim *= smoothstep(0.0, 0.4, lit + 0.3);
 
 	// Rotate surface domain — only the texture rotates, not the lighting
+	// Two domains, chosen per body via spherical_mix uniform:
+	//   n_flat: 2D rotation of projected normal (features orbit the disk center)
+	//   n_sph : longitude/latitude from 3D normal, Y-axis rotation
+	//           → features enter one limb, traverse disk, exit the other; poles fixed
 	float rot = TIME * rotation_speed;
 	float cr = cos(rot);
 	float sr = sin(rot);
-	vec2 n_rot = vec2(cr * n.x - sr * n.y, sr * n.x + cr * n.y);
+	vec2 n_flat = vec2(cr * n.x - sr * n.y, sr * n.x + cr * n.y);
+	float lon = atan(n.x, n.z) - rot;   // radians; atan handles limb foreshortening
+	float lat = n.y;                    // fixed under Y-axis rotation
+	vec2 n_sph = vec2(lon, lat);
+	vec2 n_rot = mix(n_flat, n_sph, spherical_mix);
 
 	// Slow domain warp — band edges deform on a much longer timescale than the rotation
 	// df_t scales warp amplitude: almost none in overview, turbulent at close-up

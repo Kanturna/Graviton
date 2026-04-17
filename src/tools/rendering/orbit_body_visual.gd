@@ -188,4 +188,5 @@ static func _make_sphere_material(kind: int) -> ShaderMaterial:
 		mat.set_shader_parameter("polar_tint_strength", 0.0 if is_moon else 0.18)
 		mat.set_shader_parameter("band_strength", 0.0 if is_moon else 0.42)
 		mat.set_shader_parameter("patch_strength", 0.28 if is_moon else 0.0)
+		mat.set_shader_parameter("spherical_mix", 0.0 if is_moon else 1.0)
 	return mat
