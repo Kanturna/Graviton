@@ -26,6 +26,11 @@ UniverseRegistry="*res://src/sim/universe/universe_registry.gd"
 AntialiasedLine2DTexture="*uid://bxkmim0y6ckru"
 PhantomCameraManager="*uid://duq6jhf6unyis"
 
+[display]
+
+window/size/viewport_width=2520
+window/size/viewport_height=1440
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/antialiased_line2d/plugin.cfg", "res://addons/gut/plugin.cfg", "res://addons/phantom_camera/plugin.cfg")

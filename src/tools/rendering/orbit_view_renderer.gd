@@ -35,6 +35,7 @@ func set_focus(body_id: StringName) -> void:
 		var visual: Node2D = _body_visuals[id]
 		if visual != null:
 			visual.set_focused(id == body_id)
+	_apply_focus_emphasis()
 
 
 func set_world_scale(value: float) -> void:
@@ -164,6 +165,85 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 				orbit_line.position = get_body_view_position_ru(parent_id)
 
 		_update_trail(id, pos, reset_trails)
+
+
+func _apply_focus_emphasis() -> void:
+	if _registry == null:
+		return
+
+	var focus_def: BodyDef = _registry.get_def(_focus_id)
+	var show_all: bool = focus_def == null or focus_def.is_root()
+
+	for id in _body_visuals.keys():
+		var body_alpha: float = 1.0
+		var orbit_alpha: float = 1.0
+		var trail_alpha: float = 1.0
+
+		if not show_all:
+			var emphasis: Dictionary = _focus_emphasis_for(id, focus_def)
+			body_alpha = float(emphasis.get("body", 1.0))
+			orbit_alpha = float(emphasis.get("orbit", 1.0))
+			trail_alpha = float(emphasis.get("trail", 1.0))
+
+		var body_visual: CanvasItem = _body_visuals.get(id, null)
+		if body_visual != null:
+			body_visual.modulate = Color(1.0, 1.0, 1.0, body_alpha)
+
+		var orbit_entry: Dictionary = _orbit_visuals.get(id, {})
+		var orbit_line: CanvasItem = orbit_entry.get("line", null)
+		if orbit_line != null:
+			orbit_line.modulate = Color(1.0, 1.0, 1.0, orbit_alpha)
+
+		var trail_line: CanvasItem = _trail_visuals.get(id, null)
+		if trail_line != null:
+			trail_line.modulate = Color(1.0, 1.0, 1.0, trail_alpha)
+
+
+func _focus_emphasis_for(id: StringName, focus_def: BodyDef) -> Dictionary:
+	if focus_def == null:
+		return {"body": 1.0, "orbit": 1.0, "trail": 1.0}
+
+	if id == focus_def.id:
+		return {"body": 1.0, "orbit": 0.30, "trail": 0.92}
+
+	var def: BodyDef = _registry.get_def(id)
+	if def == null:
+		return {"body": 1.0, "orbit": 1.0, "trail": 1.0}
+
+	if def.parent_id == focus_def.id:
+		return {"body": 1.0, "orbit": 1.0, "trail": 1.0}
+
+	if _is_descendant_of(id, focus_def.id):
+		return {"body": 0.90, "orbit": 0.80, "trail": 0.86}
+
+	if _is_descendant_of(focus_def.id, id):
+		return {"body": 0.42, "orbit": 0.10, "trail": 0.18}
+
+	if def.parent_id != StringName("") and def.parent_id == focus_def.parent_id:
+		return {"body": 0.52, "orbit": 0.18, "trail": 0.28}
+
+	return {"body": 0.24, "orbit": 0.06, "trail": 0.10}
+
+
+func _is_descendant_of(candidate_id: StringName, ancestor_id: StringName) -> bool:
+	if _registry == null or candidate_id == ancestor_id or ancestor_id == StringName(""):
+		return false
+
+	var def: BodyDef = _registry.get_def(candidate_id)
+	if def == null:
+		return false
+
+	var cursor: StringName = def.parent_id
+	var hop_limit: int = 64
+	while cursor != StringName("") and hop_limit > 0:
+		if cursor == ancestor_id:
+			return true
+		var cursor_def: BodyDef = _registry.get_def(cursor)
+		if cursor_def == null:
+			break
+		cursor = cursor_def.parent_id
+		hop_limit -= 1
+	return false
 
 
 func _update_trail(id: StringName, pos: Vector2, reset_trails: bool) -> void:

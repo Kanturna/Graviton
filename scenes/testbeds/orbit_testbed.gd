@@ -1,11 +1,14 @@
 extends Node2D
 
-const TIME_SCALE_PRESETS: Array[float] = [0.25, 1.0, 10.0, 50.0, 100.0, 250.0, 500.0, 1000.0]
+const TIME_SCALE_PRESETS: Array[float] = [0.25, 1.0, 10.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0]
 const VIEWPORT_RADIUS_FACTOR: float = 0.38
 const VIEW_SMOOTHNESS: float = 10.0
-const ZOOM_BIAS_STEP: float = 1.12
-const MIN_ZOOM_BIAS: float = 0.55
-const MAX_ZOOM_BIAS: float = 2.4
+const ZOOM_BIAS_STEP: float = 1.16
+const MIN_ZOOM_BIAS: float = 0.20
+const MAX_ZOOM_BIAS: float = 8.0
+const MIN_VIEW_SCALE: float = 0.18
+const MAX_VIEW_SCALE: float = 64.0
+const PAN_SPEED_PX_PER_S: float = 960.0
 
 @onready var _orbit_service: OrbitService = $OrbitService
 @onready var _bubble: LocalBubbleManager = $LocalBubbleManager
@@ -27,6 +30,7 @@ var _target_view_scale: float = 1.0
 var _current_view_scale: float = 1.0
 var _target_world_offset: Vector2 = Vector2.ZERO
 var _current_world_offset: Vector2 = Vector2.ZERO
+var _manual_pan_ru: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -53,6 +57,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_manual_pan(delta)
 	_refresh_target_view()
 	_apply_view_transform(false, delta)
 	_update_hud()
@@ -71,11 +76,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				_focus_index = 0
 				_set_focus(_focus_order[_focus_index])
 				get_viewport().set_input_as_handled()
-			KEY_BRACKETLEFT:
+			KEY_Q, KEY_BRACKETLEFT:
 				_time_scale_index = maxi(_time_scale_index - 1, 0)
 				TimeService.set_time_scale(TIME_SCALE_PRESETS[_time_scale_index])
 				get_viewport().set_input_as_handled()
-			KEY_BRACKETRIGHT:
+			KEY_E, KEY_BRACKETRIGHT:
 				_time_scale_index = mini(_time_scale_index + 1, TIME_SCALE_PRESETS.size() - 1)
 				TimeService.set_time_scale(TIME_SCALE_PRESETS[_time_scale_index])
 				get_viewport().set_input_as_handled()
@@ -87,6 +92,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_BACKSPACE:
 				_zoom_bias = 1.0
+				_manual_pan_ru = Vector2.ZERO
 				get_viewport().set_input_as_handled()
 
 	if event is InputEventMouseButton and event.pressed:
@@ -112,6 +118,7 @@ func _set_focus(body_id: StringName, immediate: bool = false) -> void:
 	_bubble.set_focus(body_id)
 	_renderer.set_focus(body_id)
 	_renderer.clear_trails()
+	_manual_pan_ru = Vector2.ZERO
 	_refresh_target_view()
 	if immediate:
 		_apply_view_transform(true)
@@ -126,10 +133,10 @@ func _refresh_target_view() -> void:
 
 	_target_view_scale = clampf(
 		(target_screen_radius / focus_radius) * _zoom_bias,
-		0.22,
-		16.0
+		MIN_VIEW_SCALE,
+		MAX_VIEW_SCALE
 	)
-	_target_world_offset = viewport_size * 0.5 - focus_center * _target_view_scale
+	_target_world_offset = viewport_size * 0.5 - (focus_center + _manual_pan_ru) * _target_view_scale
 
 
 func _apply_view_transform(immediate: bool, delta: float = 0.0) -> void:
@@ -164,7 +171,25 @@ func _update_hud() -> void:
 		UniverseRegistry.body_count(),
 		"Paused" if TimeService.paused else "Running"
 	]
-	_hint_label.text = "Tab / Shift+Tab focus   [ ] speed   Wheel zoom   Backspace reset zoom   Space pause   F3 debug"
+	_hint_label.text = "Tab / Shift+Tab focus   Q/E speed   WASD pan   Wheel zoom   Backspace reset view   Space pause   F3 debug"
+
+
+func _update_manual_pan(delta: float) -> void:
+	var pan_input: Vector2 = Vector2.ZERO
+
+	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+		pan_input.x -= 1.0
+	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+		pan_input.x += 1.0
+	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+		pan_input.y -= 1.0
+	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+		pan_input.y += 1.0
+
+	if pan_input == Vector2.ZERO:
+		return
+
+	_manual_pan_ru += pan_input.normalized() * ((PAN_SPEED_PX_PER_S * delta) / maxf(_current_view_scale, 0.001))
 
 
 static func _stripped_float(value: float) -> String:

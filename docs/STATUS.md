@@ -35,6 +35,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   dargestellt.
 - Es gibt ein HUD fuer Fokus, Sim-Zeit, Zeitskala und Status.
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
+- Das Testbed unterstuetzt jetzt auch manuelles Camera-Panning (`W/A/S/D`),
+  einen groesseren Zoom-Bereich und staerkere Zeitskalen.
 - Die Darstellung ist bewusst naeher am Look von `Atraxis`, ohne die
   `Graviton`-Architektur zu opfern.
 

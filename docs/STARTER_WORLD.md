@@ -52,14 +52,15 @@ Alle Werte sind bewusste Toy-Werte — nicht astrophysikalisch korrekt.
 | Tab | Fokus vorwärts (obsidian → alpha → ... → beta_i_m) |
 | Shift+Tab | Fokus rückwärts |
 | Home | Fokus zurück auf obsidian (Gesamtüberblick) |
-| `[` | Zeitskala langsamer (Preset ↓) |
-| `]` | Zeitskala schneller (Preset ↑) |
+| `Q` / `[` | Zeitskala langsamer (Preset ↓) |
+| `E` / `]` | Zeitskala schneller (Preset ↑) |
+| `W/A/S/D` | Kamera manuell verschieben |
 | Space | Pause / Weiter |
-| Mausrad | Zoom ein/aus (Bias 0.55×–2.4×) |
-| Backspace | Zoom-Bias zurücksetzen |
+| Mausrad | Zoom ein/aus (Bias 0.2×–8×) |
+| Backspace | View zurücksetzen (Zoom + Pan) |
 | F3 | Debug-Overlay ein/ausblenden |
 
-**Zeitskalen-Presets:** 0.25× / 1× / 10× / 50× / 100× / **250× (Default)** / 500× / 1000×
+**Zeitskalen-Presets:** 0.25× / 1× / 10× / 50× / 100× / **250× (Default)** / 500× / 1000× / 2500× / 5000×
 
 Bei **250×** (Default):
 - Monde: ~48–60 s/Umlauf
