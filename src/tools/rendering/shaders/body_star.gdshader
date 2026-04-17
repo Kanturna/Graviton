@@ -28,15 +28,17 @@ void fragment() {
 	vec3 edge_col = vec3(1.0, 0.76, 0.28);
 	vec3 col = mix(center_col, edge_col, pow(t_w, 1.8)) * limb;
 
-	// Sharpened granulation cells with higher contrast
-	// Two sin-product layers create a cell-like pattern
-	float cell1 = sin(n_xy.x * 9.0 + TIME * 3.2) * sin(n_xy.y * 8.0 - TIME * 2.6);
-	float cell2 = sin(n_xy.x * 14.0 - TIME * 4.1) * sin(n_xy.y * 11.0 + TIME * 3.0);
-	float cell_raw = cell1 * 0.55 + cell2 * 0.45;
-	// Push toward ±1 for sharper, more distinct cell boundaries
+	// Three-direction hexagonal granulation — avoids cross/grid artifact of sin(x)*sin(y)
+	// Angles ~0°/60°/115° (slightly off perfect hexagonal to break mathematical regularity)
+	// df_t scales amplitude: subtle in overview, distinct at close-up
+	vec2 p = n_xy * 11.0;
+	float g0 = sin(p.x * 1.00                  + TIME * 0.54);
+	float g1 = sin(p.x * 0.48 + p.y * 0.88     - TIME * 0.71);
+	float g2 = sin(p.x * 0.52 - p.y * 0.85     + TIME * 0.43);
+	float cell_raw = (g0 * 1.00 + g1 * 0.90 + g2 * 0.85) / 2.75;
 	float abs_raw = abs(cell_raw);
-	float cell_sharp = sign(cell_raw) * (1.0 - pow(1.0 - abs_raw, 1.5));
-	float gran = cell_sharp * (1.0 - t * 0.65) * 0.18;
+	float cell_sharp = sign(cell_raw) * (1.0 - pow(1.0 - abs_raw, 2.0));
+	float gran = cell_sharp * (1.0 - t * 0.65) * mix(0.06, 0.18, df_t);
 	col *= 1.0 + gran;
 
 	// Corona rim glow

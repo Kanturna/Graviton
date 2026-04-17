@@ -40,14 +40,21 @@ void fragment() {
 	float sr = sin(rot);
 	vec2 n_rot = vec2(cr * n.x - sr * n.y, sr * n.x + cr * n.y);
 
+	// Slow domain warp — band edges deform on a much longer timescale than the rotation
+	// df_t scales warp amplitude: almost none in overview, turbulent at close-up
+	float warp_amp = mix(0.03, 0.14, df_t);
+	float wx = (sin(n_rot.y * 3.5 + TIME * 0.07) + sin(n_rot.y * 6.1 - TIME * 0.11) * 0.50) * warp_amp;
+	float wy = sin(n_rot.x * 2.9 - TIME * 0.05) * warp_amp * 0.65;
+	vec2 n_w = n_rot + vec2(wx, wy);
+
 	// Surface base color
 	vec3 surface_col = base_color;
 
-	// Atmospheric bands (planet): three overlapping sin layers, slightly wavy
+	// Atmospheric bands (planet): three overlapping sin layers on warped domain
 	// band_strength=0 → no effect (moon path)
-	float band_raw = sin(n_rot.y * 2.8 + n_rot.x * 0.55) * 0.50
-	               + sin(n_rot.y * 4.7 - n_rot.x * 0.42 + 1.8) * 0.32
-	               + sin(n_rot.y * 1.5 + n_rot.x * 0.28 + 3.2) * 0.18;
+	float band_raw = sin(n_w.y * 2.8 + n_w.x * 0.75) * 0.50
+	               + sin(n_w.y * 4.7 - n_w.x * 0.55 + 1.8) * 0.32
+	               + sin(n_w.y * 1.5 + n_w.x * 0.35 + 3.2) * 0.18;
 	float band = band_raw * 0.50 + 0.50;  // remap [-1,1] to [0,1]
 	vec3 band_dark  = base_color * vec3(0.80, 0.83, 0.76);
 	vec3 band_light = base_color * vec3(1.10, 1.08, 1.14);
