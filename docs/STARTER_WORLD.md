@@ -46,6 +46,7 @@ Alle Werte sind bewusste Toy-Werte - nicht astrophysikalisch korrekt.
 | Home | Fokus zurueck auf den Root-Body / Gesamtueberblick |
 | `Q` / `[` / PageDown | Zeitskala langsamer (Preset runter) |
 | `E` / `]` / PageUp | Zeitskala schneller (Preset hoch) |
+| HUD-Speed-Slider | Sim-Speed stufenlos logarithmisch zwischen langsam und sehr schnell |
 | `W/A/S/D` | Kamera manuell verschieben |
 | Space | Pause / Weiter |
 | Mausrad | Zoom ein/aus (20%-2400%) |
@@ -66,6 +67,7 @@ Zoom-Semantik:
 HUD:
 
 - zeigt jetzt Fokus, Sim-Zeit, Tick-Count, FPS, Speed-Multiplikator, Speed-Preset-Stufe, Zoom und Run/Pause-Status
+- Speed kann jetzt zusaetzlich ueber einen logarithmischen HUD-Slider geregelt werden; Hotkeys und Slider bleiben synchron
 
 **Zeitskalen-Presets:** 0.25x / 1x / 10x / 50x / 100x / **250x (Default)** / 500x / 1000x / 2500x / 5000x
 

@@ -37,6 +37,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   dargestellt.
 - Es gibt ein HUD fuer Fokus, Sim-Zeit, Zeitskala und Status.
 - Das HUD zeigt jetzt zusaetzlich FPS und die aktuelle Speed-Preset-Stufe.
+- Die Sim-Speed kann jetzt auch ueber einen logarithmischen HUD-Slider geregelt werden.
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
 - Unter `100%` kann die Ansicht jetzt von jedem Fokus aus wieder bis zum
   globalen Systemueberblick herauszoomen.

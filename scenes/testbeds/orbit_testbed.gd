@@ -19,6 +19,7 @@ const PAN_SPEED_PX_PER_S: float = 960.0
 @onready var _focus_value: Label = $HudLayer/TopPanel/Margin/VBox/FocusValue
 @onready var _time_value: Label = $HudLayer/TopPanel/Margin/VBox/TimeValue
 @onready var _scale_value: Label = $HudLayer/TopPanel/Margin/VBox/ScaleValue
+@onready var _speed_slider: HSlider = $HudLayer/TopPanel/Margin/VBox/SpeedSlider
 @onready var _mode_value: Label = $HudLayer/TopPanel/Margin/VBox/ModeValue
 @onready var _hint_label: Label = $HudLayer/BottomPanel/Margin/Hints
 
@@ -52,7 +53,10 @@ func _ready() -> void:
 	_debug_overlay.configure(UniverseRegistry, TimeService, _bubble)
 	_debug_overlay.visible = false
 
-	TimeService.set_time_scale(TIME_SCALE_PRESETS[_time_scale_index])
+	_configure_speed_slider()
+	if not TimeService.time_scale_changed.is_connected(_on_time_scale_changed):
+		TimeService.time_scale_changed.connect(_on_time_scale_changed)
+	_set_time_scale_from_preset_index(_time_scale_index)
 	_set_focus(_focus_order[_focus_index], true)
 	_apply_view_transform(true)
 	_update_hud()
@@ -80,12 +84,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_set_focus(_focus_order[_focus_index])
 				get_viewport().set_input_as_handled()
 			KEY_Q, KEY_BRACKETLEFT, KEY_PAGEDOWN:
-				_time_scale_index = maxi(_time_scale_index - 1, 0)
-				TimeService.set_time_scale(TIME_SCALE_PRESETS[_time_scale_index])
+				_set_time_scale_from_preset_index(maxi(_time_scale_index - 1, 0))
 				get_viewport().set_input_as_handled()
 			KEY_E, KEY_BRACKETRIGHT, KEY_PAGEUP:
-				_time_scale_index = mini(_time_scale_index + 1, TIME_SCALE_PRESETS.size() - 1)
-				TimeService.set_time_scale(TIME_SCALE_PRESETS[_time_scale_index])
+				_set_time_scale_from_preset_index(mini(_time_scale_index + 1, TIME_SCALE_PRESETS.size() - 1))
 				get_viewport().set_input_as_handled()
 			KEY_SPACE:
 				TimeService.set_paused(not TimeService.paused)
@@ -169,10 +171,10 @@ func _update_hud() -> void:
 
 	var sim_days: float = TimeService.sim_time_s / UnitSystem.DAY_S
 	var fps: int = Engine.get_frames_per_second()
-	var speed_step_label: String = "%d/%d" % [_time_scale_index + 1, TIME_SCALE_PRESETS.size()]
+	var speed_step_label: String = _time_scale_step_label(TimeService.time_scale)
 	_focus_value.text = "Focus: %s" % focus_name
 	_time_value.text = "T+ %.2f d   ticks %d   FPS %d" % [sim_days, TimeService.tick_count, fps]
-	_scale_value.text = "Speed x%s   Step %s   Zoom %.0f%%" % [
+	_scale_value.text = "Speed x%s   Preset %s   Zoom %.0f%%" % [
 		_stripped_float(TimeService.time_scale),
 		speed_step_label,
 		_zoom_bias * 100.0
@@ -181,7 +183,7 @@ func _update_hud() -> void:
 		UniverseRegistry.body_count(),
 		"Paused" if TimeService.paused else "Running"
 	]
-	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Q/E or PgUp/PgDn speed   WASD pan   Wheel zoom (20%-2400%)   Backspace reset view   Space pause   F3 debug"
+	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Q/E or PgUp/PgDn speed   HUD slider speed   WASD pan   Wheel zoom (20%-2400%)   Backspace reset view   Space pause   F3 debug"
 
 
 func _update_manual_pan(delta: float) -> void:
@@ -247,6 +249,76 @@ func _root_focus_id() -> StringName:
 		if def != null and def.is_root():
 			return id
 	return StringName("")
+
+
+func _configure_speed_slider() -> void:
+	if _speed_slider == null:
+		return
+	_speed_slider.min_value = 0.0
+	_speed_slider.max_value = 1.0
+	_speed_slider.step = 0.001
+	if not _speed_slider.value_changed.is_connected(_on_speed_slider_changed):
+		_speed_slider.value_changed.connect(_on_speed_slider_changed)
+	_speed_slider.set_value_no_signal(_time_scale_to_slider_value(TIME_SCALE_PRESETS[_time_scale_index]))
+
+
+func _on_speed_slider_changed(value: float) -> void:
+	TimeService.set_time_scale(_slider_value_to_time_scale(value))
+
+
+func _on_time_scale_changed(new_scale: float) -> void:
+	_time_scale_index = _nearest_time_scale_preset_index(new_scale)
+	if _speed_slider != null:
+		_speed_slider.set_value_no_signal(_time_scale_to_slider_value(new_scale))
+
+
+func _set_time_scale_from_preset_index(index: int) -> void:
+	_time_scale_index = clampi(index, 0, TIME_SCALE_PRESETS.size() - 1)
+	TimeService.set_time_scale(TIME_SCALE_PRESETS[_time_scale_index])
+
+
+func _time_scale_to_slider_value(scale: float) -> float:
+	var min_scale: float = _minimum_time_scale()
+	var max_scale: float = _maximum_time_scale()
+	var clamped: float = clampf(scale, min_scale, max_scale)
+	var log_span: float = maxf(log(max_scale) - log(min_scale), 0.0001)
+	return clampf((log(clamped) - log(min_scale)) / log_span, 0.0, 1.0)
+
+
+func _slider_value_to_time_scale(value: float) -> float:
+	var min_scale: float = _minimum_time_scale()
+	var max_scale: float = _maximum_time_scale()
+	var t: float = clampf(value, 0.0, 1.0)
+	return exp(lerpf(log(min_scale), log(max_scale), t))
+
+
+func _nearest_time_scale_preset_index(value: float) -> int:
+	var best_index: int = 0
+	var best_score: float = INF
+	var safe_value: float = maxf(value, _minimum_time_scale())
+	for i in range(TIME_SCALE_PRESETS.size()):
+		var preset: float = TIME_SCALE_PRESETS[i]
+		var score: float = absf(log(maxf(preset, 0.0001)) - log(safe_value))
+		if score < best_score:
+			best_score = score
+			best_index = i
+	return best_index
+
+
+func _time_scale_step_label(value: float) -> String:
+	var preset_index: int = _nearest_time_scale_preset_index(value)
+	var preset_value: float = TIME_SCALE_PRESETS[preset_index]
+	if is_equal_approx(value, preset_value):
+		return "%d/%d" % [preset_index + 1, TIME_SCALE_PRESETS.size()]
+	return "Custom"
+
+
+static func _minimum_time_scale() -> float:
+	return maxf(TIME_SCALE_PRESETS.front(), 0.001)
+
+
+static func _maximum_time_scale() -> float:
+	return maxf(TIME_SCALE_PRESETS.back(), _minimum_time_scale())
 
 
 static func _stripped_float(value: float) -> String:
