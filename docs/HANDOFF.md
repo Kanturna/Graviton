@@ -1,156 +1,105 @@
-# Graviton — Handoff
+# Graviton - Handoff
 
-> **Aktueller Stand (2026-04-17):** Die Präsentationsschicht wurde als
-> stilisiertes 2D-Orbit-Testbed neugebaut (`scenes/testbeds/`,
-> `src/tools/rendering/`). Die Sim-Foundation (Schritte 1–4) ist als
-> Architektur dokumentiert; die aktive Testbed-Szene nutzt Step-1-APIs
-> (`LocalBubbleManager` als Identity-Stub, kein BubbleActivationSet,
-> kein NUMERIC_LOCAL im Testbed). Für den aktuellen Arbeitsstand lies
-> zuerst `docs/STATUS.md`.
+> Aktueller Stand (2026-04-17):
+> Die Praesentationsschicht ist ein stilisiertes 2D-Orbit-Testbed.
+> Foundation-Schritt 2 ist jetzt implementiert:
+> `LocalBubbleManager` nutzt LCA-basierte Step-2-Komposition mit
+> `Vector3.INF`-Sentinel fuer fremde Roots. `BubbleActivationSet` und
+> `NUMERIC_LOCAL` bleiben geplant. Fuer die aktuelle Priorisierung lies
+> zuerst `docs/STATUS.md` und `docs/NEXT_STEPS.md`.
 
 ---
 
-Architektur-Zieldokumentation: Schritte 1–4 (Step 1 implementiert, 2–4 geplant).
-
-## Welche Ebene ist aktuell autoritativ
+## Autoritative Ebenen
 
 | Ebene | Rolle | Datei |
 |---|---|---|
 | `TimeService` | Wahrheit | `src/core/time/time_service.gd` |
 | `UniverseRegistry` | Wahrheit | `src/sim/universe/universe_registry.gd` |
-| `BodyState` (via `OrbitService`) | Wahrheit | `src/sim/bodies/body_state.gd`, `src/sim/orbit/orbit_service.gd` |
+| `BodyState` via `OrbitService` | Wahrheit | `src/sim/bodies/body_state.gd`, `src/sim/orbit/orbit_service.gd` |
 | `LocalBubbleManager` | abgeleitet (View) | `src/runtime/local_bubble/local_bubble_manager.gd` |
-| `BubbleActivationSet` | abgeleitet (Relevanzklassifikation) — **geplant, nicht vorhanden** | `src/runtime/local_bubble/bubble_activation_set.gd` |
-| Testbed-Visuals, `DebugOverlay` | anzeigend | `scenes/testbeds/`, `src/tools/debug/` |
+| `BubbleActivationSet` | abgeleitet (geplant) | `src/runtime/local_bubble/bubble_activation_set.gd` |
+| Testbed-Visuals und `DebugOverlay` | anzeigend | `scenes/testbeds/`, `src/tools/debug/` |
 
-Nichts im `scenes/`- oder `src/tools/`-Baum enthält autoritativen
+Nichts im `scenes/`- oder `src/tools/`-Baum enthaelt autoritativen
 Simulationszustand.
 
-## Architekturplan Schritt 4 — NUMERIC_LOCAL / Regime-Wechsel
+## Schritt 2 - LocalBubbleManager LCA
 
-> **Nicht implementiert.** `OrbitService` enthält aktuell nur `push_warning`
-> für NUMERIC_LOCAL-Bodies. Die folgenden Klassen und Methoden existieren noch nicht.
+Status: implementiert.
 
-### LocalOrbitIntegrator — geplante Klasse
+Aktuelle API in `src/runtime/local_bubble/local_bubble_manager.gd`:
+- `compose_view_position_m(id)` - fokus-relative Step-2-Komposition
+- `compose_root_local_position_m(id)` - root-lokale Debug-/Test-Hilfe
+- `get_focus()`, `set_focus(id)`
 
-Datei: `src/sim/orbit/local_orbit_integrator.gd` *(nicht vorhanden)*
+Wichtige Semantik:
+- gleiche Roots -> finite fokus-relative Position
+- anderer Root als Fokus -> `Vector3.INF`
+- kein Fokus -> `Vector3.INF`
+- Parent-Frame-Ketten werden als drei separate `float`-Werte akkumuliert
 
-Statische pure Funktionen, kein Zustand:
-- `gravity_acceleration_mps2(pos_m, parent_mu) → Vector3`
-- `step_velocity_verlet(pos_m, vel_mps, parent_mu, dt_s) → {pos, vel}`
+Testabdeckung:
+- `src/tests/runtime/test_local_bubble_step2.gd`
+- bestehende `test_starter_world.gd` bleibt fuer den Ein-Root-Fall gruen
 
-Velocity Verlet (zweite Ordnung, zeitreversibel). Nur Parentgravitation,
-kein N-Body, keine externen Kräfte.
+## Schritt 3 - BubbleActivationSet
 
-### OrbitService — geplante NUMERIC_LOCAL-Erweiterung
+Status: geplant, nicht implementiert.
 
-Neue Methode: `request_numeric_local_candidates(ids: Array[StringName])`.
-Wird nach jedem `BubbleActivationSet.rebuild()` aufgerufen.
-OrbitService filtert auf Eligibility (nur KEPLER_APPROX-Profil).
+Geplante Verantwortung:
+- Klassifikation in `ACTIVE`, `INACTIVE_DISTANT`, `INACTIVE_NO_LCA`
+- liest Bubble/View-Distanzen
+- schreibt keine `BodyState`-Felder
 
-Eligibility-Regeln:
-- KEPLER_APPROX-Bodies: eligible
-- AUTHORED_ORBIT-Bodies: nie eligible
-- Root-Bodies: nie eligible
+Geplante Datei:
+- `src/runtime/local_bubble/bubble_activation_set.gd`
 
-### Tests Schritt 4 (geplant)
+## Schritt 4 - NUMERIC_LOCAL / Regime-Wechsel
 
-Suite: `src/tests/orbit/test_numeric_local.gd` *(nicht vorhanden)*
-Geplante Invarianten: Gravitationswert bei 1 AU, Singularitätsschutz,
-Kreisbahn-Radiusstabilität, Energieerhalt, Positionskontinuität beim Eintritt,
-Eligibility-Constraints, Regime-Wechsel-Semantik.
+Status: geplant, nicht implementiert.
 
----
+Geplante Bausteine:
+- `src/sim/orbit/local_orbit_integrator.gd`
+- `OrbitService.request_numeric_local_candidates(ids)`
+- Eligibility nur fuer `KEPLER_APPROX`
+- Logging bei Rueckwechseln zu `KEPLER_APPROX`
 
-## Architekturplan Schritt 3 — BubbleActivationSet
+## Verifikation
 
-> **Nicht implementiert.** `src/runtime/local_bubble/bubble_activation_set.gd`
-> existiert nicht. Die folgenden Klassen und Tests sind geplant, nicht vorhanden.
+Headless-Testlauf:
 
-### BubbleActivationSet — geplante Klasse
-
-Datei: `src/runtime/local_bubble/bubble_activation_set.gd` *(nicht vorhanden)*
-
-Klassifiziert Bodies nach fokus-relativer View-Distanz in drei explizite Zustände:
-- `ACTIVE` — innerhalb `activation_radius_m` (default: 5.0e8 m)
-- `INACTIVE_DISTANT` — erreichbar, aber außerhalb Radius
-- `INACTIVE_NO_LCA` — nicht fokus-relativ vergleichbar (anderer Baum)
-
-### Tests Schritt 3 (geplant)
-
-Suite: `src/tests/bubble/test_activation.gd` *(nicht vorhanden)* — 11 geplante Invarianten.
-
----
-
-## Architekturplan Schritt 2 — LocalBubbleManager LCA
-
-> **Nicht implementiert.** Der aktuelle `LocalBubbleManager` ist ein Identity-Stub
-> (Step 1). Die LCA-basierte Transformation und die folgenden Methoden existieren noch nicht.
-
-### LocalBubbleManager — geplante LCA-Erweiterung
-
-Datei: `src/runtime/local_bubble/local_bubble_manager.gd` *(vorhanden, aber Identity-Stub)*
-
-Geplante Erweiterung: echte fokus-relative Komposition via LCA (Lowest Common
-Ancestor). Akkumuliert Parent-Frame-Ketten als drei separate `float`-Variablen
-(IEEE-754 double) statt `Vector3` (float32), um Katastrophen-Kanzellation bei
-AU-Distanzen zu vermeiden.
-
-Geplante neue Methoden:
-
-- `compose_render_units(id)` — direkte Projektion für `Node2D.position` *(nicht vorhanden)*
-- `to_render_units(view_m)` — einzige erlaubte RENDER_SCALE-Anwendungsstelle *(nicht vorhanden)*
-- `debug_compose_world_m(id)` — nur für Tests/Debug *(nicht vorhanden)*
-
-Bereits vorhanden (Step 1): `compose_view_position_m(id)`, `compose_world_position_m(id)`,
-`get_focus()`, `set_focus(id)`.
-
-### Tests Schritt 2 (geplant)
-
-Suite: `src/tests/bubble/test_bubble.gd` *(nicht vorhanden)*
-
----
-
-## Was bewusst NICHT existiert
-
-- Keine Kamera-Steuerung, kein Player-Input.
-- Kein Schiff, keine Kräfte außer Parentgravitation.
-- Kein LOD, kein Culling, keine Cluster-/Transitlogik.
-- Kein N-Body.
-- Kein Save/Load.
-- Kein GUT / kein größeres Test-Framework (custom runner; GUT installiert aber nicht genutzt).
-- Keine `.tres`-Dateien für Bodies — bewusst, siehe Daten-first-ADR.
-
-## Verifikation (Sim-Layer)
-
-```
+```text
 godot --path . --headless --script res://src/tests/test_runner.gd --quit
 ```
 
-Exit 0, alle Asserts grün (test_orbit + test_registry + test_starter_world Suite).
+Erwarteter Stand nach P1:
+- `test_orbit`
+- `test_registry`
+- `test_starter_world`
+- `test_local_bubble_step2`
 
-> **Hinweis:** Die alten Testbed-Checks für NUMERIC_LOCAL, NL-Bodies und
-> BubbleActivationSet gelten für das frühere 3D-Testbed. Das aktuelle
-> 2D-Testbed (StarterWorld, 9 Bodies) zeigt im DebugOverlay (F3) die
-> korrekten Positionen aller Bodies und unterstützt Fokus-Navigation per Tab.
+alle gruen.
 
-## Logischer nächster Schritt
+## Naechster sinnvoller Schritt
 
-Aktuell: Schritte 2–4 sind als Architektur dokumentiert, aber nicht im Code vorhanden.
-Der naheliegende nächste Implementierungsschritt ist Schritt 2 (LocalBubbleManager LCA),
-dann 3 (BubbleActivationSet), dann 4 (NUMERIC_LOCAL / Velocity Verlet).
+Die aktuelle Projekt-Roadmap priorisiert jetzt:
+1. `WorldLoader` / Weltwahl explizit machen
+2. `BodyDef` / Weltmodell verbreitern
+3. danach `BubbleActivationSet`
+4. danach `NUMERIC_LOCAL`
 
-### Design-Gate vor Schritt 5 — Erste Mechanik (Schiff mit Schub)
+Die Architektur-Schritte 3 und 4 bleiben wichtig, aber sie sind nicht
+mehr der unmittelbare naechste Roadmap-Schritt vor dem Loader-/Weltblock.
 
-Erst nach Abschluss von Schritt 4 steht ein expliziter Designschritt an, bevor mit
-Mechanik-Implementierung begonnen wird:
+## Was bewusst noch fehlt
 
-- Welchen Body-Typ braucht ein Schiff? (`CONTROLLED` in `BodyType.Kind` ist vorbereitet,
-  trägt aber noch keine Bewegungssemantik)
-- Wie wird Schub als Kraft in den Verlet-Integrator eingespeist?
-- Wo lebt die forces-API? (Erweiterung in OrbitService oder neuer Layer?)
-- Welcher Input-Layer ist nötig?
-- Wer darf `parent_id` eines CONTROLLED-Bodies ändern (Andocken)?
+- keine Schiffe / kein Gameplay-Layer
+- keine Kraefte ausser Parentgravitation
+- kein Save/Load
+- keine Transit-/Clusterlogik
+- keine prozedurale Generator-Schicht
 
-Alles, was darüber hinausgeht (Oberfläche, Transit, Content, Save/Load),
-wartet auf eine stabile Mechanik-Schicht.
+Erst nach einer stabilen Foundation aus Loader, Weltmodell,
+Bubble-Aktivierung und spaeterem Regime-Wechsel sollten Mechanik- oder
+Content-Schichten dazukommen.

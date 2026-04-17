@@ -87,15 +87,15 @@ anwendbar ist, haengt vom Bewegungsmodell ab.
 | Raum | Einheit | Repraesentation | Wahrheit? | Wer darf berechnen |
 | --- | --- | --- | --- | --- |
 | **Sim-Space** | m | `BodyState.position_parent_frame_m` (relativ zum direkten Parent) | **ja** | nur `OrbitService` schreibt |
-| **World-Space** | m | konzeptionell; Summe der Parent-Kette - **niemals als gespeicherter Wert** | nein (abgeleitet) | niemand speichert; `compose_world_position_m` nur fuer Tests/Debug (Identity-Stub in Step 1) |
-| **View-Space** | m | fokus-relativ; aktuell Identity-Stub (Step 1), geplant: LCA-Komposition | nein (abgeleitet) | `LocalBubbleManager.compose_view_position_m` |
+| **World-Space** | m | konzeptionell; Summe der Parent-Kette - **niemals als gespeicherter Wert** | nein (abgeleitet) | niemand speichert; `compose_root_local_position_m` nur fuer Tests/Debug |
+| **View-Space** | m | fokus-relativ; Step 2 nutzt LCA-Komposition, fremde Roots liefern `Vector3.INF` | nein (abgeleitet) | `LocalBubbleManager.compose_view_position_m` |
 | **Render-Units** | Godot-Einheit | `Node2D.position` im 2D-Testbed | nein (Projektion) | `src/tools/rendering/` (teilt durch `RENDER_SCALE_M_PER_UNIT`) |
 
 **Wichtig:** World-Space existiert als Konzept, aber **nicht als
 gespeicherter Wert**. Es gibt keine oeffentliche Methode, die einen
 `Vector3` in absoluten Weltmetern fuer den Render-Pfad zurueckgibt.
-`compose_world_position_m` ist fuer Tests und Debug-Prints vorgesehen -
-nie im Render-Pfad.
+`compose_root_local_position_m` ist fuer Tests und Debug-Prints
+vorgesehen - nie im Render-Pfad.
 
 Begriffs-Kurzreferenz:
 
@@ -117,11 +117,11 @@ vom Parent entfernt simuliert werden sollen und gleichzeitig praezise
 Sim-Space-Berechnungen noetig sind, muss ein Epoch-Relative-Modell fuer
 `position_parent_frame_m` eingefuehrt werden.
 
-**Bekannte Zukunftsaufgabe:** Eine echte LCA-basierte fokus-relative
-Transformation mit Double-Praezision (GDScript `float` = IEEE-754
-double) waere fuer AU-skalierte Systeme noetig, um
-Subtraktionsfehler bei naiver `Vector3`-Akkumulation zu vermeiden. Der
-aktuelle `LocalBubbleManager` ist ein Identity-Stub (Step 1).
+**Bekannte Zukunftsaufgabe:** Step 2 nutzt jetzt bereits eine
+LCA-basierte fokusrelative Transformation mit Double-Praezision
+(GDScript `float` = IEEE-754 double). Die offene Folgeaufgabe ist nicht
+mehr die Bubble-Grundlogik, sondern die spaetere Aktivierung/Regime-
+Schicht auf dieser Basis.
 
 ## Wurzel-Konvention
 
@@ -156,8 +156,9 @@ hinein will, wechselt `TimeService` auf ein Epoch-Relative-Modell
 
 > **Hinweis:** Der `BubbleActivationSet`-Layer und `NUMERIC_LOCAL`-
 > Regime sind als Architektur beschrieben, aber noch nicht
-> implementiert. Aktuell ist `LocalBubbleManager` ein Identity-Stub;
-> `NUMERIC_LOCAL` erzeugt nur eine Warnung in `OrbitService`.
+> implementiert. `LocalBubbleManager` liefert bereits die Step-2-
+> Bubble-Komposition; `NUMERIC_LOCAL` erzeugt aktuell nur eine Warnung
+> in `OrbitService`.
 
 | Begriff | Bedeutung | Wer entscheidet |
 |---|---|---|
@@ -188,10 +189,10 @@ Wenn `BubbleActivationSet` implementiert wird, gilt: Es schreibt
 - Kein Speichern von Welt- oder View-Koordinaten.
 - Keine Mathematik in `UniverseRegistry`.
 - Keine neuen Autoloads ohne ADR-Eintrag in `ARCHITEKTUR.md`.
-- `compose_world_position_m` darf **nicht** im Render-Pfad erscheinen -
+- `compose_root_local_position_m` darf **nicht** im Render-Pfad erscheinen -
   nur in Tests und Debug-Prints.
-- Keine naive `Vector3`-Subtraktion ueber AU-Distanzen fuer
-  fokus-relative Darstellung (zukuenftige LCA-Implementierung beachten).
+- Keine Rueckkehr zu naiver `Vector3`-Subtraktion ueber AU-Distanzen fuer
+  fokus-relative Darstellung (Step-2-LCA-Pfad beibehalten).
 - Wenn `BubbleActivationSet` implementiert wird: Es darf **kein**
   `BodyState`-Feld schreiben - Aktivierungsklassifikation ist
   abgeleitet.

@@ -50,14 +50,14 @@ func _format_body_line(id: StringName) -> String:
 	var mode_txt: String = OrbitMode.to_string_kind(state.current_mode)
 	var pos: Vector3 = state.position_parent_frame_m
 	var r: float = pos.length()
-	var world_m: Vector3 = _bubble.compose_world_position_m(id)
-	return "  %s  kind=%s  parent=%s  mode=%s  |pf|=%s m  w=%s m" % [
+	var root_local_m: Vector3 = _bubble.compose_root_local_position_m(id)
+	return "  %s  kind=%s  parent=%s  mode=%s  |pf|=%s m  root_local=%s m" % [
 		String(id),
 		BodyType.to_string_kind(def.kind),
 		parent_txt,
 		mode_txt,
 		_format_metric(r),
-		_format_metric(world_m.length()),
+		_format_optional_metric(root_local_m),
 	]
 
 
@@ -65,3 +65,9 @@ static func _format_metric(value: float) -> String:
 	if absf(value) >= 1.0e6 or (absf(value) > 0.0 and absf(value) < 1.0):
 		return str(value)
 	return str(snappedf(value, 0.001))
+
+
+static func _format_optional_metric(value: Vector3) -> String:
+	if not is_finite(value.x) or not is_finite(value.y) or not is_finite(value.z):
+		return "n/a"
+	return _format_metric(value.length())

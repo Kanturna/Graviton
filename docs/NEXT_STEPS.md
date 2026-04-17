@@ -16,18 +16,18 @@ Erledigt:
   umgestellt
 - Test-Baseline wieder als verlaessliche Basis hergestellt
 
-## Prioritaet 1 - Foundation Phase A: Step 2 Bubble / Frame-Modell
+## Prioritaet 1 - Foundation Phase A: Step 2 Bubble / Frame-Modell - erledigt
 
 Ziel:
-Den aktuellen `LocalBubbleManager` von Fokus-Subtraktion in Richtung des
-dokumentierten Step-2-Zielbilds weiterbringen.
+Den `LocalBubbleManager` vom frueheren Fokus-Subtraktionsmodell auf das
+dokumentierte Step-2-Zielbild bringen.
 
-Gemeinte Richtung:
+Erledigt:
 
-- LCA-/praezisionsbewusste Komposition
-- multi-root-tauglicher Frame-/Bubble-Layer
-- keine erneute Vermischung von View und autoritativer
-  Simulationswahrheit
+- LCA-/praezisionsbewusste Komposition fuer `compose_view_position_m`
+- `Vector3.INF`-Sentinel fuer Bodies ohne gemeinsamen Root mit dem Fokus
+- root-lokale Debug-Hilfe `compose_root_local_position_m`
+- Renderer-Toleranz fuer nicht-finite Bodies inkl. Trail-Cleanup
 
 ## Prioritaet 2 - Foundation Phase B: WorldLoader / Weltwahl explizit machen
 

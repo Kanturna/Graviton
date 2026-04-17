@@ -163,9 +163,12 @@ GDScript-`float`-Variablen (IEEE-754 double) akkumuliert, nicht als
 `Vector3` (float32). Das verhindert Katastrophen-Kanzellation bei
 AU-Distanzen.
 
-**Aktueller Stand:** `LocalBubbleManager` ist im Code noch die einfache
-fokus-relative Step-1-Variante und nicht diese vollstaendige
-praezisionsbewusste LCA-Komposition.
+**Aktueller Stand:** `LocalBubbleManager` nutzt jetzt die
+praezisionsbewusste Step-2-LCA-Komposition fuer
+`compose_view_position_m()`. Bodies ohne gemeinsamen Root mit dem Fokus
+liefern bewusst `Vector3.INF`. Die root-lokale Debug-Hilfe heisst
+`compose_root_local_position_m()` und ist nicht fuer den Render-Pfad
+gedacht.
 
 **Fehlerpfad kein LCA:** `Vector3.INF` plus `push_error`. Kein stilles
 `ZERO` - semantisch falsch lokalisierte Objekte sollen sichtbar sein.

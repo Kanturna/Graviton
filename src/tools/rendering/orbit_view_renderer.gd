@@ -18,6 +18,7 @@ var _body_visuals: Dictionary = {}
 var _orbit_visuals: Dictionary = {}
 var _trail_visuals: Dictionary = {}
 var _trail_histories: Dictionary = {}
+var _body_view_is_finite: Dictionary = {}
 
 var _world_scale: float = 1.0
 var _focus_id: StringName = &""
@@ -63,7 +64,7 @@ func pick_body_at_screen(screen_pos: Vector2) -> StringName:
 	for id in _registry.get_update_order():
 		var visual: OrbitBodyVisual = _body_visuals.get(id, null)
 		var def: BodyDef = _registry.get_def(id)
-		if visual == null or def == null:
+		if visual == null or def == null or not visual.visible:
 			continue
 
 		var canvas_xform: Transform2D = visual.get_global_transform_with_canvas()
@@ -88,6 +89,8 @@ func get_body_view_position_ru(id: StringName) -> Vector2:
 	if _bubble == null:
 		return Vector2.ZERO
 	var view_m: Vector3 = _bubble.compose_view_position_m(id)
+	if not _is_finite_vec3(view_m):
+		return Vector2(INF, INF)
 	return Vector2(view_m.x, view_m.y) / UnitSystem.RENDER_SCALE_M_PER_UNIT
 
 
@@ -97,6 +100,8 @@ func get_focus_frame(focus_id: StringName) -> Dictionary:
 
 	var focus_def: BodyDef = _registry.get_def(focus_id)
 	var center: Vector2 = get_body_view_position_ru(focus_id)
+	if not _is_finite_vec2(center):
+		return {"center": Vector2.ZERO, "radius": 120.0}
 	var radius: float = _minimum_focus_radius_ru(focus_def)
 	var related_ids: Array[StringName] = _related_ids_for_focus(focus_id)
 
@@ -109,10 +114,14 @@ func get_focus_frame(focus_id: StringName) -> Dictionary:
 		if id != focus_id and (def == null or def.parent_id != focus_id):
 			continue
 		var pos: Vector2 = get_body_view_position_ru(id)
+		if not _is_finite_vec2(pos):
+			continue
 		radius = maxf(radius, pos.distance_to(center) + 2.0)
 		# Orbit extent only for direct children (not the focus body's own orbit).
 		if id != focus_id and def != null and not def.is_root():
 			var parent_center: Vector2 = get_body_view_position_ru(def.parent_id)
+			if not _is_finite_vec2(parent_center):
+				continue
 			radius = maxf(radius, parent_center.distance_to(center) + _orbit_extent_ru(def))
 
 	return {
@@ -122,10 +131,8 @@ func get_focus_frame(focus_id: StringName) -> Dictionary:
 
 
 func clear_trails() -> void:
-	_trail_histories.clear()
-	for line in _trail_visuals.values():
-		if line != null:
-			line.points = PackedVector2Array()
+	for id in _trail_visuals.keys():
+		_clear_trail(id)
 
 
 func _ready() -> void:
@@ -145,6 +152,7 @@ func _rebuild_visuals() -> void:
 	_orbit_visuals.clear()
 	_trail_visuals.clear()
 	_trail_histories.clear()
+	_body_view_is_finite.clear()
 
 	if _registry == null:
 		return
@@ -198,20 +206,40 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 			continue
 
 		var pos: Vector2 = get_body_view_position_ru(id)
+		var is_finite: bool = _is_finite_vec2(pos)
+		var was_finite: bool = bool(_body_view_is_finite.get(id, false))
+		_body_view_is_finite[id] = is_finite
+
 		var visual: OrbitBodyVisual = _body_visuals.get(id, null)
+		var orbit_entry: Dictionary = _orbit_visuals.get(id, {})
+		var orbit_line: AntialiasedLine2D = orbit_entry.get("line", null)
+		var trail_line: AntialiasedLine2D = _trail_visuals.get(id, null)
+		if not is_finite:
+			if visual != null:
+				visual.visible = false
+			if orbit_line != null:
+				orbit_line.visible = false
+			if trail_line != null:
+				trail_line.visible = false
+			if was_finite or reset_trails:
+				_clear_trail(id)
+			continue
+
 		if visual != null:
+			visual.visible = true
 			visual.position = pos
 			var detail_factor: float = _body_detail_factor(id, def)
 			visual.scale = Vector2.ONE * (detail_factor / _world_scale)
 			visual.set_detail_factor(detail_factor)
 
-		var orbit_entry: Dictionary = _orbit_visuals.get(id, {})
 		if not orbit_entry.is_empty():
-			var orbit_line: AntialiasedLine2D = orbit_entry.get("line", null)
 			var parent_id: StringName = orbit_entry.get("parent_id", &"")
 			if orbit_line != null:
+				orbit_line.visible = true
 				orbit_line.position = get_body_view_position_ru(parent_id)
 
+		if trail_line != null:
+			trail_line.visible = true
 		_update_trail(id, pos, reset_trails)
 
 
@@ -367,6 +395,13 @@ func _update_trail(id: StringName, pos: Vector2, reset_trails: bool) -> void:
 
 	_trail_histories[id] = history
 	line.points = PackedVector2Array(history)
+
+
+func _clear_trail(id: StringName) -> void:
+	_trail_histories[id] = []
+	var line: AntialiasedLine2D = _trail_visuals.get(id, null)
+	if line != null:
+		line.points = PackedVector2Array()
 
 
 func _apply_line_widths() -> void:
@@ -608,3 +643,11 @@ static func _pick_priority(kind: int) -> int:
 			return 1
 		_:
 			return 0
+
+
+static func _is_finite_vec2(value: Vector2) -> bool:
+	return is_finite(value.x) and is_finite(value.y)
+
+
+static func _is_finite_vec3(value: Vector3) -> bool:
+	return is_finite(value.x) and is_finite(value.y) and is_finite(value.z)

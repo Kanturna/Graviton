@@ -21,10 +21,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 - Foundation-Schritt 1 ist implementiert (OrbitService `AUTHORED_ORBIT` +
   `KEPLER_APPROX`, StarterWorld).
-- `LocalBubbleManager` nutzt aktuell noch eine einfache fokus-relative
-  View-Transformation, damit fokussierte Bodies visuell stabil liegen.
-- Die volle Bubble-/LCA-Logik aus den spaeteren Architektur-Schritten ist
-  noch nicht implementiert.
+- `LocalBubbleManager` nutzt jetzt die dokumentierte Step-2-
+  Bubble-Komposition via LCA statt der frueheren einfachen
+  Fokus-Subtraktion.
+- Bodies aus einem anderen Root als der aktuelle Fokus liefern bewusst
+  `Vector3.INF` und werden im Renderer nicht lokalisiert.
 - `TimeService` und `UniverseRegistry` sind die zentralen Autoloads.
 - `OrbitService` schreibt autoritativ die `BodyState`-Positionsdaten.
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
@@ -77,15 +78,15 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Bekannte offene Punkte
 
-- Schritte 2-4 sind als Architektur dokumentiert, aber noch nicht
-  implementiert (`BubbleActivationSet`, `LocalOrbitIntegrator`,
-  `NUMERIC_LOCAL`-Regime).
-- `LocalBubbleManager` ist weiterhin nur die einfache fokus-relative
-  Step-1-Loesung und noch nicht die dokumentierte LCA-/
-  praezisionsbewusstere Bubble-Komposition.
+- Schritt 2 ist jetzt implementiert; Schritte 3-4 bleiben als
+  Architektur dokumentiert, aber noch nicht im Code vorhanden
+  (`BubbleActivationSet`, `LocalOrbitIntegrator`, `NUMERIC_LOCAL`-
+  Regime).
+- `LocalBubbleManager` liefert jetzt die dokumentierte LCA-/
+  praezisionsbewusste Bubble-Komposition fuer same-root-Faelle.
 - Das Projekt ist topologisch offen fuer mehrere Root-Systeme, hat aber
-  noch keine echte Welt-/Loader-Schicht und noch kein sauberes
-  Multi-Root-Frame-Modell fuer mehrere schwarze Loecher.
+  noch keine echte Welt-/Loader-Schicht und noch kein Aktivierungs-
+  system fuer mehrere schwarze Loecher.
 - `BodyDef` ist fuer aktuelle Orbit-/Toy-Welten ausreichend, aber noch
   zu schmal fuer spaetere planetare Zustaende, Generatoren und
   Weltparameter wie Rotation, Achsneigung oder Luminositaet.
@@ -100,9 +101,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- den dokumentierten Step-2-Pfad fuer Bubble-/Frame-Komposition
-  priorisieren, bevor neue grosse Gameplay- oder Visual-Bloecke kommen
 - Weltladen ueber eine explizite Loader-/World-Schicht statt direkt im
   Testbed organisieren
 - danach `BodyDef` / Weltmodell fuer spaetere planetare Zustaende und
   Generatoren verbreitern
+- anschliessend Aktivierungs- und Regime-Schritte (`BubbleActivationSet`,
+  `NUMERIC_LOCAL`) auf der jetzt sauberen Bubble-Basis angehen
