@@ -40,21 +40,27 @@ Alle Werte sind bewusste Toy-Werte - nicht astrophysikalisch korrekt.
 
 | Taste | Funktion |
 |---|---|
-| Tab | Fokus vorwaerts (obsidian -> alpha -> ... -> beta_i_m) |
+| Tab | Fokus vorwaerts (Root -> alpha -> ... -> beta_i_m) |
 | Shift+Tab | Fokus rueckwaerts |
-| Home | Fokus zurueck auf obsidian (Gesamtueberblick) |
+| Home | Fokus zurueck auf den Root-Body / Gesamtueberblick |
 | `Q` / `[` | Zeitskala langsamer (Preset runter) |
 | `E` / `]` | Zeitskala schneller (Preset hoch) |
 | `W/A/S/D` | Kamera manuell verschieben |
 | Space | Pause / Weiter |
-| Mausrad | Zoom ein/aus (Bias 0.2x-12x) |
-| Backspace | View zuruecksetzen (Zoom + Pan) |
+| Mausrad | Zoom ein/aus (20%-2400%) |
+| Backspace | View zuruecksetzen (100% + Pan) |
 | F3 | Debug-Overlay ein/ausblenden |
 
 Hinweis:
 Der starke Nahzoom kann jetzt auch visuell weiter greifen; Bodies und
 Abstaende bleiben nicht mehr frueh an einer niedrigen internen
 Detail-/View-Grenze stehen.
+
+Zoom-Semantik:
+
+- `100%` = lokaler Fokus-Fit
+- `20%` = globaler Ueberblick, auch von Stern-/Planeten-/Mondfokus aus
+- `2400%` = tieferer Close-up-Zoom ohne fruehen internen Scale-Cap
 
 **Zeitskalen-Presets:** 0.25x / 1x / 10x / 50x / 100x / **250x (Default)** / 500x / 1000x / 2500x / 5000x
 

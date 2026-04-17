@@ -37,6 +37,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   dargestellt.
 - Es gibt ein HUD fuer Fokus, Sim-Zeit, Zeitskala und Status.
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
+- Unter `100%` kann die Ansicht jetzt von jedem Fokus aus wieder bis zum
+  globalen Systemueberblick herauszoomen.
+- `100%` bleibt der lokale Fokus-Fit; der Nahzoom reicht jetzt bis `2400%`.
+- Root-Fokus und globaler Ueberblick werden jetzt dynamisch ueber den
+  Root-Body bestimmt statt implizit ueber `obsidian`.
 - Close-Up-Zoom kann fokussierte Bodies jetzt auch sichtbar vergroessern,
   statt nur deren Umgebungsabstaende auseinanderzuziehen.
 - Der sichtbare Nahzoom ist nicht mehr frueh an einer niedrigen internen
@@ -57,7 +62,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 - `src/runtime/local_bubble/local_bubble_manager.gd` - fokus-relative View-Stabilisierung
 - `src/tools/rendering/orbit_view_renderer.gd` - Fokus-Zoom-Logik und Fokus-Gewichtung
-- `scenes/testbeds/orbit_testbed.gd` - Trail-Reset, Pan/Zoom-Controls, groessere Zeitspanne
+- `scenes/testbeds/orbit_testbed.gd` - Trail-Reset, globale Zoom-Out-Semantik, 2400%-Close-up
 - `scenes/testbeds/orbit_testbed.tscn`
 - `src/tools/rendering/orbit_body_visual.gd`
 - `src/tools/rendering/space_backdrop.gd`

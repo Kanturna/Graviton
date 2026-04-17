@@ -5,9 +5,9 @@ const VIEWPORT_RADIUS_FACTOR: float = 0.38
 const VIEW_SMOOTHNESS: float = 10.0
 const ZOOM_BIAS_STEP: float = 1.16
 const MIN_ZOOM_BIAS: float = 0.20
-const MAX_ZOOM_BIAS: float = 12.0
-const MIN_VIEW_SCALE: float = 0.18
-const MAX_VIEW_SCALE: float = 4096.0
+const MAX_ZOOM_BIAS: float = 24.0
+const ABSOLUTE_MIN_VIEW_SCALE: float = 0.18
+const MIN_DYNAMIC_MAX_VIEW_SCALE: float = 32768.0
 const PAN_SPEED_PX_PER_S: float = 960.0
 
 @onready var _orbit_service: OrbitService = $OrbitService
@@ -40,7 +40,8 @@ func _ready() -> void:
 	UniverseRegistry.load_from_starter_world()
 
 	_focus_order = UniverseRegistry.get_update_order()
-	_focus_index = maxi(_focus_order.find(&"obsidian"), 0)
+	var root_id: StringName = _root_focus_id()
+	_focus_index = maxi(_focus_order.find(root_id), 0)
 
 	_orbit_service.configure(UniverseRegistry, TimeService)
 	_orbit_service.recompute_all_at_time(TimeService.sim_time_s)
@@ -73,7 +74,8 @@ func _unhandled_input(event: InputEvent) -> void:
 					_cycle_focus(1)
 				get_viewport().set_input_as_handled()
 			KEY_HOME:
-				_focus_index = 0
+				var root_id: StringName = _root_focus_id()
+				_focus_index = maxi(_focus_order.find(root_id), 0)
 				_set_focus(_focus_order[_focus_index])
 				get_viewport().set_input_as_handled()
 			KEY_Q, KEY_BRACKETLEFT:
@@ -130,13 +132,10 @@ func _refresh_target_view() -> void:
 	var viewport_size: Vector2 = get_viewport_rect().size
 	var focus_center: Vector2 = frame.get("center", Vector2.ZERO)
 	var focus_radius: float = maxf(float(frame.get("radius", 1.0)), 1.0)
-	var target_screen_radius: float = minf(viewport_size.x, viewport_size.y) * VIEWPORT_RADIUS_FACTOR
+	var focus_fit_scale: float = _fit_scale_for_radius(focus_radius, viewport_size)
+	var global_overview_scale: float = _global_overview_scale(viewport_size)
 
-	_target_view_scale = clampf(
-		(target_screen_radius / focus_radius) * _zoom_bias,
-		MIN_VIEW_SCALE,
-		MAX_VIEW_SCALE
-	)
+	_target_view_scale = _map_zoom_bias_to_scale(focus_fit_scale, global_overview_scale, _zoom_bias)
 	_target_world_offset = viewport_size * 0.5 - (focus_center + _manual_pan_ru) * _target_view_scale
 
 
@@ -172,7 +171,7 @@ func _update_hud() -> void:
 		UniverseRegistry.body_count(),
 		"Paused" if TimeService.paused else "Running"
 	]
-	_hint_label.text = "Tab / Shift+Tab focus   Q/E speed   WASD pan   Wheel zoom   Backspace reset view   Space pause   F3 debug"
+	_hint_label.text = "Tab / Shift+Tab focus   Q/E speed   WASD pan   Wheel zoom (20%-2400%)   Backspace reset view   Space pause   F3 debug"
 
 
 func _update_manual_pan(delta: float) -> void:
@@ -191,6 +190,53 @@ func _update_manual_pan(delta: float) -> void:
 		return
 
 	_manual_pan_ru += pan_input.normalized() * ((PAN_SPEED_PX_PER_S * delta) / maxf(_current_view_scale, 0.001))
+
+
+func _fit_scale_for_radius(focus_radius: float, viewport_size: Vector2) -> float:
+	var safe_radius: float = maxf(focus_radius, 1.0)
+	var target_screen_radius: float = minf(viewport_size.x, viewport_size.y) * VIEWPORT_RADIUS_FACTOR
+	return target_screen_radius / safe_radius
+
+
+func _global_overview_scale(viewport_size: Vector2) -> float:
+	var root_id: StringName = _root_focus_id()
+	if root_id == StringName(""):
+		return ABSOLUTE_MIN_VIEW_SCALE
+
+	var frame: Dictionary = _renderer.get_focus_frame(root_id)
+	var root_radius: float = maxf(float(frame.get("radius", 1.0)), 1.0)
+	return maxf(_fit_scale_for_radius(root_radius, viewport_size), ABSOLUTE_MIN_VIEW_SCALE)
+
+
+func _map_zoom_bias_to_scale(focus_fit_scale: float, global_scale: float, zoom_bias: float) -> float:
+	var fit_scale: float = maxf(focus_fit_scale, ABSOLUTE_MIN_VIEW_SCALE)
+	var overview_scale: float = maxf(global_scale, ABSOLUTE_MIN_VIEW_SCALE)
+	var dynamic_max_scale: float = _max_view_scale_for_focus(fit_scale)
+
+	if zoom_bias <= 1.0:
+		if fit_scale <= overview_scale or is_equal_approx(fit_scale, overview_scale):
+			return clampf(overview_scale, ABSOLUTE_MIN_VIEW_SCALE, dynamic_max_scale)
+		var t: float = clampf(
+			(zoom_bias - MIN_ZOOM_BIAS) / maxf(1.0 - MIN_ZOOM_BIAS, 0.0001),
+			0.0,
+			1.0
+		)
+		var log_scale: float = exp(lerpf(log(overview_scale), log(fit_scale), t))
+		return clampf(log_scale, ABSOLUTE_MIN_VIEW_SCALE, dynamic_max_scale)
+
+	return clampf(fit_scale * zoom_bias, ABSOLUTE_MIN_VIEW_SCALE, dynamic_max_scale)
+
+
+func _max_view_scale_for_focus(focus_fit_scale: float) -> float:
+	return maxf(MIN_DYNAMIC_MAX_VIEW_SCALE, focus_fit_scale * MAX_ZOOM_BIAS * 1.10)
+
+
+func _root_focus_id() -> StringName:
+	for id in UniverseRegistry.get_update_order():
+		var def: BodyDef = UniverseRegistry.get_def(id)
+		if def != null and def.is_root():
+			return id
+	return StringName("")
 
 
 static func _stripped_float(value: float) -> String:
