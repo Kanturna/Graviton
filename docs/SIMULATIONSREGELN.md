@@ -24,8 +24,8 @@ diese Regeln verstößt, bricht das Fundament.
   Konstantenort.
 - `RENDER_SCALE_M_PER_UNIT = 1e9` ist ausschließlich eine
   Darstellungsgröße. Sie darf **nirgends** in `src/sim/` oder
-  `src/core/` auftauchen. Die einzige erlaubte Anwendungsstelle ist
-  `LocalBubbleManager.to_render_units()`.
+  `src/core/` auftauchen. Erlaubte Anwendungsstellen: ausschließlich
+  `scenes/` und `src/tools/rendering/`.
 
 ## Orbit-Regime
 
@@ -81,7 +81,7 @@ anwendbar ist, hängt vom Bewegungsmodell ab.
 | **Sim-Space**  | m             | `BodyState.position_parent_frame_m` (relativ zum direkten Parent) | **ja** | nur `OrbitService` schreibt |
 | **World-Space**| m             | konzeptionell; Summe der Parent-Kette — **niemals als gespeicherter Wert** | nein (abgeleitet) | niemand speichert; nur intern in `LocalBubbleManager` als Double-Tripel |
 | **View-Space** | m             | fokus-relativ; `target_chain - focus_chain` bis LCA | nein (abgeleitet) | `LocalBubbleManager.compose_view_position_m` |
-| **Render-Units** | Godot-Einheit | `Node3D.position` im Testbed               | nein (Projektion) | `LocalBubbleManager.to_render_units` |
+| **Render-Units** | Godot-Einheit | `Node2D.position` im 2D-Testbed            | nein (Projektion) | `src/tools/rendering/` (teilt durch `RENDER_SCALE_M_PER_UNIT`) |
 
 **Wichtig:** World-Space existiert als Konzept, aber **nicht als gespeicherter Wert**. Es gibt
 keine öffentliche Methode, die einen `Vector3` in absoluten Weltmetern für den Render-Pfad
@@ -97,22 +97,21 @@ View-Space   (fokus-relativ, SI) ── abgeleitet, via compose_view_position_m
 Render-Units (Godot-Einheit)     ── Projektion, via to_render_units
 ```
 
-### Präzisionsschutz
-
-`LocalBubbleManager` akkumuliert Parent-Frame-Offsets als drei separate
-GDScript-`float`-Variablen (IEEE-754 double). Vector3-Komponenten sind
-float32 — naive `Vector3`-Subtraktion bei AU-Distanzen erzeugt ~18 km
-Fehler. Die LCA-basierte Doppelakkumulation vermeidet das vollständig.
+### Präzisionshinweis
 
 **Präzisionsgrenze von `BodyState.position_parent_frame_m`:**
 `position_parent_frame_m` ist `Vector3` (float32 pro Komponente in Godot 4).
-`LocalBubbleManager` löst das Subtraktionsproblem für Darstellungszwecke via
-LCA-Doppelakkumulation. Für die gespeicherten Werte selbst gilt: bei sehr großen
-parent-relativen Distanzen (> ~1e9 m vom Parent) verliert die gespeicherte
-Position Sim-Space-Präzision. Im aktuellen Sample-System ist das unkritisch.
-Wenn Bodies sehr weit vom Parent entfernt simuliert werden sollen und
-gleichzeitig präzise Sim-Space-Berechnungen nötig sind, muss ein
+Bei sehr großen parent-relativen Distanzen (> ~1e9 m vom Parent) verliert die
+gespeicherte Position Sim-Space-Präzision. Im aktuellen StarterWorld-System
+ist das unkritisch. Wenn Bodies sehr weit vom Parent entfernt simuliert werden
+sollen und gleichzeitig präzise Sim-Space-Berechnungen nötig sind, muss ein
 Epoch-Relative-Modell für `position_parent_frame_m` eingeführt werden.
+
+**Bekannte Zukunftsaufgabe:** Eine echte LCA-basierte fokus-relative
+Transformation mit Double-Präzision (GDScript `float` = IEEE-754 double) wäre
+für AU-skalierte Systeme nötig, um ~18 km Subtraktionsfehler bei naiver
+`Vector3`-Akkumulation zu vermeiden. Der aktuelle `LocalBubbleManager` ist
+ein Identity-Stub (Step 1).
 
 ## Wurzel-Konvention
 
@@ -140,25 +139,28 @@ für Orbit-Simulation unkritisch. Wenn jemand später in
 Jahrmilliarden hinein will, wechselt `TimeService` auf ein
 Epoch-Relative-Modell (`epoch_s: int` + `offset_s: float`).
 
-## Bubble-Aktivierung
+## Bubble-Aktivierung (geplante Architektur)
+
+> **Hinweis:** Der `BubbleActivationSet`-Layer und NUMERIC_LOCAL-Regime sind als
+> Architektur beschrieben, aber noch nicht implementiert. Aktuell ist
+> `LocalBubbleManager` ein Identity-Stub; NUMERIC_LOCAL erzeugt nur eine Warnung
+> in `OrbitService`.
 
 | Begriff | Bedeutung | Wer entscheidet |
 |---|---|---|
 | **Fokus** | View-Ankerpunkt; Zentrum des View-Space | `LocalBubbleManager` |
-| **Aktiv-Set** | Bodies, deren fokus-relative View-Distanz ≤ Aktivierungsradius | `BubbleActivationSet` |
-| **lokal aktiv** | im Aktiv-Set; Kandidat für NUMERIC_LOCAL (wenn KEPLER_APPROX-Profil) | `BubbleActivationSet` |
+| **Aktiv-Set** | Bodies, deren fokus-relative View-Distanz ≤ Aktivierungsradius | `BubbleActivationSet` (geplant) |
+| **lokal aktiv** | im Aktiv-Set; Kandidat für NUMERIC_LOCAL (wenn KEPLER_APPROX-Profil) | `BubbleActivationSet` (geplant) |
 | **approximiert** | außerhalb Aktiv-Set; bleibt bei AUTHORED_ORBIT / KEPLER_APPROX | `OrbitService` (Kepler-Pfad) |
 
 **Fokus ≠ Aktiv-Set.** Fokus ist eine View-Entscheidung, Aktiv-Set ist eine
-geometrische Relevanzklassifikation. Sie sind orthogonal. Der Fokus-Body ist
-automatisch immer aktiv (View-Distanz = 0), aber das ist Geometrie, keine Regel.
+geometrische Relevanzklassifikation. Sie sind orthogonal.
 
-`BubbleActivationSet` schreibt **niemals** `BodyState`. Die Aktivierungsklassifikation
-ist ausschließlich abgeleitet — niemals Simulationswahrheit. `current_mode`-Wechsel
-(KEPLER_APPROX → NUMERIC_LOCAL) werden durch `OrbitService.request_numeric_local_candidates()`
-ausgelöst, das die Szene nach jedem Rebuild aufruft.
+Wenn `BubbleActivationSet` implementiert wird, gilt: Es schreibt **niemals**
+`BodyState`. `current_mode`-Wechsel (KEPLER_APPROX → NUMERIC_LOCAL) werden durch
+`OrbitService.request_numeric_local_candidates()` ausgelöst.
 
-**Klassifikationsgründe** (im `describe()` und DebugOverlay sichtbar):
+**Klassifikationsgründe** (geplant):
 
 - `ACTIVE` — fokus-relativ erreichbar, innerhalb Radius
 - `INACTIVE_DISTANT` — fokus-relativ erreichbar, außerhalb Radius
@@ -171,15 +173,14 @@ ausgelöst, das die Szene nach jedem Rebuild aufruft.
 - Kein Speichern von Welt- oder View-Koordinaten.
 - Keine Mathematik in `UniverseRegistry`.
 - Keine neuen Autoloads ohne ADR-Eintrag in `ARCHITEKTUR.md`.
-- `debug_compose_world_m` darf **niemals** im Render-Pfad oder in
-  Produktionslogik erscheinen — nur in Tests und Debug-Prints.
-- Keine `Vector3`-Akkumulation über AU-Distanzen; immer über
-  `_double_sum_to_lca` im `LocalBubbleManager`.
-- `BubbleActivationSet` darf **kein** `BodyState`-Feld schreiben. Die
-  Aktivierungsklassifikation ist abgeleitet, nicht autoritativ.
-- `BodyState.current_mode = NUMERIC_LOCAL` darf nur `OrbitService._enter_numeric_local()`
-  setzen — nie direkt von außen.
-- `LocalOrbitIntegrator` darf **niemals** `BodyState` schreiben; er ist pure Mathematik.
+- `compose_world_position_m` darf **nicht** im Render-Pfad erscheinen —
+  nur in Tests und Debug-Prints.
+- Keine naive `Vector3`-Subtraktion über AU-Distanzen für
+  fokus-relative Darstellung (zukünftige LCA-Implementierung beachten).
+- Wenn `BubbleActivationSet` implementiert wird: Es darf **kein**
+  `BodyState`-Feld schreiben — Aktivierungsklassifikation ist abgeleitet.
+- Wenn NUMERIC_LOCAL implementiert wird: `BodyState.current_mode`-Wechsel
+  darf nur durch `OrbitService` erfolgen — nie direkt von außen.
 - AUTHORED_ORBIT-Bodies dürfen nicht zu NUMERIC_LOCAL wechseln.
-- `request_numeric_local_candidates()` ist kein Befehl, sondern ein Kandidaten-Angebot;
-  OrbitService entscheidet über die tatsächliche Eligibility.
+- Wenn `LocalOrbitIntegrator` implementiert wird: Er darf **niemals**
+  `BodyState` schreiben — er ist pure Mathematik.

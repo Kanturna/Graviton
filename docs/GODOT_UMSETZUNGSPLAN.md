@@ -3,14 +3,14 @@
 Dieses Dokument ist die lebende Roadmap. Es zeigt, was abgeschlossen ist,
 was als nächstes kommt, und was bewusst noch nicht entschieden ist.
 
-## Abgeschlossene Foundation-Schritte
+## Foundation-Schritte (Architektur-Dokumentation)
 
-| Schritt | Inhalt |
-|---|---|
-| 1 | TimeService, UnitSystem, OrbitMath, BodyDef/State, UniverseRegistry, OrbitService (AUTHORED_ORBIT + KEPLER_APPROX), Testbed, Tests |
-| 2 | LocalBubbleManager (LCA, double-präzise), `compose_view_position_m`, `to_render_units` |
-| 3 | BubbleActivationSet (ACTIVE / INACTIVE_DISTANT / INACTIVE_NO_LCA), `rebuild()`, `describe()` |
-| 4 | LocalOrbitIntegrator (Velocity Verlet), NUMERIC_LOCAL-Regime, `request_numeric_local_candidates()`, Regime-Wechsel-Logging |
+| Schritt | Inhalt | Code-Stand |
+|---|---|---|
+| 1 | TimeService, UnitSystem, OrbitMath, BodyDef/State, UniverseRegistry, OrbitService (AUTHORED_ORBIT + KEPLER_APPROX), StarterWorld, 2D-Testbed, Tests | **implementiert** |
+| 2 | LocalBubbleManager (LCA, double-präzise), `compose_view_position_m` fokus-relativ | dokumentiert, Identity-Stub aktiv |
+| 3 | BubbleActivationSet (ACTIVE / INACTIVE_DISTANT / INACTIVE_NO_LCA), `rebuild()`, `describe()` | dokumentiert, nicht implementiert |
+| 4 | LocalOrbitIntegrator (Velocity Verlet), NUMERIC_LOCAL-Regime, Regime-Wechsel-Logging | dokumentiert, nicht implementiert |
 
 ## Design-Gate vor Schritt 5
 

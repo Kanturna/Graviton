@@ -9,7 +9,8 @@ Orbit-Mechanik, mehreren Referenzrahmen und einer lokal detaillierten
 Bubble. Das Projekt ist bewusst als mehrschichtige Simulation aufgesetzt,
 **nicht** als Arcade-Spiel und **nicht** als Tutorial-Scaffold.
 
-Aktueller Stand: **Schritt 4 abgeschlossen** — NUMERIC_LOCAL / Regime-Wechsel.
+Aktueller Stand: Foundation-Architektur Schritte 1–4 geplant und dokumentiert.
+Die aktive Präsentation ist ein stilisiertes **2D-Orbit-Testbed** (umgebaut nach Schritt 1).
 
 ## Wichtige Grundsätze
 
@@ -33,17 +34,17 @@ Aktueller Stand: **Schritt 4 abgeschlossen** — NUMERIC_LOCAL / Regime-Wechsel.
 - **Keine** neue Logik in `UniverseRegistry`. Die Registry ist
   bewusst schlank (siehe ADR).
 - **Keine** neuen Autoloads ohne ADR-Eintrag in `ARCHITEKTUR.md`.
-- **Keine** Render-Skala (`RENDER_SCALE_M_PER_UNIT`) außerhalb
-  `LocalBubbleManager.to_render_units()`. Testbed und andere Orte
-  rufen nur noch `compose_render_units` auf — sie dividieren nicht
-  selbst.
+- **Keine** Render-Skala (`RENDER_SCALE_M_PER_UNIT`) in `src/sim/`
+  oder `src/core/`. Die Umrechnung von Metern in Render-Einheiten
+  gehört ausschließlich in den Präsentationsbaum (`scenes/` und
+  `src/tools/rendering/`).
 - **Keine** Simulationslogik in Visual-Nodes oder im Testbed-Script
   über die reine Projektion hinaus.
 - **Nicht** versuchte Globalkoordinaten mit einzelnen `float`s über
   viele AUs hinweg. Genau dafür existiert die Bubble-Schicht.
-- **`debug_compose_world_m` niemals im Render-Pfad oder in
-  Produktionslogik.** Diese Methode ist ausschließlich für Tests und
-  Debug-Prints. Das `debug_`-Präfix ist kein Zufall.
+- **`compose_world_position_m` nur in Tests und Debug-Overlay.**
+  Die Methode liefert Weltkoordinaten — nützlich für Diagnose,
+  aber nie als Grundlage für Render- oder Spiellogik.
 - **`BubbleActivationSet` schreibt keine `BodyState`-Felder.** Aktivierung
   ist Klassifikation, nicht Simulationswahrheit. `current_mode` wird nur
   durch `OrbitService._enter_numeric_local()` / `_exit_numeric_local()` gesetzt.
@@ -72,17 +73,15 @@ Aktueller Stand: **Schritt 4 abgeschlossen** — NUMERIC_LOCAL / Regime-Wechsel.
 - **Registry:** `src/sim/universe/universe_registry.gd` (Autoload,
   schlank!).
 - **Bubble/View:** `src/runtime/local_bubble/local_bubble_manager.gd`
-  (LCA-basierte fokus-relative Transformation, double-präzise).
-- **Aktiv-Set:** `src/runtime/local_bubble/bubble_activation_set.gd`
-  (fokus-relative geometrische Relevanzklassifikation).
+  (liefert fokus-relative Positionen via `compose_view_position_m`).
 - **Debug:** `src/tools/debug/debug_overlay.gd`.
+- **Rendering (2D):** `src/tools/rendering/orbit_view_renderer.gd`,
+  `orbit_body_visual.gd`, `space_backdrop.gd`.
 - **Tests:** `src/tests/` mit eigenem CLI-Runner.
   - `src/tests/orbit/test_orbit.gd` — OrbitMath-Suite
-  - `src/tests/orbit/test_numeric_local.gd` — LocalOrbitIntegrator + OrbitService NUMERIC_LOCAL
-  - `src/tests/bubble/test_bubble.gd` — Bubble-Suite
-  - `src/tests/bubble/test_activation.gd` — BubbleActivationSet-Suite
   - `src/tests/sim/test_registry.gd` — UniverseRegistry-Invarianten
-- **Sample-Daten:** `data/sample_system.gd` (Factory-Skript,
+  - `src/tests/sim/test_starter_world.gd` — StarterWorld-Invarianten
+- **Welt-Daten:** `data/starter_world.gd` (9-Körper-Debug-System,
   diff-freundlich).
 
 ## Wenn du etwas änderst
@@ -94,8 +93,9 @@ Aktueller Stand: **Schritt 4 abgeschlossen** — NUMERIC_LOCAL / Regime-Wechsel.
   nur eine momentane Ableitung.
 - Für neue Tests: `src/tests/<domain>/test_<thema>.gd` mit
   `static func run(ctx)`.
-- Render-Skalierung: **immer** über `to_render_units()` oder
-  `compose_render_units()`, nie direkt durch `RENDER_SCALE_M_PER_UNIT`.
+- Render-Skalierung: `RENDER_SCALE_M_PER_UNIT` gehört nur in
+  `src/tools/rendering/` und `scenes/` — nie in `src/sim/` oder
+  `src/core/`.
 
 ## Was bewusst fehlt (und nicht aus Versehen)
 

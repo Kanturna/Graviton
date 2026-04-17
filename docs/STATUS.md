@@ -18,7 +18,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ### Simulation / Architektur
 
-- Foundation-Schritte 1-4 sind vorhanden.
+- Foundation-Schritt 1 ist implementiert (OrbitService AUTHORED_ORBIT +
+  KEPLER_APPROX, Identity-Bubble, StarterWorld). Schritte 2–4 sind als
+  Architektur dokumentiert, aber noch nicht im Code vorhanden.
 - `TimeService` und `UniverseRegistry` sind die zentralen Autoloads.
 - `OrbitService` schreibt autoritativ die `BodyState`-Positionsdaten.
 - `LocalBubbleManager` liefert abgeleitete fokus-relative Positionen.

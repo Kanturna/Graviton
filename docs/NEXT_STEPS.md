@@ -2,19 +2,15 @@
 
 Stand: 2026-04-17
 
-## Prioritaet 1 - Doku-Drift bereinigen
+## Prioritaet 1 - Doku-Drift bereinigen ✓ erledigt
 
-Ziel:
-Die historischen Hinweise auf `Node3D`, altes Testbed-Vokabular und
-fruehere Render-APIs sollen in den wichtigsten Doku-Dateien bereinigt
-werden.
+Bereinigt:
 
-Betroffene Kandidaten:
-
-- `docs/HANDOFF.md`
-- `docs/AI_KONTEXT.md`
-- `docs/SIMULATIONSREGELN.md`
-- `docs/GODOT_UMSETZUNGSPLAN.md`
+- `docs/HANDOFF.md` — Statushinweis ergänzt, Verifikationssektion korrigiert
+- `docs/AI_KONTEXT.md` — Render-API-Regeln, Testliste, Dateiverweise aktualisiert
+- `docs/SIMULATIONSREGELN.md` — Render-Scale-Regel, Präzisionsschutz,
+  Bubble-Aktivierung als "noch nicht implementiert" gekennzeichnet
+- `docs/GODOT_UMSETZUNGSPLAN.md` — Schritte-Tabelle mit Code-Stand ergänzt
 
 ## Prioritaet 1b - View-Cleanup (teils erledigt)
 

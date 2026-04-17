@@ -1,7 +1,16 @@
 # Graviton — Handoff
 
-Stand nach Schritt 4: NUMERIC_LOCAL / Regime-Wechsel. Lies das zuerst,
-bevor du den nächsten Schritt planst.
+> **Aktueller Stand (2026-04-17):** Die Präsentationsschicht wurde als
+> stilisiertes 2D-Orbit-Testbed neugebaut (`scenes/testbeds/`,
+> `src/tools/rendering/`). Die Sim-Foundation (Schritte 1–4) ist als
+> Architektur dokumentiert; die aktive Testbed-Szene nutzt Step-1-APIs
+> (`LocalBubbleManager` als Identity-Stub, kein BubbleActivationSet,
+> kein NUMERIC_LOCAL im Testbed). Für den aktuellen Arbeitsstand lies
+> zuerst `docs/STATUS.md`.
+
+---
+
+Stand der Sim-Dokumentation: Schritt 4 — NUMERIC_LOCAL / Regime-Wechsel.
 
 ## Welche Ebene ist aktuell autoritativ
 
@@ -122,18 +131,18 @@ Neue Tests: `src/tests/bubble/test_bubble.gd`.
 - Kein GUT / kein größeres Test-Framework (custom runner; GUT installiert aber nicht genutzt).
 - Keine `.tres`-Dateien für Bodies — bewusst, siehe Daten-first-ADR.
 
-## Verifikation
+## Verifikation (Sim-Layer)
 
 ```
 godot --path . --headless --script res://src/tests/test_runner.gd --quit
 ```
 
-Exit 0, alle Asserts grün (orbit + numeric_local + bubble + activation + registry Suite).
+Exit 0, alle Asserts grün (test_orbit + test_registry + test_starter_world Suite).
 
-Testbed starten (time_scale = 1 000):
-- Overlay zeigt `planet_a: mode=NUMERIC_LOCAL`, `NL-Bodies = 1 / 3`
-- `moon_a: mode=AUTHORED_ORBIT` (unverändert)
-- Aktivierungsradius auf 0 → planet_a wechselt auf `KEPLER_APPROX`, Sprung im Log
+> **Hinweis:** Die alten Testbed-Checks für NUMERIC_LOCAL, NL-Bodies und
+> BubbleActivationSet gelten für das frühere 3D-Testbed. Das aktuelle
+> 2D-Testbed (StarterWorld, 9 Bodies) zeigt im DebugOverlay (F3) die
+> korrekten Positionen aller Bodies und unterstützt Fokus-Navigation per Tab.
 
 ## Logischer nächster Schritt
 
