@@ -1,5 +1,34 @@
 # Graviton - Decisions
 
+## 2026-04-19 - P14.3: Star-Polish als gemeinsame solare Familie
+
+Sterne werden als runde, warmfarbige Sonnen mit sichtbarer Photosphaere
+und weichem Corona-Halo lesbar gemacht. Der Haupt-Shader-Fix ist die
+Entkopplung der Alpha-Silhouette vom zeitgetriebenen Warp - die innere
+Animation (Limb, Farbe, Rim) bleibt erhalten, nur die Aussenkante ist
+jetzt ein sauberer Kreis. Palette und Granulations-Amplitude werden rein
+an Zahlenwerten nachgetuned; die bestehende Granulations-Morphologie
+(hexagonale 3-Richtungs-Zellen, Domain-Warp, asymmetrische Lanes
+`bright*0.60 - dark*1.35`) bleibt unveraendert. Der Corona-Halo wird
+durch einen 5-stufigen weichen Ringgradient (Aussenradius 25 px) ersetzt,
+ohne den sichtbaren Stern-Footprint zu vergroessern.
+
+Konsequenz:
+
+- alle Sterne teilen in P14.3 bewusst denselben Sun-Look
+- die in P13 physikalisch eingefuehrte M-Dwarf-Parametrisierung fuer
+  `gamma` (reduzierte Masse und Luminositaet) bleibt voll gueltig und
+  wirksam fuer Thermal-/Environment-Ableitung; die visuelle Entkopplung
+  davon in P14.3 ist eine bewusste Vertagung auf einen spaeteren
+  Star-Typisierungs-Pass (z. B. via `BodyDef.luminosity_w` oder explizite
+  Spektralklasse), kein Versehen
+- P14.3 fasst weder Kamera noch Body-Size noch Sim-Schicht noch
+  Planet-Archetypen an
+- keine neuen Uniforms, keine Star-Tuning-Zentralisierung in
+  `OrbitBodyVisual` - der aktuelle `STAR`-Pfad in `_make_sphere_material`
+  haette dafuer nichts zu zentralisieren und wuerde versehentlich
+  Planet-/Mond-Parameter mitziehen
+
 ## 2026-04-19 - P14.2 nutzt bewusst Hybrid-Zoom: `world -> fit -> focus`
 
 P14.2 ersetzt die reine P14.1-Semantik "gleiche Zoomzahl = gleicher

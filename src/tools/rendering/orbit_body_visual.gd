@@ -5,6 +5,20 @@ const _SHADER_SPHERE := preload("res://src/tools/rendering/shaders/body_sphere.g
 const _SHADER_STAR := preload("res://src/tools/rendering/shaders/body_star.gdshader")
 const PlanetVisualThemeScript := preload("res://src/tools/rendering/planet_visual_theme.gd")
 
+# Star halo: 5 concentric discs, outermost first in draw order so inner rings
+# layer on top. Outer radius stays within the previous 22 px footprint plus a
+# minimal gradient margin — the halo gets softer, not bigger.
+const _STAR_HALO_INNER_RINGS: Array = [
+	[9.0, Color(1.0, 0.93, 0.62, 0.26)],
+	[13.0, Color(1.0, 0.84, 0.40, 0.14)],
+	[17.0, Color(1.0, 0.72, 0.28, 0.08)],
+	[21.0, Color(1.0, 0.58, 0.22, 0.05)],
+]
+const _STAR_HALO_OUTER_RADIUS: float = 25.0
+const _STAR_HALO_OUTER_COLOR: Color = Color(1.0, 0.46, 0.18, 0.04)
+const _STAR_HALO_BREATH_FREQ_RAD_PER_S: float = 0.35
+const _STAR_HALO_BREATH_AMPLITUDE: float = 0.15
+
 var _kind: int = BodyType.Kind.PLANET
 var _is_focused: bool = false
 var _detail_factor: float = 1.0
@@ -65,6 +79,13 @@ func _ready() -> void:
 
 	if _theme != null:
 		_apply_theme_to_material(_theme)
+
+
+func _process(_delta: float) -> void:
+	# Stars drive a subtle outer-ring breath in `_draw_star_glow`; all other
+	# kinds only redraw on state change, so _process is a no-op for them.
+	if _kind == BodyType.Kind.STAR:
+		queue_redraw()
 
 
 func apply_planet_theme(theme) -> void:
@@ -134,9 +155,14 @@ func _draw_moon_glow() -> void:
 
 
 func _draw_star_glow() -> void:
-	draw_circle(Vector2.ZERO, 22.0, Color(1.0, 0.84, 0.34, 0.06))
-	draw_circle(Vector2.ZERO, 14.0, Color(1.0, 0.84, 0.34, 0.10))
-	draw_circle(Vector2.ZERO, 9.0, Color(1.0, 0.90, 0.56, 0.24))
+	var breath: float = 1.0 - _STAR_HALO_BREATH_AMPLITUDE + _STAR_HALO_BREATH_AMPLITUDE \
+		* sin(Time.get_ticks_msec() * 0.001 * _STAR_HALO_BREATH_FREQ_RAD_PER_S)
+	var outer_color: Color = _STAR_HALO_OUTER_COLOR
+	outer_color.a *= breath
+	draw_circle(Vector2.ZERO, _STAR_HALO_OUTER_RADIUS, outer_color)
+	for i in range(_STAR_HALO_INNER_RINGS.size() - 1, -1, -1):
+		var ring: Array = _STAR_HALO_INNER_RINGS[i]
+		draw_circle(Vector2.ZERO, ring[0], ring[1])
 
 
 func _draw_planet_overlay() -> void:

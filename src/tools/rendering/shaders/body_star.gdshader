@@ -18,17 +18,18 @@ void fragment() {
 	// df_t-gated warp gain: silhouette near-circular in overview, breathing at close-up
 	float t_w = clamp(t * (1.0 + warp * mix(0.25, 1.0, df_t)), 0.0, 1.2);
 
-	// Silhouette fades at the warped edge — alpha shares t_w with limb/color/rim below
-	// Thresholds: 0.46/0.42 ≈ 1.095, 0.40/0.42 ≈ 0.952 (old distance edges in t-space)
-	float alpha = smoothstep(1.095, 0.952, t_w);
+	// Silhouette uses the unwarped t: the star always reads as a clean round disc,
+	// while limb/color/rim below still breathe with t_w for internal animation.
+	// Thresholds: 0.46/0.42 ≈ 1.095, 0.40/0.42 ≈ 0.952 (distance edges in t-space)
+	float alpha = smoothstep(1.095, 0.952, t);
 	if (alpha <= 0.001) { discard; }
 
 	// Proper limb darkening: center bright, edge ~26% dimmer
 	float limb = 1.0 - 0.26 * pow(t_w, 1.7);
 
 	// Radial color temperature: center near-white, edge warmer/more saturated
-	vec3 center_col = vec3(1.0, 0.97, 0.86);
-	vec3 edge_col = vec3(1.0, 0.76, 0.28);
+	vec3 center_col = vec3(1.0, 0.95, 0.78);
+	vec3 edge_col = vec3(1.0, 0.62, 0.18);
 	vec3 col = mix(center_col, edge_col, pow(t_w, 1.8)) * limb;
 
 	// Three-direction hexagonal granulation — avoids cross/grid artifact of sin(x)*sin(y)
@@ -53,14 +54,14 @@ void fragment() {
 	float bright = pow(cell_pos, 0.65);   // broad, soft hot centers
 	float dark   = pow(cell_neg, 2.40);   // narrow, hard cool lanes
 	float asym = bright * 0.60 - dark * 1.35;
-	float gran = asym * (1.0 - t * 0.65) * mix(0.06, 0.18, df_t);
+	float gran = asym * (1.0 - t * 0.65) * mix(0.11, 0.28, df_t);
 	col *= 1.0 + gran;
 	// Temperature tint: lanes pick up a warmer/redder hue, bright centers stay near white
 	// df_t-gated so the tint is inactive in overview, subtle at close-up
-	col *= mix(vec3(1.0), vec3(1.0, 0.90, 0.72), max(0.0, -asym) * mix(0.0, 0.55, df_t));
+	col *= mix(vec3(1.0), vec3(1.0, 0.90, 0.72), max(0.0, -asym) * mix(0.18, 0.70, df_t));
 
 	// Corona rim glow
-	float rim = pow(max(0.0, 1.0 - abs(t_w - 1.0) * 5.5), 2.0) * 0.48;
+	float rim = pow(max(0.0, 1.0 - abs(t_w - 1.0) * 5.5), 2.0) * 0.62;
 	col += vec3(1.0, 0.82, 0.48) * rim;
 
 	COLOR = vec4(clamp(col, 0.0, 1.0), alpha);

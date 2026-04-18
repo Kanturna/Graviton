@@ -129,6 +129,13 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Monde laufen jetzt durch denselben Klima-Resolver wie Planeten,
   bleiben aber ueber gedimmte Theme-Intensitaeten sichtbar als Monde
   lesbar statt wie kleine Vollplaneten zu wirken.
+- Sterne lesen sich jetzt als runde, warmfarbige Sonnen mit sichtbarer
+  Photosphaere und weichem Corona-Halo: die Alpha-Silhouette ist vom
+  zeitgetriebenen Warp entkoppelt, die Palette ist saturierter, die
+  Granulation ist schon in Uebersicht/Mittelsicht lesbar, und der
+  Corona-Halo ist ein mehrstufiger Ringgradient innerhalb desselben
+  Stern-Footprints. Alle Sterne teilen bewusst denselben Sun-Look;
+  Spektralklassen-/Typ-Unterscheidung ist explizit vertagt.
 
 ## Ziel dieser Praesentationsschicht
 

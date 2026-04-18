@@ -322,6 +322,42 @@ Erledigt:
 - die fruehere P14.1-Invariante "gleiche Zoomzahl = gleicher
   Welt-Massstab unabhaengig vom Fokus" wurde bewusst zurueckgenommen
 
+## Prioritaet 14.3 - View Phase D: Sterne als runde Photosphaeren mit Corona - erledigt
+
+Ziel:
+Sterne endlich als runde, lebendige Sonnen lesbar machen - warme Palette,
+sichtbare Photosphaere, echter Corona-Halo - ohne Kamera-, Orbit-,
+Planeten- oder Body-Size-Aenderung.
+
+Erledigt:
+
+- Alpha-Silhouette im Sternshader vom zeitgetriebenen Warp entkoppelt
+  (`alpha = smoothstep(..., t)` statt `t_w`); innere Animation fuer Limb,
+  Farbe und Rim bleibt erhalten
+- Palette gesaettigter: `center_col` etwas waermer, `edge_col` deutlich
+  orangefarbener
+- Granulations-Amplitude ueber `df_t` angehoben, Photosphaere jetzt auch
+  in Uebersicht/Mittelsicht lesbar
+- Lane-Temperature-Tint und Rim-Intensitaet leicht verstaerkt
+- bestehende Granulations-Morphologie (hexagonale 3-Richtungs-Zellen,
+  Domain-Warp, asymmetrische Lanes `bright*0.60 - dark*1.35`) bewusst
+  unveraendert
+- Corona-Halo in `_draw_star_glow` von 3 auf 5 Ringe erweitert, weicher
+  Gradient, Aussenradius 25 px - Stern-Footprint bleibt innerhalb des
+  frueheren 22-px-Ringes plus minimaler Gradient-Rand
+- optionaler TIME-Atem nur auf Alpha des aeussersten Rings, nie auf
+  Radius; Form bleibt perfekt rund
+- alle Sterne teilen in P14.3 bewusst denselben Sun-Look
+
+Offen / spaeter:
+
+- Star-Typisierung / Spektralklassen / luminosity-getriebene Palette als
+  eigener spaeterer Pass (`gamma` ist physikalisch weiter Red-Dwarf,
+  visuell aber bewusst noch Teil derselben Sonnenfamilie)
+- moeglicher spaeterer Pass mit expliziten Star-Uniforms in
+  `body_star.gdshader`, damit Stern-Tuning dann sauber zentralisierbar
+  wird
+
 ## Danach - Weitere planetare Umweltableitung
 
 Nach dem ersten Guardrail-Block ist der naechste groessere Simulations-
