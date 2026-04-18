@@ -9,7 +9,7 @@ und Planeten aber spielerisch zu schwach wurde.
 
 Konsequenz:
 
-- `5% .. 100%` bilden jetzt explizit `world -> fit current focus` ab
+- `0.5% .. 100%` bilden jetzt explizit `world -> fit current focus` ab
 - `100%` bedeutet wieder exakt `fit current focus`
 - oberhalb von `100%` ist Zoom bewusst wieder lokaler Closeup relativ
   zum aktuellen Fokus
@@ -27,7 +27,7 @@ Konsequenz:
 
 - der beim Load gecachte Root-Overview-Radius bleibt der Anker fuer den
   guten globalen Rauszoom
-- der Zoombereich bleibt bei `5%` bis `10000%`
+- der Zoombereich bleibt bei `0.5%` bis `10000%`
 - `Backspace` bleibt der explizite `fit current focus`-Reset
 - Renderer-Nahdetail und Fokus-Emphasis bleiben weiter fokus-relativ
   ueber `focus_closeup_ratio`

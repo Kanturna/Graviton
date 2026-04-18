@@ -295,7 +295,7 @@ P14-Nahdetail-Schwellen zu brechen.
 Erledigt:
 
 - beim Load gecachter Root-Overview-Radius als Weltanker
-- Zoombereich fuer den manuellen Nahzoom-Follow-up auf `5%-10000%`
+- Zoombereich fuer den manuellen Nahzoom-Follow-up auf `0.5%-10000%`
   erweitert
 - Renderer-Nahdetail und Fokus-Emphasis laufen weiter fokus-relativ
   ueber einen separaten `focus_closeup_ratio`
@@ -311,7 +311,7 @@ Nahzoom erreichbar machen.
 
 Erledigt:
 
-- `5% .. 100%` bilden jetzt explizit `world -> fit current focus` ab
+- `0.5% .. 100%` bilden jetzt explizit `world -> fit current focus` ab
 - `100%` bedeutet wieder exakt `fit current focus`
 - `100% .. 10000%` sind jetzt bewusster lokaler Fokus-Closeup statt
   global vergleichbarer Welt-Massstab

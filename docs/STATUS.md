@@ -87,12 +87,12 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `time_scale` skaliert das simulierte `dt` pro Physics-Frame.
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
 - Die Kamera nutzt jetzt ein bewusstes Hybrid-Zoommodell:
-  `5% .. 100%` interpoliert von Welt-Ueberblick zu `fit current focus`,
+  `0.5% .. 100%` interpoliert von Welt-Ueberblick zu `fit current focus`,
   und oberhalb von `100%` wird Zoom wieder als lokaler Closeup relativ
   zum aktuellen Fokus interpretiert.
 - `100%` bedeutet im Testbed wieder explizit `fit current focus`;
   `Backspace` springt auf genau diesen Fokus-Fit zurueck.
-- Der Zoombereich bleibt bei `5%` bis `10000%`; der gute globale
+- Der Zoombereich bleibt bei `0.5%` bis `10000%`; der gute globale
   Rauszoom bleibt erhalten, aber fokussierte Sterne, Planeten und Monde
   koennen wieder deutlich naeher herangezoomt werden als unter P14.1.
 - Das HUD macht die Zoom-Semantik jetzt explizit sichtbar:

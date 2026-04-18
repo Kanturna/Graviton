@@ -27,13 +27,13 @@ static func _test_hybrid_zoom_scale_mapping(ctx) -> void:
 		OrbitZoomModelScript.target_view_scale(
 			root_fit_scale,
 			focus_fit_scale,
-			0.05,
+			0.005,
 			OVERVIEW_RATIO,
 			MAX_CLOSEUP_BIAS
 		),
 		world_overview_scale,
 		0.000001,
-		"5% mappt exakt auf world_overview_scale"
+		"0.5% mappt exakt auf world_overview_scale"
 	)
 	ctx.assert_almost(
 		OrbitZoomModelScript.target_view_scale(
@@ -74,7 +74,7 @@ static func _test_hybrid_zoom_scale_mapping(ctx) -> void:
 			OVERVIEW_RATIO,
 			MAX_CLOSEUP_BIAS
 		) < focus_fit_scale,
-		"Zwischen 5% und 100% bleibt der Scale im Overview->Fit-Bereich"
+		"Zwischen 0.5% und 100% bleibt der Scale im Overview->Fit-Bereich"
 	)
 
 
@@ -92,7 +92,7 @@ static func _test_world_overview_scale_ratio(ctx) -> void:
 	)
 	ctx.assert_true(
 		world_overview_scale < root_fit_scale,
-		"Unter Root-Fokus ist 5% kleiner als 100% und damit ein echter sichtbarer Bereich"
+		"Unter Root-Fokus ist 0.5% kleiner als 100% und damit ein echter sichtbarer Bereich"
 	)
 
 

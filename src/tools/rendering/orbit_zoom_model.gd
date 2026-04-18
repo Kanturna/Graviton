@@ -2,7 +2,7 @@ class_name OrbitZoomModel
 extends RefCounted
 
 
-const MIN_ZOOM_FACTOR: float = 0.05
+const MIN_ZOOM_FACTOR: float = 0.005
 const FIT_ZOOM_FACTOR: float = 1.0
 const MAX_ZOOM_FACTOR: float = 100.0
 

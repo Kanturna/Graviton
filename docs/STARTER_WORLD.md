@@ -90,7 +90,7 @@ weiter klar vom Parent getrennt sind.
 | HUD-Speed-Slider | Sim-Speed stufenlos logarithmisch |
 | `W/A/S/D` | Kamera manuell verschieben |
 | Space | Pause / Weiter |
-| Mausrad | Zoom ein/aus (5%-10000%) |
+| Mausrad | Zoom ein/aus (0.5%-10000%) |
 | Backspace | Aktuellen Fokus fitten |
 | F3 | Debug-Overlay ein/ausblenden |
 

@@ -6,7 +6,7 @@ const TIME_SCALE_PRESETS: Array[float] = [0.25, 1.0, 10.0, 50.0, 100.0, 250.0, 5
 const VIEWPORT_RADIUS_FACTOR: float = 0.38
 const VIEW_SMOOTHNESS: float = 10.0
 const ZOOM_FACTOR_STEP: float = 1.20
-const MIN_ABSOLUTE_ZOOM_FACTOR: float = 0.05
+const MIN_ABSOLUTE_ZOOM_FACTOR: float = 0.005
 const MAX_ABSOLUTE_ZOOM_FACTOR: float = 100.0
 const GLOBAL_OVERVIEW_RADIUS_FACTOR: float = 1.75
 const WORLD_OVERVIEW_SCALE_RATIO: float = 0.4
@@ -220,17 +220,17 @@ func _update_hud() -> void:
 	_climate_value.text = _climate_hud_text(focus_id)
 	_season_value.text = _season_hud_text(focus_id)
 	_time_value.text = "T+ %.2f d   steps %d   FPS %d" % [sim_days, TimeService.tick_count, fps]
-	_scale_value.text = "Speed x%s   Preset %s   Zoom %.0f%% %s" % [
+	_scale_value.text = "Speed x%s   Preset %s   Zoom %s %s" % [
 		_stripped_float(TimeService.time_scale),
 		speed_step_label,
-		_absolute_zoom_factor * 100.0,
+		_zoom_percent_text(_absolute_zoom_factor),
 		OrbitZoomModelScript.zoom_mode_label(_absolute_zoom_factor)
 	]
 	_mode_value.text = "Bodies %d   %s" % [
 		UniverseRegistry.body_count(),
 		"Paused" if TimeService.paused else "Running"
 	]
-	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Q/E or PgUp/PgDn speed   HUD slider speed   WASD pan   Wheel zoom (5%-10000%)   Backspace fit focus   Space pause   F3 debug"
+	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Q/E or PgUp/PgDn speed   HUD slider speed   WASD pan   Wheel zoom (0.5%-10000%)   Backspace fit focus   Space pause   F3 debug"
 
 
 func _environment_hud_text(focus_id: StringName) -> String:
@@ -424,3 +424,11 @@ static func _stripped_float(value: float) -> String:
 	if is_equal_approx(value, rounded):
 		return str(int(rounded))
 	return "%.2f" % value
+
+
+static func _zoom_percent_text(zoom_factor: float) -> String:
+	var percent: float = zoom_factor * 100.0
+	var rounded: float = roundf(percent)
+	if is_equal_approx(percent, rounded):
+		return "%d%%" % int(rounded)
+	return "%.1f%%" % percent
