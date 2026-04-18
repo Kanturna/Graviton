@@ -11,6 +11,11 @@ static func run(ctx) -> void:
 	_test_starter_world_dark_root_yields_zero_for_root_and_stars(ctx)
 	_test_starter_world_relative_planet_insolation_order(ctx)
 	_test_starter_world_relative_planet_temperature_order(ctx)
+	_test_sample_system_planet_a_subsolar_latitude_matches_negative_tilt_at_t0(ctx)
+	_test_zero_tilt_keeps_subsolar_zero_and_poles_symmetric(ctx)
+	_test_north_pole_orbit_frame_azimuth_flips_subsolar_sign(ctx)
+	_test_polar_day_and_polar_night_follow_explicit_branches(ctx)
+	_test_authored_orbit_body_reports_non_zero_seasonal_values(ctx)
 	_test_cross_root_light_does_not_leak(ctx)
 	_test_albedo_boundaries_control_absorption_and_temperature(ctx)
 	_test_unknown_and_non_finite_paths_return_zero(ctx)
@@ -108,6 +113,27 @@ static func _planet_def(id: StringName, parent: StringName, semi_major_axis_m: f
 	profile.argument_periapsis_rad = 0.0
 	profile.mean_anomaly_epoch_rad = 0.0
 	profile.epoch_s = 0.0
+	def.orbit_profile = profile
+	return def
+
+
+static func _authored_orbit_body_def(id: StringName, parent: StringName, radius_m: float,
+		phase_rad: float, axial_tilt_rad: float,
+		north_pole_orbit_frame_azimuth_rad: float) -> BodyDef:
+	var def := BodyDef.new()
+	def.id = id
+	def.display_name = String(id)
+	def.kind = BodyType.Kind.MOON
+	def.mass_kg = UnitSystem.LUNAR_MASS_KG
+	def.radius_m = 1.7374e6
+	def.axial_tilt_rad = axial_tilt_rad
+	def.north_pole_orbit_frame_azimuth_rad = north_pole_orbit_frame_azimuth_rad
+	def.parent_id = parent
+	var profile := OrbitProfile.new()
+	profile.mode = OrbitMode.Kind.AUTHORED_ORBIT
+	profile.authored_radius_m = radius_m
+	profile.authored_period_s = 14.0 * UnitSystem.DAY_S
+	profile.authored_phase_rad = phase_rad
 	def.orbit_profile = profile
 	return def
 
@@ -251,6 +277,131 @@ static func _test_starter_world_relative_planet_temperature_order(ctx) -> void:
 	_cleanup_setup(setup)
 
 
+static func _test_sample_system_planet_a_subsolar_latitude_matches_negative_tilt_at_t0(ctx) -> void:
+	var setup: Dictionary = _setup_named_world(&"sample_system")
+	var registry: Node = setup["registry"]
+	var thermal_service = setup["thermal_service"]
+	var planet_def: BodyDef = registry.get_def(&"planet_a")
+	var desc: Dictionary = thermal_service.describe_body(&"planet_a")
+	var subsolar_latitude_rad: float = thermal_service.compute_subsolar_latitude_rad(&"planet_a")
+	ctx.assert_true(bool(desc.get("has_seasonal_basis", false)), "planet_a meldet eine gueltige saisonale Basis")
+	ctx.assert_almost(
+		subsolar_latitude_rad,
+		-planet_def.axial_tilt_rad,
+		1.0e-4,
+		"planet_a liegt bei t=0 nahe -axial_tilt_rad und damit im NH-Winter"
+	)
+	ctx.assert_true(
+		float(desc.get("south_pole_daily_mean_insolation_wpm2", 0.0)) > float(desc.get("north_pole_daily_mean_insolation_wpm2", 0.0)),
+		"south pole daily mean bleibt bei t=0 groesser als north pole daily mean"
+	)
+	_cleanup_setup(setup)
+
+
+static func _test_zero_tilt_keeps_subsolar_zero_and_poles_symmetric(ctx) -> void:
+	var setup: Dictionary = _setup_named_world(&"sample_system")
+	var registry: Node = setup["registry"]
+	var thermal_service = setup["thermal_service"]
+	var planet_def: BodyDef = registry.get_def(&"planet_a")
+	planet_def.axial_tilt_rad = 0.0
+	planet_def.north_pole_orbit_frame_azimuth_rad = 1.234
+	var subsolar_latitude_rad: float = thermal_service.compute_subsolar_latitude_rad(&"planet_a")
+	var north_wpm2: float = thermal_service.compute_daily_mean_insolation_wpm2(&"planet_a", PI * 0.5)
+	var south_wpm2: float = thermal_service.compute_daily_mean_insolation_wpm2(&"planet_a", -PI * 0.5)
+	ctx.assert_almost(
+		subsolar_latitude_rad,
+		0.0,
+		1.0e-9,
+		"zero tilt setzt die subsolare Breite exakt auf 0.0"
+	)
+	ctx.assert_almost(
+		north_wpm2,
+		south_wpm2,
+		1.0e-9,
+		"zero tilt haelt Nord- und Suedpol-Tagesmittel gleich"
+	)
+	_cleanup_setup(setup)
+
+
+static func _test_north_pole_orbit_frame_azimuth_flips_subsolar_sign(ctx) -> void:
+	var setup: Dictionary = _setup_named_world(&"sample_system")
+	var registry: Node = setup["registry"]
+	var thermal_service = setup["thermal_service"]
+	var planet_def: BodyDef = registry.get_def(&"planet_a")
+	planet_def.north_pole_orbit_frame_azimuth_rad = 0.0
+	var winter_subsolar_rad: float = thermal_service.compute_subsolar_latitude_rad(&"planet_a")
+	planet_def.north_pole_orbit_frame_azimuth_rad = PI
+	var summer_subsolar_rad: float = thermal_service.compute_subsolar_latitude_rad(&"planet_a")
+	ctx.assert_true(winter_subsolar_rad < 0.0, "azimuth 0.0 liefert negatives subsolar latitude")
+	ctx.assert_true(summer_subsolar_rad > 0.0, "azimuth PI liefert positives subsolar latitude")
+	ctx.assert_almost(
+		summer_subsolar_rad,
+		-winter_subsolar_rad,
+		1.0e-4,
+		"ein PI-Flip des Azimuts invertiert das Vorzeichen der subsolaren Breite"
+	)
+	_cleanup_setup(setup)
+
+
+static func _test_polar_day_and_polar_night_follow_explicit_branches(ctx) -> void:
+	var setup: Dictionary = _setup_named_world(&"sample_system")
+	var registry: Node = setup["registry"]
+	var thermal_service = setup["thermal_service"]
+	var planet_def: BodyDef = registry.get_def(&"planet_a")
+	var insolation_wpm2: float = thermal_service.compute_insolation_wpm2(&"planet_a")
+	planet_def.north_pole_orbit_frame_azimuth_rad = 0.0
+	var north_pole_winter_wpm2: float = thermal_service.compute_daily_mean_insolation_wpm2(&"planet_a", PI * 0.5)
+	var south_pole_summer_wpm2: float = thermal_service.compute_daily_mean_insolation_wpm2(&"planet_a", -PI * 0.5)
+	ctx.assert_almost(
+		north_pole_winter_wpm2,
+		0.0,
+		1.0e-9,
+		"north pole faellt im Winter korrekt in den Polarnacht-Branch"
+	)
+	ctx.assert_almost(
+		south_pole_summer_wpm2,
+		insolation_wpm2 * sin(planet_def.axial_tilt_rad),
+		maxf(insolation_wpm2 * 1.0e-6, 1.0e-9),
+		"south pole nutzt im Sommer den expliziten Polar-Branch"
+	)
+	planet_def.north_pole_orbit_frame_azimuth_rad = PI
+	var north_pole_summer_wpm2: float = thermal_service.compute_daily_mean_insolation_wpm2(&"planet_a", PI * 0.5)
+	ctx.assert_almost(
+		north_pole_summer_wpm2,
+		insolation_wpm2 * sin(planet_def.axial_tilt_rad),
+		maxf(insolation_wpm2 * 1.0e-6, 1.0e-9),
+		"north pole nutzt nach Azimut-Flip ebenfalls den expliziten Polar-Branch"
+	)
+	_cleanup_setup(setup)
+
+
+static func _test_authored_orbit_body_reports_non_zero_seasonal_values(ctx) -> void:
+	var registry := _make_registry()
+	var time_service := _make_time_service()
+	var orbit_service = _make_orbit_service(registry, time_service)
+	for def in [
+		_root_def(&"bright_root", UnitSystem.SOLAR_LUMINOSITY_W),
+		_authored_orbit_body_def(&"authored_body", &"bright_root", 4.0e8, PI * 0.25, 0.35, 0.2),
+	]:
+		registry.register_body(def)
+	orbit_service.recompute_all_at_time(0.0)
+	var thermal_service = _make_thermal_service(registry)
+	var desc: Dictionary = thermal_service.describe_body(&"authored_body")
+	ctx.assert_true(bool(desc.get("has_seasonal_basis", false)), "AUTHORED_ORBIT body meldet saisonale Basis")
+	ctx.assert_true(
+		absf(float(desc.get("subsolar_latitude_rad", 0.0))) > 1.0e-6,
+		"AUTHORED_ORBIT body liefert non-zero subsolar latitude"
+	)
+	ctx.assert_true(
+		thermal_service.compute_daily_mean_insolation_wpm2(&"authored_body", 0.0) > 0.0,
+		"AUTHORED_ORBIT body liefert non-zero daily mean insolation am Aequator"
+	)
+	thermal_service.free()
+	orbit_service.free()
+	time_service.free()
+	registry.free()
+
+
 static func _test_cross_root_light_does_not_leak(ctx) -> void:
 	var registry := _make_registry()
 	var time_service := _make_time_service()
@@ -347,6 +498,18 @@ static func _test_unknown_and_non_finite_paths_return_zero(ctx) -> void:
 		1.0e-9,
 		"unbekannte ID liefert 0.0 Gleichgewichtstemperatur"
 	)
+	ctx.assert_almost(
+		thermal_service.compute_subsolar_latitude_rad(&"missing_body"),
+		0.0,
+		1.0e-9,
+		"unbekannte ID liefert 0.0 subsolare Breite"
+	)
+	ctx.assert_almost(
+		thermal_service.compute_daily_mean_insolation_wpm2(&"missing_body", 0.0),
+		0.0,
+		1.0e-9,
+		"unbekannte ID liefert 0.0 daily mean insolation"
+	)
 	var planet_state: BodyState = registry.get_state(&"planet_a")
 	planet_state.position_parent_frame_m = Vector3(INF, 0.0, 0.0)
 	ctx.assert_almost(
@@ -367,6 +530,18 @@ static func _test_unknown_and_non_finite_paths_return_zero(ctx) -> void:
 		1.0e-9,
 		"nicht-finite Parent-Frame-Kette liefert 0.0 Gleichgewichtstemperatur"
 	)
+	ctx.assert_almost(
+		thermal_service.compute_subsolar_latitude_rad(&"planet_a"),
+		0.0,
+		1.0e-9,
+		"nicht-finite Parent-Frame-Kette liefert 0.0 subsolare Breite"
+	)
+	ctx.assert_almost(
+		thermal_service.compute_daily_mean_insolation_wpm2(&"planet_a", 0.0),
+		0.0,
+		1.0e-9,
+		"nicht-finite Parent-Frame-Kette liefert 0.0 daily mean insolation"
+	)
 	_cleanup_setup(setup)
 
 
@@ -382,6 +557,7 @@ static func _test_describe_body_matches_compute_and_reports_source(ctx) -> void:
 	ctx.assert_true(desc.get("body_id", StringName("")) == &"planet_a", "describe_body setzt body_id")
 	ctx.assert_true(desc.get("source_id", StringName("")) == &"sol", "describe_body meldet sol als Quelle fuer planet_a")
 	ctx.assert_true(bool(desc.get("has_luminous_ancestor", false)), "describe_body meldet luminous ancestor fuer planet_a")
+	ctx.assert_true(bool(desc.get("has_seasonal_basis", false)), "describe_body meldet saisonale Basis fuer planet_a")
 	ctx.assert_true(float(desc.get("distance_to_source_m", 0.0)) > 0.0, "describe_body meldet positive Distanz")
 	ctx.assert_almost(
 		float(desc.get("albedo", -1.0)),
@@ -407,6 +583,18 @@ static func _test_describe_body_matches_compute_and_reports_source(ctx) -> void:
 		maxf(computed_teq_k * 1.0e-9, 1.0e-9),
 		"describe_body und compute_equilibrium_temperature_k liefern denselben Wert"
 	)
+	ctx.assert_almost(
+		float(desc.get("subsolar_latitude_rad", 0.0)),
+		thermal_service.compute_subsolar_latitude_rad(&"planet_a"),
+		1.0e-9,
+		"describe_body und compute_subsolar_latitude_rad liefern denselben Wert"
+	)
+	ctx.assert_almost(
+		float(desc.get("equator_daily_mean_insolation_wpm2", 0.0)),
+		thermal_service.compute_daily_mean_insolation_wpm2(&"planet_a", 0.0),
+		maxf(computed_wpm2 * 1.0e-9, 1.0e-9),
+		"describe_body und compute_daily_mean_insolation_wpm2 liefern denselben Aequator-Wert"
+	)
 	_cleanup_setup(setup)
 
 
@@ -422,6 +610,11 @@ static func _test_describe_body_unknown_returns_full_default_shape(ctx) -> void:
 	ctx.assert_true(desc.has("absorbed_flux_wpm2"), "Default-Shape enthaelt absorbed_flux_wpm2")
 	ctx.assert_true(desc.has("equilibrium_temperature_k"), "Default-Shape enthaelt equilibrium_temperature_k")
 	ctx.assert_true(desc.has("has_luminous_ancestor"), "Default-Shape enthaelt has_luminous_ancestor")
+	ctx.assert_true(desc.has("has_seasonal_basis"), "Default-Shape enthaelt has_seasonal_basis")
+	ctx.assert_true(desc.has("subsolar_latitude_rad"), "Default-Shape enthaelt subsolar_latitude_rad")
+	ctx.assert_true(desc.has("equator_daily_mean_insolation_wpm2"), "Default-Shape enthaelt equator_daily_mean_insolation_wpm2")
+	ctx.assert_true(desc.has("north_pole_daily_mean_insolation_wpm2"), "Default-Shape enthaelt north_pole_daily_mean_insolation_wpm2")
+	ctx.assert_true(desc.has("south_pole_daily_mean_insolation_wpm2"), "Default-Shape enthaelt south_pole_daily_mean_insolation_wpm2")
 	ctx.assert_true(desc.get("body_id", StringName("")) == &"missing_body", "Default-Shape behaelt die angefragte body_id")
 	ctx.assert_true(desc.get("source_id", StringName("")) == StringName(""), "Default-Shape setzt leere source_id")
 	ctx.assert_almost(float(desc.get("distance_to_source_m", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt Distanz auf 0.0")
@@ -430,6 +623,11 @@ static func _test_describe_body_unknown_returns_full_default_shape(ctx) -> void:
 	ctx.assert_almost(float(desc.get("absorbed_flux_wpm2", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt absorbierten Fluss auf 0.0")
 	ctx.assert_almost(float(desc.get("equilibrium_temperature_k", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt Gleichgewichtstemperatur auf 0.0")
 	ctx.assert_true(not bool(desc.get("has_luminous_ancestor", true)), "Default-Shape setzt has_luminous_ancestor auf false")
+	ctx.assert_true(not bool(desc.get("has_seasonal_basis", true)), "Default-Shape setzt has_seasonal_basis auf false")
+	ctx.assert_almost(float(desc.get("subsolar_latitude_rad", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt subsolar_latitude_rad auf 0.0")
+	ctx.assert_almost(float(desc.get("equator_daily_mean_insolation_wpm2", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt equator daily mean auf 0.0")
+	ctx.assert_almost(float(desc.get("north_pole_daily_mean_insolation_wpm2", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt north pole daily mean auf 0.0")
+	ctx.assert_almost(float(desc.get("south_pole_daily_mean_insolation_wpm2", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt south pole daily mean auf 0.0")
 	_cleanup_setup(setup)
 
 

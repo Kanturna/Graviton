@@ -20,6 +20,12 @@ extends Resource
 # Axiale Neigung relativ zur Orbit-Ebene des Bodies um seinen Parent.
 # `0.0` bedeutet: keine Neigung / der Aequator liegt in der Orbitebene.
 @export var axial_tilt_rad: float = 0.0
+# Azimut-Richtung der Nordpol-Projektion im lokalen Orbit-Frame vor der
+# Rotation in den Parent-Frame. Orbit-Frame-Konvention: +x ist die
+# lokale Periapsis-/Phase-0-Richtung, +z die Orbit-Normale. Fuer
+# Kreisbahnen bleibt +x ueber die vorhandene Orbit-Orientierung
+# definiert. `0.0` bedeutet: Nordpol-Projektion zeigt entlang lokales +x.
+@export var north_pole_orbit_frame_azimuth_rad: float = 0.0
 # Intrinsische Leuchtkraft in Watt. `0.0` bleibt in P3 bewusst doppeldeutig:
 # entweder nicht-leuchtend oder noch nicht modelliert.
 @export var luminosity_w: float = 0.0
@@ -47,6 +53,8 @@ func is_valid() -> bool:
 	if mass_kg <= 0.0:
 		return false
 	if not is_finite(radius_m) or not is_finite(rotation_period_s) or not is_finite(axial_tilt_rad):
+		return false
+	if not is_finite(north_pole_orbit_frame_azimuth_rad):
 		return false
 	if not is_finite(luminosity_w) or not is_finite(albedo) or not is_finite(greenhouse_delta_k):
 		return false

@@ -165,6 +165,11 @@ bleibt ein Wald, keine globale Vollverbindung.
 - `axial_tilt_rad`: axiale Neigung relativ zur Orbit-Ebene des Bodies
   um seinen Parent. `0.0` bedeutet: keine Neigung / Aequator liegt in
   der Orbitebene.
+- `north_pole_orbit_frame_azimuth_rad`: Azimut-Richtung der
+  Nordpol-Projektion im lokalen Orbit-Frame vor der Rotation in den
+  Parent-Frame. Orbit-Frame-Konvention: `+x` = lokale
+  Periapsis-/Phase-0-Richtung, `+z` = Orbit-Normale. Fuer Kreisbahnen
+  bleibt `+x` ueber die vorhandene Orbit-Orientierung definiert.
 - `luminosity_w`: intrinsische Leuchtkraft in Watt. `0.0` bleibt in P3
   bewusst doppeldeutig: entweder nicht-leuchtend oder noch nicht
   modelliert.
@@ -175,7 +180,7 @@ weiterhin keine Orbit-Berechnung und keine View direkt, werden
 mittlerweile aber von read-only Derived-Services fuer thermische und
 planetare Umweltwerte genutzt.
 
-## Abgeleitete Umweltgroessen - P6/P7 ThermalService
+## Abgeleitete Umweltgroessen - P6/P7/P11 ThermalService
 
 `ThermalService` ist der erste read-only Derived-Service ausserhalb von
 Orbit- und Bubble-Kernlogik.
@@ -201,14 +206,52 @@ aktuellen `BodyState`.
 
 **Fast-Rotator-Annahme:** Das `/4`-Redistribution-Modell meint global
 gemittelten Fluss und setzt uniforme Oberflaechentemperatur voraus.
-`rotation_period_s` und `axial_tilt_rad` bleiben in diesem Schritt
-bewusst ungenutzt. Fuer langsame Rotatoren oder tidal lock muss das
-Modell spaeter verzweigen.
+`rotation_period_s` wird auch in P11 noch nicht dynamisch genutzt.
+Fuer langsame Rotatoren oder tidal lock muss das Modell spaeter
+verzweigen.
 
-**Nicht-Ziele in P6/P7:**
+**Saisonale Geometrie (P11):**
+
+- `source_dir_hat` ist explizit der normierte Vektor `Body -> Quelle`
+- die Spinachse im lokalen Orbit-Frame ist:
+  - `Vector3(sin(tilt) * cos(azimuth), sin(tilt) * sin(azimuth), cos(tilt))`
+- fuer `KEPLER_APPROX` wird dieser Vektor ueber die bestehende
+  Orbit-Orientierung in den Parent-Frame rotiert
+- fuer `AUTHORED_ORBIT` bleibt der lokale Orbit-Frame in P11 identisch
+  zum Parent-`xy`/`z`-Frame
+- die subsolare Breite ist:
+  - `subsolar_latitude_rad = asin(dot(spin_axis_hat, source_dir_hat))`
+
+**Tagesgemittelte TOA-Insolation (P11):**
+
+- `S = insolation_wpm2`
+- `delta = subsolar_latitude_rad`
+- `phi = clamp(latitude_rad, -PI/2, PI/2)`
+
+Analytische Faelle:
+
+```text
+cosH0 = -tan(phi) * tan(delta)
+
+if -1 < cosH0 < 1:
+  H0 = acos(cosH0)
+  Q = (S / PI) * (H0 * sin(phi) * sin(delta) + cos(phi) * cos(delta) * sin(H0))
+elif cosH0 >= 1:
+  Q = 0.0
+else:
+  Q = S * sin(phi) * sin(delta)
+```
+
+Pol-Hinweis:
+
+- fuer `abs(abs(phi) - PI/2) <= 1.0e-6` wird in P11 direkt der
+  Polar-Branch benutzt, statt blind `tan(PI/2)` auszuwerten
+- fehlende Quelle, inkonsistente Kette oder fehlender Orbit-Frame
+  liefern weiter `0.0`
+
+**Nicht-Ziele in P6/P7/P11:**
 - keine Atmosphaere
 - kein Greenhouse / keine Emissivitaetsvariation
-- keine Jahreszeiten-/Tilt-Geometrie
 - keine Mehrquellen-Summation
 - keine Cross-Root-Suche ausserhalb der Parent-Kette
 
@@ -240,6 +283,12 @@ bewusst nur als Text angezeigt. Jede spaetere farbliche oder
 renderer-seitige Repraesentation gehoert in einen expliziten
 Visual-Pass - nicht in eine stille Erweiterung des nicht-visuellen
 Features.
+
+**Offene Folgefrage ab P11:** `ThermalService` liefert jetzt
+latitudenbewusste saisonale Geometrie, waehrend `EnvironmentService`
+weiter auf einer skalaren `surface_temperature_k` klassifiziert. Eine
+spaetere breiten- oder saisonabhaengige Umweltbewertung braucht deshalb
+einen expliziten Folgepass statt einer stillen Erweiterung.
 
 ## Abgeleitete Umweltgroessen - P9 AtmosphereService
 

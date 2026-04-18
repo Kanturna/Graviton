@@ -70,6 +70,36 @@ static func rotate_to_3d(pos_plane: Vector2,
 	return Vector3(x, y, z)
 
 
+# Dreht einen beliebigen Vektor aus dem lokalen Orbit-Frame in den
+# 3D-Parent-Frame. Dieselbe Orbit-Frame-Konvention wie bei
+# rotate_to_3d(): +x = Periapsis-/Phase-0-Richtung, +z = Orbit-Normale.
+static func rotate_orbit_frame_vector(vector_orbit_frame: Vector3,
+		inclination_rad: float,
+		longitude_ascending_node_rad: float,
+		argument_periapsis_rad: float) -> Vector3:
+	var cos_w: float = cos(argument_periapsis_rad)
+	var sin_w: float = sin(argument_periapsis_rad)
+	var cos_o: float = cos(longitude_ascending_node_rad)
+	var sin_o: float = sin(longitude_ascending_node_rad)
+	var cos_i: float = cos(inclination_rad)
+	var sin_i: float = sin(inclination_rad)
+
+	var x_orbit: float = vector_orbit_frame.x
+	var y_orbit: float = vector_orbit_frame.y
+	var z_orbit: float = vector_orbit_frame.z
+
+	var x: float = (cos_o * cos_w - sin_o * sin_w * cos_i) * x_orbit \
+		+ (-cos_o * sin_w - sin_o * cos_w * cos_i) * y_orbit \
+		+ (sin_o * sin_i) * z_orbit
+	var y: float = (sin_o * cos_w + cos_o * sin_w * cos_i) * x_orbit \
+		+ (-sin_o * sin_w + cos_o * cos_w * cos_i) * y_orbit \
+		+ (-cos_o * sin_i) * z_orbit
+	var z: float = (sin_w * sin_i) * x_orbit \
+		+ (cos_w * sin_i) * y_orbit \
+		+ cos_i * z_orbit
+	return Vector3(x, y, z)
+
+
 # Mittlere Bewegung n = sqrt(mu / a^3) in rad/s.
 static func mean_motion(semi_major_axis_m: float, parent_mu: float) -> float:
 	if semi_major_axis_m <= 0.0 or parent_mu <= 0.0:

@@ -26,6 +26,7 @@ const PAN_SPEED_PX_PER_S: float = 960.0
 
 @onready var _focus_value: Label = $HudLayer/TopPanel/Margin/VBox/FocusValue
 @onready var _environment_value: Label = $HudLayer/TopPanel/Margin/VBox/EnvironmentValue
+@onready var _season_value: Label = $HudLayer/TopPanel/Margin/VBox/SeasonValue
 @onready var _time_value: Label = $HudLayer/TopPanel/Margin/VBox/TimeValue
 @onready var _scale_value: Label = $HudLayer/TopPanel/Margin/VBox/ScaleValue
 @onready var _speed_slider: HSlider = $HudLayer/TopPanel/Margin/VBox/SpeedSlider
@@ -201,6 +202,7 @@ func _update_hud() -> void:
 	var speed_step_label: String = _time_scale_step_label(TimeService.time_scale)
 	_focus_value.text = "Focus: %s" % focus_name
 	_environment_value.text = _environment_hud_text(focus_id)
+	_season_value.text = _season_hud_text(focus_id)
 	_time_value.text = "T+ %.2f d   steps %d   FPS %d" % [sim_days, TimeService.tick_count, fps]
 	_scale_value.text = "Speed x%s   Preset %s   Zoom %.0f%%" % [
 		_stripped_float(TimeService.time_scale),
@@ -230,6 +232,16 @@ func _environment_hud_text(focus_id: StringName) -> String:
 		surface_temperature_k,
 		greenhouse_delta_k,
 	]
+
+
+func _season_hud_text(focus_id: StringName) -> String:
+	if _thermal_service == null:
+		return "Season: n/a"
+	var desc: Dictionary = _thermal_service.describe_body(focus_id)
+	if not bool(desc.get("has_seasonal_basis", false)):
+		return "Season: n/a"
+	var subsolar_latitude_rad: float = float(desc.get("subsolar_latitude_rad", 0.0))
+	return "Season: subsolar %+.0f deg" % rad_to_deg(subsolar_latitude_rad)
 
 
 func _update_manual_pan(delta: float) -> void:

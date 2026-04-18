@@ -225,9 +225,10 @@ aus bestehender Foundation-Wahrheit und sollte deshalb als eigener,
 leicht testbarer Service neben `OrbitService` leben.
 
 **Verantwortung:** On-demand-Reads auf `BodyDef.luminosity_w`,
-`BodyDef.albedo`, `BodyState.position_parent_frame_m` und
-Parent-Topologie. Kein Cache, kein Tick-Hook, keine `BodyState`-
-Mutation.
+`BodyDef.albedo`, `BodyDef.axial_tilt_rad`,
+`BodyDef.north_pole_orbit_frame_azimuth_rad`,
+`BodyState.position_parent_frame_m` und Parent-Topologie. Kein Cache,
+kein Tick-Hook, keine `BodyState`-Mutation.
 
 **Quellenregel:** Quelle ist der naechste Ancestor mit
 `luminosity_w > 0.0`. Die Suche startet beim Parent, nicht beim Body
@@ -235,9 +236,11 @@ selbst. `luminosity_w == 0.0` wird pragmatisch als "keine Quelle"
 behandelt und blockiert die Suche nicht.
 
 **Aktueller Stand:** `ThermalService` liefert jetzt on-demand
-Insolation, global gemittelten absorbierten Fluss und nackte
-Gleichgewichtstemperatur. Das `/4`-Redistribution-Modell ist bewusst
-als Fast-Rotator-Annahme dokumentiert; Atmosphaeren-, Greenhouse- und
+Insolation, global gemittelten absorbierten Fluss, nackte
+Gleichgewichtstemperatur sowie saisonale Geometrie
+(`subsolar_latitude_rad`, tagesgemittelte TOA-Insolation fuer
+ausgewaehlte Breiten). Das `/4`-Redistribution-Modell ist bewusst als
+Fast-Rotator-Annahme dokumentiert; Atmosphaeren-, Greenhouse- und
 Mehrquellen-Modelle leben bewusst ausserhalb dieses Services.
 
 ## AtmosphereService - ADR

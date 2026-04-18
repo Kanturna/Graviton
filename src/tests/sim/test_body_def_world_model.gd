@@ -7,6 +7,8 @@ static func run(ctx) -> void:
 	_test_negative_rotation_is_invalid(ctx)
 	_test_negative_luminosity_is_invalid(ctx)
 	_test_non_finite_axial_tilt_is_invalid(ctx)
+	_test_north_pole_orbit_frame_azimuth_defaults_to_valid_zero(ctx)
+	_test_non_finite_north_pole_azimuth_is_invalid(ctx)
 	_test_non_finite_rotation_is_invalid(ctx)
 	_test_non_finite_luminosity_is_invalid(ctx)
 	_test_albedo_boundary_values(ctx)
@@ -55,6 +57,22 @@ static func _test_non_finite_axial_tilt_is_invalid(ctx) -> void:
 	var nan_def := _make_valid_root()
 	nan_def.axial_tilt_rad = NAN
 	ctx.assert_true(not nan_def.is_valid(), "axial_tilt_rad = NaN ist invalid")
+
+
+static func _test_north_pole_orbit_frame_azimuth_defaults_to_valid_zero(ctx) -> void:
+	var def := _make_valid_root()
+	def.north_pole_orbit_frame_azimuth_rad = 0.0
+	ctx.assert_true(def.is_valid(), "north_pole_orbit_frame_azimuth_rad = 0.0 ist valid")
+
+
+static func _test_non_finite_north_pole_azimuth_is_invalid(ctx) -> void:
+	var inf_def := _make_valid_root()
+	inf_def.north_pole_orbit_frame_azimuth_rad = INF
+	ctx.assert_true(not inf_def.is_valid(), "north_pole_orbit_frame_azimuth_rad = INF ist invalid")
+
+	var nan_def := _make_valid_root()
+	nan_def.north_pole_orbit_frame_azimuth_rad = NAN
+	ctx.assert_true(not nan_def.is_valid(), "north_pole_orbit_frame_azimuth_rad = NaN ist invalid")
 
 
 static func _test_non_finite_rotation_is_invalid(ctx) -> void:

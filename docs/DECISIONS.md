@@ -1,5 +1,35 @@
 # Graviton - Decisions
 
+## 2026-04-18 - Saisonale Strahlungsgeometrie bleibt im `ThermalService`
+
+Die P11-Saisongeometrie erweitert bewusst den bestehenden
+`ThermalService` statt einen separaten Saison-Service einzuziehen.
+
+Konsequenz:
+
+- `ThermalService` bleibt die Heimat quantitativer Strahlungs- und
+  Thermalwerte
+- `EnvironmentService` bleibt in P11 unveraendert qualitativ
+- `source_dir_hat` ist fuer die saisonale Geometrie explizit als
+  normierter Vektor von Body -> Quelle festgezogen
+- latitudenbewusste Thermalgeometrie und skalare Umweltklassifikation
+  koennen spaeter bewusst wieder zusammengefuehrt werden, ohne heute die
+  Domain-Grenzen aufzubrechen
+
+## 2026-04-18 - `axial_tilt_rad` allein reicht nicht fuer Jahreszeiten
+
+P11 fuehrt bewusst das neue Datenfeld
+`BodyDef.north_pole_orbit_frame_azimuth_rad` ein.
+
+Konsequenz:
+
+- `axial_tilt_rad` beschreibt weiter nur den Kippwinkel relativ zur
+  Orbit-Ebene
+- die neue Azimut-Angabe fixiert zusaetzlich die Nordpol-Projektion im
+  lokalen Orbit-Frame
+- erst beide Felder zusammen definieren eine zeitabhaengige
+  Spinachsen-Orientierung fuer tilt-getriebene Jahreszeiten
+
 ## 2026-04-18 - Anti-Thrashing bleibt im `OrbitService`, nicht im `BubbleActivationSet`
 
 Der erste `NUMERIC_LOCAL`-Stabilitaets-Guardrail lebt bewusst im

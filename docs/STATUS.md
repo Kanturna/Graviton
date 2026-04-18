@@ -27,7 +27,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `WorldLoader` laedt benannte Welten jetzt explizit im `sim/`-Layer;
   `orbit_testbed.gd` laedt nicht mehr direkt `StarterWorld`.
 - `BodyDef` enthaelt jetzt erste statische Weltmodell-Felder fuer
-  Rotation, Achsneigung, Leuchtkraft und Albedo.
+  Rotation, Achsneigung, deren saisonale Orbit-Frame-Orientierung,
+  Leuchtkraft und Albedo.
 - `BubbleActivationSet` klassifiziert Bodies jetzt read-only relativ
   zum aktuellen Fokus in `ACTIVE`, `INACTIVE_DISTANT` und
   `INACTIVE_NO_LCA`.
@@ -44,6 +45,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   global gemittelten absorbierten Fluss und einfache
   Gleichgewichtstemperatur aus `luminosity_w`, `albedo`, Parent-Kette
   und aktuellem `BodyState`.
+- `ThermalService` nutzt jetzt zusaetzlich `axial_tilt_rad` und
+  `north_pole_orbit_frame_azimuth_rad` fuer saisonale Geometrie und
+  liefert on-demand subsolare Breite sowie tagesgemittelte TOA-
+  Insolation fuer ausgewaehlte Breiten.
 - `AtmosphereService` legt jetzt on-demand ein minimales,
   datengetriebenes Greenhouse-Modell (`greenhouse_delta_k`) auf
   `T_eq` und liefert daraus `surface_temperature_k`.
@@ -67,6 +72,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Es gibt ein HUD fuer Fokus, Sim-Zeit, Zeitskala und Status.
 - Die normale Environment-Zeile zeigt fuer unterstuetzte Fokus-Bodies
   jetzt Klasse, `Tsurf` und modellierten Greenhouse-Beitrag.
+- Das normale HUD zeigt fuer Bodies mit saisonaler Basis jetzt
+  zusaetzlich eine kleine `Season: subsolar ...`-Zeile.
 - Das HUD zeigt zusaetzlich FPS und die aktuelle Speed-Preset-Stufe.
 - Die Sim-Speed kann ueber einen logarithmischen HUD-Slider geregelt
   werden.
@@ -101,6 +108,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/sim/world/world_loader.gd`
 - `src/tests/sim/test_world_loader.gd`
 - `src/sim/bodies/body_def.gd`
+- `data/sample_system.gd`
 - `src/tests/sim/test_body_def_world_model.gd`
 - `src/runtime/local_bubble/bubble_activation_set.gd`
 - `src/tests/runtime/test_bubble_activation_set.gd`
@@ -144,6 +152,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   additives Greenhouse-Modell und eine erste qualitative
   Umweltklassifikation abgeleitet -
   noch keine Atmosphaerenchemie oder Druckmodelle.
+- `ThermalService` ist jetzt latitudenbewusst, waehrend
+  `EnvironmentService` weiter auf einer skalaren `surface_temperature_k`
+  klassifiziert; eine spaetere breiten- oder saisonabhaengige
+  Umweltbewertung bleibt damit eine bewusste Folgeaufgabe.
 - Der Wish-Pfad fuer `NUMERIC_LOCAL` bleibt bewusst um einen Frame
   gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`),
   wird jetzt aber im `OrbitService` ueber einen Grace-Tick abgefedert.

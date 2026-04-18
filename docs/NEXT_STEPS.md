@@ -173,11 +173,31 @@ Erledigt:
 - `Cap+Warn`-Policy mit Warning-Dedup statt hartem Kepler-Fallback
 - neue Tests fuer grosse `dt`, Grace-Verhalten und Warning-Dedup
 
+## Prioritaet 11 - Derived Phase E: Saisonale Insolation / Tilt-Geometrie - erledigt
+
+Ziel:
+Den bestehenden `ThermalService` um eine erste latitudenbewusste,
+tilt-getriebene Saison-Geometrie erweitern, ohne einen neuen
+Derived-Service einzuziehen oder `EnvironmentService` still mitzuziehen.
+
+Erledigt:
+
+- neues `BodyDef`-Feld `north_pole_orbit_frame_azimuth_rad`
+- `ThermalService.compute_subsolar_latitude_rad(id)`
+- `ThermalService.compute_daily_mean_insolation_wpm2(id, latitude_rad)`
+- `describe_body(...)` meldet jetzt auch saisonale Geometrie und
+  Tagesmittel fuer Aequator / Nordpol / Suedpol
+- kleine normale HUD-Zeile fuer `Season: subsolar ...`
+- neue Tests fuer Azimut-Vorzeichen, Polar-Faelle und
+  `AUTHORED_ORBIT`-Saisonbasis
+
 ## Danach - Weitere planetare Umweltableitung
 
 Nach dem ersten Guardrail-Block ist der naechste groessere Simulations-
 Schritt wieder die planetare Ableitung:
 
+- breiten- oder saisonabhaengige Umweltbewertung auf Basis der neuen
+  latitudenbewussten Thermalgeometrie
 - weitere Atmosphaerenfaktoren jenseits des additiven `greenhouse_delta_k`
 - spaeter weitere Umweltgroessen / Strahlung / Atmosphaerenklassen
 

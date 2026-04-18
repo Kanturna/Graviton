@@ -54,6 +54,7 @@ static func _build_planet_a() -> BodyDef:
 	d.radius_m = 6.371e6
 	d.rotation_period_s = 1.0 * UnitSystem.DAY_S
 	d.axial_tilt_rad = 0.4091
+	d.north_pole_orbit_frame_azimuth_rad = 0.0
 	d.luminosity_w = 0.0
 	d.albedo = 0.30
 	d.greenhouse_delta_k = 31.0
