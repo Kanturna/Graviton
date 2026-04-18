@@ -1,5 +1,28 @@
 # Graviton - Decisions
 
+## 2026-04-18 - P14.2: Body-Groesse und Detail-Unlock entkoppeln
+
+P14.1 machte Kamera-Positionen absolut, beliess aber die Sprite-Skalierung
+auf fokus-relativem `detail_factor`. Weil der Renderer-Parent bereits mit
+`world_scale` skaliert ist, kuerzte sich `world_scale` beim Setzen von
+`visual.scale = detail_factor / world_scale` heraus - die Bildschirm-Groesse
+eines Bodies war damit rein eine Funktion des fokus-relativen
+`detail_factor`. Ergebnis: identischer HUD-Zoom = unterschiedlich grosse
+Bodies je nach Fokuswahl.
+
+Konsequenz:
+
+- Body-Groesse wird ueber `OrbitZoomModel.body_visual_size_factor(...)`
+  berechnet - rein absolut-zoom-getrieben, fokus-unabhaengig, mit
+  gedaempftem Wachstum (`pow(abs_zoom, 0.35)`) und Clamp auf
+  `[base_size_factor, max_size_factor]`
+- `detail_factor` bleibt fokus-relativ, steuert aber ausschliesslich
+  Shader-`df_t`, Overlay-Thresholds und Focus-Ring-Fade - nicht mehr die
+  sichtbare Sprite-Groesse
+- keine Rueckkehr zu relativem Kamera-Zoom - P14.1 bleibt gueltig
+- Fokus-Emphasis laeuft weiterhin ueber Alpha-Modulation, Focus-Ring und
+  Detail-Unlock, nicht ueber Groesse
+
 ## 2026-04-18 - Kamera-Zoom ist jetzt absolut pro geladener Welt, Detail aber weiter fokus-relativ
 
 P14.1 trennt bewusst zwischen zwei verschiedenen Bedeutungen von

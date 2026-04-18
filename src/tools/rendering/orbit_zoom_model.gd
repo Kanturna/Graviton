@@ -35,3 +35,15 @@ static func should_auto_fit_for_focus(
 
 static func focus_closeup_ratio(current_view_scale: float, focus_fit_scale: float) -> float:
 	return maxf(current_view_scale / maxf(focus_fit_scale, 0.0001), 1.0)
+
+
+static func body_visual_size_factor(
+	absolute_zoom_factor: float,
+	base_size_factor: float,
+	growth_exponent: float,
+	max_size_factor: float
+) -> float:
+	var safe_base: float = maxf(base_size_factor, 0.0001)
+	var safe_max: float = maxf(max_size_factor, safe_base)
+	var growth: float = pow(maxf(absolute_zoom_factor, 0.0001), maxf(growth_exponent, 0.0))
+	return clampf(safe_base * growth, safe_base, safe_max)
