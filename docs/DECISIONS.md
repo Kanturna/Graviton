@@ -1,5 +1,35 @@
 # Graviton - Decisions
 
+## 2026-04-18 - Greenhouse lebt in einem eigenen `AtmosphereService`
+
+Die P9-Greenhouse-Schicht erweitert bewusst weder `ThermalService` noch
+`EnvironmentService`, sondern lebt als eigener read-only Derived-Service
+im `sim/`-Layer.
+
+Konsequenz:
+
+- `ThermalService` bleibt bei nackter Strahlungsbasis
+  (`F`, absorbierter Fluss, `T_eq`)
+- `AtmosphereService` modelliert nur additive
+  Oberflaechenerwaermung (`greenhouse_delta_k`)
+- `EnvironmentService` bleibt qualitativ und interpretiert die
+  abgeleitete Temperaturbasis nur
+
+## 2026-04-18 - `EnvironmentService.configure(...)` wechselt bewusst auf `AtmosphereService`
+
+Der zweite Parameter von `EnvironmentService.configure(...)` wechselt
+bewusst von `ThermalService` auf `AtmosphereService`.
+
+Konsequenz:
+
+- Umweltklassifikation basiert ab P9 auf `surface_temperature_k`,
+  nicht mehr direkt auf `T_eq`
+- der P8-Pfad (Klassifikation auf Basis von `T_eq`) ist bewusst
+  obsolet
+- es gibt keinen Fallback-Parallelpfad fuer beide Service-Typen
+- Composition Roots und Tests muessen explizit auf den neuen
+  Atmosphaerenpfad umverdrahtet werden
+
 ## 2026-04-17 - Naechste Kernphase ist World Model + Loader + Bubble Foundations
 
 Die naechste groessere Projektphase priorisiert nicht weitere Visual-

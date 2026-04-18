@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3 uid="uid://atraxistestbed01"]
+[gd_scene load_steps=15 format=3 uid="uid://atraxistestbed01"]
 
 [ext_resource type="Script" path="res://scenes/testbeds/orbit_testbed.gd" id="1_testbed"]
 [ext_resource type="Script" path="res://src/sim/orbit/orbit_service.gd" id="2_orbitsvc"]
@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://src/runtime/local_bubble/bubble_activation_set.gd" id="8_activation"]
 [ext_resource type="Script" path="res://src/sim/thermal/thermal_service.gd" id="9_thermal"]
 [ext_resource type="Script" path="res://src/sim/environment/environment_service.gd" id="10_environment"]
+[ext_resource type="Script" path="res://src/sim/atmosphere/atmosphere_service.gd" id="11_atmosphere"]
 
 [sub_resource type="StyleBoxFlat" id="1_panel_style"]
 bg_color = Color(0.0352941, 0.0509804, 0.0941176, 0.811765)
@@ -63,6 +64,9 @@ script = ExtResource("8_activation")
 [node name="ThermalService" type="Node" parent="."]
 script = ExtResource("9_thermal")
 
+[node name="AtmosphereService" type="Node" parent="."]
+script = ExtResource("11_atmosphere")
+
 [node name="EnvironmentService" type="Node" parent="."]
 script = ExtResource("10_environment")
 
@@ -94,7 +98,7 @@ layer = 20
 [node name="TopPanel" type="PanelContainer" parent="HudLayer"]
 offset_left = 24.0
 offset_top = 24.0
-offset_right = 388.0
+offset_right = 476.0
 offset_bottom = 232.0
 theme_override_styles/panel = SubResource("1_panel_style")
 

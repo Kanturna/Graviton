@@ -56,6 +56,7 @@ static func _build_planet_a() -> BodyDef:
 	d.axial_tilt_rad = 0.4091
 	d.luminosity_w = 0.0
 	d.albedo = 0.30
+	d.greenhouse_delta_k = 31.0
 	d.parent_id = &"sol"
 	d.orbit_profile = prof
 	return d

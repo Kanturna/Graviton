@@ -40,9 +40,13 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   global gemittelten absorbierten Fluss und einfache
   Gleichgewichtstemperatur aus `luminosity_w`, `albedo`, Parent-Kette
   und aktuellem `BodyState`.
+- `AtmosphereService` legt jetzt on-demand ein minimales,
+  datengetriebenes Greenhouse-Modell (`greenhouse_delta_k`) auf
+  `T_eq` und liefert daraus `surface_temperature_k`.
 - `EnvironmentService` klassifiziert `PLANET`- und `MOON`-Bodies jetzt
   read-only als `HABITABLE`, `MARGINAL` oder `HOSTILE` auf Basis von
-  `T_eq` und macht das erstmals im normalen HUD fuer den Fokus sichtbar.
+  `surface_temperature_k` und macht das im normalen HUD fuer den Fokus
+  sichtbar.
 - Bodies aus einem anderen Root als der aktuelle Fokus liefern bewusst
   `Vector3.INF` und werden im Renderer nicht lokalisiert.
 - `TimeService` und `UniverseRegistry` sind die zentralen Autoloads.
@@ -57,6 +61,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Bodies werden jetzt als 2D-Visuals mit Glow, Orbit-Linien und Trails
   dargestellt.
 - Es gibt ein HUD fuer Fokus, Sim-Zeit, Zeitskala und Status.
+- Die normale Environment-Zeile zeigt fuer unterstuetzte Fokus-Bodies
+  jetzt Klasse, `Tsurf` und modellierten Greenhouse-Beitrag.
 - Das HUD zeigt zusaetzlich FPS und die aktuelle Speed-Preset-Stufe.
 - Die Sim-Speed kann ueber einen logarithmischen HUD-Slider geregelt
   werden.
@@ -99,6 +105,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tests/sim/test_orbit_service_numeric_local.gd`
 - `src/sim/thermal/thermal_service.gd`
 - `src/tests/sim/test_thermal_service.gd`
+- `src/sim/atmosphere/atmosphere_service.gd`
+- `src/tests/sim/test_atmosphere_service.gd`
 - `src/sim/environment/environment_service.gd`
 - `src/tests/sim/test_environment_service.gd`
 - `docs/SIMULATIONSREGELN.md`
@@ -129,9 +137,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Pfad.
 - `BodyDef` traegt jetzt erste statische Weltmodell-Felder, aber
   daraus werden bislang nur minimale Thermalwerte
-  (Insolation / absorbierter Fluss / `T_eq`) sowie eine erste
-  qualitative Umweltklassifikation abgeleitet -
-  noch keine Atmosphaerenmodelle.
+  (Insolation / absorbierter Fluss / `T_eq`) sowie ein minimales
+  additives Greenhouse-Modell und eine erste qualitative
+  Umweltklassifikation abgeleitet -
+  noch keine Atmosphaerenchemie oder Druckmodelle.
 - Der Wish-Pfad fuer `NUMERIC_LOCAL` ist aktuell bewusst um einen Frame
   gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`).
   Das ist im kleinen P5-Slice akzeptiert und fuer spaetere
@@ -150,12 +159,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- als naechsten grossen Schritt erste abgeleitete planetare
-  Zustandsgroessen ueber reine Insolation hinaus angehen
-- als naechsten logischen Derived-Schritt Atmosphaeren-/
-  Greenhouse-Ableitung auf Basis des jetzt etablierten Thermal- und
-  Environment-Layers betrachten
-- danach den numerischen Pfad um Substepping / High-Speed-Guardrails
-  erweitern, wenn hohe `time_scale` oder Radiusrand-Thrashing stoeren
+- als naechsten grossen Fundament-Schritt den numerischen Pfad um
+  Substepping / High-Speed-Guardrails erweitern
+- danach weitere planetare Umweltfaktoren jenseits des additiven
+  Greenhouse-Toy-Modells betrachten
+- parallel kleine nicht-kanonische Doku-Drift bereinigen, wenn sie
+  wieder sichtbar wird
 - spaeter Topologie-Helfer konsolidieren, wenn Bubble-/Activation-
   Schicht und Mehrwurzel-Pfade stabil sind

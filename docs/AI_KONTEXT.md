@@ -17,6 +17,7 @@ Aktueller Stand:
 - Schritt 4 (`NUMERIC_LOCAL`) ist als minimaler Slice implementiert
 - Schritt 5 (`ThermalService` / Insolation + `T_eq`) ist als read-only Slice implementiert
 - Schritt 6 (`EnvironmentService` / Habitability-Klassifikation) ist als read-only Slice implementiert
+- Schritt 7 (`AtmosphereService` / additives Greenhouse + `surface_temperature_k`) ist als read-only Slice implementiert
 - die aktive Praesentation ist ein stilisiertes 2D-Orbit-Testbed
 
 ## Wichtige Grundsaetze
@@ -40,6 +41,7 @@ Aktueller Stand:
 - Fokus, Aktiv-Set und `NUMERIC_LOCAL` sind drei verschiedene Konzepte.
 - `LocalOrbitIntegrator` ist pure Mathematik und schreibt kein `BodyState`.
 - `ThermalService` ist read-only Derived-Logik und schreibt kein `BodyState`.
+- `AtmosphereService` ist read-only Derived-Logik und schreibt kein `BodyState`.
 - Keine naive `Vector3`-Addition/Subtraktion ueber grosse Distanzen (> ~1e9 m).
   `LocalBubbleManager` nutzt dafuer jetzt den Step-2-LCA-Pfad; diese
   Praezisionsentscheidung darf nicht wieder durch einen globalen
@@ -52,12 +54,14 @@ Aktueller Stand:
 - Orbit-Mathematik: `src/core/math/orbit_math.gd`
 - Body-Daten: `src/sim/bodies/`
 - Weltmodell aktuell zusaetzlich in `BodyDef`:
-  `rotation_period_s`, `axial_tilt_rad`, `luminosity_w`, `albedo`
+  `rotation_period_s`, `axial_tilt_rad`, `luminosity_w`, `albedo`,
+  `greenhouse_delta_k`
 - Orbit-Update: `src/sim/orbit/orbit_service.gd`
 - Weltladen: `src/sim/world/world_loader.gd`
 - Numerische Integration: `src/sim/orbit/local_orbit_integrator.gd`
 - Insolation / Derived-Umweltlogik: `src/sim/thermal/thermal_service.gd`
 - dort jetzt auch absorbierter Fluss und einfache Gleichgewichtstemperatur
+- additives Greenhouse / Surface-Temperatur: `src/sim/atmosphere/atmosphere_service.gd`
 - qualitative Umweltklassifikation: `src/sim/environment/environment_service.gd`
 - Registry: `src/sim/universe/universe_registry.gd`
 - Bubble/View: `src/runtime/local_bubble/local_bubble_manager.gd`

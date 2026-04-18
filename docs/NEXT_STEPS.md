@@ -140,12 +140,38 @@ Erledigt:
 - minimale normale HUD-Zeile fuer den aktuellen Fokus
 - harte Boundary-Tests via Stub-ThermalService
 
-## Danach - Planetare Zustandsableitung / Atmosphaeren
+## Prioritaet 9 - Derived Phase D: AtmosphereService / minimales Greenhouse - erledigt
 
-Erst wenn Weltmodell, Loader und Bubble-/Regime-Fundament tragfaehig sind:
+Ziel:
+Auf die nackte Strahlungsbasis einen kleinen, datengetriebenen
+Atmosphaeren-/Greenhouse-Layer setzen, ohne `ThermalService` oder
+`EnvironmentService` zu Sammelklassen auszubauen.
+
+Erledigt:
+
+- neuer `AtmosphereService` als separater read-only Derived-Service
+- neues `BodyDef`-Feld `greenhouse_delta_k`
+- `surface_temperature_k = T_eq + greenhouse_delta_k`
+- `EnvironmentService` klassifiziert jetzt auf `surface_temperature_k`
+- bestehende normale HUD-Zeile zeigt jetzt Klasse, `Tsurf` und `G+... K`
+
+## Danach - NUMERIC_LOCAL Guardrails / Stabilitaet
+
+Nach dem minimalen Greenhouse-Layer ist der groesste offene
+Fundamentblock wieder der numerische Pfad:
+
+- Substepping oder High-Speed-Guardrail fuer hohe `time_scale`
+- moegliche Hysterese oder andere Anti-Thrashing-Massnahmen am
+  Aktivierungsrand
+- gezielte Tests fuer hohe `time_scale`, Wish-Versatz und
+  Radiusrand-Wechsel
+
+## Danach - Weitere planetare Umweltableitung
+
+Wenn der numerische Pfad wieder robuster ist:
 
 - erste abgeleitete planetare Zustandsgroessen
-  - Atmosphaeren-/Greenhouse-Ableitung auf Basis von `T_eq`
+  - weitere Atmosphaerenfaktoren jenseits des additiven `delta_k`
   - spaeter Strahlung / Atmosphaerenklassen / weitere Umweltfaktoren
 
 ## Offene Folgeaufgabe - Stabilitaets-Guardrail fuer NUMERIC_LOCAL
@@ -166,6 +192,8 @@ Erst wenn Weltmodell, Loader und Bubble-/Regime-Fundament tragfaehig sind:
 
 - kein weiterer grosser Visual-Pass
 - qualitative Umweltklassen in P8 nur als Text, keine Farben/Badges
+- auch P9 zeigt Greenhouse-/Surface-Werte nur als Text, keine
+  renderer-seitige Visualisierung
 - keine neue Gameplay-/Schiffs-/Fraktionsschicht
 - keine ueberhastete Generator-Spielerei ohne sauberes Weltmodell
 - keine Ausweitung der Autoload-Liste

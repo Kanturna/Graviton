@@ -10,8 +10,10 @@
 > Runtime-Service implementiert und bridged in einen minimalen
 > `NUMERIC_LOCAL`-Pfad ueber `OrbitService`. `ThermalService` liefert
 > jetzt minimale Thermalableitung on-demand
-> (Insolation / absorbierter Fluss / `T_eq`). `EnvironmentService`
-> liefert darauf aufbauend die erste qualitative Umweltklassifikation.
+> (Insolation / absorbierter Fluss / `T_eq`). `AtmosphereService`
+> legt darauf ein minimales additives Greenhouse-Modell, und
+> `EnvironmentService` liefert darauf aufbauend die erste qualitative
+> Umweltklassifikation.
 > Fuer die
 > aktuelle Priorisierung lies zuerst `docs/STATUS.md` und
 > `docs/NEXT_STEPS.md`.
@@ -28,6 +30,7 @@
 | `BodyDef` | statische Weltdefinition | `src/sim/bodies/body_def.gd` |
 | `BodyState` via `OrbitService` | Wahrheit | `src/sim/bodies/body_state.gd`, `src/sim/orbit/orbit_service.gd` |
 | `ThermalService` | abgeleitet (read-only) | `src/sim/thermal/thermal_service.gd` |
+| `AtmosphereService` | abgeleitet (read-only) | `src/sim/atmosphere/atmosphere_service.gd` |
 | `EnvironmentService` | abgeleitet (read-only) | `src/sim/environment/environment_service.gd` |
 | `LocalBubbleManager` | abgeleitet (View) | `src/runtime/local_bubble/local_bubble_manager.gd` |
 | `BubbleActivationSet` | abgeleitet (read-only) | `src/runtime/local_bubble/bubble_activation_set.gd` |
@@ -80,9 +83,11 @@ Aktuelle zusaetzliche Felder in `src/sim/bodies/body_def.gd`:
 - `axial_tilt_rad`
 - `luminosity_w`
 - `albedo`
+- `greenhouse_delta_k`
 
 Wichtige Semantik:
-- reine statische Datenbasis, noch ohne Wirkung auf Orbit, View oder HUD
+- reine statische Datenbasis; abgeleitete Umweltwerte kommen ueber
+  read-only Services
 - `rotation_period_s` ist sidereal gemeint
 - `axial_tilt_rad` bezieht sich auf die Orbit-Ebene des Bodies um seinen Parent
 - `luminosity_w = 0.0` bleibt in der aktuellen Phase bewusst doppeldeutig
@@ -124,12 +129,14 @@ Aktuelle Bausteine:
 - on-demand `compute_insolation_wpm2(id)`
 - on-demand `compute_absorbed_flux_wpm2(id)`
 - on-demand `compute_equilibrium_temperature_k(id)`
+- `AtmosphereService` fuer `greenhouse_delta_k` und `surface_temperature_k`
 - separater `EnvironmentService` fuer `HABITABLE` / `MARGINAL` / `HOSTILE`
 - `describe_body(id)` fuer Debug/Test
 - Quelle = naechster Ancestor mit `luminosity_w > 0.0`
 - keine Selbstbestrahlung; Suche startet beim Parent
 - `/4`-Redistribution als Fast-Rotator-Annahme
-- keine Atmosphaere, kein Greenhouse, keine Mehrquellen-Summation
+- nur additives Toy-Greenhouse, keine Chemie, kein Druckmodell, keine
+  Mehrquellen-Summation
 
 ## Verifikation
 
@@ -156,9 +163,9 @@ alle gruen.
 ## Naechster sinnvoller Schritt
 
 Die aktuelle Projekt-Roadmap priorisiert jetzt:
-1. Atmosphaeren-/Greenhouse-Ableitung auf Basis der jetzigen
-   Gleichgewichtstemperatur und Umweltklassifikation
-2. danach Stabilitaets-Guardrails fuer den numerischen Pfad
+1. Stabilitaets-Guardrails fuer den numerischen Pfad
+2. danach weitere planetare Umweltfaktoren jenseits des additiven
+   Greenhouse-Toy-Modells
 3. spaeter Generator-/Systemschritte und weitere Foundation-Folgen
 
 Die Architektur-Schritte 3 und 4 bleiben wichtig, aber der naechste

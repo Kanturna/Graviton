@@ -161,9 +161,10 @@ bleibt ein Wald, keine globale Vollverbindung.
   modelliert.
 - `albedo`: dimensionsloser Reflexionswert im Bereich `0.0 .. 1.0`.
 
-Diese Felder sind in P3 reine Datenbasis. Sie beeinflussen noch keine
-Orbit-Berechnung, keine View und noch keine abgeleiteten planetaren
-Zustandswerte.
+Diese Felder kamen in P3 als reine Datenbasis dazu. Sie beeinflussen
+weiterhin keine Orbit-Berechnung und keine View direkt, werden
+mittlerweile aber von read-only Derived-Services fuer thermische und
+planetare Umweltwerte genutzt.
 
 ## Abgeleitete Umweltgroessen - P6/P7 ThermalService
 
@@ -202,38 +203,65 @@ Modell spaeter verzweigen.
 - keine Mehrquellen-Summation
 - keine Cross-Root-Suche ausserhalb der Parent-Kette
 
-## Abgeleitete Umweltgroessen - P8 EnvironmentService
+## Abgeleitete Umweltgroessen - P8/P9 EnvironmentService
 
 `EnvironmentService` ist ein weiterer read-only Derived-Service im
-`sim/`-Layer. Er nutzt `ThermalService`, fuehrt aber bewusst keine neue
-State-Schicht ein.
+`sim/`-Layer. Er nutzt ab P9 `AtmosphereService`, fuehrt aber bewusst
+keine neue State-Schicht ein.
 
-**Basis:** qualitative Umweltklassifikation ausschliesslich aus
-`equilibrium_temperature_k` (`T_eq`).
+**Basis:** qualitative Umweltklassifikation aus
+`surface_temperature_k`.
 
-**Unterstuetzte Koerper in P8:** nur `PLANET` und `MOON`.
+**Unterstuetzte Koerper in P8/P9:** nur `PLANET` und `MOON`.
 `STAR`, `BLACK_HOLE` und sonstige nicht-planetaere Koerper bleiben
 im normalen HUD `n/a`.
 
 **Klassenfenster:**
-- `HABITABLE`: `273.15 <= T_eq <= 323.15`
-- `MARGINAL`: `223.15 <= T_eq < 273.15` oder
-  `323.15 < T_eq <= 373.15`
+- `HABITABLE`: `273.15 <= T_surface <= 323.15`
+- `MARGINAL`: `223.15 <= T_surface < 273.15` oder
+  `323.15 < T_surface <= 373.15`
 - `HOSTILE`: alles ausserhalb dieser Fenster
 
 **Fehlende Thermalbasis:** Unterstuetzte Bodies ohne gueltige
-Waermebasis (`T_eq <= 0`) werden in P8 als `HOSTILE` klassifiziert.
+Waermebasis (`surface_temperature_k <= 0`) werden in P8/P9 als
+`HOSTILE` klassifiziert.
 
-**Visual-Creep-Regel:** Qualitative Klassifikationen werden in P8
+**Visual-Creep-Regel:** Qualitative Klassifikationen werden in P8/P9
 bewusst nur als Text angezeigt. Jede spaetere farbliche oder
 renderer-seitige Repraesentation gehoert in einen expliziten
 Visual-Pass - nicht in eine stille Erweiterung des nicht-visuellen
 Features.
 
-**Caller-Contract:** `ThermalService` liest
-`BodyState.position_parent_frame_m` direkt. Der Caller muss
-sicherstellen, dass die States nach dem letzten `OrbitService`-Tick
-oder `recompute_all_at_time()` aktuell sind.
+## Abgeleitete Umweltgroessen - P9 AtmosphereService
+
+`AtmosphereService` ist ein weiterer read-only Derived-Service im
+`sim/`-Layer. Er legt eine minimale datengetriebene Greenhouse-Schicht
+ueber die nackte Strahlungsbasis aus `ThermalService`.
+
+**Neues Datenfeld:** `BodyDef.greenhouse_delta_k`
+
+- additive Oberflaechenerwaermung in Kelvin
+- `0.0` = kein modellierter Greenhouse-Beitrag
+- nur endliche Werte im Bereich `0.0 .. 2000.0`
+- negative Werte sind in P9 bewusst ausgeschlossen
+
+**Modell in P9:**
+
+- `surface_temperature_k = equilibrium_temperature_k + greenhouse_delta_k`
+
+**Wichtig:**
+
+- kein physikalisches Atmosphaerenmodell
+- keine Chemie, kein Druck, keine optische Tiefe
+- keine Anti-Greenhouse-Kuehlung
+- fehlt die thermische Basis (`T_eq <= 0`), bleibt
+  `surface_temperature_k = 0.0`
+- `greenhouse_delta_k` darf im Report trotzdem sichtbar bleiben
+
+**Caller-Contract:** `ThermalService` und darauf aufbauende
+Derived-Services lesen `BodyState.position_parent_frame_m` direkt. Der
+Caller muss sicherstellen, dass die States nach dem letzten
+`OrbitService`-Tick oder `recompute_all_at_time()` aktuell sind.
 
 ## Determinismus
 

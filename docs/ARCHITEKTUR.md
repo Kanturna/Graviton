@@ -22,7 +22,7 @@ src/runtime/       LocalBubbleManager, BubbleActivationSet
    |
    v
 src/sim/           UniverseRegistry, WorldLoader, OrbitService, LocalOrbitIntegrator,
-                   ThermalService, EnvironmentService,
+                   ThermalService, AtmosphereService, EnvironmentService,
                    BodyDef/State, OrbitProfile, OrbitMode
    |
    v
@@ -97,10 +97,11 @@ Wenn du ueberlegst, der Registry Funktionalitaet hinzuzufuegen, pruefe:
 
 Hinweis:
 Das folgende Snippet beschreibt den aktuellen Composition-Root-Stand
-nach Schritt 4. Der aktuelle Code in
+nach Schritt 9. Der aktuelle Code in
 `scenes/testbeds/orbit_testbed.gd` nutzt bereits einen expliziten
 `WorldLoader`, ein verdrahtetes `BubbleActivationSet` und den gelebten
-`request_numeric_local_candidates(...)`-Pfad im Runtime-Flow.
+`request_numeric_local_candidates(...)`-Pfad sowie die aktuelle
+Thermal-/Atmosphaeren-/Environment-Kette im Runtime-Flow.
 
 Die Verdrahtung passiert pro Szene in deren Root-Script:
 
@@ -118,6 +119,8 @@ _ready():
     )
     OrbitService.recompute_all_at_time(TimeService.sim_time_s)
     ThermalService.configure(UniverseRegistry)
+    AtmosphereService.configure(UniverseRegistry, ThermalService)
+    EnvironmentService.configure(UniverseRegistry, AtmosphereService)
     DebugOverlay.configure(
         UniverseRegistry,
         TimeService,
@@ -230,16 +233,35 @@ selbst. `luminosity_w == 0.0` wird pragmatisch als "keine Quelle"
 behandelt und blockiert die Suche nicht.
 
 **Aktueller Stand:** `ThermalService` liefert jetzt on-demand
-Insolation, global gemittelten absorbierten Fluss und einfache
+Insolation, global gemittelten absorbierten Fluss und nackte
 Gleichgewichtstemperatur. Das `/4`-Redistribution-Modell ist bewusst
 als Fast-Rotator-Annahme dokumentiert; Atmosphaeren-, Greenhouse- und
-Mehrquellen-Modelle bleiben Folgearbeit.
+Mehrquellen-Modelle leben bewusst ausserhalb dieses Services.
+
+## AtmosphereService - ADR
+
+**Entscheidung:** `AtmosphereService` ist ein eigener read-only
+Derived-Service im `sim/`-Layer.
+
+**Grund:** Greenhouse ist eine eigene Domane zwischen nackter
+Strahlungsphysik und qualitativer Umweltklassifikation. Weder
+`ThermalService` noch `EnvironmentService` sollen dadurch zu
+Sammelklassen werden.
+
+**Verantwortung:** On-demand-Reads auf `BodyDef.greenhouse_delta_k` plus
+`ThermalService.describe_body(id)`. Kein Cache, kein Tick-Hook, keine
+`BodyState`-Mutation.
+
+**Aktueller Stand:** `AtmosphereService` liefert jetzt ein minimales,
+datengetriebenes Toy-Greenhouse-Modell:
+`surface_temperature_k = equilibrium_temperature_k + greenhouse_delta_k`.
+Keine Chemie, kein Druckmodell, keine Anti-Greenhouse-Kuehlung.
 
 ## EnvironmentService - ADR
 
 **Entscheidung:** `EnvironmentService` ist ein eigener read-only
-Derived-Service im `sim/`-Layer und erweitert `ThermalService` bewusst
-nicht.
+Derived-Service im `sim/`-Layer und erweitert weder `ThermalService`
+noch `AtmosphereService`.
 
 **Grund:** `ThermalService` bleibt bei quantitativen Thermalwerten
 (`F`, absorbierter Fluss, `T_eq`). `EnvironmentService` macht daraus
@@ -248,8 +270,13 @@ eine qualitative Interpretation (`HABITABLE` / `MARGINAL` /
 fuer jede umweltnahe Aussage wird.
 
 **Verantwortung:** On-demand-Klassifikation fuer `PLANET` und `MOON`
-auf Basis von `equilibrium_temperature_k`. Kein Cache, kein Tick-Hook,
+auf Basis von `surface_temperature_k`. Kein Cache, kein Tick-Hook,
 keine `BodyState`-Mutation.
+
+**API-Break in P9:** `EnvironmentService.configure(...)` wechselt
+bewusst von `configure(registry, thermal_service)` auf
+`configure(registry, atmosphere_service)`. Der P8-Pfad auf Basis von
+`T_eq` bleibt nicht parallel erhalten.
 
 ## Regime-Wechsel-Modell - ADR
 

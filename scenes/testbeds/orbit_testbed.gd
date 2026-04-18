@@ -17,6 +17,7 @@ const PAN_SPEED_PX_PER_S: float = 960.0
 @onready var _world_loader = $WorldLoader
 @onready var _orbit_service: OrbitService = $OrbitService
 @onready var _thermal_service = $ThermalService
+@onready var _atmosphere_service: Node = $AtmosphereService
 @onready var _environment_service: Node = $EnvironmentService
 @onready var _bubble: LocalBubbleManager = $LocalBubbleManager
 @onready var _activation_set = $BubbleActivationSet
@@ -67,7 +68,8 @@ func _ready() -> void:
 	_orbit_service.request_numeric_local_candidates(_activation_set.get_active_ids())
 	_orbit_service.recompute_all_at_time(TimeService.sim_time_s)
 	_thermal_service.configure(UniverseRegistry)
-	_environment_service.configure(UniverseRegistry, _thermal_service)
+	_atmosphere_service.configure(UniverseRegistry, _thermal_service)
+	_environment_service.configure(UniverseRegistry, _atmosphere_service)
 	_renderer.configure(UniverseRegistry, _bubble)
 	_debug_overlay.configure(UniverseRegistry, TimeService, _bubble, _activation_set, _thermal_service)
 	_debug_overlay.visible = false
@@ -221,8 +223,13 @@ func _environment_hud_text(focus_id: StringName) -> String:
 	var class_text: String = EnvironmentServiceScript.to_string_class(
 		int(desc.get("environment_class", EnvironmentServiceScript.Class.HOSTILE))
 	)
-	var teq_k: float = float(desc.get("equilibrium_temperature_k", 0.0))
-	return "Environment: %s   Teq %.0f K" % [class_text, teq_k]
+	var surface_temperature_k: float = float(desc.get("surface_temperature_k", 0.0))
+	var greenhouse_delta_k: float = float(desc.get("greenhouse_delta_k", 0.0))
+	return "Environment: %s   Tsurf %.0f K   G+%.0f K" % [
+		class_text,
+		surface_temperature_k,
+		greenhouse_delta_k,
+	]
 
 
 func _update_manual_pan(delta: float) -> void:

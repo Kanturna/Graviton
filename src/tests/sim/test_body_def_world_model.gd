@@ -12,6 +12,10 @@ static func run(ctx) -> void:
 	_test_albedo_boundary_values(ctx)
 	_test_albedo_out_of_range_is_invalid(ctx)
 	_test_non_finite_albedo_is_invalid(ctx)
+	_test_greenhouse_boundary_value_is_valid(ctx)
+	_test_negative_greenhouse_is_invalid(ctx)
+	_test_greenhouse_above_sanity_limit_is_invalid(ctx)
+	_test_non_finite_greenhouse_is_invalid(ctx)
 
 
 static func _make_valid_root() -> BodyDef:
@@ -101,3 +105,31 @@ static func _test_non_finite_albedo_is_invalid(ctx) -> void:
 	var nan_def := _make_valid_root()
 	nan_def.albedo = NAN
 	ctx.assert_true(not nan_def.is_valid(), "albedo = NaN ist invalid")
+
+
+static func _test_greenhouse_boundary_value_is_valid(ctx) -> void:
+	var def := _make_valid_root()
+	def.greenhouse_delta_k = 0.0
+	ctx.assert_true(def.is_valid(), "greenhouse_delta_k = 0.0 ist valid")
+
+
+static func _test_negative_greenhouse_is_invalid(ctx) -> void:
+	var def := _make_valid_root()
+	def.greenhouse_delta_k = -0.1
+	ctx.assert_true(not def.is_valid(), "greenhouse_delta_k < 0.0 ist invalid")
+
+
+static func _test_greenhouse_above_sanity_limit_is_invalid(ctx) -> void:
+	var def := _make_valid_root()
+	def.greenhouse_delta_k = 2000.1
+	ctx.assert_true(not def.is_valid(), "greenhouse_delta_k > 2000.0 ist invalid")
+
+
+static func _test_non_finite_greenhouse_is_invalid(ctx) -> void:
+	var inf_def := _make_valid_root()
+	inf_def.greenhouse_delta_k = INF
+	ctx.assert_true(not inf_def.is_valid(), "greenhouse_delta_k = INF ist invalid")
+
+	var nan_def := _make_valid_root()
+	nan_def.greenhouse_delta_k = NAN
+	ctx.assert_true(not nan_def.is_valid(), "greenhouse_delta_k = NaN ist invalid")

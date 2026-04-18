@@ -2,7 +2,7 @@ class_name EnvironmentService
 extends Node
 
 # Read-only Derived-Service fuer qualitative Umweltklassifikation.
-# Liest Registry + ThermalService on-demand; kein Cache, kein Tick-Hook.
+# Liest Registry + AtmosphereService on-demand; kein Cache, kein Tick-Hook.
 # `environment_class` ist nur dann als echte Umwelt-Aussage zu lesen,
 # wenn `is_supported_body_kind == true`. Der Default `HOSTILE` im
 # Fehlerpfad ist ein Fallback, keine physikalische Aussage ueber
@@ -20,16 +20,16 @@ const MARGINAL_MIN_T_K: float = 223.15
 const MARGINAL_MAX_T_K: float = 373.15
 
 var _registry: Node = null
-var _thermal_service: Node = null
+var _atmosphere_service: Node = null
 
 
-func configure(registry: Node, thermal_service: Node) -> void:
+func configure(registry: Node, atmosphere_service: Node) -> void:
 	assert(registry != null, "EnvironmentService.configure: registry is null")
-	assert(thermal_service != null, "EnvironmentService.configure: thermal_service is null")
-	assert(thermal_service.has_method("describe_body"),
-		"EnvironmentService.configure: thermal_service must implement describe_body(id)")
+	assert(atmosphere_service != null, "EnvironmentService.configure: atmosphere_service is null")
+	assert(atmosphere_service.has_method("describe_body"),
+		"EnvironmentService.configure: atmosphere_service must implement describe_body(id)")
 	_registry = registry
-	_thermal_service = thermal_service
+	_atmosphere_service = atmosphere_service
 
 
 func classify(id: StringName) -> int:
@@ -38,24 +38,26 @@ func classify(id: StringName) -> int:
 
 func describe_body(id: StringName) -> Dictionary:
 	var description: Dictionary = _default_description(id)
-	if _registry == null or _thermal_service == null:
+	if _registry == null or _atmosphere_service == null:
 		return description
 
 	var def: BodyDef = _registry.get_def(id)
 	if def == null:
 		return description
 
-	var thermal_desc: Dictionary = _thermal_service.describe_body(id)
-	description["source_id"] = thermal_desc.get("source_id", StringName(""))
-	description["equilibrium_temperature_k"] = float(thermal_desc.get("equilibrium_temperature_k", 0.0))
-	description["has_luminous_ancestor"] = bool(thermal_desc.get("has_luminous_ancestor", false))
+	var atmosphere_desc: Dictionary = _atmosphere_service.describe_body(id)
+	description["source_id"] = atmosphere_desc.get("source_id", StringName(""))
+	description["equilibrium_temperature_k"] = float(atmosphere_desc.get("equilibrium_temperature_k", 0.0))
+	description["greenhouse_delta_k"] = float(atmosphere_desc.get("greenhouse_delta_k", 0.0))
+	description["surface_temperature_k"] = float(atmosphere_desc.get("surface_temperature_k", 0.0))
+	description["has_luminous_ancestor"] = bool(atmosphere_desc.get("has_luminous_ancestor", false))
 
 	if not _is_supported_body_kind(def.kind):
 		return description
 
 	description["is_supported_body_kind"] = true
 	description["environment_class"] = _classify_temperature_k(
-		float(description.get("equilibrium_temperature_k", 0.0))
+		float(description.get("surface_temperature_k", 0.0))
 	)
 	return description
 
@@ -76,6 +78,8 @@ static func _default_description(id: StringName) -> Dictionary:
 		"body_id": id,
 		"source_id": StringName(""),
 		"equilibrium_temperature_k": 0.0,
+		"greenhouse_delta_k": 0.0,
+		"surface_temperature_k": 0.0,
 		"environment_class": Class.HOSTILE,
 		"is_supported_body_kind": false,
 		"has_luminous_ancestor": false,
