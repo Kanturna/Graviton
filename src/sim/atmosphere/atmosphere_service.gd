@@ -9,6 +9,9 @@ extends Node
 # letzten OrbitService-Tick oder recompute_all_at_time() aktuell sein.
 
 const MAX_GREENHOUSE_DELTA_K: float = 2000.0
+const SOUTH_MIDLATITUDE_RAD: float = -PI / 3.0
+const EQUATOR_RAD: float = 0.0
+const NORTH_MIDLATITUDE_RAD: float = PI / 3.0
 
 var _registry: Node = null
 var _thermal_service: Node = null
@@ -29,6 +32,53 @@ func compute_greenhouse_delta_k(id: StringName) -> float:
 
 func compute_surface_temperature_k(id: StringName) -> float:
 	return float(describe_body(id).get("surface_temperature_k", 0.0))
+
+
+func compute_surface_temperature_at_latitude_k(id: StringName, latitude_rad: float) -> float:
+	if not is_finite(latitude_rad):
+		return 0.0
+	if _registry == null or _thermal_service == null:
+		return 0.0
+
+	var def: BodyDef = _registry.get_def(id)
+	if def == null:
+		return 0.0
+	var greenhouse_delta_k: float = def.greenhouse_delta_k
+	if not is_finite(greenhouse_delta_k) or greenhouse_delta_k < 0.0 or greenhouse_delta_k > MAX_GREENHOUSE_DELTA_K:
+		return 0.0
+	var albedo: float = def.albedo
+	if not is_finite(albedo) or albedo < 0.0 or albedo > 1.0:
+		return 0.0
+
+	var thermal_desc: Dictionary = _thermal_service.describe_body(id)
+	if not bool(thermal_desc.get("has_luminous_ancestor", false)):
+		return 0.0
+	if not bool(thermal_desc.get("has_seasonal_basis", false)):
+		return 0.0
+
+	var clamped_latitude_rad: float = clampf(latitude_rad, -PI * 0.5, PI * 0.5)
+	var daily_mean_insolation_wpm2: float = _thermal_service.compute_daily_mean_insolation_wpm2(
+		id,
+		clamped_latitude_rad
+	)
+	if not is_finite(daily_mean_insolation_wpm2) or daily_mean_insolation_wpm2 <= 0.0:
+		return 0.0
+
+	var absorbed_lat_flux_wpm2: float = (1.0 - albedo) * daily_mean_insolation_wpm2
+	if not is_finite(absorbed_lat_flux_wpm2) or absorbed_lat_flux_wpm2 <= 0.0:
+		return 0.0
+
+	var lat_equilibrium_temperature_k: float = pow(
+		absorbed_lat_flux_wpm2 / UnitSystem.STEFAN_BOLTZMANN_WPM2K4,
+		0.25
+	)
+	if not is_finite(lat_equilibrium_temperature_k) or lat_equilibrium_temperature_k <= 0.0:
+		return 0.0
+
+	var surface_temperature_k: float = lat_equilibrium_temperature_k + greenhouse_delta_k
+	if not is_finite(surface_temperature_k) or surface_temperature_k < 0.0:
+		return 0.0
+	return surface_temperature_k
 
 
 func describe_body(id: StringName) -> Dictionary:
@@ -59,6 +109,27 @@ func describe_body(id: StringName) -> Dictionary:
 		return description
 
 	description["surface_temperature_k"] = surface_temperature_k
+	var south_midlatitude_surface_temperature_k: float = compute_surface_temperature_at_latitude_k(
+		id,
+		SOUTH_MIDLATITUDE_RAD
+	)
+	var equator_surface_temperature_k: float = compute_surface_temperature_at_latitude_k(
+		id,
+		EQUATOR_RAD
+	)
+	var north_midlatitude_surface_temperature_k: float = compute_surface_temperature_at_latitude_k(
+		id,
+		NORTH_MIDLATITUDE_RAD
+	)
+	if south_midlatitude_surface_temperature_k <= 0.0 \
+			or equator_surface_temperature_k <= 0.0 \
+			or north_midlatitude_surface_temperature_k <= 0.0:
+		return description
+
+	description["south_midlatitude_surface_temperature_k"] = south_midlatitude_surface_temperature_k
+	description["equator_surface_temperature_k"] = equator_surface_temperature_k
+	description["north_midlatitude_surface_temperature_k"] = north_midlatitude_surface_temperature_k
+	description["has_latitudinal_surface_basis"] = true
 	return description
 
 
@@ -69,5 +140,9 @@ func _default_description(id: StringName) -> Dictionary:
 		"equilibrium_temperature_k": 0.0,
 		"greenhouse_delta_k": 0.0,
 		"surface_temperature_k": 0.0,
+		"has_latitudinal_surface_basis": false,
+		"south_midlatitude_surface_temperature_k": 0.0,
+		"equator_surface_temperature_k": 0.0,
+		"north_midlatitude_surface_temperature_k": 0.0,
 		"has_luminous_ancestor": false,
 	}

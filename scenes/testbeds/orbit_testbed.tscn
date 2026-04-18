@@ -99,7 +99,7 @@ layer = 20
 offset_left = 24.0
 offset_top = 24.0
 offset_right = 476.0
-offset_bottom = 258.0
+offset_bottom = 286.0
 theme_override_styles/panel = SubResource("1_panel_style")
 
 [node name="Margin" type="MarginContainer" parent="HudLayer/TopPanel"]
@@ -135,6 +135,11 @@ text = "Focus:"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 text = "Environment: n/a"
+
+[node name="ClimateValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
+text = "Climate: n/a"
 
 [node name="SeasonValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
 layout_mode = 2

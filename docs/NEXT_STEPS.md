@@ -208,24 +208,44 @@ Erledigt:
   Sternorbit-Unikate und paarweise verschiedene planetare
   `semi_major_axis_m` innerhalb jedes Sternsystems ab
 
+## Prioritaet 13 - Derived Phase F: Zonenbewusste Umweltklassifikation - erledigt
+
+Ziel:
+Die bestehende Thermal-/Atmosphaeren-/Umweltkette ohne neue Services
+von einem globalen Temperaturskalar auf eine kleine, sichtbare
+Zonenbewertung fuer planetare Bodies erweitern.
+
+Erledigt:
+
+- `AtmosphereService` liefert jetzt bandbewusste
+  `surface_temperature_k` fuer `-60deg`, `Eq` und `+60deg`
+- `EnvironmentService` klassifiziert jetzt auf Basis dieser drei
+  Breitenbaender statt auf einem globalen Einzelskalar
+- neue `EcosystemType`-Ableitung (`FROZEN`, `TEMPERATE`, `SEASONAL`,
+  `HOT`) sowie `has_habitable_band` und `has_liquid_water_band`
+- normales HUD zeigt jetzt `Environment: ...   Eco ...` plus eine
+  `Climate:`-Zeile
+- `sample_system` bleibt der kanonische habitable Showcase; die
+  thermisch extreme `starter_world` wurde bewusst nicht retuned
+
 ## Danach - Weitere planetare Umweltableitung
 
 Nach dem ersten Guardrail-Block ist der naechste groessere Simulations-
 Schritt wieder die planetare Ableitung:
 
-- breiten- oder saisonabhaengige Umweltbewertung auf Basis der neuen
-  latitudenbewussten Thermalgeometrie
+- Wasser-/Volatile-Logik als naechster Fundamentblock fuer globale
+  planetare Oekosystem-Typen
 - weitere Atmosphaerenfaktoren jenseits des additiven `greenhouse_delta_k`
-- Wasser-/Volatile-Logik als Grundlage fuer globale planetare
-  Oekosystem-Typen
+- spaeter Jahresmittel-/Stabilitaetslogik statt nur momentaner
+  Bandklassifikation
 - spaeter weitere Umweltgroessen / Strahlung / Atmosphaerenklassen
 
 Zielbild fuer diesen Strang:
 
-- weg von nur globalen Temperatur- und Habitability-Skalarwerten
+- weg von nur momentanen Drei-Band-Temperaturen
 - hin zu glaubwuerdigen planetaren Gesamtzustaenden wie Eiswelt,
   trockene Welt, saisonal habitabler Planet oder greenhouse-getriebene
-  Heisswelt
+  Heisswelt mit spaeterer Volatile-/Stabilitaetsableitung
 
 ## Offene Folgeaufgabe - NUMERIC_LOCAL Tuning / staerkere Policies
 

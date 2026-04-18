@@ -26,6 +26,7 @@ const PAN_SPEED_PX_PER_S: float = 960.0
 
 @onready var _focus_value: Label = $HudLayer/TopPanel/Margin/VBox/FocusValue
 @onready var _environment_value: Label = $HudLayer/TopPanel/Margin/VBox/EnvironmentValue
+@onready var _climate_value: Label = $HudLayer/TopPanel/Margin/VBox/ClimateValue
 @onready var _season_value: Label = $HudLayer/TopPanel/Margin/VBox/SeasonValue
 @onready var _time_value: Label = $HudLayer/TopPanel/Margin/VBox/TimeValue
 @onready var _scale_value: Label = $HudLayer/TopPanel/Margin/VBox/ScaleValue
@@ -202,6 +203,7 @@ func _update_hud() -> void:
 	var speed_step_label: String = _time_scale_step_label(TimeService.time_scale)
 	_focus_value.text = "Focus: %s" % focus_name
 	_environment_value.text = _environment_hud_text(focus_id)
+	_climate_value.text = _climate_hud_text(focus_id)
 	_season_value.text = _season_hud_text(focus_id)
 	_time_value.text = "T+ %.2f d   steps %d   FPS %d" % [sim_days, TimeService.tick_count, fps]
 	_scale_value.text = "Speed x%s   Preset %s   Zoom %.0f%%" % [
@@ -222,15 +224,28 @@ func _environment_hud_text(focus_id: StringName) -> String:
 	var desc: Dictionary = _environment_service.describe_body(focus_id)
 	if not bool(desc.get("is_supported_body_kind", false)):
 		return "Environment: n/a"
-	var class_text: String = EnvironmentServiceScript.to_string_class(
-		int(desc.get("environment_class", EnvironmentServiceScript.Class.HOSTILE))
-	)
-	var surface_temperature_k: float = float(desc.get("surface_temperature_k", 0.0))
-	var greenhouse_delta_k: float = float(desc.get("greenhouse_delta_k", 0.0))
-	return "Environment: %s   Tsurf %.0f K   G+%.0f K" % [
-		class_text,
-		surface_temperature_k,
-		greenhouse_delta_k,
+	return "Environment: %s   Eco %s" % [
+		EnvironmentServiceScript.to_string_class(
+			int(desc.get("environment_class", EnvironmentServiceScript.Class.HOSTILE))
+		),
+		EnvironmentServiceScript.to_string_ecosystem(
+			int(desc.get("ecosystem_type", EnvironmentServiceScript.EcosystemType.FROZEN_WORLD))
+		),
+	]
+
+
+func _climate_hud_text(focus_id: StringName) -> String:
+	if _environment_service == null:
+		return "Climate: n/a"
+	var desc: Dictionary = _environment_service.describe_body(focus_id)
+	if not bool(desc.get("is_supported_body_kind", false)):
+		return "Climate: n/a"
+	if not bool(desc.get("has_latitudinal_surface_basis", false)):
+		return "Climate: n/a"
+	return "Climate: -60deg %.0f K   Eq %.0f K   +60deg %.0f K" % [
+		float(desc.get("south_midlatitude_surface_temperature_k", 0.0)),
+		float(desc.get("equator_surface_temperature_k", 0.0)),
+		float(desc.get("north_midlatitude_surface_temperature_k", 0.0)),
 	]
 
 

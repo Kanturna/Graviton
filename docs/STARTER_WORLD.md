@@ -98,3 +98,7 @@ weiter klar vom Parent getrennt sind.
 - Thermische, atmosphaerische und Umweltwerte fuer die neuen Bodies sind
   bewusst minimal gehalten; `greenhouse_delta_k` bleibt auf `0.0`, wenn
   nicht explizit anders gesetzt.
+- P12A nutzt `starter_world` bewusst **nicht** als habitable
+  Showcase-Welt. Die thermischen Extreme im BH-Sandkasten sind kein
+  Fehler; der kanonische habitable Referenzkoerper bleibt
+  `sample_system.planet_a`.

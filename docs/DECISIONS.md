@@ -1,5 +1,34 @@
 # Graviton - Decisions
 
+## 2026-04-18 - P12A bewertet momentane Umweltzonen, keine Jahresmittel
+
+Die erste zonenbewusste Umweltklassifikation in P12A bewertet bewusst
+nur den **aktuellen** Orbit-/Saisonzustand eines planetaren Bodies.
+
+Konsequenz:
+
+- `AtmosphereService` und `EnvironmentService` mitteln in P12A nicht
+  ueber das Jahr
+- `environment_class` und `ecosystem_type` duerfen deshalb bei Tilt und
+  exzentrischen Bahnen sichtbar ueber das Orbitaljahr oszillieren
+- Jahresmittel, Stabilitaetsmetriken oder UI-Hysterese gehoeren in
+  einen spaeteren expliziten Folgeblock
+
+## 2026-04-18 - `sample_system` bleibt der habitable Showcase; `starter_world` bleibt thermisch extrem
+
+P12A fuehrt bewusst keinen Habitability-Retune der kompakten
+Mehrstern-Referenzwelt `starter_world` durch. Der sichtbare habitable
+Showcase bleibt stattdessen `sample_system`.
+
+Konsequenz:
+
+- `sample_system.planet_a` bleibt der kanonische Earth-like /
+  habitable Fokus-Body
+- `starter_world` bleibt in P12A der asymmetrische Content-Sandkasten
+  und darf thermisch weiter extrem oder unfreundlich wirken
+- neue Umweltfeatures werden damit zunaechst an einer kleinen,
+  kontrollierten Referenzwelt sichtbar statt ueber Welt-Content-Tuning
+
 ## 2026-04-18 - Umwelt-Roadmap zielt auf planetare Oekosystem-Typen
 
 Die weitere planetare Umweltableitung soll nicht bei globalen

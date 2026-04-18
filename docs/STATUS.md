@@ -51,11 +51,14 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Insolation fuer ausgewaehlte Breiten.
 - `AtmosphereService` legt jetzt on-demand ein minimales,
   datengetriebenes Greenhouse-Modell (`greenhouse_delta_k`) auf
-  `T_eq` und liefert daraus `surface_temperature_k`.
+  `T_eq`, liefert daraus `surface_temperature_k` und meldet jetzt
+  zusaetzlich bandbewusste Oberflaechentemperaturen fuer `-60deg`,
+  `Eq` und `+60deg`.
 - `EnvironmentService` klassifiziert `PLANET`- und `MOON`-Bodies jetzt
-  read-only als `HABITABLE`, `MARGINAL` oder `HOSTILE` auf Basis von
-  `surface_temperature_k` und macht das im normalen HUD fuer den Fokus
-  sichtbar.
+  read-only zonenbewusst ueber drei feste Breitenbaender als
+  `HABITABLE`, `MARGINAL` oder `HOSTILE` und leitet zusaetzlich erste
+  planetare Oekosystem-Typen (`FROZEN`, `TEMPERATE`, `SEASONAL`,
+  `HOT`) ab.
 - Bodies aus einem anderen Root als der aktuelle Fokus liefern bewusst
   `Vector3.INF` und werden im Renderer nicht lokalisiert.
 - `TimeService` und `UniverseRegistry` sind die zentralen Autoloads.
@@ -71,7 +74,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   dargestellt.
 - Es gibt ein HUD fuer Fokus, Sim-Zeit, Zeitskala und Status.
 - Die normale Environment-Zeile zeigt fuer unterstuetzte Fokus-Bodies
-  jetzt Klasse, `Tsurf` und modellierten Greenhouse-Beitrag.
+  jetzt Klasse plus `Eco ...`.
+- Das normale HUD zeigt fuer unterstuetzte Fokus-Bodies jetzt
+  zusaetzlich eine `Climate:`-Zeile mit bandbewussten Temperaturen fuer
+  `-60deg`, `Eq` und `+60deg`.
 - Das normale HUD zeigt fuer Bodies mit saisonaler Basis jetzt
   zusaetzlich eine kleine `Season: subsolar ...`-Zeile.
 - Das HUD zeigt zusaetzlich FPS und die aktuelle Speed-Preset-Stufe.
@@ -125,6 +131,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/sim/environment/environment_service.gd`
 - `src/tests/sim/test_environment_service.gd`
 - `docs/SIMULATIONSREGELN.md`
+- `docs/STARTER_WORLD.md`
 - `src/runtime/local_bubble/local_bubble_manager.gd`
 - `src/tests/runtime/test_local_bubble_step2.gd`
 - `src/tools/rendering/orbit_view_renderer.gd`
@@ -149,16 +156,20 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Das Projekt ist topologisch offen fuer mehrere Root-Systeme und hat
   jetzt eine explizite Loader-, Aktivierungs- und erste
   Stabilitaetsschicht fuer hohe `time_scale` im numerischen Pfad.
-- `BodyDef` traegt jetzt erste statische Weltmodell-Felder, aber
-  daraus werden bislang nur minimale Thermalwerte
-  (Insolation / absorbierter Fluss / `T_eq`) sowie ein minimales
-  additives Greenhouse-Modell und eine erste qualitative
-  Umweltklassifikation abgeleitet -
-  noch keine Atmosphaerenchemie oder Druckmodelle.
-- `ThermalService` ist jetzt latitudenbewusst, waehrend
-  `EnvironmentService` weiter auf einer skalaren `surface_temperature_k`
-  klassifiziert; eine spaetere breiten- oder saisonabhaengige
-  Umweltbewertung bleibt damit eine bewusste Folgeaufgabe.
+- `BodyDef` traegt jetzt erste statische Weltmodell-Felder, und daraus
+  werden mittlerweile saisonale Thermalgeometrie, additive
+  Greenhouse-Erwaermung, bandbewusste Oberflaechentemperaturen und eine
+  erste zonale Umweltklassifikation abgeleitet -
+  weiterhin aber noch keine Atmosphaerenchemie, kein Druckmodell und
+  keine Wasser-/Volatile-Logik.
+- Die zonale `EnvironmentService`-Klassifikation in P12A ist bewusst
+  **momentan**: sie mittelt nicht ueber Jahreszyklen und kann bei Tilt
+  oder exzentrischen Bahnen sichtbar ueber das Orbitaljahr
+  oszillieren.
+- `sample_system` ist jetzt der explizite habitable Showcase fuer die
+  neue zonale Umweltkette; `starter_world` bleibt bewusst der thermisch
+  extreme Mehrstern-Sandkasten und wurde in P12A nicht auf
+  Habitability retuned.
 - Der Wish-Pfad fuer `NUMERIC_LOCAL` bleibt bewusst um einen Frame
   gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`),
   wird jetzt aber im `OrbitService` ueber einen Grace-Tick abgefedert.
@@ -180,11 +191,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
 - als naechsten grossen Simulationsschritt weitere planetare
-  Umweltfaktoren jenseits des additiven Greenhouse-Toy-Modells
-  betrachten
-- dabei bewusst in Richtung globaler planetarer Oekosystem-Typen
-  weitergehen statt bei nur skalaren Temperatur- und
-  Habitability-Werten stehenzubleiben
+  Umweltfaktoren jenseits des additiven Greenhouse-Toy-Modells und der
+  momentanen Drei-Band-Klassifikation betrachten
+- dabei bewusst in Richtung globaler planetarer Oekosystem-Typen mit
+  Wasser-/Volatile-Logik und spaeterer Jahresmittel-/Stabilitaetslogik
+  weitergehen
 - parallel die Referenzwelt unter `obsidian` spaeter in Richtung eines
   noch reicheren Mehrstern-Roots weiterdenken: elliptischere
   BH-Sternbahnen, noch mehr Sterne und ggf. weitere Referenzwelten

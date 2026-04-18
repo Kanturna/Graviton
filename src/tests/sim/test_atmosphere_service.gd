@@ -6,7 +6,10 @@ const AtmosphereServiceScript = preload("res://src/sim/atmosphere/atmosphere_ser
 static func run(ctx) -> void:
 	ctx.current_suite = "test_atmosphere_service"
 	_test_sample_system_planet_a_reports_greenhouse_and_surface_temperature(ctx)
-	_test_sample_system_planet_a_matches_earth_like_surface_sanity(ctx)
+	_test_sample_system_planet_a_reports_latitudinal_surface_temperatures(ctx)
+	_test_latitudinal_compute_matches_describe_for_fixed_bands(ctx)
+	_test_exact_poles_and_latitude_clamping_work(ctx)
+	_test_invalid_latitude_returns_zero(ctx)
 	_test_sample_system_moon_a_keeps_zero_greenhouse_and_sol_source(ctx)
 	_test_missing_luminous_source_keeps_greenhouse_but_zero_surface_temperature(ctx)
 	_test_describe_matches_compute(ctx)
@@ -141,13 +144,96 @@ static func _test_sample_system_planet_a_reports_greenhouse_and_surface_temperat
 	_cleanup_setup(setup)
 
 
-static func _test_sample_system_planet_a_matches_earth_like_surface_sanity(ctx) -> void:
+static func _test_sample_system_planet_a_reports_latitudinal_surface_temperatures(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
 	var atmosphere_service = setup["atmosphere_service"]
-	var surface_temperature_k: float = atmosphere_service.compute_surface_temperature_k(&"planet_a")
+	var desc: Dictionary = atmosphere_service.describe_body(&"planet_a")
+	ctx.assert_true(bool(desc.get("has_latitudinal_surface_basis", false)), "planet_a hat latitudinale surface basis")
+	var south_midlatitude_surface_temperature_k: float = float(
+		desc.get("south_midlatitude_surface_temperature_k", 0.0)
+	)
+	var equator_surface_temperature_k: float = float(desc.get("equator_surface_temperature_k", 0.0))
+	var north_midlatitude_surface_temperature_k: float = float(
+		desc.get("north_midlatitude_surface_temperature_k", 0.0)
+	)
+	ctx.assert_true(south_midlatitude_surface_temperature_k > 0.0, "planet_a meldet S60 surface temperature")
+	ctx.assert_true(equator_surface_temperature_k > 0.0, "planet_a meldet aequatoriale surface temperature")
+	ctx.assert_true(north_midlatitude_surface_temperature_k > 0.0, "planet_a meldet N60 surface temperature")
 	ctx.assert_true(
-		absf(surface_temperature_k - 288.0) <= 10.0,
-		"planet_a bleibt mit Greenhouse innerhalb der Earth-like-Sanity von 288 +/- 10 K"
+		south_midlatitude_surface_temperature_k != equator_surface_temperature_k
+			or equator_surface_temperature_k != north_midlatitude_surface_temperature_k,
+		"planet_a zeigt bandabhaengige Temperaturunterschiede"
+	)
+	_cleanup_setup(setup)
+
+
+static func _test_latitudinal_compute_matches_describe_for_fixed_bands(ctx) -> void:
+	var setup: Dictionary = _setup_named_world(&"sample_system")
+	var atmosphere_service = setup["atmosphere_service"]
+	var desc: Dictionary = atmosphere_service.describe_body(&"planet_a")
+	ctx.assert_almost(
+		float(desc.get("south_midlatitude_surface_temperature_k", 0.0)),
+		atmosphere_service.compute_surface_temperature_at_latitude_k(&"planet_a", -PI / 3.0),
+		1.0e-6,
+		"S60 compute und describe stimmen ueberein"
+	)
+	ctx.assert_almost(
+		float(desc.get("equator_surface_temperature_k", 0.0)),
+		atmosphere_service.compute_surface_temperature_at_latitude_k(&"planet_a", 0.0),
+		1.0e-6,
+		"Eq compute und describe stimmen ueberein"
+	)
+	ctx.assert_almost(
+		float(desc.get("north_midlatitude_surface_temperature_k", 0.0)),
+		atmosphere_service.compute_surface_temperature_at_latitude_k(&"planet_a", PI / 3.0),
+		1.0e-6,
+		"N60 compute und describe stimmen ueberein"
+	)
+	_cleanup_setup(setup)
+
+
+static func _test_exact_poles_and_latitude_clamping_work(ctx) -> void:
+	var setup: Dictionary = _setup_named_world(&"sample_system")
+	var atmosphere_service = setup["atmosphere_service"]
+	var south_pole_surface_temperature_k: float = atmosphere_service.compute_surface_temperature_at_latitude_k(
+		&"planet_a",
+		-PI * 0.5
+	)
+	var north_pole_surface_temperature_k: float = atmosphere_service.compute_surface_temperature_at_latitude_k(
+		&"planet_a",
+		PI * 0.5
+	)
+	ctx.assert_true(south_pole_surface_temperature_k >= 0.0, "exakter Suedpol liefert finiten Wert")
+	ctx.assert_true(north_pole_surface_temperature_k >= 0.0, "exakter Nordpol liefert finiten Wert")
+	ctx.assert_almost(
+		atmosphere_service.compute_surface_temperature_at_latitude_k(&"planet_a", PI),
+		north_pole_surface_temperature_k,
+		1.0e-6,
+		"Latituden > +PI/2 clampen auf den Nordpol"
+	)
+	ctx.assert_almost(
+		atmosphere_service.compute_surface_temperature_at_latitude_k(&"planet_a", -PI),
+		south_pole_surface_temperature_k,
+		1.0e-6,
+		"Latituden < -PI/2 clampen auf den Suedpol"
+	)
+	_cleanup_setup(setup)
+
+
+static func _test_invalid_latitude_returns_zero(ctx) -> void:
+	var setup: Dictionary = _setup_named_world(&"sample_system")
+	var atmosphere_service = setup["atmosphere_service"]
+	ctx.assert_almost(
+		atmosphere_service.compute_surface_temperature_at_latitude_k(&"planet_a", NAN),
+		0.0,
+		1.0e-9,
+		"NaN-Latitude liefert 0.0"
+	)
+	ctx.assert_almost(
+		atmosphere_service.compute_surface_temperature_at_latitude_k(&"planet_a", INF),
+		0.0,
+		1.0e-9,
+		"INF-Latitude liefert 0.0"
 	)
 	_cleanup_setup(setup)
 
@@ -165,6 +251,7 @@ static func _test_sample_system_moon_a_keeps_zero_greenhouse_and_sol_source(ctx)
 		maxf(float(desc.get("surface_temperature_k", 0.0)) * 1.0e-6, 1.0e-9),
 		"moon_a behaelt bei 0.0 Greenhouse dieselbe Oberflaechentemperatur wie T_eq"
 	)
+	ctx.assert_true(bool(desc.get("has_latitudinal_surface_basis", false)), "moon_a hat latitudinale surface basis")
 	_cleanup_setup(setup)
 
 
@@ -183,6 +270,12 @@ static func _test_missing_luminous_source_keeps_greenhouse_but_zero_surface_temp
 	var desc: Dictionary = atmosphere_service.describe_body(&"dark_planet")
 	ctx.assert_almost(float(desc.get("greenhouse_delta_k", -1.0)), 50.0, 1.0e-9, "dark_planet behaelt den modellierten Greenhouse-Wert")
 	ctx.assert_almost(float(desc.get("surface_temperature_k", -1.0)), 0.0, 1.0e-9, "ohne thermische Basis bleibt surface_temperature_k bei 0.0")
+	ctx.assert_almost(
+		atmosphere_service.compute_surface_temperature_at_latitude_k(&"dark_planet", 0.0),
+		0.0,
+		1.0e-9,
+		"ohne thermische Basis bleibt auch die latitudinale Oberflaechentemperatur bei 0.0"
+	)
 	ctx.assert_true(not bool(desc.get("has_luminous_ancestor", true)), "dark_planet hat keinen luminous ancestor")
 	atmosphere_service.free()
 	thermal_service.free()
@@ -207,6 +300,12 @@ static func _test_describe_matches_compute(ctx) -> void:
 		maxf(float(desc.get("surface_temperature_k", 0.0)) * 1.0e-9, 1.0e-9),
 		"describe_body und compute_surface_temperature_k liefern denselben Wert"
 	)
+	ctx.assert_almost(
+		float(desc.get("equator_surface_temperature_k", 0.0)),
+		atmosphere_service.compute_surface_temperature_at_latitude_k(&"planet_a", 0.0),
+		1.0e-6,
+		"describe_body und compute_surface_temperature_at_latitude_k liefern denselben aequatorialen Wert"
+	)
 	_cleanup_setup(setup)
 
 
@@ -219,11 +318,19 @@ static func _test_unknown_id_returns_full_default_shape(ctx) -> void:
 	ctx.assert_true(desc.has("equilibrium_temperature_k"), "Default-Shape enthaelt equilibrium_temperature_k")
 	ctx.assert_true(desc.has("greenhouse_delta_k"), "Default-Shape enthaelt greenhouse_delta_k")
 	ctx.assert_true(desc.has("surface_temperature_k"), "Default-Shape enthaelt surface_temperature_k")
+	ctx.assert_true(desc.has("has_latitudinal_surface_basis"), "Default-Shape enthaelt has_latitudinal_surface_basis")
+	ctx.assert_true(desc.has("south_midlatitude_surface_temperature_k"), "Default-Shape enthaelt S60 surface temperature")
+	ctx.assert_true(desc.has("equator_surface_temperature_k"), "Default-Shape enthaelt aequatoriale surface temperature")
+	ctx.assert_true(desc.has("north_midlatitude_surface_temperature_k"), "Default-Shape enthaelt N60 surface temperature")
 	ctx.assert_true(desc.has("has_luminous_ancestor"), "Default-Shape enthaelt has_luminous_ancestor")
 	ctx.assert_true(desc.get("body_id", StringName("")) == &"missing_body", "Default-Shape behaelt die angefragte body_id")
 	ctx.assert_true(desc.get("source_id", StringName("")) == StringName(""), "Default-Shape setzt leere source_id")
 	ctx.assert_almost(float(desc.get("equilibrium_temperature_k", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt Gleichgewichtstemperatur auf 0.0")
 	ctx.assert_almost(float(desc.get("greenhouse_delta_k", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt greenhouse_delta_k auf 0.0")
 	ctx.assert_almost(float(desc.get("surface_temperature_k", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt surface_temperature_k auf 0.0")
+	ctx.assert_true(not bool(desc.get("has_latitudinal_surface_basis", true)), "Default-Shape setzt has_latitudinal_surface_basis auf false")
+	ctx.assert_almost(float(desc.get("south_midlatitude_surface_temperature_k", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt S60 surface temperature auf 0.0")
+	ctx.assert_almost(float(desc.get("equator_surface_temperature_k", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt aequatoriale surface temperature auf 0.0")
+	ctx.assert_almost(float(desc.get("north_midlatitude_surface_temperature_k", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt N60 surface temperature auf 0.0")
 	ctx.assert_true(not bool(desc.get("has_luminous_ancestor", true)), "Default-Shape setzt has_luminous_ancestor auf false")
 	_cleanup_setup(setup)

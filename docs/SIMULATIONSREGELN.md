@@ -255,28 +255,52 @@ Pol-Hinweis:
 - keine Mehrquellen-Summation
 - keine Cross-Root-Suche ausserhalb der Parent-Kette
 
-## Abgeleitete Umweltgroessen - P8/P9 EnvironmentService
+## Abgeleitete Umweltgroessen - P8/P9/P12A EnvironmentService
 
 `EnvironmentService` ist ein weiterer read-only Derived-Service im
 `sim/`-Layer. Er nutzt ab P9 `AtmosphereService`, fuehrt aber bewusst
 keine neue State-Schicht ein.
 
-**Basis:** qualitative Umweltklassifikation aus
-`surface_temperature_k`.
+**Basis ab P12A:** qualitative Umweltklassifikation aus drei festen
+bandbewussten `surface_temperature_k`-Werten (`-60deg`, `Eq`,
+`+60deg`).
 
-**Unterstuetzte Koerper in P8/P9:** nur `PLANET` und `MOON`.
+**Unterstuetzte Koerper in P8/P9/P12A:** nur `PLANET` und `MOON`.
 `STAR`, `BLACK_HOLE` und sonstige nicht-planetaere Koerper bleiben
 im normalen HUD `n/a`.
 
-**Klassenfenster:**
+**Klassenfenster pro Band:**
 - `HABITABLE`: `273.15 <= T_surface <= 323.15`
-- `MARGINAL`: `223.15 <= T_surface < 273.15` oder
-  `323.15 < T_surface <= 373.15`
+- `MARGINAL`: `223.15 <= T_surface <= 373.15`, sofern das Band nicht
+  bereits habitable ist
 - `HOSTILE`: alles ausserhalb dieser Fenster
 
+**Gesamtklassifikation ab P12A:**
+- `HABITABLE`: mindestens ein Band ist habitable
+- `MARGINAL`: kein Band ist habitable, aber mindestens ein Band ist
+  marginal
+- `HOSTILE`: sonst
+
+**EcosystemType ab P12A:**
+- `FROZEN_WORLD`: alle drei Baender `< 273.15`
+- `HOT_WORLD`: alle drei Baender `> 323.15`
+- `TEMPERATE_WORLD`: alle drei Baender in `273.15 .. 323.15`
+- `SEASONAL_WORLD`: sonst
+
+**Zusatzflags ab P12A:**
+- `has_habitable_band`: mindestens ein Band in `273.15 .. 323.15`
+- `has_liquid_water_band`: mindestens ein Band in `273.15 .. 373.15`
+
 **Fehlende Thermalbasis:** Unterstuetzte Bodies ohne gueltige
-Waermebasis (`surface_temperature_k <= 0`) werden in P8/P9 als
-`HOSTILE` klassifiziert.
+Waermebasis oder ohne gueltige latitudinale Basis werden in P12A als
+`HOSTILE` klassifiziert; `ecosystem_type` faellt dann im Default-Pfad
+auf `FROZEN_WORLD` zurueck.
+
+**Momentaufnahme-Regel in P12A:** Die zonale Klassifikation ist bewusst
+keine Jahresmittelung. Bei Tilt und exzentrischen Orbits koennen
+`environment_class` und `ecosystem_type` im Lauf des Orbitaljahres
+sichtbar oszillieren. Eine spaetere Hysterese- oder
+Stabilitaetsbewertung ist nicht Teil dieses Schritts.
 
 **Visual-Creep-Regel:** Qualitative Klassifikationen werden in P8/P9
 bewusst nur als Text angezeigt. Jede spaetere farbliche oder
@@ -284,11 +308,11 @@ renderer-seitige Repraesentation gehoert in einen expliziten
 Visual-Pass - nicht in eine stille Erweiterung des nicht-visuellen
 Features.
 
-**Offene Folgefrage ab P11:** `ThermalService` liefert jetzt
-latitudenbewusste saisonale Geometrie, waehrend `EnvironmentService`
-weiter auf einer skalaren `surface_temperature_k` klassifiziert. Eine
-spaetere breiten- oder saisonabhaengige Umweltbewertung braucht deshalb
-einen expliziten Folgepass statt einer stillen Erweiterung.
+**Offene Folgefrage ab P12A:** Die Drei-Band-Klassifikation bleibt ein
+kleines zonales Toy-Modell ohne Waermetransport, Jahresmittelung,
+Hydrologie oder Atmosphaerenchemie. Spaetere planetare
+Oekosystem-Typen brauchen deshalb weitere Volatile-/Stabilitaets- und
+Transport-Logik.
 
 ## Abgeleitete Umweltgroessen - P9 AtmosphereService
 
@@ -306,6 +330,29 @@ ueber die nackte Strahlungsbasis aus `ThermalService`.
 **Modell in P9:**
 
 - `surface_temperature_k = equilibrium_temperature_k + greenhouse_delta_k`
+
+**Latitudenbewusste Erweiterung in P12A:**
+
+- feste Bewertungsbreiten:
+  - `-PI / 3` (`-60deg`)
+  - `0` (`Eq`)
+  - `+PI / 3` (`+60deg`)
+- Grundlage:
+  - `ThermalService.compute_daily_mean_insolation_wpm2(id, latitude_rad)`
+- lokaler absorbierter Fluss:
+  - `absorbed_lat_flux_wpm2 = (1 - albedo) * daily_mean_insolation_wpm2`
+- lokale nackte Temperatur:
+  - `teq_lat_k = pow(absorbed_lat_flux_wpm2 / sigma, 0.25)`
+- lokale Oberflaechentemperatur:
+  - `surface_lat_k = teq_lat_k + greenhouse_delta_k`
+
+**Fehlerverhalten in P12A:**
+
+- unbekannte ID, fehlende Quelle, fehlende saisonale Basis oder
+  nicht-finite Inputs liefern `0.0`
+- `latitude_rad` wird auf `[-PI/2, +PI/2]` geklemmt
+- `has_latitudinal_surface_basis` wird nur gesetzt, wenn alle drei
+  festen Breitenbaender gueltige Werte liefern
 
 **Wichtig:**
 
