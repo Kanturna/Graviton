@@ -9,7 +9,6 @@ static func run(ctx) -> void:
 	_test_fit_zoom_factor_clamps_to_range(ctx)
 	_test_focus_fallback_thresholds(ctx)
 	_test_focus_closeup_ratio_semantics(ctx)
-	_test_body_visual_size_factor_is_focus_independent(ctx)
 
 
 static func _test_absolute_zoom_scale_mapping(ctx) -> void:
@@ -99,37 +98,4 @@ static func _test_focus_closeup_ratio_semantics(ctx) -> void:
 		1.0,
 		0.000001,
 		"focus_closeup_ratio faellt nie unter 1.0"
-	)
-
-
-static func _test_body_visual_size_factor_is_focus_independent(ctx) -> void:
-	ctx.assert_almost(
-		OrbitZoomModelScript.body_visual_size_factor(1.0, 1.0, 0.35, 6.0),
-		1.0,
-		0.000001,
-		"body_visual_size_factor liefert bei 100%% Zoom die Basisgroesse"
-	)
-	ctx.assert_almost(
-		OrbitZoomModelScript.body_visual_size_factor(100.0, 1.0, 0.35, 6.0),
-		pow(100.0, 0.35),
-		0.000001,
-		"body_visual_size_factor waechst monoton-gedaempft ueber den Zoom-Bereich"
-	)
-	ctx.assert_almost(
-		OrbitZoomModelScript.body_visual_size_factor(10000.0, 1.0, 0.35, 6.0),
-		6.0,
-		0.000001,
-		"body_visual_size_factor clampt nach oben auf max_size_factor"
-	)
-	ctx.assert_almost(
-		OrbitZoomModelScript.body_visual_size_factor(0.01, 1.0, 0.35, 6.0),
-		1.0,
-		0.000001,
-		"body_visual_size_factor clampt nach unten nie unter die Basisgroesse"
-	)
-	ctx.assert_almost(
-		OrbitZoomModelScript.body_visual_size_factor(100.0, 1.0, 0.35, 6.0),
-		OrbitZoomModelScript.body_visual_size_factor(100.0, 1.0, 0.35, 6.0),
-		0.0,
-		"body_visual_size_factor ist bei gleichen Argumenten deterministisch fokus-unabhaengig"
 	)

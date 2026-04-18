@@ -194,7 +194,6 @@ func _apply_view_transform(immediate: bool, delta: float = 0.0) -> void:
 	_renderer.scale = Vector2.ONE * _current_view_scale
 	_renderer.position = _current_world_offset
 	_renderer.set_world_scale(_current_view_scale)
-	_renderer.set_absolute_zoom_factor(_absolute_zoom_factor)
 	_renderer.set_focus_closeup_ratio(_current_focus_closeup_ratio(get_viewport_rect().size))
 
 

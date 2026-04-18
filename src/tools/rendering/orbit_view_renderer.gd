@@ -6,10 +6,7 @@ const TRAIL_LINE_WIDTH_PX: float = 2.0
 const MIN_TRAIL_STEP_PX: float = 1.2
 
 const BODY_VISUAL_SCRIPT := preload("res://src/tools/rendering/orbit_body_visual.gd")
-const OrbitZoomModelScript := preload("res://src/tools/rendering/orbit_zoom_model.gd")
 const PlanetVisualProfileScript := preload("res://src/tools/rendering/planet_visual_profile.gd")
-
-const _BODY_SIZE_GROWTH_EXPONENT: float = 0.35
 
 @onready var _orbit_layer: Node2D = $OrbitLayer
 @onready var _trail_layer: Node2D = $TrailLayer
@@ -28,7 +25,6 @@ var _body_view_is_finite: Dictionary = {}
 var _world_scale: float = 1.0
 var _focus_id: StringName = &""
 var _focus_closeup_ratio: float = 1.0
-var _absolute_zoom_factor: float = 1.0
 
 
 func configure(registry: Node, bubble: Node) -> void:
@@ -63,10 +59,6 @@ func set_focus_closeup_ratio(value: float) -> void:
 		return
 	_focus_closeup_ratio = new_val
 	_apply_focus_emphasis()
-
-
-func set_absolute_zoom_factor(value: float) -> void:
-	_absolute_zoom_factor = maxf(value, 0.0001)
 
 
 func pick_body_at_screen(screen_pos: Vector2) -> StringName:
@@ -245,13 +237,7 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 			visual.visible = true
 			visual.position = pos
 			var detail_factor: float = _body_detail_factor(id, def)
-			var size_factor: float = OrbitZoomModelScript.body_visual_size_factor(
-				_absolute_zoom_factor,
-				_body_base_size_factor(def.kind),
-				_BODY_SIZE_GROWTH_EXPONENT,
-				_body_max_size_factor(def.kind)
-			)
-			visual.scale = Vector2.ONE * (size_factor / _world_scale)
+			visual.scale = Vector2.ONE * (detail_factor / _world_scale)
 			visual.set_detail_factor(detail_factor)
 			if _environment_service != null and (def.kind == BodyType.Kind.PLANET or def.kind == BodyType.Kind.MOON):
 				var environment_desc: Dictionary = _environment_service.describe_body(id)
@@ -397,14 +383,6 @@ static func _max_body_detail_factor(kind: int) -> float:
 			return 12.0
 		_:
 			return 10.0
-
-
-static func _body_base_size_factor(_kind: int) -> float:
-	return 1.0
-
-
-static func _body_max_size_factor(_kind: int) -> float:
-	return 6.0
 
 
 func _update_trail(id: StringName, pos: Vector2, reset_trails: bool) -> void:
