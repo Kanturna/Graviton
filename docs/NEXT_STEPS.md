@@ -354,9 +354,39 @@ Offen / spaeter:
 - Star-Typisierung / Spektralklassen / luminosity-getriebene Palette als
   eigener spaeterer Pass (`gamma` ist physikalisch weiter Red-Dwarf,
   visuell aber bewusst noch Teil derselben Sonnenfamilie)
-- moeglicher spaeterer Pass mit expliziten Star-Uniforms in
-  `body_star.gdshader`, damit Stern-Tuning dann sauber zentralisierbar
-  wird
+
+## Prioritaet 14.4 - View Phase E: Sterne in Richtung NASA-naher aktiver Sonnenoberflaeche ziehen - erledigt
+
+Ziel:
+Den P14.3-Sternlook von "runde warme Sonne mit Halo" in Richtung einer
+deutlich aktiveren solaren Photosphaere verschieben, ohne Kamera,
+Body-Size, Planeten oder Sim-Schichten anzufassen.
+
+Erledigt:
+
+- der bestehende Sternshader behaelt seine runde Alpha-Silhouette und
+  seine P14.3-Granulationsbasis; neue Aktivitaet moduliert bewusst nur
+  Farbe und nie `alpha`
+- zusaetzliche grobskalige Solar-Activity-Ebene fuer hellere aktive
+  Regionen und dunklere Filament-/Channel-Zonen
+- explizite Star-Uniforms im `STAR`-Pfad von `OrbitBodyVisual`, damit
+  Palette, Activity, Filamente und hot rim nicht weiter in
+  Shader-Konstanten versteckt bleiben
+- innere Randenergie jetzt staerker shaderseitig ueber `rim_hotness`
+  und `edge_activity_strength`
+- `_draw_star_glow()` bewusst subtiler getunt; weniger Ring-Lesbarkeit,
+  mehr warmes Atmosphaeren-Fading ohne Footprint-Wachstum
+- dekorativer Star-Overlay-Arc entfernt, damit Sternaktivitaet nicht wie
+  ein UI-Effekt liest
+
+Offen / spaeter:
+
+- echte aussen sichtbare Prominenzen / Protuberanzen bleiben ein
+  moeglicher spaeterer separater Follow-up und wurden in P14.4 bewusst
+  nicht eingefuehrt
+- Star-Typisierung / Spektralklassen / luminosity-getriebene Palette als
+  eigener spaeterer Pass (`gamma` ist physikalisch weiter Red-Dwarf,
+  visuell aber bewusst noch Teil derselben Sonnenfamilie)
 
 ## Danach - Weitere planetare Umweltableitung
 

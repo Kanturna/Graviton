@@ -1,6 +1,16 @@
 shader_type canvas_item;
 
 uniform float df_t = 0.0;
+uniform vec3 star_core_color = vec3(1.0, 0.95, 0.80);
+uniform vec3 star_mid_color = vec3(1.0, 0.62, 0.18);
+uniform vec3 star_channel_color = vec3(0.62, 0.18, 0.08);
+uniform float activity_strength = 0.34;
+uniform float activity_scale = 4.2;
+uniform float filament_strength = 0.30;
+uniform float filament_scale = 3.1;
+uniform float rim_hotness = 0.78;
+uniform float edge_activity_strength = 0.22;
+uniform float edge_activity_scale = 5.0;
 
 void fragment() {
 	vec2 uv = UV - vec2(0.5);
@@ -28,9 +38,7 @@ void fragment() {
 	float limb = 1.0 - 0.26 * pow(t_w, 1.7);
 
 	// Radial color temperature: center near-white, edge warmer/more saturated
-	vec3 center_col = vec3(1.0, 0.95, 0.78);
-	vec3 edge_col = vec3(1.0, 0.62, 0.18);
-	vec3 col = mix(center_col, edge_col, pow(t_w, 1.8)) * limb;
+	vec3 col = mix(star_core_color, star_mid_color, pow(t_w, 1.8)) * limb;
 
 	// Three-direction hexagonal granulation — avoids cross/grid artifact of sin(x)*sin(y)
 	// Angles ~0°/60°/115° (slightly off perfect hexagonal to break mathematical regularity)
@@ -56,13 +64,54 @@ void fragment() {
 	float asym = bright * 0.60 - dark * 1.35;
 	float gran = asym * (1.0 - t * 0.65) * mix(0.11, 0.28, df_t);
 	col *= 1.0 + gran;
-	// Temperature tint: lanes pick up a warmer/redder hue, bright centers stay near white
-	// df_t-gated so the tint is inactive in overview, subtle at close-up
-	col *= mix(vec3(1.0), vec3(1.0, 0.90, 0.72), max(0.0, -asym) * mix(0.18, 0.70, df_t));
+	// Temperature tint: lanes pick up a warmer/redder hue, bright centers stay near white.
+	// Activity remains color-only; alpha never changes.
+	float lane_tint = max(0.0, -asym) * mix(0.18, 0.70, df_t);
+	col = mix(col, mix(col, star_channel_color, 0.44), lane_tint);
 
-	// Corona rim glow
-	float rim = pow(max(0.0, 1.0 - abs(t_w - 1.0) * 5.5), 2.0) * 0.62;
-	col += vec3(1.0, 0.82, 0.48) * rim;
+	// Add a coarser solar-activity layer above the fine granulation:
+	// bright faculae / active regions plus darker channel structures.
+	float activity_df = mix(0.14, 1.0, df_t);
+	vec2 ap = n_xy * activity_scale;
+	ap += vec2(
+		sin(ap.y * 0.63 + TIME * 0.08),
+		sin(ap.x * 0.57 - TIME * 0.07)
+	) * 0.95 + wp * 0.18;
+	float a0 = sin(ap.x * 0.92 + TIME * 0.19);
+	float a1 = sin(ap.x * 0.41 + ap.y * 0.87 - TIME * 0.14);
+	float a2 = sin(ap.x * 0.76 - ap.y * 0.36 + TIME * 0.11);
+	float activity_raw = (a0 * 1.00 + a1 * 0.82 + a2 * 0.74) / 2.56;
+	float faculae = pow(max(0.0, activity_raw), 1.35);
+	float activity_mask = max(0.0, 1.0 - t * 0.52);
+	col += mix(star_mid_color, star_core_color, 0.72) * faculae
+		* activity_strength * activity_df * activity_mask * 0.58;
+
+	vec2 fp = n_xy * filament_scale;
+	fp += vec2(
+		sin(fp.y * 0.79 - TIME * 0.06),
+		sin(fp.x * 0.68 + TIME * 0.05)
+	) * 1.05 + vec2(activity_raw * 0.80, -activity_raw * 0.60);
+	float f0 = sin(fp.x * 0.88 - TIME * 0.12);
+	float f1 = sin(fp.x * 0.30 + fp.y * 1.04 + TIME * 0.10);
+	float f2 = sin(fp.x * 0.96 - fp.y * 0.52 - TIME * 0.08);
+	float filament_raw = (f0 * 0.90 + f1 * 1.00 + f2 * 0.70) / 2.60;
+	float filaments = pow(max(0.0, -filament_raw), 1.85);
+	float filament_mix = filaments * filament_strength * activity_df
+		* max(0.0, 1.0 - t * 0.42) * 0.42;
+	col = mix(col, mix(col, star_channel_color, 0.78), clamp(filament_mix, 0.0, 0.88));
+
+	// Build the hotter inner rim in-shader first; the CPU halo only stays
+	// as a subtle atmosphere around it.
+	float rim = pow(max(0.0, 1.0 - abs(t_w - 1.0) * 5.5), 2.0) * mix(0.44, 0.78, rim_hotness);
+	float edge_zone = smoothstep(0.58, 0.92, t_w) * (1.0 - smoothstep(0.96, 1.05, t_w));
+	float edge_signal = sin(angle * edge_activity_scale + TIME * 0.22) * 0.55
+		+ sin(angle * (edge_activity_scale * 0.57) - TIME * 0.17) * 0.35
+		+ sin(angle * (edge_activity_scale * 1.71) + TIME * 0.11) * 0.20;
+	float edge_active = pow(max(0.0, edge_signal), 1.8) * edge_zone
+		* edge_activity_strength * mix(0.15, 1.0, df_t);
+	col += mix(star_mid_color, star_core_color, 0.58) * rim;
+	col += star_core_color * edge_active * 0.68;
+	col += vec3(1.0, 0.86, 0.48) * edge_active * 0.34;
 
 	COLOR = vec4(clamp(col, 0.0, 1.0), alpha);
 }

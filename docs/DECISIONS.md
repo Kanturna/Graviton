@@ -1,5 +1,30 @@
 # Graviton - Decisions
 
+## 2026-04-19 - P14.4 zieht Sterne bewusst in Richtung NASA-naher aktiver Sonnenoberflaeche
+
+P14.4 baut auf P14.3 auf, ersetzt ihn aber nicht. Die runde
+Alpha-Silhouette des Sternshaders bleibt explizit unberuehrt; neue
+Solar-Activity moduliert nur Farbe und Helligkeit, niemals `alpha`.
+Der Stern-Look wird ueber neue Star-Uniforms in Richtung aktiverer
+Photosphaere mit helleren aktiven Regionen, dunkleren Filament-/
+Channel-Zonen und staerkerem heissen Innenrand nachgeschaerft. Der
+fruehere Ring-Glow wird bewusst subtiler gemacht, nachdem die visuelle
+Energie zuerst shaderseitig in Rim und Oberflaeche aufgebaut wurde.
+
+Konsequenz:
+
+- P14.4 ist bewusst ein Material-/Surface-Pass, kein Kamera-, Orbit-,
+  Body-Size- oder Planet-Pass
+- neue Sternaktivitaet bleibt innerhalb der bestehenden Sternscheibe;
+  echte aussen sichtbare Prominenzen werden bewusst vertagt, damit der
+  sichtbare Stern-Footprint stabil bleibt
+- `OrbitBodyVisual` setzt erstmals explizite Star-Uniforms, aber nur im
+  `STAR`-Pfad; Planet-/Mond-Pfade bleiben unberuehrt
+- die in P13 physikalisch gesetzte M-Dwarf-Rolle von `gamma` bleibt
+  weiter sim-seitig gueltig; visuell bleibt `gamma` in P14.4 bewusst
+  Teil derselben Sonnenfamilie, bis ein spaeterer
+  Star-Typisierungs-Pass diese Ebene wieder sichtbar auffaechert
+
 ## 2026-04-19 - P14.3: Star-Polish als gemeinsame solare Familie
 
 Sterne werden als runde, warmfarbige Sonnen mit sichtbarer Photosphaere

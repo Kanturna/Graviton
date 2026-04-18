@@ -9,15 +9,15 @@ const PlanetVisualThemeScript := preload("res://src/tools/rendering/planet_visua
 # layer on top. Outer radius stays within the previous 22 px footprint plus a
 # minimal gradient margin — the halo gets softer, not bigger.
 const _STAR_HALO_INNER_RINGS: Array = [
-	[9.0, Color(1.0, 0.93, 0.62, 0.26)],
-	[13.0, Color(1.0, 0.84, 0.40, 0.14)],
-	[17.0, Color(1.0, 0.72, 0.28, 0.08)],
-	[21.0, Color(1.0, 0.58, 0.22, 0.05)],
+	[8.8, Color(1.0, 0.92, 0.56, 0.18)],
+	[11.8, Color(1.0, 0.78, 0.30, 0.10)],
+	[15.0, Color(0.98, 0.60, 0.20, 0.055)],
+	[18.8, Color(0.92, 0.38, 0.14, 0.028)],
 ]
-const _STAR_HALO_OUTER_RADIUS: float = 25.0
-const _STAR_HALO_OUTER_COLOR: Color = Color(1.0, 0.46, 0.18, 0.04)
-const _STAR_HALO_BREATH_FREQ_RAD_PER_S: float = 0.35
-const _STAR_HALO_BREATH_AMPLITUDE: float = 0.15
+const _STAR_HALO_OUTER_RADIUS: float = 23.2
+const _STAR_HALO_OUTER_COLOR: Color = Color(1.0, 0.42, 0.16, 0.018)
+const _STAR_HALO_BREATH_FREQ_RAD_PER_S: float = 0.28
+const _STAR_HALO_BREATH_AMPLITUDE: float = 0.10
 
 var _kind: int = BodyType.Kind.PLANET
 var _is_focused: bool = false
@@ -230,8 +230,9 @@ func _draw_moon_overlay() -> void:
 
 
 func _draw_star_overlay() -> void:
-	if _detail_factor > 1.35:
-		_overlay.draw_arc(Vector2.ZERO, 6.8, -0.9, 2.2, 32, Color(1.0, 0.97, 0.82, 0.20), 1.1, true)
+	# P14.4 moves star activity into the shader and inner rim. Keep the
+	# overlay clear so it does not read as a decorative UI arc.
+	return
 
 
 func _focus_ring_radius() -> float:
@@ -333,6 +334,16 @@ static func _make_sphere_material(kind: int) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	if kind == BodyType.Kind.STAR:
 		mat.shader = _SHADER_STAR
+		mat.set_shader_parameter("star_core_color", Color(1.0, 0.95, 0.80))
+		mat.set_shader_parameter("star_mid_color", Color(1.0, 0.62, 0.18))
+		mat.set_shader_parameter("star_channel_color", Color(0.62, 0.18, 0.08))
+		mat.set_shader_parameter("activity_strength", 0.34)
+		mat.set_shader_parameter("activity_scale", 4.2)
+		mat.set_shader_parameter("filament_strength", 0.30)
+		mat.set_shader_parameter("filament_scale", 3.1)
+		mat.set_shader_parameter("rim_hotness", 0.78)
+		mat.set_shader_parameter("edge_activity_strength", 0.22)
+		mat.set_shader_parameter("edge_activity_scale", 5.0)
 	else:
 		mat.shader = _SHADER_SPHERE
 		var is_moon: bool = kind == BodyType.Kind.MOON

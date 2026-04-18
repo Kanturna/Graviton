@@ -129,12 +129,20 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Monde laufen jetzt durch denselben Klima-Resolver wie Planeten,
   bleiben aber ueber gedimmte Theme-Intensitaeten sichtbar als Monde
   lesbar statt wie kleine Vollplaneten zu wirken.
-- Sterne lesen sich jetzt als runde, warmfarbige Sonnen mit sichtbarer
-  Photosphaere und weichem Corona-Halo: die Alpha-Silhouette ist vom
-  zeitgetriebenen Warp entkoppelt, die Palette ist saturierter, die
-  Granulation ist schon in Uebersicht/Mittelsicht lesbar, und der
-  Corona-Halo ist ein mehrstufiger Ringgradient innerhalb desselben
-  Stern-Footprints. Alle Sterne teilen bewusst denselben Sun-Look;
+- Sterne lesen sich jetzt als runde, warme Sonnen mit deutlich
+  aktiverer, NASA-naher Photosphaere: die P14.3-Rundheits-Invariante
+  bleibt erhalten (`alpha` haengt weiter nur an `t`), aber der Shader
+  traegt jetzt zusaetzlich eine zweite Solar-Activity-Ebene mit
+  helleren aktiven Regionen und dunkleren Filament-/Channel-Zonen.
+- Der Stern-Look ist jetzt ueber explizite Star-Uniforms lesbarer
+  getuned (`star_core_color`, `activity_strength`, `filament_strength`,
+  `rim_hotness`, `edge_activity_strength` etc.), aber weiterhin nur im
+  `STAR`-Pfad und ohne neue Simulationswahrheit.
+- Die sichtbare Energie sitzt jetzt staerker im shaderseitigen heissen
+  Innenrand und in der Oberflaechenaktivitaet; der fruehere Ring-Glow in
+  `_draw_star_glow()` wurde bewusst subtiler gemacht, damit Sterne
+  weniger nach konzentrischen Glow-Scheiben und mehr nach aktiven Sonnen
+  lesen. Alle Sterne teilen weiter bewusst denselben Sun-Look;
   Spektralklassen-/Typ-Unterscheidung ist explizit vertagt.
 
 ## Ziel dieser Praesentationsschicht
