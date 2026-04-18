@@ -1,5 +1,37 @@
 # Graviton - Decisions
 
+## 2026-04-18 - `gamma` wird in P13 bewusst als kompaktes Red-Dwarf-System neu parametrisiert
+
+Der nachtraegliche `gamma_iv`-Hotfix aus dem ersten Sichtbarkeits-Follow-up
+wird bewusst nicht konserviert. Stattdessen wird das gesamte `gamma`-System
+neu aufgesetzt, damit ein habitabler Kandidat innerhalb einer lokalen
+Stabilitaetsgrenze statt als root-skaliger Ausreisserorbit entsteht.
+
+Konsequenz:
+
+- `gamma` ist nicht mehr der fruehere P12B-Stern mit hoher
+  Luminositaet, sondern ein bewusst kompakter Red-Dwarf-artiger Stern
+- `gamma_iv` bleibt der eine sichtbare habitabele Kandidat der
+  `starter_world`, jetzt aber in einem lokal plausiblen kompakten Orbit
+- die P12B-Asymmetrie bleibt erhalten; `gamma` bleibt das reichste
+  Sternsystem, bekommt aber eine schaerfere thematische Rolle
+
+## 2026-04-18 - Renderer bleibt Wahrheitsspiegel fuer Systemskalen
+
+Outlier-Orbits in der `starter_world` werden nicht durch spezielle
+Zoom-/Fokusregeln versteckt. Wenn ein Sternfokus gequetscht wirkt, ist
+das primaer ein Content-/Skalenproblem und kein Anlass fuer eine
+Renderer-Sonderbehandlung.
+
+Konsequenz:
+
+- `OrbitViewRenderer` bleibt unveraendert, wenn ein Content-Ausreisser
+  die Systemgroesse dominiert
+- lokale habitabele Kandidaten muessen ueber sauberes Welt-/Stern-
+  Tuning entstehen, nicht ueber Zoom-Maskierung
+- neue Content-Tunes in `starter_world` brauchen bei Bedarf explizite
+  lokale Stabilitaets- oder Skalen-Guardrails statt stiller View-Hacks
+
 ## 2026-04-18 - `starter_world` bekommt genau einen sichtbaren habitablen Kandidaten
 
 Nach P12A wird `starter_world` bewusst nicht flaechig auf Habitability

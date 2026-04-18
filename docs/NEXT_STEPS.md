@@ -228,20 +228,25 @@ Erledigt:
 - `sample_system` bleibt der kanonische habitable Showcase; die
   thermisch extreme `starter_world` wurde bewusst nicht retuned
 
-## Prioritaet 13.1 - Content-Follow-up: sichtbarer habitaler Kandidat in `starter_world` - erledigt
+## Prioritaet 13.1 - Content-Follow-up: `gamma` lokal plausibel als kompaktes Red-Dwarf-System aufsetzen - erledigt
 
 Ziel:
 Die grosse BH-Referenzwelt soll nicht nur extreme hot/frozen-Beispiele
 zeigen, sondern mindestens einen im laufenden Testbed auffindbaren
-habitablen Kandidaten tragen.
+habitablen Kandidaten tragen, ohne dafuer einen root-skaligen
+Ausreisserorbit zu erzwingen.
 
 Erledigt:
 
-- `gamma_iv` wurde als erster sichtbar habitabler Kandidat getunt
-- die Aenderung bleibt bewusst minimal und retuned nicht das gesamte
-  `starter_world`-System
-- Tests pinnen jetzt, dass `gamma_iv` in `starter_world` als
-  `HABITABLE` erkannt wird
+- das fruehere ad-hoc-`gamma_iv`-Follow-up wurde bewusst nicht
+  konserviert
+- `gamma` ist jetzt als kompakter Red-Dwarf-artiger Stern
+  neu parametrisiert
+- das gesamte `gamma`-Planetensystem wurde lokal neu skaliert
+- `gamma_iv` bleibt als habitabler Kandidat erhalten, jetzt aber in
+  einem kompakten lokalen Orbit mit expliziter Hill-Sphere-Guardrail
+- Tests pinnen jetzt die neuen `gamma`-Werte sowie
+  `gamma_iv @ t=0.0 => HABITABLE + SEASONAL_WORLD`
 
 ## Danach - Weitere planetare Umweltableitung
 

@@ -140,11 +140,15 @@ static func _build_gamma() -> BodyDef:
 	d.id = &"gamma"
 	d.display_name = "Gamma"
 	d.kind = BodyType.Kind.STAR
-	d.mass_kg = UnitSystem.SOLAR_MASS_KG * 1.8
-	d.radius_m = 5.8e8
+	# P13: gamma ist bewusst als kompakter Red-Dwarf-artiger Stern
+	# parametrisiert. Damit passt die habitable Zone innerhalb einer
+	# lokalen Stabilitaetsgrenze in die Hill-Sphere, ohne einen
+	# root-skaligen Planet-Ausreisser zu erzwingen.
+	d.mass_kg = UnitSystem.SOLAR_MASS_KG * 0.20
+	d.radius_m = 1.95e8
 	d.rotation_period_s = 18.0 * UnitSystem.DAY_S
 	d.axial_tilt_rad = 0.0
-	d.luminosity_w = 1.6 * UnitSystem.SOLAR_LUMINOSITY_W
+	d.luminosity_w = 0.0036 * UnitSystem.SOLAR_LUMINOSITY_W
 	d.albedo = 0.0
 	d.parent_id = &"obsidian"
 	d.orbit_profile = prof
@@ -312,8 +316,8 @@ static func _build_beta_ii() -> BodyDef:
 static func _build_gamma_i() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
-	prof.semi_major_axis_m = 1.2e9
-	prof.eccentricity = 0.18
+	prof.semi_major_axis_m = 2.0e9
+	prof.eccentricity = 0.05
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
 	prof.argument_periapsis_rad = 0.40
@@ -338,8 +342,8 @@ static func _build_gamma_i() -> BodyDef:
 static func _build_gamma_ii() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
-	prof.semi_major_axis_m = 2.05e9
-	prof.eccentricity = 0.31
+	prof.semi_major_axis_m = 4.5e9
+	prof.eccentricity = 0.07
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
 	prof.argument_periapsis_rad = 2.20
@@ -365,8 +369,8 @@ static func _build_gamma_ii() -> BodyDef:
 static func _build_gamma_iii() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
-	prof.semi_major_axis_m = 3.4e9
-	prof.eccentricity = 0.15
+	prof.semi_major_axis_m = 7.2e9
+	prof.eccentricity = 0.09
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
 	prof.argument_periapsis_rad = 4.05
@@ -391,8 +395,8 @@ static func _build_gamma_iii() -> BodyDef:
 static func _build_gamma_iv() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
-	prof.semi_major_axis_m = 1.95e11
-	prof.eccentricity = 0.04
+	prof.semi_major_axis_m = 9.0e9
+	prof.eccentricity = 0.03
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
 	prof.argument_periapsis_rad = 5.30
@@ -406,13 +410,13 @@ static func _build_gamma_iv() -> BodyDef:
 	d.mass_kg = UnitSystem.EARTH_MASS_KG * 2.0
 	d.radius_m = 8.9e6
 	d.rotation_period_s = 2.60 * UnitSystem.DAY_S
-	# P12A-Folge-Tuning: Gamma IV ist der erste bewusst sichtbare
-	# habitable Kandidat der StarterWorld, damit Habitability nicht nur in
-	# sample_system demonstriert wird.
+	# P13: gamma_iv ist der eine sichtbar habitable Kandidat der
+	# StarterWorld, jetzt aber innerhalb eines kompakten lokalen
+	# Red-Dwarf-Systems statt als root-skaliger Ausreisserorbit.
 	d.axial_tilt_rad = 0.26
 	d.luminosity_w = 0.0
 	d.albedo = 0.24
-	d.greenhouse_delta_k = 24.0
+	d.greenhouse_delta_k = 35.0
 	d.parent_id = &"gamma"
 	d.orbit_profile = prof
 	return d

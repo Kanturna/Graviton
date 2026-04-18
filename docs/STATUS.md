@@ -102,9 +102,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   sichtbar schneller als Planeten und Planeten sichtbar schneller als
   ihre Sterne um `obsidian` kreisen; die BH-Sterne bleiben dabei in
   diesem Slice bewusst kreisfoermige `AUTHORED_ORBIT`.
-- `starter_world` enthaelt jetzt zusaetzlich mit `gamma_iv` einen
-  ersten bewusst sichtbaren habitablen Kandidaten, damit Habitability
-  nicht nur in der separaten `sample_system`-Welt demonstriert wird.
+- `starter_world` enthaelt jetzt mit `gamma` bewusst ein kompakteres
+  Red-Dwarf-artiges Sternsystem; `gamma_iv` ist darin der erste lokal
+  plausible sichtbare habitabele Kandidat statt eines root-skaligen
+  Ausreisserorbits.
 
 ## Ziel dieser Praesentationsschicht
 
@@ -127,6 +128,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/sim/orbit/local_orbit_integrator.gd`
 - `src/tests/orbit/test_local_orbit_integrator.gd`
 - `src/tests/sim/test_orbit_service_numeric_local.gd`
+- `data/starter_world.gd`
+- `src/tests/sim/test_starter_world.gd`
 - `src/sim/thermal/thermal_service.gd`
 - `src/tests/sim/test_thermal_service.gd`
 - `src/sim/atmosphere/atmosphere_service.gd`
@@ -135,6 +138,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tests/sim/test_environment_service.gd`
 - `docs/SIMULATIONSREGELN.md`
 - `docs/STARTER_WORLD.md`
+- `docs/NEXT_STEPS.md`
+- `docs/DECISIONS.md`
 - `src/runtime/local_bubble/local_bubble_manager.gd`
 - `src/tests/runtime/test_local_bubble_step2.gd`
 - `src/tools/rendering/orbit_view_renderer.gd`
@@ -170,9 +175,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   oder exzentrischen Bahnen sichtbar ueber das Orbitaljahr
   oszillieren.
 - `sample_system` ist jetzt der explizite habitable Showcase fuer die
-- neue zonale Umweltkette; `starter_world` bleibt weitgehend der
+  neue zonale Umweltkette; `starter_world` bleibt weitgehend der
   thermisch extreme Mehrstern-Sandkasten, traegt jetzt aber bewusst
-  genau einen sichtbaren habitablen Kandidaten.
+  genau einen sichtbaren habitablen Kandidaten in einem kompakt
+  neu skalierten `gamma`-System.
 - Der Wish-Pfad fuer `NUMERIC_LOCAL` bleibt bewusst um einen Frame
   gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`),
   wird jetzt aber im `OrbitService` ueber einen Grace-Tick abgefedert.

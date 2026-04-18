@@ -28,10 +28,12 @@ Die vier Sternsysteme sind bewusst ungleich gross:
 - `gamma`: 4 Planeten, 1 Mond
 - `delta`: 1 Planet, 0 Monde
 
-Zusatz seit dem kleinen P12A-Folge-Tuning:
+Zusatz seit P13:
 
 - `gamma_iv` ist der erste bewusst sichtbare habitabele Kandidat der
   `starter_world`
+- `gamma` ist dafuer bewusst als kompakteres Red-Dwarf-artiges
+  Sternsystem neu parametrisiert
 - die restliche BH-Referenzwelt darf weiter ueberwiegend thermisch
   extrem bleiben
 
@@ -56,9 +58,11 @@ Zusatz seit dem kleinen P12A-Folge-Tuning:
   weiterer Mond
 - mindestens zwei neue Planeten mit explizit nicht-default
   Saison-Azimutwerten (`gamma_ii`, `delta_i`)
-- `gamma_iv` sitzt bewusst deutlich weiter draussen und traegt einen
-  expliziten Greenhouse-Beitrag, damit der Default-Testbed-Start in der
-  grossen BH-Welt nicht nur `HOT`- und `FROZEN`-Beispiele zeigt
+- `gamma` ist jetzt das kompakte Red-Dwarf-System der BH-Welt
+- `gamma_iv` sitzt bewusst innerhalb einer lokalen Stabilitaetsgrenze
+  und traegt einen expliziten Greenhouse-Beitrag, damit der
+  Default-Testbed-Start in der grossen BH-Welt nicht nur `HOT`- und
+  `FROZEN`-Beispiele zeigt
 
 ## Render-Skalierung
 
@@ -67,7 +71,7 @@ Zusatz seit dem kleinen P12A-Folge-Tuning:
 Grobe Sichtbarkeit:
 
 - BH-Sterne von `obsidian`: ca. `150 .. 480 RU`
-- Planeten von ihren Sternen: ca. `1.2 .. 5.1 RU`
+- Planeten von ihren Sternen: ca. `1.4 .. 9.0 RU`
 - Monde von ihren Planeten: ca. `0.24 .. 0.36 RU`
 
 Damit bleibt der Root-Fokus lesbar, waehrend die lokalen Sternsysteme
@@ -113,5 +117,6 @@ weiter klar vom Parent getrennt sind.
   Fehler; der kanonische habitable Referenzkoerper bleibt
   `sample_system.planet_a`.
 - Ausnahme: `gamma_iv` ist jetzt als einzelner sichtbar habitabler
-  Kandidat bewusst getunt. Das ist ein kleiner Produkt-/Content-Hook,
-  kein Umbau der gesamten BH-Welt zu einer freundlichen Referenzwelt.
+  Kandidat bewusst in einem kompakt neu skalierten `gamma`-System
+  aufgebaut. Das ist ein kleiner Produkt-/Content-Hook, kein Umbau der
+  gesamten BH-Welt zu einer freundlichen Referenzwelt.

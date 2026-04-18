@@ -17,6 +17,8 @@ static func run(ctx) -> void:
 	_test_world_model_fields(ctx)
 	_test_bh_star_authored_orbits_unique(ctx)
 	_test_planet_semi_major_axes_unique_per_star(ctx)
+	_test_gamma_red_dwarf_profile_and_compact_orbits(ctx)
+	_test_gamma_iv_stays_within_local_hill_sphere_guardrail(ctx)
 	_test_authored_positions_finite(ctx)
 	_test_kepler_positions_finite(ctx)
 	_test_positions_differ_over_time(ctx)
@@ -146,11 +148,13 @@ static func _test_world_model_fields(ctx) -> void:
 	ctx.assert_almost(by_id[&"alpha_i"].rotation_period_s, 0.80 * UnitSystem.DAY_S, 1.0e-6, "alpha_i rotation_period_s gesetzt")
 	ctx.assert_almost(by_id[&"alpha_i"].axial_tilt_rad, 0.18, 1.0e-9, "alpha_i axial_tilt_rad gesetzt")
 	ctx.assert_almost(by_id[&"alpha_i"].albedo, 0.28, 1.0e-9, "alpha_i albedo gesetzt")
-	ctx.assert_almost(by_id[&"gamma"].luminosity_w, 1.6 * UnitSystem.SOLAR_LUMINOSITY_W, 1.0e12, "gamma luminosity_w gesetzt")
+	ctx.assert_almost(by_id[&"gamma"].mass_kg, 0.20 * UnitSystem.SOLAR_MASS_KG, 1.0e18, "gamma mass_kg auf Red-Dwarf-Wert gesetzt")
+	ctx.assert_almost(by_id[&"gamma"].radius_m, 1.95e8, 1.0e-3, "gamma radius_m auf Red-Dwarf-Wert gesetzt")
+	ctx.assert_almost(by_id[&"gamma"].luminosity_w, 0.0036 * UnitSystem.SOLAR_LUMINOSITY_W, 1.0e12, "gamma luminosity_w auf Red-Dwarf-Wert gesetzt")
 	ctx.assert_almost(by_id[&"gamma_ii"].north_pole_orbit_frame_azimuth_rad, PI / 3.0, 1.0e-9, "gamma_ii saison-azimut gesetzt")
-	ctx.assert_almost(by_id[&"gamma_iv"].greenhouse_delta_k, 24.0, 1.0e-9, "gamma_iv greenhouse_delta_k gesetzt")
+	ctx.assert_almost(by_id[&"gamma_iv"].greenhouse_delta_k, 35.0, 1.0e-9, "gamma_iv greenhouse_delta_k gesetzt")
 	ctx.assert_almost(by_id[&"gamma_iv"].axial_tilt_rad, 0.26, 1.0e-9, "gamma_iv axial_tilt_rad auf habitablem Kandidatenwert gesetzt")
-	ctx.assert_almost(by_id[&"gamma_iv"].orbit_profile.semi_major_axis_m, 1.95e11, 1.0e3, "gamma_iv semi_major_axis_m auf weiteren habitablen Kandidatenorbit gesetzt")
+	ctx.assert_almost(by_id[&"gamma_iv"].orbit_profile.semi_major_axis_m, 9.0e9, 1.0e-3, "gamma_iv semi_major_axis_m auf kompakten habitablen Kandidatenorbit gesetzt")
 	ctx.assert_almost(by_id[&"delta_i"].north_pole_orbit_frame_azimuth_rad, -PI / 4.0, 1.0e-9, "delta_i saison-azimut gesetzt")
 	ctx.assert_almost(by_id[&"beta_ii"].rotation_period_s, 1.60 * UnitSystem.DAY_S, 1.0e-6, "beta_ii rotation_period_s gesetzt")
 	ctx.assert_almost(by_id[&"beta_ii"].axial_tilt_rad, 0.61, 1.0e-9, "beta_ii axial_tilt_rad gesetzt")
@@ -186,6 +190,45 @@ static func _test_planet_semi_major_axes_unique_per_star(ctx) -> void:
 			ctx.assert_true(not seen.has(prof.semi_major_axis_m),
 				"%s semi_major_axis_m innerhalb von %s einzigartig" % [planet_id, star_id])
 			seen[prof.semi_major_axis_m] = true
+
+
+static func _test_gamma_red_dwarf_profile_and_compact_orbits(ctx) -> void:
+	var by_id := _defs_by_id()
+	var gamma: BodyDef = by_id[&"gamma"]
+	var gamma_i: BodyDef = by_id[&"gamma_i"]
+	var gamma_ii: BodyDef = by_id[&"gamma_ii"]
+	var gamma_iii: BodyDef = by_id[&"gamma_iii"]
+	var gamma_iv: BodyDef = by_id[&"gamma_iv"]
+	ctx.assert_almost(gamma.mass_kg, 0.20 * UnitSystem.SOLAR_MASS_KG, 1.0e18, "gamma bleibt explizit auf kleinem Red-Dwarf-Massenwert gepinnt")
+	ctx.assert_almost(gamma.radius_m, 1.95e8, 1.0e-3, "gamma bleibt explizit auf kleinem Red-Dwarf-Radius gepinnt")
+	ctx.assert_almost(gamma.luminosity_w, 0.0036 * UnitSystem.SOLAR_LUMINOSITY_W, 1.0e12, "gamma bleibt explizit auf Red-Dwarf-Luminositaet gepinnt")
+	ctx.assert_almost(gamma_i.orbit_profile.semi_major_axis_m, 2.0e9, 1.0e-3, "gamma_i semi_major_axis_m gepinnt")
+	ctx.assert_almost(gamma_i.orbit_profile.eccentricity, 0.05, 1.0e-9, "gamma_i eccentricity gepinnt")
+	ctx.assert_almost(gamma_ii.orbit_profile.semi_major_axis_m, 4.5e9, 1.0e-3, "gamma_ii semi_major_axis_m gepinnt")
+	ctx.assert_almost(gamma_ii.orbit_profile.eccentricity, 0.07, 1.0e-9, "gamma_ii eccentricity gepinnt")
+	ctx.assert_almost(gamma_iii.orbit_profile.semi_major_axis_m, 7.2e9, 1.0e-3, "gamma_iii semi_major_axis_m gepinnt")
+	ctx.assert_almost(gamma_iii.orbit_profile.eccentricity, 0.09, 1.0e-9, "gamma_iii eccentricity gepinnt")
+	ctx.assert_almost(gamma_iv.orbit_profile.semi_major_axis_m, 9.0e9, 1.0e-3, "gamma_iv semi_major_axis_m gepinnt")
+	ctx.assert_almost(gamma_iv.orbit_profile.eccentricity, 0.03, 1.0e-9, "gamma_iv eccentricity gepinnt")
+	ctx.assert_almost(gamma_iv.greenhouse_delta_k, 35.0, 1.0e-9, "gamma_iv greenhouse_delta_k gepinnt")
+
+
+static func _test_gamma_iv_stays_within_local_hill_sphere_guardrail(ctx) -> void:
+	var by_id := _defs_by_id()
+	var obsidian: BodyDef = by_id[&"obsidian"]
+	var gamma: BodyDef = by_id[&"gamma"]
+	var gamma_iv: BodyDef = by_id[&"gamma_iv"]
+	var gamma_bh_profile: OrbitProfile = gamma.orbit_profile
+	var gamma_iv_profile: OrbitProfile = gamma_iv.orbit_profile
+	var r_hill_gamma: float = gamma_bh_profile.authored_radius_m * pow(
+		gamma.mass_kg / (3.0 * obsidian.mass_kg),
+		1.0 / 3.0
+	)
+	var gamma_iv_apoapsis_m: float = gamma_iv_profile.semi_major_axis_m * (1.0 + gamma_iv_profile.eccentricity)
+	ctx.assert_true(
+		gamma_iv_apoapsis_m <= 0.67 * r_hill_gamma,
+		"gamma_iv bleibt mit Apoapsis innerhalb der lokalen Hill-Sphere-Guardrail"
+	)
 
 
 static func _test_authored_positions_finite(ctx) -> void:

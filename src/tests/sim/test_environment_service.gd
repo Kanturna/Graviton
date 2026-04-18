@@ -61,7 +61,7 @@ static func run(ctx) -> void:
 	ctx.current_suite = "test_environment_service"
 	_test_sample_system_planet_a_is_habitable_and_seasonal(ctx)
 	_test_sample_system_moon_a_is_supported_and_band_aware(ctx)
-	_test_starter_world_gamma_iv_is_visible_habitable_candidate(ctx)
+	_test_starter_world_gamma_iv_is_compact_habitable_candidate_at_t0(ctx)
 	_test_sample_system_sol_is_unsupported(ctx)
 	_test_supported_body_without_luminous_ancestor_is_hostile(ctx)
 	_test_describe_and_classify_stay_consistent(ctx)
@@ -237,7 +237,7 @@ static func _test_sample_system_moon_a_is_supported_and_band_aware(ctx) -> void:
 	_cleanup_setup(setup)
 
 
-static func _test_starter_world_gamma_iv_is_visible_habitable_candidate(ctx) -> void:
+static func _test_starter_world_gamma_iv_is_compact_habitable_candidate_at_t0(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"starter_world")
 	var environment_service = setup["environment_service"]
 	var desc: Dictionary = environment_service.describe_body(&"gamma_iv")
@@ -249,7 +249,13 @@ static func _test_starter_world_gamma_iv_is_visible_habitable_candidate(ctx) -> 
 		ctx,
 		environment_service.classify(&"gamma_iv"),
 		EnvironmentServiceScript.Class.HABITABLE,
-		"gamma_iv ist der erste sichtbar habitabele Kandidat der StarterWorld"
+		"gamma_iv ist bei t = 0.0 der kompakte habitabele Kandidat der StarterWorld"
+	)
+	_assert_ecosystem_eq(
+		ctx,
+		int(desc.get("ecosystem_type", -1)),
+		EnvironmentServiceScript.EcosystemType.SEASONAL_WORLD,
+		"gamma_iv bleibt bei t = 0.0 bewusst ein SEASONAL_WORLD"
 	)
 	_cleanup_setup(setup)
 
