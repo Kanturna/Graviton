@@ -6,6 +6,7 @@ const TRAIL_LINE_WIDTH_PX: float = 2.0
 const MIN_TRAIL_STEP_PX: float = 1.2
 
 const BODY_VISUAL_SCRIPT := preload("res://src/tools/rendering/orbit_body_visual.gd")
+const PlanetVisualProfileScript := preload("res://src/tools/rendering/planet_visual_profile.gd")
 
 @onready var _orbit_layer: Node2D = $OrbitLayer
 @onready var _trail_layer: Node2D = $TrailLayer
@@ -13,6 +14,7 @@ const BODY_VISUAL_SCRIPT := preload("res://src/tools/rendering/orbit_body_visual
 
 var _registry: Node = null
 var _bubble: Node = null
+var _environment_service: Node = null
 
 var _body_visuals: Dictionary = {}
 var _orbit_visuals: Dictionary = {}
@@ -29,6 +31,12 @@ func configure(registry: Node, bubble: Node) -> void:
 	_registry = registry
 	_bubble = bubble
 	_rebuild_visuals()
+
+
+func set_environment_service(environment_service: Node) -> void:
+	_environment_service = environment_service
+	if _registry != null and _bubble != null:
+		_sync_visual_positions()
 
 
 func set_focus(body_id: StringName) -> void:
@@ -231,6 +239,11 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 			var detail_factor: float = _body_detail_factor(id, def)
 			visual.scale = Vector2.ONE * (detail_factor / _world_scale)
 			visual.set_detail_factor(detail_factor)
+			if _environment_service != null and (def.kind == BodyType.Kind.PLANET or def.kind == BodyType.Kind.MOON):
+				var environment_desc: Dictionary = _environment_service.describe_body(id)
+				visual.apply_planet_theme(
+					PlanetVisualProfileScript.resolve(def, environment_desc)
+				)
 
 		if not orbit_entry.is_empty():
 			var parent_id: StringName = orbit_entry.get("parent_id", &"")

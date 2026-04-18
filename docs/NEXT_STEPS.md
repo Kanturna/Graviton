@@ -264,6 +264,27 @@ Erledigt:
 - neue String-Tests sichern die Display-Mappings gegen spaetere
   Rueckbenennungen ab
 
+## Prioritaet 14 - View Phase A: Klima-Archetypen fuer Planeten und Monde - erledigt
+
+Ziel:
+Die bestehende planetare Umweltsemantik im Renderer sichtbar machen,
+ohne neue Simulationswahrheit zu erzeugen oder auf Texturimporte zu
+wechseln.
+
+Erledigt:
+
+- neuer reiner View-Resolver fuer Klima-Archetypen unter
+  `src/tools/rendering/`
+- `PLANET` und `MOON` teilen sich jetzt denselben Klima-Resolver, damit
+  HUD und Darstellung nicht auseinanderlaufen
+- shaderbasierte Archetypen `TEMPERATE_OCEAN`, `FROZEN`,
+  `HOT_SCORCHED` und `BARREN`
+- `TEMPERATE_OCEAN` ist bewusst als stilisierte Interpretation
+  markiert; `DESERT` wurde fuer einen spaeteren Sim-staerkeren Pass
+  zurueckgestellt
+- neue Rendering-Tests pinnen synthetische Resolver-Regeln plus die
+  stabilen Live-Welt-Faelle `planet_a` und `gamma_iv @ t=0.0`
+
 ## Danach - Weitere planetare Umweltableitung
 
 Nach dem ersten Guardrail-Block ist der naechste groessere Simulations-
@@ -282,6 +303,15 @@ Zielbild fuer diesen Strang:
 - hin zu glaubwuerdigen planetaren Gesamtzustaenden wie Eiswelt,
   trockene Welt, saisonal habitabler Planet oder greenhouse-getriebene
   Heisswelt mit spaeterer Volatile-/Stabilitaetsableitung
+
+## Kleiner moeglicher View-Folgeblock
+
+- spaeter `DESERT` erst dann einfuehren, wenn die Sim eine bessere
+  Ariditaets-/Wassergrundlage liefert
+- spaeter Moon-spezifische Verfeinerungen, wenn die gemeinsamen
+  Klima-Archetypen allein noch nicht genug Charakter tragen
+- spaeter optional Theme-Caching im Renderer, falls die Body-Zahl
+  deutlich waechst
 
 ## Offene Folgeaufgabe - NUMERIC_LOCAL Tuning / staerkere Policies
 
@@ -319,7 +349,7 @@ Zielbild fuer diesen Strang:
 
 ## Bewusst nicht jetzt
 
-- kein weiterer grosser Visual-Pass
+- kein fotorealistischer Texture-/Asset-Pass fuer Planeten
 - qualitative Umweltklassen in P8 nur als Text, keine Farben/Badges
 - auch P9 zeigt Greenhouse-/Surface-Werte nur als Text, keine
   renderer-seitige Visualisierung

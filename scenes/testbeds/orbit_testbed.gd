@@ -73,6 +73,7 @@ func _ready() -> void:
 	_atmosphere_service.configure(UniverseRegistry, _thermal_service)
 	_environment_service.configure(UniverseRegistry, _atmosphere_service)
 	_renderer.configure(UniverseRegistry, _bubble)
+	_renderer.set_environment_service(_environment_service)
 	_debug_overlay.configure(UniverseRegistry, TimeService, _bubble, _activation_set, _thermal_service)
 	_debug_overlay.visible = false
 

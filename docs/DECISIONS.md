@@ -1,5 +1,24 @@
 # Graviton - Decisions
 
+## 2026-04-18 - Planet-/Mond-Visuals bleiben Projektion bestehender Sim-/Derived-Daten
+
+Der neue Klima-Archetypen-Pass in P14 fuehrt bewusst keine neue
+Simulationswahrheit ein. Planet- und Mond-Looks bleiben reine Projektion
+aus bereits vorhandenen `BodyDef`- und Umwelt-/Atmosphaeren-Daten.
+
+Konsequenz:
+
+- der Archetypen-Resolver lebt im Rendering-Layer, nicht in `sim/`
+- `PLANET` und `MOON` teilen sich denselben Klima-Resolver, damit HUD
+  und Darstellung semantisch zusammenbleiben
+- `FROZEN`, `HOT_SCORCHED` und `BARREN` gelten als direkt sim-gestuetzte
+  Visual-Familien
+- `TEMPERATE_OCEAN` ist bewusst als stilisierte Interpretation markiert,
+  weil Wasserinventar, Land/Ozean-Verhaeltnis und Wolkenphysik noch
+  nicht simuliert werden
+- `DESERT` wird ausdruecklich auf einen spaeteren Pass mit staerkerer
+  Ariditaets-/Wasserbasis verschoben
+
 ## 2026-04-18 - HUD-Sprache trennt bewusst `Environment`, `Climate` und `Bands`
 
 Die spielerische HUD-Sprache fuer planetare Umweltwerte wird bewusst

@@ -110,6 +110,17 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `Class.MARGINAL` bleibt intern stabil, wird fuer Spieler aber als
   `HARSH` angezeigt; `Eco` heisst jetzt `Climate`, und die
   Temperaturzeile heisst `Bands`.
+- `PLANET`- und `MOON`-Bodies leiten jetzt zusaetzlich
+  shaderbasierte Klima-Archetypen aus der bestehenden Umweltbeschreibung
+  ab: `TEMPERATE_OCEAN`, `FROZEN`, `HOT_SCORCHED` und `BARREN`.
+- Der neue Klima-Look bleibt bewusst projektionstreu:
+  `FROZEN`, `HOT_SCORCHED` und `BARREN` lesen sich direkt aus den
+  momentanen Umweltzustaenden; `TEMPERATE_OCEAN` ist dagegen eine
+  explizit stilisierte, semi-realistische Interpretation ohne
+  simuliertes Wasserinventar oder echte Wolkenphysik.
+- Monde laufen jetzt durch denselben Klima-Resolver wie Planeten,
+  bleiben aber ueber gedimmte Theme-Intensitaeten sichtbar als Monde
+  lesbar statt wie kleine Vollplaneten zu wirken.
 
 ## Ziel dieser Praesentationsschicht
 
@@ -150,6 +161,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `scenes/testbeds/orbit_testbed.gd`
 - `scenes/testbeds/orbit_testbed.tscn`
 - `src/tools/rendering/orbit_body_visual.gd`
+- `src/tools/rendering/planet_visual_theme.gd`
+- `src/tools/rendering/planet_visual_profile.gd`
+- `src/tools/rendering/shaders/body_sphere.gdshader`
+- `src/tests/rendering/test_planet_visual_profile.gd`
 - `src/tools/rendering/space_backdrop.gd`
 - `src/tools/debug/debug_overlay.gd`
 
@@ -186,6 +201,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die zugrunde liegende zonale Umweltlogik blieb in P13.1 unveraendert;
   nur die HUD-Sprache trennt jetzt klarer zwischen Habitability-Urteil
   (`Environment`), Welttyp (`Climate`) und Rohdaten (`Bands`).
+- Der neue Klima-Archetypen-Pass bleibt bewusst shader-first und
+  texturfrei; `DESERT` wurde in diesem ersten Slice ausdruecklich nicht
+  eingefuehrt, weil dafuer noch keine staerkere Sim-Basis fuer Ariditaet
+  oder Wasserverteilung existiert.
 - Der Wish-Pfad fuer `NUMERIC_LOCAL` bleibt bewusst um einen Frame
   gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`),
   wird jetzt aber im `OrbitService` ueber einen Grace-Tick abgefedert.
