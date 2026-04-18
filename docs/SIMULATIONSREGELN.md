@@ -202,6 +202,34 @@ Modell spaeter verzweigen.
 - keine Mehrquellen-Summation
 - keine Cross-Root-Suche ausserhalb der Parent-Kette
 
+## Abgeleitete Umweltgroessen - P8 EnvironmentService
+
+`EnvironmentService` ist ein weiterer read-only Derived-Service im
+`sim/`-Layer. Er nutzt `ThermalService`, fuehrt aber bewusst keine neue
+State-Schicht ein.
+
+**Basis:** qualitative Umweltklassifikation ausschliesslich aus
+`equilibrium_temperature_k` (`T_eq`).
+
+**Unterstuetzte Koerper in P8:** nur `PLANET` und `MOON`.
+`STAR`, `BLACK_HOLE` und sonstige nicht-planetaere Koerper bleiben
+im normalen HUD `n/a`.
+
+**Klassenfenster:**
+- `HABITABLE`: `273.15 <= T_eq <= 323.15`
+- `MARGINAL`: `223.15 <= T_eq < 273.15` oder
+  `323.15 < T_eq <= 373.15`
+- `HOSTILE`: alles ausserhalb dieser Fenster
+
+**Fehlende Thermalbasis:** Unterstuetzte Bodies ohne gueltige
+Waermebasis (`T_eq <= 0`) werden in P8 als `HOSTILE` klassifiziert.
+
+**Visual-Creep-Regel:** Qualitative Klassifikationen werden in P8
+bewusst nur als Text angezeigt. Jede spaetere farbliche oder
+renderer-seitige Repraesentation gehoert in einen expliziten
+Visual-Pass - nicht in eine stille Erweiterung des nicht-visuellen
+Features.
+
 **Caller-Contract:** `ThermalService` liest
 `BodyState.position_parent_frame_m` direkt. Der Caller muss
 sicherstellen, dass die States nach dem letzten `OrbitService`-Tick

@@ -125,13 +125,27 @@ Erledigt:
 - neue Tests fuer Earth-like-Sanity, Albedo-Grenzen und
   Temperatur-Ordnungsrelationen
 
+## Prioritaet 8 - Derived Phase C: EnvironmentService / Habitability-Klassifikation - erledigt
+
+Ziel:
+Die ersten quantitativen Thermalwerte in eine kleine, sichtbare
+Umwelt-Aussage fuer planetare Bodies ueberfuehren, ohne `ThermalService`
+zu einer Sammelklasse auszubauen.
+
+Erledigt:
+
+- neuer `EnvironmentService` als separater read-only Derived-Service
+- Klassifikation in `HABITABLE`, `MARGINAL`, `HOSTILE`
+- Support nur fuer `PLANET` und `MOON`
+- minimale normale HUD-Zeile fuer den aktuellen Fokus
+- harte Boundary-Tests via Stub-ThermalService
+
 ## Danach - Planetare Zustandsableitung / Atmosphaeren
 
 Erst wenn Weltmodell, Loader und Bubble-/Regime-Fundament tragfaehig sind:
 
 - erste abgeleitete planetare Zustandsgroessen
   - Atmosphaeren-/Greenhouse-Ableitung auf Basis von `T_eq`
-  - einfache Bewohnbarkeits- oder Unwirtlichkeitsmarker
   - spaeter Strahlung / Atmosphaerenklassen / weitere Umweltfaktoren
 
 ## Offene Folgeaufgabe - Stabilitaets-Guardrail fuer NUMERIC_LOCAL
@@ -151,6 +165,7 @@ Erst wenn Weltmodell, Loader und Bubble-/Regime-Fundament tragfaehig sind:
 ## Bewusst nicht jetzt
 
 - kein weiterer grosser Visual-Pass
+- qualitative Umweltklassen in P8 nur als Text, keine Farben/Badges
 - keine neue Gameplay-/Schiffs-/Fraktionsschicht
 - keine ueberhastete Generator-Spielerei ohne sauberes Weltmodell
 - keine Ausweitung der Autoload-Liste

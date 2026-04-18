@@ -40,6 +40,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   global gemittelten absorbierten Fluss und einfache
   Gleichgewichtstemperatur aus `luminosity_w`, `albedo`, Parent-Kette
   und aktuellem `BodyState`.
+- `EnvironmentService` klassifiziert `PLANET`- und `MOON`-Bodies jetzt
+  read-only als `HABITABLE`, `MARGINAL` oder `HOSTILE` auf Basis von
+  `T_eq` und macht das erstmals im normalen HUD fuer den Fokus sichtbar.
 - Bodies aus einem anderen Root als der aktuelle Fokus liefern bewusst
   `Vector3.INF` und werden im Renderer nicht lokalisiert.
 - `TimeService` und `UniverseRegistry` sind die zentralen Autoloads.
@@ -96,6 +99,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tests/sim/test_orbit_service_numeric_local.gd`
 - `src/sim/thermal/thermal_service.gd`
 - `src/tests/sim/test_thermal_service.gd`
+- `src/sim/environment/environment_service.gd`
+- `src/tests/sim/test_environment_service.gd`
 - `docs/SIMULATIONSREGELN.md`
 - `src/runtime/local_bubble/local_bubble_manager.gd`
 - `src/tests/runtime/test_local_bubble_step2.gd`
@@ -124,8 +129,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Pfad.
 - `BodyDef` traegt jetzt erste statische Weltmodell-Felder, aber
   daraus werden bislang nur minimale Thermalwerte
-  (Insolation / absorbierter Fluss / `T_eq`) abgeleitet -
-  noch keine Habitability- oder Atmosphaerenmodelle.
+  (Insolation / absorbierter Fluss / `T_eq`) sowie eine erste
+  qualitative Umweltklassifikation abgeleitet -
+  noch keine Atmosphaerenmodelle.
 - Der Wish-Pfad fuer `NUMERIC_LOCAL` ist aktuell bewusst um einen Frame
   gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`).
   Das ist im kleinen P5-Slice akzeptiert und fuer spaetere
@@ -147,8 +153,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - als naechsten grossen Schritt erste abgeleitete planetare
   Zustandsgroessen ueber reine Insolation hinaus angehen
 - als naechsten logischen Derived-Schritt Atmosphaeren-/
-  Greenhouse-/Habitability-Ableitung auf Basis des jetzt etablierten
-  ThermalService betrachten
+  Greenhouse-Ableitung auf Basis des jetzt etablierten Thermal- und
+  Environment-Layers betrachten
 - danach den numerischen Pfad um Substepping / High-Speed-Guardrails
   erweitern, wenn hohe `time_scale` oder Radiusrand-Thrashing stoeren
 - spaeter Topologie-Helfer konsolidieren, wenn Bubble-/Activation-

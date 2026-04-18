@@ -22,7 +22,7 @@ src/runtime/       LocalBubbleManager, BubbleActivationSet
    |
    v
 src/sim/           UniverseRegistry, WorldLoader, OrbitService, LocalOrbitIntegrator,
-                   ThermalService,
+                   ThermalService, EnvironmentService,
                    BodyDef/State, OrbitProfile, OrbitMode
    |
    v
@@ -234,6 +234,22 @@ Insolation, global gemittelten absorbierten Fluss und einfache
 Gleichgewichtstemperatur. Das `/4`-Redistribution-Modell ist bewusst
 als Fast-Rotator-Annahme dokumentiert; Atmosphaeren-, Greenhouse- und
 Mehrquellen-Modelle bleiben Folgearbeit.
+
+## EnvironmentService - ADR
+
+**Entscheidung:** `EnvironmentService` ist ein eigener read-only
+Derived-Service im `sim/`-Layer und erweitert `ThermalService` bewusst
+nicht.
+
+**Grund:** `ThermalService` bleibt bei quantitativen Thermalwerten
+(`F`, absorbierter Fluss, `T_eq`). `EnvironmentService` macht daraus
+eine qualitative Interpretation (`HABITABLE` / `MARGINAL` /
+`HOSTILE`) und verhindert so, dass `ThermalService` zur Sammelklasse
+fuer jede umweltnahe Aussage wird.
+
+**Verantwortung:** On-demand-Klassifikation fuer `PLANET` und `MOON`
+auf Basis von `equilibrium_temperature_k`. Kein Cache, kein Tick-Hook,
+keine `BodyState`-Mutation.
 
 ## Regime-Wechsel-Modell - ADR
 

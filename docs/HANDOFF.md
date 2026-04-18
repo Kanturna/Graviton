@@ -10,7 +10,9 @@
 > Runtime-Service implementiert und bridged in einen minimalen
 > `NUMERIC_LOCAL`-Pfad ueber `OrbitService`. `ThermalService` liefert
 > jetzt minimale Thermalableitung on-demand
-> (Insolation / absorbierter Fluss / `T_eq`). Fuer die
+> (Insolation / absorbierter Fluss / `T_eq`). `EnvironmentService`
+> liefert darauf aufbauend die erste qualitative Umweltklassifikation.
+> Fuer die
 > aktuelle Priorisierung lies zuerst `docs/STATUS.md` und
 > `docs/NEXT_STEPS.md`.
 
@@ -26,6 +28,7 @@
 | `BodyDef` | statische Weltdefinition | `src/sim/bodies/body_def.gd` |
 | `BodyState` via `OrbitService` | Wahrheit | `src/sim/bodies/body_state.gd`, `src/sim/orbit/orbit_service.gd` |
 | `ThermalService` | abgeleitet (read-only) | `src/sim/thermal/thermal_service.gd` |
+| `EnvironmentService` | abgeleitet (read-only) | `src/sim/environment/environment_service.gd` |
 | `LocalBubbleManager` | abgeleitet (View) | `src/runtime/local_bubble/local_bubble_manager.gd` |
 | `BubbleActivationSet` | abgeleitet (read-only) | `src/runtime/local_bubble/bubble_activation_set.gd` |
 | Testbed-Visuals und `DebugOverlay` | anzeigend | `scenes/testbeds/`, `src/tools/debug/` |
@@ -112,7 +115,7 @@ Aktuelle Bausteine:
 - Logging bei Rueckwechseln zu `KEPLER_APPROX`
 - bewusst noch kein Substepping / kein High-Speed-Guardrail
 
-## Schritt 5 - Thermischer Minimal-Slice / Insolation + T_eq
+## Schritt 5 - Thermischer Minimal-Slice / Insolation + T_eq + Environment
 
 Status: implementiert.
 
@@ -121,6 +124,7 @@ Aktuelle Bausteine:
 - on-demand `compute_insolation_wpm2(id)`
 - on-demand `compute_absorbed_flux_wpm2(id)`
 - on-demand `compute_equilibrium_temperature_k(id)`
+- separater `EnvironmentService` fuer `HABITABLE` / `MARGINAL` / `HOSTILE`
 - `describe_body(id)` fuer Debug/Test
 - Quelle = naechster Ancestor mit `luminosity_w > 0.0`
 - keine Selbstbestrahlung; Suche startet beim Parent
@@ -153,7 +157,7 @@ alle gruen.
 
 Die aktuelle Projekt-Roadmap priorisiert jetzt:
 1. Atmosphaeren-/Greenhouse-Ableitung auf Basis der jetzigen
-   Gleichgewichtstemperatur
+   Gleichgewichtstemperatur und Umweltklassifikation
 2. danach Stabilitaets-Guardrails fuer den numerischen Pfad
 3. spaeter Generator-/Systemschritte und weitere Foundation-Folgen
 

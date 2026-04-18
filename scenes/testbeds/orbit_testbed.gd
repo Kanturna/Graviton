@@ -1,5 +1,6 @@
 extends Node2D
 
+const EnvironmentServiceScript = preload("res://src/sim/environment/environment_service.gd")
 const TIME_SCALE_PRESETS: Array[float] = [0.25, 1.0, 10.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0]
 const VIEWPORT_RADIUS_FACTOR: float = 0.38
 const VIEW_SMOOTHNESS: float = 10.0
@@ -16,12 +17,14 @@ const PAN_SPEED_PX_PER_S: float = 960.0
 @onready var _world_loader = $WorldLoader
 @onready var _orbit_service: OrbitService = $OrbitService
 @onready var _thermal_service = $ThermalService
+@onready var _environment_service: Node = $EnvironmentService
 @onready var _bubble: LocalBubbleManager = $LocalBubbleManager
 @onready var _activation_set = $BubbleActivationSet
 @onready var _renderer: OrbitViewRenderer = $WorldRoot
 @onready var _debug_overlay: DebugOverlay = $DebugOverlay
 
 @onready var _focus_value: Label = $HudLayer/TopPanel/Margin/VBox/FocusValue
+@onready var _environment_value: Label = $HudLayer/TopPanel/Margin/VBox/EnvironmentValue
 @onready var _time_value: Label = $HudLayer/TopPanel/Margin/VBox/TimeValue
 @onready var _scale_value: Label = $HudLayer/TopPanel/Margin/VBox/ScaleValue
 @onready var _speed_slider: HSlider = $HudLayer/TopPanel/Margin/VBox/SpeedSlider
@@ -64,6 +67,7 @@ func _ready() -> void:
 	_orbit_service.request_numeric_local_candidates(_activation_set.get_active_ids())
 	_orbit_service.recompute_all_at_time(TimeService.sim_time_s)
 	_thermal_service.configure(UniverseRegistry)
+	_environment_service.configure(UniverseRegistry, _thermal_service)
 	_renderer.configure(UniverseRegistry, _bubble)
 	_debug_overlay.configure(UniverseRegistry, TimeService, _bubble, _activation_set, _thermal_service)
 	_debug_overlay.visible = false
@@ -194,6 +198,7 @@ func _update_hud() -> void:
 	var fps: int = Engine.get_frames_per_second()
 	var speed_step_label: String = _time_scale_step_label(TimeService.time_scale)
 	_focus_value.text = "Focus: %s" % focus_name
+	_environment_value.text = _environment_hud_text(focus_id)
 	_time_value.text = "T+ %.2f d   steps %d   FPS %d" % [sim_days, TimeService.tick_count, fps]
 	_scale_value.text = "Speed x%s   Preset %s   Zoom %.0f%%" % [
 		_stripped_float(TimeService.time_scale),
@@ -205,6 +210,19 @@ func _update_hud() -> void:
 		"Paused" if TimeService.paused else "Running"
 	]
 	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Q/E or PgUp/PgDn speed   HUD slider speed   WASD pan   Wheel zoom (20%-2400%)   Backspace reset view   Space pause   F3 debug"
+
+
+func _environment_hud_text(focus_id: StringName) -> String:
+	if _environment_service == null:
+		return "Environment: n/a"
+	var desc: Dictionary = _environment_service.describe_body(focus_id)
+	if not bool(desc.get("is_supported_body_kind", false)):
+		return "Environment: n/a"
+	var class_text: String = EnvironmentServiceScript.to_string_class(
+		int(desc.get("environment_class", EnvironmentServiceScript.Class.HOSTILE))
+	)
+	var teq_k: float = float(desc.get("equilibrium_temperature_k", 0.0))
+	return "Environment: %s   Teq %.0f K" % [class_text, teq_k]
 
 
 func _update_manual_pan(delta: float) -> void:
