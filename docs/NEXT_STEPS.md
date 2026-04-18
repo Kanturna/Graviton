@@ -248,6 +248,22 @@ Erledigt:
 - Tests pinnen jetzt die neuen `gamma`-Werte sowie
   `gamma_iv @ t=0.0 => HABITABLE + SEASONAL_WORLD`
 
+## Prioritaet 13.2 - UX-Pass: Environment-/Climate-/Bands-Labels klaeren - erledigt
+
+Ziel:
+Die zonenbewusste Umweltkette soll fuer Spieler klarer lesbar werden,
+ohne ihre Logik, Schwellen oder Service-Grenzen zu veraendern.
+
+Erledigt:
+
+- `Class.MARGINAL` bleibt intern stabil, wird player-facing aber
+  bewusst als `HARSH` dargestellt
+- das HUD trennt jetzt klarer zwischen `Environment` (Habitability),
+  `Climate` (Welttyp / `ecosystem_type`) und `Bands` (Rohdaten)
+- die Temperaturzeile wurde von `Climate:` auf `Bands:` umbenannt
+- neue String-Tests sichern die Display-Mappings gegen spaetere
+  Rueckbenennungen ab
+
 ## Danach - Weitere planetare Umweltableitung
 
 Nach dem ersten Guardrail-Block ist der naechste groessere Simulations-
@@ -293,6 +309,13 @@ Zielbild fuer diesen Strang:
 - die BH-gebundenen Sternorbits muessen langfristig nicht auf perfekten
   Kreisen bleiben; elliptische BH-Sternbahnen sind der naechste
   naheliegende Welt-/Content-Folgeblock
+
+## Kleiner naechster UX-Folgeblock
+
+- falls die HUD-Sprache trotz P13.1 weiter unklar wirkt, kann spaeter
+  ein kleinerer Layout-/Dichte-Pass folgen
+- dabei gilt bewusst: neue HUD-Zeilen brauchen kuenftig eine kurze
+  Begruendung gegen unnoetige Anzeige-Dichte
 
 ## Bewusst nicht jetzt
 

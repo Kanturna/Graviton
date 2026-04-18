@@ -24,7 +24,7 @@ diese Regeln verstoesst, bricht das Fundament.
 - Konstanten leben in `core/units/unit_system.gd`. Kein zweiter
   Konstantenort.
 - `RENDER_SCALE_M_PER_UNIT = 1e9` ist ausschliesslich eine
-  Darstellungsgröße. Sie darf **nirgends** in `src/sim/` oder
+  Darstellungsgroesse. Sie darf **nirgends** in `src/sim/` oder
   `src/core/` auftauchen. Erlaubte Anwendungsstellen:
   ausschliesslich `scenes/` und `src/tools/rendering/`.
 
@@ -301,6 +301,21 @@ keine Jahresmittelung. Bei Tilt und exzentrischen Orbits koennen
 `environment_class` und `ecosystem_type` im Lauf des Orbitaljahres
 sichtbar oszillieren. Eine spaetere Hysterese- oder
 Stabilitaetsbewertung ist nicht Teil dieses Schritts.
+
+**HUD-Sprache ab P13.1:**
+
+- `Environment` bezeichnet im HUD die momentane Habitability-Aussage
+  ueber die drei Baender
+- `Climate` bezeichnet im HUD aktuell nur den Welttyp /
+  `ecosystem_type`, nicht eine vollstaendige spaetere Klimasimulation
+- `Bands` bezeichnet die rohen zonalen Temperaturwerte
+- `Climate` ist bewusst keine Oekologie-/Biosphaere-Aussage
+- `Class.MARGINAL` bleibt intern stabil, wird player-facing aber als
+  `HARSH` dargestellt, weil `MARGINAL` alltagssprachlich
+  missverstaendlich wirkt
+- falls spaeter reichere Klima-Dimensionen dazukommen, muessen sie
+  entweder bewusst unter `Climate` erweitert oder mit einem
+  praeziseren separaten Label eingefuehrt werden
 
 **Visual-Creep-Regel:** Qualitative Klassifikationen werden in P8/P9
 bewusst nur als Text angezeigt. Jede spaetere farbliche oder

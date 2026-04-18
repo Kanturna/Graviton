@@ -84,11 +84,15 @@ func describe_body(id: StringName) -> Dictionary:
 
 
 static func to_string_class(value: int) -> String:
+	# Bewusste UX-Abweichung: Das Enum bleibt aus P12A/P13-Kompatibilitaetsgruenden
+	# `MARGINAL`, aber die Spieler-Sprache nennt diesen Zustand `HARSH`.
+	# `MARGINAL` klingt alltagssprachlich nach "knapp drin", waehrend das
+	# System tatsaechlich "lebensfeindlich, aber nicht total tot" meint.
 	match value:
 		Class.HABITABLE:
 			return "HABITABLE"
 		Class.MARGINAL:
-			return "MARGINAL"
+			return "HARSH"
 		Class.HOSTILE:
 			return "HOSTILE"
 	return "UNKNOWN"

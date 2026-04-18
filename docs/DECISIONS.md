@@ -1,5 +1,40 @@
 # Graviton - Decisions
 
+## 2026-04-18 - HUD-Sprache trennt bewusst `Environment`, `Climate` und `Bands`
+
+Die spielerische HUD-Sprache fuer planetare Umweltwerte wird bewusst
+strenger getrennt als die internen Enum-Namen.
+
+Konsequenz:
+
+- `Environment` bezeichnet die momentane Habitability-Aussage ueber die
+  drei festen Breitenbaender
+- `Climate` bezeichnet im HUD aktuell nur den Welttyp /
+  `ecosystem_type`, nicht eine vollstaendige spaetere Klimasimulation
+- `Bands` zeigt die rohen zonalen Temperaturwerte und ist die implizite
+  Begruendung fuer das Urteil
+- neue HUD-Zeilen brauchen ab jetzt eine kurze Begruendung gegen
+  unnoetige Anzeige-Dichte; P13.1 fuegt bewusst keine neue Zeile hinzu,
+  sondern schaerft nur bestehende
+
+## 2026-04-18 - `MARGINAL` bleibt intern, wird player-facing aber zu `HARSH`
+
+Das interne Enum-Symbol `Class.MARGINAL` bleibt aus
+Kompatibilitaetsgruenden stabil, wird fuer Spieler aber bewusst als
+`HARSH` dargestellt.
+
+Konsequenz:
+
+- `MARGINAL` wird im Code nicht umbenannt; bestehende Tests, Logs und
+  Datenmodelle bleiben kompatibel
+- `HARSH` wird als Spielerwort verwendet, weil `MARGINAL`
+  alltagssprachlich zu sehr nach "knapp drin" klingt
+- `HABITABLE` und `HOSTILE` bleiben unveraendert, weil ihre
+  Alltagssemantik bereits zur Systemsemantik passt
+- View-/HUD-Code muss fuer Spielertexte immer ueber
+  `EnvironmentService.to_string_class()` und
+  `EnvironmentService.to_string_ecosystem()` laufen
+
 ## 2026-04-18 - `gamma` wird in P13 bewusst als kompaktes Red-Dwarf-System neu parametrisiert
 
 Der nachtraegliche `gamma_iv`-Hotfix aus dem ersten Sichtbarkeits-Follow-up

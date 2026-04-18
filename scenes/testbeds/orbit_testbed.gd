@@ -224,7 +224,9 @@ func _environment_hud_text(focus_id: StringName) -> String:
 	var desc: Dictionary = _environment_service.describe_body(focus_id)
 	if not bool(desc.get("is_supported_body_kind", false)):
 		return "Environment: n/a"
-	return "Environment: %s   Eco %s" % [
+	# Spielertexte fuer Umwelt-/Welttyp-Labels duerfen nur ueber die
+	# zentralen String-Mapper des EnvironmentService laufen.
+	return "Environment: %s   Climate: %s" % [
 		EnvironmentServiceScript.to_string_class(
 			int(desc.get("environment_class", EnvironmentServiceScript.Class.HOSTILE))
 		),
@@ -236,13 +238,13 @@ func _environment_hud_text(focus_id: StringName) -> String:
 
 func _climate_hud_text(focus_id: StringName) -> String:
 	if _environment_service == null:
-		return "Climate: n/a"
+		return "Bands: n/a"
 	var desc: Dictionary = _environment_service.describe_body(focus_id)
 	if not bool(desc.get("is_supported_body_kind", false)):
-		return "Climate: n/a"
+		return "Bands: n/a"
 	if not bool(desc.get("has_latitudinal_surface_basis", false)):
-		return "Climate: n/a"
-	return "Climate: -60deg %.0f K   Eq %.0f K   +60deg %.0f K" % [
+		return "Bands: n/a"
+	return "Bands: -60deg %.0f K   Eq %.0f K   +60deg %.0f K" % [
 		float(desc.get("south_midlatitude_surface_temperature_k", 0.0)),
 		float(desc.get("equator_surface_temperature_k", 0.0)),
 		float(desc.get("north_midlatitude_surface_temperature_k", 0.0)),

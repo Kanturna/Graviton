@@ -59,6 +59,7 @@ class AtmosphereStub:
 
 static func run(ctx) -> void:
 	ctx.current_suite = "test_environment_service"
+	_test_player_facing_string_mappings(ctx)
 	_test_sample_system_planet_a_is_habitable_and_seasonal(ctx)
 	_test_sample_system_moon_a_is_supported_and_band_aware(ctx)
 	_test_starter_world_gamma_iv_is_compact_habitable_candidate_at_t0(ctx)
@@ -217,6 +218,37 @@ static func _test_sample_system_planet_a_is_habitable_and_seasonal(ctx) -> void:
 		"planet_a zeigt unterschiedliche midlatitude-Baender"
 	)
 	_cleanup_setup(setup)
+
+
+static func _test_player_facing_string_mappings(ctx) -> void:
+	ctx.assert_true(
+		EnvironmentServiceScript.to_string_class(EnvironmentServiceScript.Class.HABITABLE) == "HABITABLE",
+		"HABITABLE bleibt als player-facing Environment-Label unveraendert"
+	)
+	ctx.assert_true(
+		EnvironmentServiceScript.to_string_class(EnvironmentServiceScript.Class.MARGINAL) == "HARSH",
+		"MARGINAL wird player-facing bewusst als HARSH dargestellt"
+	)
+	ctx.assert_true(
+		EnvironmentServiceScript.to_string_class(EnvironmentServiceScript.Class.HOSTILE) == "HOSTILE",
+		"HOSTILE bleibt als player-facing Environment-Label unveraendert"
+	)
+	ctx.assert_true(
+		EnvironmentServiceScript.to_string_ecosystem(EnvironmentServiceScript.EcosystemType.FROZEN_WORLD) == "FROZEN",
+		"FROZEN_WORLD mappt weiter auf FROZEN"
+	)
+	ctx.assert_true(
+		EnvironmentServiceScript.to_string_ecosystem(EnvironmentServiceScript.EcosystemType.TEMPERATE_WORLD) == "TEMPERATE",
+		"TEMPERATE_WORLD mappt weiter auf TEMPERATE"
+	)
+	ctx.assert_true(
+		EnvironmentServiceScript.to_string_ecosystem(EnvironmentServiceScript.EcosystemType.SEASONAL_WORLD) == "SEASONAL",
+		"SEASONAL_WORLD mappt weiter auf SEASONAL"
+	)
+	ctx.assert_true(
+		EnvironmentServiceScript.to_string_ecosystem(EnvironmentServiceScript.EcosystemType.HOT_WORLD) == "HOT",
+		"HOT_WORLD mappt weiter auf HOT"
+	)
 
 
 static func _test_sample_system_moon_a_is_supported_and_band_aware(ctx) -> void:

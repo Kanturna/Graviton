@@ -139,7 +139,7 @@ text = "Environment: n/a"
 [node name="ClimateValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
-text = "Climate: n/a"
+text = "Bands: n/a"
 
 [node name="SeasonValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
 layout_mode = 2

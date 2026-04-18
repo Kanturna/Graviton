@@ -74,10 +74,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   dargestellt.
 - Es gibt ein HUD fuer Fokus, Sim-Zeit, Zeitskala und Status.
 - Die normale Environment-Zeile zeigt fuer unterstuetzte Fokus-Bodies
-  jetzt Klasse plus `Eco ...`.
+  jetzt die Habitability-Aussage plus `Climate: ...` als Welttyp.
 - Das normale HUD zeigt fuer unterstuetzte Fokus-Bodies jetzt
-  zusaetzlich eine `Climate:`-Zeile mit bandbewussten Temperaturen fuer
-  `-60deg`, `Eq` und `+60deg`.
+  zusaetzlich eine `Bands:`-Zeile mit den rohen bandbewussten
+  Temperaturen fuer `-60deg`, `Eq` und `+60deg`.
 - Das normale HUD zeigt fuer Bodies mit saisonaler Basis jetzt
   zusaetzlich eine kleine `Season: subsolar ...`-Zeile.
 - Das HUD zeigt zusaetzlich FPS und die aktuelle Speed-Preset-Stufe.
@@ -106,6 +106,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Red-Dwarf-artiges Sternsystem; `gamma_iv` ist darin der erste lokal
   plausible sichtbare habitabele Kandidat statt eines root-skaligen
   Ausreisserorbits.
+- Die player-facing HUD-Sprache wurde bewusst geschaerft:
+  `Class.MARGINAL` bleibt intern stabil, wird fuer Spieler aber als
+  `HARSH` angezeigt; `Eco` heisst jetzt `Climate`, und die
+  Temperaturzeile heisst `Bands`.
 
 ## Ziel dieser Praesentationsschicht
 
@@ -179,6 +183,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   thermisch extreme Mehrstern-Sandkasten, traegt jetzt aber bewusst
   genau einen sichtbaren habitablen Kandidaten in einem kompakt
   neu skalierten `gamma`-System.
+- Die zugrunde liegende zonale Umweltlogik blieb in P13.1 unveraendert;
+  nur die HUD-Sprache trennt jetzt klarer zwischen Habitability-Urteil
+  (`Environment`), Welttyp (`Climate`) und Rohdaten (`Bands`).
 - Der Wish-Pfad fuer `NUMERIC_LOCAL` bleibt bewusst um einen Frame
   gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`),
   wird jetzt aber im `OrbitService` ueber einen Grace-Tick abgefedert.
