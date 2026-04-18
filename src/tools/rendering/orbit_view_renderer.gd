@@ -24,7 +24,7 @@ var _body_view_is_finite: Dictionary = {}
 
 var _world_scale: float = 1.0
 var _focus_id: StringName = &""
-var _zoom_bias: float = 1.0
+var _focus_closeup_ratio: float = 1.0
 
 
 func configure(registry: Node, bubble: Node) -> void:
@@ -53,11 +53,11 @@ func set_world_scale(value: float) -> void:
 	_apply_line_widths()
 
 
-func set_zoom_bias(value: float) -> void:
-	var new_val: float = maxf(value, 0.01)
-	if is_equal_approx(new_val, _zoom_bias):
+func set_focus_closeup_ratio(value: float) -> void:
+	var new_val: float = maxf(value, 1.0)
+	if is_equal_approx(new_val, _focus_closeup_ratio):
 		return
-	_zoom_bias = new_val
+	_focus_closeup_ratio = new_val
 	_apply_focus_emphasis()
 
 
@@ -293,7 +293,7 @@ func _focus_emphasis_for(id: StringName, focus_def: BodyDef) -> Dictionary:
 		return {"body": 1.0, "orbit": 1.0, "trail": 1.0}
 
 	if id == focus_def.id:
-		var focus_orbit_alpha: float = clampf(0.28 / maxf(_zoom_bias * 0.45, 1.0), 0.04, 0.28)
+		var focus_orbit_alpha: float = clampf(0.28 / maxf(_focus_closeup_ratio * 0.45, 1.0), 0.04, 0.28)
 		return {"body": 1.0, "orbit": focus_orbit_alpha, "trail": 0.92}
 
 	var def: BodyDef = _registry.get_def(id)
@@ -303,7 +303,7 @@ func _focus_emphasis_for(id: StringName, focus_def: BodyDef) -> Dictionary:
 	if def.parent_id == focus_def.id:
 		var child_trail_alpha: float = 1.0
 		if focus_def.kind == BodyType.Kind.PLANET or focus_def.kind == BodyType.Kind.MOON:
-			child_trail_alpha = clampf(0.40 / maxf(_zoom_bias * 0.40, 1.0), 0.02, 0.40)
+			child_trail_alpha = clampf(0.40 / maxf(_focus_closeup_ratio * 0.40, 1.0), 0.02, 0.40)
 		return {"body": 1.0, "orbit": 1.0, "trail": child_trail_alpha}
 
 	if _is_descendant_of(id, focus_def.id):
@@ -340,7 +340,7 @@ func _is_descendant_of(candidate_id: StringName, ancestor_id: StringName) -> boo
 
 
 func _body_detail_factor(id: StringName, def: BodyDef) -> float:
-	var closeup: float = clampf(pow(_zoom_bias, 0.90), 1.0, 12.0)
+	var closeup: float = clampf(pow(_focus_closeup_ratio, 0.90), 1.0, 12.0)
 	var weight: float = _body_closeup_weight(id, def)
 	var factor: float = 1.0 + (closeup - 1.0) * weight
 	return clampf(factor, 1.0, _max_body_detail_factor(def.kind))

@@ -285,6 +285,25 @@ Erledigt:
 - neue Rendering-Tests pinnen synthetische Resolver-Regeln plus die
   stabilen Live-Welt-Faelle `planet_a` und `gamma_iv @ t=0.0`
 
+## Prioritaet 14.1 - View Phase B: Absoluten Welt-Zoom einfuehren - erledigt
+
+Ziel:
+Die Kamera-Semantik innerhalb einer geladenen Welt konsistent machen,
+ohne die bestehende Fokus-Topologie oder die P14-Nahdetail-Schwellen zu
+brechen.
+
+Erledigt:
+
+- absoluter Welt-Zoomfaktor statt fokus-relativem Zoom-%
+- stabiler Weltanker ueber beim Load gecachten Root-Overview-Radius
+- Fokuswechsel mit automatischem Fit-Fallback fuer unbrauchbare
+  Kleinbody-/Ueberzoom-Faelle
+- `Backspace` ist jetzt explizit `fit current focus`
+- Renderer-Nahdetail und Fokus-Emphasis laufen weiter fokus-relativ
+  ueber einen separaten `focus_closeup_ratio`
+- neuer reiner Zoom-Helper-Testblock fuer Mapping, Clamp, Fallback und
+  Closeup-Semantik
+
 ## Danach - Weitere planetare Umweltableitung
 
 Nach dem ersten Guardrail-Block ist der naechste groessere Simulations-

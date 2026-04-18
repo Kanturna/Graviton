@@ -86,9 +86,13 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Hohe Speedstufen erzeugen keinen Tick-Sturm pro Frame mehr;
   `time_scale` skaliert das simulierte `dt` pro Physics-Frame.
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
-- Unter `100%` kann die Ansicht von jedem Fokus aus bis zum globalen
-  Systemueberblick herauszoomen.
-- `100%` bleibt der lokale Fokus-Fit; der Nahzoom reicht bis `2400%`.
+- Die Kamera nutzt jetzt einen absoluten Zoomfaktor pro geladener Welt
+  statt eines fokus-relativen Fit-Multiplikators.
+- Derselbe angezeigte Zoomwert bedeutet innerhalb derselben Welt jetzt
+  denselben Welt-Massstab, unabhaengig davon, ob `obsidian`, ein Stern
+  oder ein Planet fokussiert ist.
+- Der Zoombereich reicht jetzt von `5%` bis `5000%`; `Backspace`
+  passt die Ansicht explizit wieder auf den aktuellen Fokus.
 - Root-Fokus und globaler Ueberblick werden dynamisch ueber den
   Root-Body bestimmt statt implizit ueber `obsidian`.
 - Das Testbed unterstuetzt Camera-Panning, klickbaren Fokus und
@@ -158,6 +162,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/runtime/local_bubble/local_bubble_manager.gd`
 - `src/tests/runtime/test_local_bubble_step2.gd`
 - `src/tools/rendering/orbit_view_renderer.gd`
+- `src/tools/rendering/orbit_zoom_model.gd`
 - `scenes/testbeds/orbit_testbed.gd`
 - `scenes/testbeds/orbit_testbed.tscn`
 - `src/tools/rendering/orbit_body_visual.gd`
@@ -165,6 +170,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tools/rendering/planet_visual_profile.gd`
 - `src/tools/rendering/shaders/body_sphere.gdshader`
 - `src/tests/rendering/test_planet_visual_profile.gd`
+- `src/tests/rendering/test_orbit_zoom_model.gd`
 - `src/tools/rendering/space_backdrop.gd`
 - `src/tools/debug/debug_overlay.gd`
 
@@ -205,6 +211,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   texturfrei; `DESERT` wurde in diesem ersten Slice ausdruecklich nicht
   eingefuehrt, weil dafuer noch keine staerkere Sim-Basis fuer Ariditaet
   oder Wasserverteilung existiert.
+- Der neue absolute Kamera-Zoom ist pro geladener Welt ueber einen beim
+  Load gecachten Root-Overview-Radius stabilisiert; Renderer-Nahdetail
+  bleibt davon getrennt fokus-relativ, damit die P14-Archetypen bei
+  gleicher lokaler Naehe weiterhin dieselben Detail-Schwellen behalten.
 - Der Wish-Pfad fuer `NUMERIC_LOCAL` bleibt bewusst um einen Frame
   gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`),
   wird jetzt aber im `OrbitService` ueber einen Grace-Tick abgefedert.

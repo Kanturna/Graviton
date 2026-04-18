@@ -1,15 +1,16 @@
 extends Node2D
 
 const EnvironmentServiceScript = preload("res://src/sim/environment/environment_service.gd")
+const OrbitZoomModelScript = preload("res://src/tools/rendering/orbit_zoom_model.gd")
 const TIME_SCALE_PRESETS: Array[float] = [0.25, 1.0, 10.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0]
 const VIEWPORT_RADIUS_FACTOR: float = 0.38
 const VIEW_SMOOTHNESS: float = 10.0
-const ZOOM_BIAS_STEP: float = 1.16
-const MIN_ZOOM_BIAS: float = 0.20
-const MAX_ZOOM_BIAS: float = 24.0
-const ABSOLUTE_MIN_VIEW_SCALE: float = 0.18
-const MIN_DYNAMIC_MAX_VIEW_SCALE: float = 32768.0
+const ZOOM_FACTOR_STEP: float = 1.20
+const MIN_ABSOLUTE_ZOOM_FACTOR: float = 0.05
+const MAX_ABSOLUTE_ZOOM_FACTOR: float = 50.0
 const GLOBAL_OVERVIEW_RADIUS_FACTOR: float = 1.75
+const MIN_FOCUS_KEEP_VIEWPORT_FRACTION: float = 0.08
+const MAX_FOCUS_KEEP_VIEWPORT_FRACTION: float = 0.60
 const PAN_SPEED_PX_PER_S: float = 960.0
 
 @export_enum("starter_world", "sample_system") var initial_world_id: String = "starter_world"
@@ -37,13 +38,15 @@ const PAN_SPEED_PX_PER_S: float = 960.0
 var _focus_order: Array[StringName] = []
 var _focus_index: int = 0
 var _time_scale_index: int = 5
-var _zoom_bias: float = 1.0
+var _absolute_zoom_factor: float = 1.0
 
 var _target_view_scale: float = 1.0
 var _current_view_scale: float = 1.0
 var _target_world_offset: Vector2 = Vector2.ZERO
 var _current_world_offset: Vector2 = Vector2.ZERO
 var _manual_pan_ru: Vector2 = Vector2.ZERO
+var _world_overview_radius_ru: float = 1.0
+var _current_focus_frame_radius_ru: float = 1.0
 
 
 func _ready() -> void:
@@ -76,12 +79,13 @@ func _ready() -> void:
 	_renderer.set_environment_service(_environment_service)
 	_debug_overlay.configure(UniverseRegistry, TimeService, _bubble, _activation_set, _thermal_service)
 	_debug_overlay.visible = false
+	_cache_world_overview_radius()
 
 	_configure_speed_slider()
 	if not TimeService.time_scale_changed.is_connected(_on_time_scale_changed):
 		TimeService.time_scale_changed.connect(_on_time_scale_changed)
 	_set_time_scale_from_preset_index(_time_scale_index)
-	_set_focus(_focus_order[_focus_index], true)
+	_set_focus(_focus_order[_focus_index], true, true)
 	_apply_view_transform(true)
 	_update_hud()
 
@@ -126,8 +130,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				_debug_overlay.visible = not _debug_overlay.visible
 				get_viewport().set_input_as_handled()
 			KEY_BACKSPACE:
-				_zoom_bias = 1.0
 				_manual_pan_ru = Vector2.ZERO
+				_fit_current_focus_zoom()
+				_refresh_target_view()
 				get_viewport().set_input_as_handled()
 
 	if event is InputEventMouseButton and event.pressed:
@@ -139,10 +144,10 @@ func _unhandled_input(event: InputEvent) -> void:
 					_set_focus(picked_id)
 					get_viewport().set_input_as_handled()
 			MOUSE_BUTTON_WHEEL_UP:
-				_zoom_bias = minf(_zoom_bias * ZOOM_BIAS_STEP, MAX_ZOOM_BIAS)
+				_absolute_zoom_factor = minf(_absolute_zoom_factor * ZOOM_FACTOR_STEP, MAX_ABSOLUTE_ZOOM_FACTOR)
 				get_viewport().set_input_as_handled()
 			MOUSE_BUTTON_WHEEL_DOWN:
-				_zoom_bias = maxf(_zoom_bias / ZOOM_BIAS_STEP, MIN_ZOOM_BIAS)
+				_absolute_zoom_factor = maxf(_absolute_zoom_factor / ZOOM_FACTOR_STEP, MIN_ABSOLUTE_ZOOM_FACTOR)
 				get_viewport().set_input_as_handled()
 
 
@@ -153,28 +158,27 @@ func _cycle_focus(direction: int) -> void:
 	_set_focus(_focus_order[_focus_index])
 
 
-func _set_focus(body_id: StringName, immediate: bool = false) -> void:
+func _set_focus(body_id: StringName, immediate: bool = false, force_fit: bool = false) -> void:
 	if body_id == StringName(""):
 		return
 	_bubble.set_focus(body_id)
 	_renderer.set_focus(body_id)
 	_renderer.clear_trails()
 	_manual_pan_ru = Vector2.ZERO
+	_refresh_focus_frame_radius(body_id)
+	_adjust_zoom_for_focus(get_viewport_rect().size, force_fit)
 	_refresh_target_view()
 	if immediate:
 		_apply_view_transform(true)
 
 
 func _refresh_target_view() -> void:
-	_renderer.set_zoom_bias(_zoom_bias)
-	var frame: Dictionary = _renderer.get_focus_frame(_bubble.get_focus())
 	var viewport_size: Vector2 = get_viewport_rect().size
-	var focus_center: Vector2 = frame.get("center", Vector2.ZERO)
-	var focus_radius: float = maxf(float(frame.get("radius", 1.0)), 1.0)
-	var focus_fit_scale: float = _fit_scale_for_radius(focus_radius, viewport_size)
-	var global_overview_scale: float = _global_overview_scale(viewport_size)
-
-	_target_view_scale = _map_zoom_bias_to_scale(focus_fit_scale, global_overview_scale, _zoom_bias)
+	var focus_center: Vector2 = _renderer.get_body_view_position_ru(_bubble.get_focus())
+	if not _is_finite_vec2(focus_center):
+		focus_center = Vector2.ZERO
+	var world_base_scale: float = _world_base_scale(viewport_size)
+	_target_view_scale = OrbitZoomModelScript.target_view_scale(world_base_scale, _absolute_zoom_factor)
 	_target_world_offset = viewport_size * 0.5 - (focus_center + _manual_pan_ru) * _target_view_scale
 
 
@@ -190,6 +194,7 @@ func _apply_view_transform(immediate: bool, delta: float = 0.0) -> void:
 	_renderer.scale = Vector2.ONE * _current_view_scale
 	_renderer.position = _current_world_offset
 	_renderer.set_world_scale(_current_view_scale)
+	_renderer.set_focus_closeup_ratio(_current_focus_closeup_ratio(get_viewport_rect().size))
 
 
 func _update_hud() -> void:
@@ -210,13 +215,13 @@ func _update_hud() -> void:
 	_scale_value.text = "Speed x%s   Preset %s   Zoom %.0f%%" % [
 		_stripped_float(TimeService.time_scale),
 		speed_step_label,
-		_zoom_bias * 100.0
+		_absolute_zoom_factor * 100.0
 	]
 	_mode_value.text = "Bodies %d   %s" % [
 		UniverseRegistry.body_count(),
 		"Paused" if TimeService.paused else "Running"
 	]
-	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Q/E or PgUp/PgDn speed   HUD slider speed   WASD pan   Wheel zoom (20%-2400%)   Backspace reset view   Space pause   F3 debug"
+	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Q/E or PgUp/PgDn speed   HUD slider speed   WASD pan   Wheel zoom (5%-5000%)   Backspace fit focus   Space pause   F3 debug"
 
 
 func _environment_hud_text(focus_id: StringName) -> String:
@@ -286,37 +291,81 @@ func _fit_scale_for_radius(focus_radius: float, viewport_size: Vector2) -> float
 	return target_screen_radius / safe_radius
 
 
-func _global_overview_scale(viewport_size: Vector2) -> float:
+func _world_base_scale(viewport_size: Vector2) -> float:
+	return maxf(_fit_scale_for_radius(_world_overview_radius_ru, viewport_size), 0.0001)
+
+
+func _cache_world_overview_radius() -> void:
 	var root_id: StringName = _root_focus_id()
 	if root_id == StringName(""):
-		return ABSOLUTE_MIN_VIEW_SCALE
-
+		_world_overview_radius_ru = 1.0
+		return
 	var frame: Dictionary = _renderer.get_focus_frame(root_id)
-	var root_radius: float = maxf(float(frame.get("radius", 1.0)), 1.0) * GLOBAL_OVERVIEW_RADIUS_FACTOR
-	return maxf(_fit_scale_for_radius(root_radius, viewport_size), ABSOLUTE_MIN_VIEW_SCALE)
+	_world_overview_radius_ru = maxf(
+		float(frame.get("radius", 1.0)) * GLOBAL_OVERVIEW_RADIUS_FACTOR,
+		1.0
+	)
 
 
-func _map_zoom_bias_to_scale(focus_fit_scale: float, global_scale: float, zoom_bias: float) -> float:
-	var fit_scale: float = maxf(focus_fit_scale, ABSOLUTE_MIN_VIEW_SCALE)
-	var overview_scale: float = maxf(global_scale, ABSOLUTE_MIN_VIEW_SCALE)
-	var dynamic_max_scale: float = _max_view_scale_for_focus(fit_scale)
+func _refresh_focus_frame_radius(body_id: StringName) -> void:
+	var frame: Dictionary = _renderer.get_focus_frame(body_id)
+	_current_focus_frame_radius_ru = maxf(float(frame.get("radius", 1.0)), 1.0)
 
-	if zoom_bias <= 1.0:
-		if fit_scale <= overview_scale or is_equal_approx(fit_scale, overview_scale):
-			return clampf(overview_scale, ABSOLUTE_MIN_VIEW_SCALE, dynamic_max_scale)
-		var t: float = clampf(
-			(zoom_bias - MIN_ZOOM_BIAS) / maxf(1.0 - MIN_ZOOM_BIAS, 0.0001),
-			0.0,
-			1.0
+
+func _adjust_zoom_for_focus(viewport_size: Vector2, force_fit: bool) -> void:
+	var focus_fit_scale: float = _current_focus_fit_scale(viewport_size)
+	var world_base_scale: float = _world_base_scale(viewport_size)
+	if force_fit:
+		_absolute_zoom_factor = OrbitZoomModelScript.fit_zoom_factor(
+			focus_fit_scale,
+			world_base_scale,
+			MIN_ABSOLUTE_ZOOM_FACTOR,
+			MAX_ABSOLUTE_ZOOM_FACTOR
 		)
-		var log_scale: float = exp(lerpf(log(overview_scale), log(fit_scale), t))
-		return clampf(log_scale, ABSOLUTE_MIN_VIEW_SCALE, dynamic_max_scale)
+		return
 
-	return clampf(fit_scale * zoom_bias, ABSOLUTE_MIN_VIEW_SCALE, dynamic_max_scale)
+	var target_view_scale: float = OrbitZoomModelScript.target_view_scale(
+		world_base_scale,
+		_absolute_zoom_factor
+	)
+	var projected_focus_radius_px: float = OrbitZoomModelScript.projected_focus_radius_px(
+		_current_focus_frame_radius_ru,
+		target_view_scale
+	)
+	if OrbitZoomModelScript.should_auto_fit_for_focus(
+		projected_focus_radius_px,
+		viewport_size,
+		MIN_FOCUS_KEEP_VIEWPORT_FRACTION,
+		MAX_FOCUS_KEEP_VIEWPORT_FRACTION
+	):
+		_absolute_zoom_factor = OrbitZoomModelScript.fit_zoom_factor(
+			focus_fit_scale,
+			world_base_scale,
+			MIN_ABSOLUTE_ZOOM_FACTOR,
+			MAX_ABSOLUTE_ZOOM_FACTOR
+		)
 
 
-func _max_view_scale_for_focus(focus_fit_scale: float) -> float:
-	return maxf(MIN_DYNAMIC_MAX_VIEW_SCALE, focus_fit_scale * MAX_ZOOM_BIAS * 1.10)
+func _fit_current_focus_zoom() -> void:
+	var viewport_size: Vector2 = get_viewport_rect().size
+	_refresh_focus_frame_radius(_bubble.get_focus())
+	_absolute_zoom_factor = OrbitZoomModelScript.fit_zoom_factor(
+		_current_focus_fit_scale(viewport_size),
+		_world_base_scale(viewport_size),
+		MIN_ABSOLUTE_ZOOM_FACTOR,
+		MAX_ABSOLUTE_ZOOM_FACTOR
+	)
+
+
+func _current_focus_fit_scale(viewport_size: Vector2) -> float:
+	return _fit_scale_for_radius(_current_focus_frame_radius_ru, viewport_size)
+
+
+func _current_focus_closeup_ratio(viewport_size: Vector2) -> float:
+	return OrbitZoomModelScript.focus_closeup_ratio(
+		_current_view_scale,
+		_current_focus_fit_scale(viewport_size)
+	)
 
 
 func _root_focus_id() -> StringName:
@@ -325,6 +374,10 @@ func _root_focus_id() -> StringName:
 		if def != null and def.is_root():
 			return id
 	return StringName("")
+
+
+static func _is_finite_vec2(value: Vector2) -> bool:
+	return is_finite(value.x) and is_finite(value.y)
 
 
 func _configure_speed_slider() -> void:

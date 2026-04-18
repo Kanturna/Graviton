@@ -190,7 +190,7 @@ theme_override_constants/margin_bottom = 10
 [node name="Hints" type="Label" parent="HudLayer/BottomPanel/Margin"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.776471, 0.854902, 0.972549, 0.898039)
-text = "Tab focus"
+text = "Wheel zoom (5%-5000%)   Backspace fit focus"
 
 [node name="DebugOverlay" parent="." instance=ExtResource("6_overlay")]
 visible = false
