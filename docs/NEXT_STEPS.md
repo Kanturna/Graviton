@@ -155,30 +155,39 @@ Erledigt:
 - `EnvironmentService` klassifiziert jetzt auf `surface_temperature_k`
 - bestehende normale HUD-Zeile zeigt jetzt Klasse, `Tsurf` und `G+... K`
 
-## Danach - NUMERIC_LOCAL Guardrails / Stabilitaet
+## Prioritaet 10 - Foundation Phase D: NUMERIC_LOCAL Guardrails / Stabilitaet - erledigt
 
-Nach dem minimalen Greenhouse-Layer ist der groesste offene
-Fundamentblock wieder der numerische Pfad:
+Ziel:
+Den bestehenden `NUMERIC_LOCAL`-Pfad gegen grosse `dt` und den
+dokumentierten Wish-Versatz haerten, ohne `BubbleActivationSet` mit
+Hysterese aufzublasen oder `BodyState` zu erweitern.
 
-- Substepping oder High-Speed-Guardrail fuer hohe `time_scale`
-- moegliche Hysterese oder andere Anti-Thrashing-Massnahmen am
-  Aktivierungsrand
-- gezielte Tests fuer hohe `time_scale`, Wish-Versatz und
-  Radiusrand-Wechsel
+Erledigt:
+
+- `LocalOrbitIntegrator.step_velocity_verlet_substepped(...)` als
+  pure Substep-Hilfe
+- `OrbitService`-Guardrails als exportierte Tuning-Felder
+  (`target_substep`, `max_substeps`, `missing_request_grace_ticks`)
+- Anti-Thrashing bewusst im `OrbitService`, nicht im
+  `BubbleActivationSet`
+- `Cap+Warn`-Policy mit Warning-Dedup statt hartem Kepler-Fallback
+- neue Tests fuer grosse `dt`, Grace-Verhalten und Warning-Dedup
 
 ## Danach - Weitere planetare Umweltableitung
 
-Wenn der numerische Pfad wieder robuster ist:
+Nach dem ersten Guardrail-Block ist der naechste groessere Simulations-
+Schritt wieder die planetare Ableitung:
 
-- erste abgeleitete planetare Zustandsgroessen
-  - weitere Atmosphaerenfaktoren jenseits des additiven `delta_k`
-  - spaeter Strahlung / Atmosphaerenklassen / weitere Umweltfaktoren
+- weitere Atmosphaerenfaktoren jenseits des additiven `greenhouse_delta_k`
+- spaeter weitere Umweltgroessen / Strahlung / Atmosphaerenklassen
 
-## Offene Folgeaufgabe - Stabilitaets-Guardrail fuer NUMERIC_LOCAL
+## Offene Folgeaufgabe - NUMERIC_LOCAL Tuning / staerkere Policies
 
-- spaeter Substepping / High-Speed-Guardrail fuer hohe `time_scale`
-- moegliche Hysterese oder andere Anti-Thrashing-Massnahmen am
-  Aktivierungsrand
+- spaeter numerische Tuning-Arbeit jenseits des aktuellen
+  `Cap+Warn`-Best-Effort-Pfads, falls hoehere `time_scale` praktisch
+  wichtig werden
+- moegliche spaetere strengere Overspeed-Policies oder weitere
+  High-Speed-Regeln im `OrbitService`
 - spaeter Topologie-Helfer sinnvoll zentralisieren, wenn die
   Activation-/Mehrwurzel-Pfade stabil sind
 

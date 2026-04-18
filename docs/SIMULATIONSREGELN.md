@@ -34,7 +34,7 @@ diese Regeln verstoesst, bricht das Fundament.
 |------------------|-------------|------------|
 | `AUTHORED_ORBIT` | aktiv       | fest vorgegebene Kreisbahnen |
 | `KEPLER_APPROX`  | aktiv       | analytische Kepler-Loesung ums Parent |
-| `NUMERIC_LOCAL`  | aktiv (minimal) | Velocity-Verlet-Integration um Parent; nur fuer Bodies im Aktiv-Set mit `KEPLER_APPROX`-Profil |
+| `NUMERIC_LOCAL`  | aktiv (minimal) | Velocity-Verlet-Integration um Parent; fuer Bodies im Aktiv-Set mit `KEPLER_APPROX`-Profil, jetzt mit Substepping und `Cap+Warn` |
 
 `OrbitService` ist die **einzige** Stelle, die `BodyState`-Felder
 schreibt. Andere Klassen lesen nur.
@@ -57,11 +57,13 @@ Eintritts-Zeitpunkt (Position + Velocity via zentraler finite Differenz,
 weiter integriert. `BodyState.current_mode` wechselt zu
 `NUMERIC_LOCAL`.
 
-**Austritt (NUMERIC_LOCAL -> KEPLER_APPROX):** Beim naechsten Tick wird
-die Kepler-Loesung reevaluiert. Ein kleiner Diskontinuitaetssprung ist
-moeglich und dokumentiert - `OrbitService` loggt ihn explizit via
-`push_warning` inklusive Positions- und Velocity-Delta. Kein stiller
-Datendrift.
+**Austritt (NUMERIC_LOCAL -> KEPLER_APPROX):** `OrbitService` verlaesst
+den numerischen Pfad nicht sofort beim ersten fehlenden Wish, sondern
+toleriert aktuell genau einen Missing-Request-Tick. Erst nach Ablauf
+dieser Grace wird die Kepler-Loesung reevaluiert. Ein kleiner
+Diskontinuitaetssprung ist moeglich und dokumentiert -
+`OrbitService` loggt ihn explizit via `push_warning` inklusive
+Positions- und Velocity-Delta. Kein stiller Datendrift.
 
 **Trigger:** Die Szene (Composition Root) ruft
 `orbit_service.request_numeric_local_candidates(active_ids)` nach jedem
@@ -71,23 +73,30 @@ anhand von Eligibility, welche davon tatsaechlich wechseln.
 **Request-Semantik:** Jeder Aufruf ersetzt das bisherige Wunsch-Set
 vollstaendig. Ein identischer erneuter Request auf einen bereits
 numerischen Body darf keinen Neu-Eintritt und kein Reseeding ausloesen.
+Der bekannte `_process()`/`_physics_process()`-Versatz wird dabei nicht
+durch die Szene geloest, sondern ueber eine kleine OrbitService-seitige
+Grace abgefedert. `BubbleActivationSet` bleibt ohne Hysterese.
 
 **Integrator:** Velocity Verlet, zwei Beschleunigungsauswertungen pro
 Schritt. Nur Parentgravitation
-(`LocalOrbitIntegrator.gravity_acceleration_mps2`). Kein N-Body, keine
-externen Kraefte in diesem Schritt.
+(`LocalOrbitIntegrator.gravity_acceleration_mps2`). Fuer grosse `dt`
+nutzt `OrbitService` jetzt die reine Substep-Hilfe
+`step_velocity_verlet_substepped(...)`. Kein N-Body, keine externen
+Kraefte in diesem Schritt.
 
 **Ein-Frame-Versatz:** Das Aktivierungs-Wish entsteht aktuell in
 `_process()`, der eigentliche `sim_tick` laeuft in `_physics_process()`.
 Dadurch bedient der Wish aus Frame `T` den Tick in Frame `T+1`. Bei
-hohen `time_scale` kann das am Aktivierungsrand zu Entry/Exit-Thrashing
-fuehren. Das ist bewusst akzeptierte offene Schuld fuer einen spaeteren
-Guardrail-/Substep-Schritt.
+hohen `time_scale` kann das am Aktivierungsrand weiter sichtbar sein,
+wird aber jetzt im `OrbitService` ueber genau einen Grace-Tick
+abgefedert.
 
-**dt-Limitation:** `NUMERIC_LOCAL` nutzt in diesem minimalen Slice weder
-Substepping noch einen High-Speed-Guardrail. Bei grossen `dt` steigt
-deshalb das Risiko numerischer Drift oder Regime-Thrashing. Das ist ein
-bewusster Folgepunkt, kein uebersehener Bug.
+**Overspeed-Policy:** `NUMERIC_LOCAL` nutzt jetzt Substepping mit
+konfigurierbarem Ziel-Substep und Max-Budget. Wenn das Budget nicht
+reicht, bleibt der Body numerisch und `OrbitService` nutzt `Cap+Warn`
+mit Warning-Dedup. Das ist bewusst nur Best-Effort: dauerhaftes
+Ueberschreiten des Budgets kann weiter zu langsamer Energie- und
+Bahndrift fuehren.
 
 **CONTROLLED-Bodies:** Fuer `BodyType.Kind.CONTROLLED` sind
 Regime-Wechsel-Regeln noch nicht definiert - das ist ein bewusster

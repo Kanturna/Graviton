@@ -1,5 +1,32 @@
 # Graviton - Decisions
 
+## 2026-04-18 - Anti-Thrashing bleibt im `OrbitService`, nicht im `BubbleActivationSet`
+
+Der erste `NUMERIC_LOCAL`-Stabilitaets-Guardrail lebt bewusst im
+`OrbitService`.
+
+Konsequenz:
+
+- `BubbleActivationSet` bleibt rein geometrische Aktivierungslogik ohne
+  Hysterese
+- der bekannte `_process()`/`_physics_process()`-Versatz wird ueber eine
+  kleine Missing-Request-Grace im `OrbitService` abgefedert
+- es gibt in P10 keine neue Wunsch-/Stability-Zwischenschicht und keine
+  `BodyState`-Erweiterung
+
+## 2026-04-18 - Overspeed-Policy fuer `NUMERIC_LOCAL` ist `Cap+Warn`
+
+Bei zu grossem numerischem `dt` bleibt der Body im `NUMERIC_LOCAL`-
+Pfad. `OrbitService` capped nur die Substep-Anzahl und warnt mit
+Dedup-Logik beim Eintritt in den gecappten Zustand.
+
+Konsequenz:
+
+- kein harter Kepler-Fallback als Teil des ersten Guardrail-Blocks
+- das Warning ist bewusst Best-Effort-Diagnose, kein Stabilitaetsbeweis
+- wer dauerhaft gecappte Bodies vermeiden will, muss `time_scale` oder
+  Guardrail-Parameter anpassen
+
 ## 2026-04-18 - Greenhouse lebt in einem eigenen `AtmosphereService`
 
 Die P9-Greenhouse-Schicht erweitert bewusst weder `ThermalService` noch

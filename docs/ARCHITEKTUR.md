@@ -205,12 +205,14 @@ zu `OrbitMath.kepler_position`. Sie in `OrbitService` einzubetten,
 wuerde den Service zu einer monolithischen Klasse machen.
 
 **Verantwortung:** Statische pure Funktionen wie
-`gravity_acceleration_mps2()` und `step_velocity_verlet()`. Liest und
-schreibt kein `BodyState`. Kein Autoload.
+`gravity_acceleration_mps2()`, `step_velocity_verlet()` und
+`step_velocity_verlet_substepped()`. Liest und schreibt kein
+`BodyState`. Kein Autoload.
 
-**Aktueller Stand:** Implementiert als minimaler Parent-Only-Integrator
-in `src/sim/orbit/local_orbit_integrator.gd`. Kein Substepping, kein
-High-Speed-Guardrail, keine N-Body-Kraefte.
+**Aktueller Stand:** Implementiert als Parent-Only-Integrator in
+`src/sim/orbit/local_orbit_integrator.gd`, inklusive reiner
+Substep-Hilfe fuer grosse numerische `dt`. Weiterhin keine N-Body-
+Kraefte und keine Service-Verantwortung.
 
 ## ThermalService - ADR
 
@@ -307,10 +309,17 @@ Diskontinuitaeten sichtbar bleiben.
 am aktuellen `t_s`. Velocity wird per zentraler finite Differenz mit
 `VELOCITY_SEED_EPSILON_S = 1.0` berechnet.
 
-**Bekannte Rest-Limitation:** Der Wish-Pfad entsteht aktuell in
-`_process()`, der eigentliche Sim-Tick in `_physics_process()`. Dieser
-Ein-Frame-Versatz bleibt fuer den minimalen Slice bewusst stehen und
-wird spaeter ueber Guardrails / Substepping adressiert.
+**P10-Guardrail-Stand:** Der Wish-Pfad entsteht weiter in `_process()`,
+der eigentliche Sim-Tick in `_physics_process()`. Dieser
+Ein-Frame-Versatz bleibt bewusst bestehen, wird aber jetzt im
+`OrbitService` ueber eine kleine Missing-Request-Grace abgefedert.
+`BubbleActivationSet` bleibt dabei rein geometrisch und bekommt keine
+Hysterese.
+
+**Overspeed-Policy:** `OrbitService` integriert `NUMERIC_LOCAL` jetzt
+per Substepping bis zu einem festen Budget und nutzt darueber hinaus
+`Cap+Warn`. Das ist bewusst Best-Effort und kein Garant fuer beliebig
+hohe `time_scale`.
 
 ## Frame-Modell - ADR (vorlaeufig)
 

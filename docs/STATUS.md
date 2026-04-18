@@ -35,7 +35,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Sim-Layer und schaltet eligible `KEPLER_APPROX`-Bodies minimal auf
   `NUMERIC_LOCAL`.
 - `LocalOrbitIntegrator` ist als pure Parent-Only-Mathematik via
-  Velocity Verlet implementiert.
+  Velocity Verlet implementiert und hat jetzt einen reinen
+  Substep-Helper fuer grosse numerische `dt`.
+- `OrbitService` haertet den numerischen Pfad jetzt mit
+  OrbitService-seitiger Missing-Request-Grace, Substepping sowie
+  `Cap+Warn`-Dedup gegen dt-Spitzen und Wish-Rand-Thrashing.
 - `ThermalService` liefert jetzt on-demand minimale Insolation,
   global gemittelten absorbierten Fluss und einfache
   Gleichgewichtstemperatur aus `luminosity_w`, `albedo`, Parent-Kette
@@ -121,30 +125,31 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Bekannte offene Punkte
 
-- Schritte 1-4 sind jetzt minimal implementiert; der groesste offene
-  Folgepunkt im Regime-Fundament ist nicht mehr der erste
-  `NUMERIC_LOCAL`-Slice, sondern dessen spaeterer
-  Stabilitaets-Guardrail (Substepping / High-Speed-Limits /
-  Anti-Thrashing).
+- Schritte 1-4 sind jetzt minimal implementiert; der erste
+  `NUMERIC_LOCAL`-Guardrail ist jetzt ebenfalls eingezogen. Offene
+  Folgearbeit im Regime-Fundament ist damit eher spaeteres Tuning
+  jenseits des aktuellen `Cap+Warn`-Best-Effort-Pfads als ein
+  fehlender Guardrail-Block.
 - `LocalBubbleManager` liefert jetzt die dokumentierte LCA-/
   praezisionsbewusste Bubble-Komposition fuer same-root-Faelle.
 - `BubbleActivationSet` ist jetzt implementiert, wird im Testbed pro
   Frame rebuilt und wird jetzt read-only als Wish-Quelle fuer
   `OrbitService.request_numeric_local_candidates(...)` genutzt.
 - Das Projekt ist topologisch offen fuer mehrere Root-Systeme und hat
-  jetzt eine explizite Loader- und Aktivierungsschicht, aber noch
-  keinen Stabilitaets-Guardrail fuer hohe `time_scale` im numerischen
-  Pfad.
+  jetzt eine explizite Loader-, Aktivierungs- und erste
+  Stabilitaetsschicht fuer hohe `time_scale` im numerischen Pfad.
 - `BodyDef` traegt jetzt erste statische Weltmodell-Felder, aber
   daraus werden bislang nur minimale Thermalwerte
   (Insolation / absorbierter Fluss / `T_eq`) sowie ein minimales
   additives Greenhouse-Modell und eine erste qualitative
   Umweltklassifikation abgeleitet -
   noch keine Atmosphaerenchemie oder Druckmodelle.
-- Der Wish-Pfad fuer `NUMERIC_LOCAL` ist aktuell bewusst um einen Frame
-  gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`).
-  Das ist im kleinen P5-Slice akzeptiert und fuer spaetere
-  Guardrail-Arbeit dokumentiert.
+- Der Wish-Pfad fuer `NUMERIC_LOCAL` bleibt bewusst um einen Frame
+  gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`),
+  wird jetzt aber im `OrbitService` ueber einen Grace-Tick abgefedert.
+- `Cap+Warn` ist bewusst nur eine Best-Effort-Policy: bei dauerhaft
+  gecappten Bodies kann weiter langsame Energie- und Bahndrift
+  auftreten, auch wenn der Body im numerischen Regime bleibt.
 - Topologie-Helfer liegen aktuell noch an mehreren Stellen
   (`OrbitViewRenderer`, `LocalBubbleManager`, Debug/Test-Helfer) und
   koennen spaeter sinnvoll zentralisiert werden.
@@ -159,11 +164,13 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- als naechsten grossen Fundament-Schritt den numerischen Pfad um
-  Substepping / High-Speed-Guardrails erweitern
-- danach weitere planetare Umweltfaktoren jenseits des additiven
-  Greenhouse-Toy-Modells betrachten
+- als naechsten grossen Simulationsschritt weitere planetare
+  Umweltfaktoren jenseits des additiven Greenhouse-Toy-Modells
+  betrachten
 - parallel kleine nicht-kanonische Doku-Drift bereinigen, wenn sie
   wieder sichtbar wird
+- spaeter numerische Guardrail-Parameter oder strengere Overspeed-
+  Policies nachziehen, falls hohe `time_scale`-Faelle das praktisch
+  noetig machen
 - spaeter Topologie-Helfer konsolidieren, wenn Bubble-/Activation-
   Schicht und Mehrwurzel-Pfade stabil sind

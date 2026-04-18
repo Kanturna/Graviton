@@ -10,23 +10,46 @@ extends Node
 #   - KEPLER_APPROX:  OrbitMath.kepler_position
 #   - NUMERIC_LOCAL:  minimaler Velocity-Verlet-Pfad fuer explizit
 #                     gewuenschte KEPLER_APPROX-Bodies.
+#
+# P10-Guardrails:
+#   - Anti-Thrashing lebt bewusst hier im OrbitService, nicht im
+#     BubbleActivationSet.
+#   - Overspeed-Handling bleibt Cap+Warn als Best-Effort-Policy:
+#     ein gecappter Body bleibt numerisch, aber das Warning signalisiert,
+#     dass time_scale oder Substep-Budget angepasst werden sollten.
+#   - Warning-Dedup ist Absicht: nur der Eintritt in den gecappten
+#     Zustand warnt, nicht jeder Folgetick.
 
 const VELOCITY_SEED_EPSILON_S: float = 1.0
 # Zentrale finite Differenz fuer das analytische Velocity-Seeding beim
 # Eintritt in NUMERIC_LOCAL und beim Rueckwechsel nach KEPLER_APPROX.
 const LOCAL_ORBIT_INTEGRATOR_SCRIPT := preload("res://src/sim/orbit/local_orbit_integrator.gd")
+const NO_REQUEST_TICK: int = -2147483648
+
+@export_range(0.0, 3600.0, 1.0, "or_greater") var numeric_local_target_substep_s: float = 10.0
+@export_range(1, 4096, 1, "or_greater") var numeric_local_max_substeps_per_tick: int = 64
+@export_range(0, 64, 1, "or_greater") var numeric_local_missing_request_grace_ticks: int = 1
 
 var _registry: Node = null
 var _time: Node = null
 var _configured: bool = false
 var _requested_numeric_local_ids: Dictionary = {}
+var _last_requested_tick_by_id: Dictionary = {}
+var _substep_cap_warning_active_by_id: Dictionary = {}
+var _sim_tick_index: int = 0
 
 
 func configure(registry: Node, time_service: Node) -> void:
 	assert(registry != null, "OrbitService.configure: registry is null")
 	assert(time_service != null, "OrbitService.configure: time_service is null")
+	if _time != null and _time.sim_tick.is_connected(_on_sim_tick):
+		_time.sim_tick.disconnect(_on_sim_tick)
 	_registry = registry
 	_time = time_service
+	_requested_numeric_local_ids.clear()
+	_last_requested_tick_by_id.clear()
+	_substep_cap_warning_active_by_id.clear()
+	_sim_tick_index = 0
 	if not _time.sim_tick.is_connected(_on_sim_tick):
 		_time.sim_tick.connect(_on_sim_tick)
 	_configured = true
@@ -40,6 +63,7 @@ func _exit_tree() -> void:
 func _on_sim_tick(_dt: float) -> void:
 	if not _configured:
 		return
+	_sim_tick_index += 1
 	var t: float = _time.sim_time_s
 	for id in _registry.get_update_order():
 		var state: BodyState = _registry.get_state(id)
@@ -63,6 +87,7 @@ func request_numeric_local_candidates(ids: Array[StringName]) -> void:
 		if not _is_numeric_local_eligible(def):
 			continue
 		_requested_numeric_local_ids[id] = true
+		_last_requested_tick_by_id[id] = _sim_tick_index
 
 
 func update_body(state: BodyState, def: BodyDef, t_s: float) -> void:
@@ -77,7 +102,7 @@ func update_body(state: BodyState, def: BodyDef, t_s: float) -> void:
 		return
 
 	if state.current_mode == OrbitMode.Kind.NUMERIC_LOCAL:
-		if _requested_numeric_local_ids.has(def.id):
+		if _is_numeric_local_requested_or_in_grace(def.id):
 			_update_numeric_local(state, def, t_s)
 		else:
 			_exit_numeric_local_to_kepler(state, def, profile, t_s)
@@ -208,15 +233,21 @@ func _enter_numeric_local(state: BodyState, def: BodyDef, profile: OrbitProfile,
 
 func _update_numeric_local(state: BodyState, def: BodyDef, t_s: float) -> void:
 	var dt: float = t_s - state.last_update_time_s
-	var integrated: Dictionary = LOCAL_ORBIT_INTEGRATOR_SCRIPT.step_velocity_verlet(
+	var integrated: Dictionary = LOCAL_ORBIT_INTEGRATOR_SCRIPT.step_velocity_verlet_substepped(
 		state.position_parent_frame_m,
 		state.velocity_parent_frame_mps,
 		dt,
-		_compute_parent_mu(def)
+		_compute_parent_mu(def),
+		numeric_local_target_substep_s,
+		numeric_local_max_substeps_per_tick
 	)
 	state.position_parent_frame_m = integrated.get("position_parent_frame_m", state.position_parent_frame_m)
 	state.velocity_parent_frame_mps = integrated.get("velocity_parent_frame_mps", state.velocity_parent_frame_mps)
 	state.current_mode = OrbitMode.Kind.NUMERIC_LOCAL
+	if bool(integrated.get("hit_substep_cap", false)):
+		_warn_on_substep_cap(def.id, dt, integrated)
+	else:
+		_substep_cap_warning_active_by_id.erase(def.id)
 
 
 func _exit_numeric_local_to_kepler(state: BodyState, def: BodyDef, profile: OrbitProfile, t_s: float) -> void:
@@ -236,3 +267,33 @@ func _exit_numeric_local_to_kepler(state: BodyState, def: BodyDef, profile: Orbi
 	state.position_parent_frame_m = analytical_pos
 	state.velocity_parent_frame_mps = analytical_vel
 	state.current_mode = OrbitMode.Kind.KEPLER_APPROX
+	_clear_numeric_local_runtime_for(def.id)
+
+
+func _is_numeric_local_requested_or_in_grace(id: StringName) -> bool:
+	if _requested_numeric_local_ids.has(id):
+		return true
+	var grace_ticks: int = maxi(numeric_local_missing_request_grace_ticks, 0)
+	var last_requested_tick: int = int(_last_requested_tick_by_id.get(id, NO_REQUEST_TICK))
+	return (_sim_tick_index - last_requested_tick) <= grace_ticks
+
+
+func _warn_on_substep_cap(id: StringName, dt_s: float, integrated: Dictionary) -> void:
+	if bool(_substep_cap_warning_active_by_id.get(id, false)):
+		return
+	push_warning(
+		"OrbitService: NUMERIC_LOCAL capped substeps fuer %s dt=%s substeps=%d substep_dt=%s target_substep=%s"
+			% [
+				String(id),
+				str(dt_s),
+				int(integrated.get("substep_count", 0)),
+				str(float(integrated.get("substep_dt_s", 0.0))),
+				str(numeric_local_target_substep_s),
+			]
+	)
+	_substep_cap_warning_active_by_id[id] = true
+
+
+func _clear_numeric_local_runtime_for(id: StringName) -> void:
+	_last_requested_tick_by_id.erase(id)
+	_substep_cap_warning_active_by_id.erase(id)

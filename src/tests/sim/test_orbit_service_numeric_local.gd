@@ -8,9 +8,12 @@ static func run(ctx) -> void:
 	_test_numeric_request_enters_numeric_local(ctx)
 	_test_numeric_entry_seeds_from_analytic_state(ctx)
 	_test_numeric_local_integrates_on_next_step(ctx)
-	_test_empty_request_exits_back_to_kepler(ctx)
+	_test_numeric_local_substeps_large_dt(ctx)
+	_test_capped_numeric_local_keeps_mode_and_sets_warning_flag(ctx)
+	_test_empty_request_exits_back_to_kepler_after_grace(ctx)
+	_test_request_return_during_grace_avoids_reseed(ctx)
 	_test_ineligible_requested_bodies_are_ignored(ctx)
-	_test_request_replace_semantics_drop_old_wish(ctx)
+	_test_request_replace_semantics_drop_old_wish_after_grace(ctx)
 	_test_identical_request_is_idempotent(ctx)
 	_test_update_order_stays_topological(ctx)
 
@@ -86,6 +89,14 @@ static func _ids(values: Array[StringName]) -> Array[StringName]:
 	return values
 
 
+static func _integrator_script() -> GDScript:
+	return load("res://src/sim/orbit/local_orbit_integrator.gd")
+
+
+static func _emit_sim_tick(time_service: Node, dt_s: float) -> void:
+	time_service._emit_tick(dt_s)
+
+
 static func _test_numeric_request_enters_numeric_local(ctx) -> void:
 	var reg := _make_registry()
 	var time_service := _make_time_service()
@@ -152,7 +163,7 @@ static func _test_numeric_local_integrates_on_next_step(ctx) -> void:
 
 	service.recompute_all_at_time(100.0 + dt)
 
-	var expected: Dictionary = load("res://src/sim/orbit/local_orbit_integrator.gd").step_velocity_verlet(
+	var expected: Dictionary = _integrator_script().step_velocity_verlet(
 		pos_before,
 		vel_before,
 		dt,
@@ -176,34 +187,136 @@ static func _test_numeric_local_integrates_on_next_step(ctx) -> void:
 	reg.free()
 
 
-static func _test_empty_request_exits_back_to_kepler(ctx) -> void:
+static func _test_numeric_local_substeps_large_dt(ctx) -> void:
+	var reg := _make_registry()
+	var time_service := _make_time_service()
+	var service = _make_orbit_service(reg, time_service)
+	var state: BodyState = reg.get_state(&"planet_a")
+	var def: BodyDef = reg.get_def(&"planet_a")
+
+	service.numeric_local_target_substep_s = 10.0
+	service.numeric_local_max_substeps_per_tick = 64
+	service.request_numeric_local_candidates(_ids([&"planet_a"]))
+	service.recompute_all_at_time(0.0)
+	var pos_before: Vector3 = state.position_parent_frame_m
+	var vel_before: Vector3 = state.velocity_parent_frame_mps
+	var dt: float = 40.0
+
+	_emit_sim_tick(time_service, dt)
+
+	var expected: Dictionary = _integrator_script().step_velocity_verlet_substepped(
+		pos_before,
+		vel_before,
+		dt,
+		_compute_parent_mu(reg, def),
+		service.numeric_local_target_substep_s,
+		service.numeric_local_max_substeps_per_tick
+	)
+	ctx.assert_vec_almost(
+		state.position_parent_frame_m,
+		expected.get("position_parent_frame_m", Vector3.ZERO),
+		1.0e-3,
+		"grosser dt wird im NUMERIC_LOCAL-Pfad per Substepping integriert"
+	)
+	ctx.assert_vec_almost(
+		state.velocity_parent_frame_mps,
+		expected.get("velocity_parent_frame_mps", Vector3.ZERO),
+		1.0e-3,
+		"grosser dt nutzt dieselbe Substep-Mathematik wie der Integrator-Helper"
+	)
+	ctx.assert_true(not service._substep_cap_warning_active_by_id.has(&"planet_a"),
+		"nicht-gecappte Substep-Ticks setzen kein Cap-Warning-Flag")
+
+	service.free()
+	time_service.free()
+	reg.free()
+
+
+static func _test_capped_numeric_local_keeps_mode_and_sets_warning_flag(ctx) -> void:
+	var reg := _make_registry()
+	var time_service := _make_time_service()
+	var service = _make_orbit_service(reg, time_service)
+	var state: BodyState = reg.get_state(&"planet_a")
+	var def: BodyDef = reg.get_def(&"planet_a")
+
+	service.numeric_local_target_substep_s = 1.0
+	service.numeric_local_max_substeps_per_tick = 2
+	service.request_numeric_local_candidates(_ids([&"planet_a"]))
+	service.recompute_all_at_time(0.0)
+	var pos_before: Vector3 = state.position_parent_frame_m
+	var vel_before: Vector3 = state.velocity_parent_frame_mps
+
+	_emit_sim_tick(time_service, 10.0)
+
+	var expected: Dictionary = _integrator_script().step_velocity_verlet_substepped(
+		pos_before,
+		vel_before,
+		10.0,
+		_compute_parent_mu(reg, def),
+		service.numeric_local_target_substep_s,
+		service.numeric_local_max_substeps_per_tick
+	)
+	ctx.assert_true(state.current_mode == OrbitMode.Kind.NUMERIC_LOCAL,
+		"auch im capped Fall bleibt der Body in NUMERIC_LOCAL")
+	ctx.assert_true(bool(expected.get("hit_substep_cap", false)),
+		"Testfall erzwingt bewusst einen gecappten Substep-Tick")
+	ctx.assert_vec_almost(
+		state.position_parent_frame_m,
+		expected.get("position_parent_frame_m", Vector3.ZERO),
+		1.0e-3,
+		"capped Tick integriert trotzdem das volle dt numerisch"
+	)
+	ctx.assert_true(service._substep_cap_warning_active_by_id.has(&"planet_a"),
+		"erster Cap-Tick setzt das Warning-Dedup-Flag")
+
+	_emit_sim_tick(time_service, 10.0)
+	ctx.assert_true(service._substep_cap_warning_active_by_id.has(&"planet_a"),
+		"Folge-Cap-Ticks behalten das Dedup-Flag statt neue State-Pfade zu oeffnen")
+
+	service.numeric_local_max_substeps_per_tick = 64
+	_emit_sim_tick(time_service, 1.0)
+	ctx.assert_true(not service._substep_cap_warning_active_by_id.has(&"planet_a"),
+		"ein uncapped Tick setzt das Cap-Warning-Flag wieder zurueck")
+
+	service.free()
+	time_service.free()
+	reg.free()
+
+
+static func _test_empty_request_exits_back_to_kepler_after_grace(ctx) -> void:
 	var reg := _make_registry()
 	var time_service := _make_time_service()
 	var service = _make_orbit_service(reg, time_service)
 	var state: BodyState = reg.get_state(&"planet_a")
 	var def: BodyDef = reg.get_def(&"planet_a")
 	var profile: OrbitProfile = def.orbit_profile
-	var t_exit: float = 321.0
 
 	service.request_numeric_local_candidates(_ids([&"planet_a"]))
-	service.recompute_all_at_time(300.0)
+	service.recompute_all_at_time(0.0)
+	_emit_sim_tick(time_service, 1.0)
+	service.request_numeric_local_candidates(_ids([&"planet_a"]))
 	service.request_numeric_local_candidates(_ids([]))
-	service.recompute_all_at_time(t_exit)
 
-	var expected: Dictionary = _evaluate_kepler_state(def, profile, t_exit)
+	_emit_sim_tick(time_service, 1.0)
+	ctx.assert_true(state.current_mode == OrbitMode.Kind.NUMERIC_LOCAL,
+		"ein fehlender Request-Tick bleibt wegen Grace noch numerisch")
+
+	_emit_sim_tick(time_service, 1.0)
+
+	var expected: Dictionary = _evaluate_kepler_state(def, profile, 3.0)
 	ctx.assert_true(state.current_mode == OrbitMode.Kind.KEPLER_APPROX,
-		"leerer Request fuehrt zum Rueckwechsel auf KEPLER_APPROX")
+		"leerer Request fuehrt nach Ablauf der Grace zum Rueckwechsel auf KEPLER_APPROX")
 	ctx.assert_vec_almost(
 		state.position_parent_frame_m,
 		expected.get("position_parent_frame_m", Vector3.ZERO),
 		1.0e-3,
-		"Rueckwechsel setzt analytische Kepler-Position"
+		"Rueckwechsel nach Grace setzt analytische Kepler-Position"
 	)
 	ctx.assert_vec_almost(
 		state.velocity_parent_frame_mps,
 		expected.get("velocity_parent_frame_mps", Vector3.ZERO),
 		1.0e-3,
-		"Rueckwechsel setzt analytische Kepler-Velocity"
+		"Rueckwechsel nach Grace setzt analytische Kepler-Velocity"
 	)
 
 	service.free()
@@ -231,18 +344,70 @@ static func _test_ineligible_requested_bodies_are_ignored(ctx) -> void:
 	reg.free()
 
 
-static func _test_request_replace_semantics_drop_old_wish(ctx) -> void:
+static func _test_request_return_during_grace_avoids_reseed(ctx) -> void:
+	var reg := _make_registry()
+	var time_service := _make_time_service()
+	var service = _make_orbit_service(reg, time_service)
+	var state: BodyState = reg.get_state(&"planet_a")
+	var def: BodyDef = reg.get_def(&"planet_a")
+
+	service.request_numeric_local_candidates(_ids([&"planet_a"]))
+	service.recompute_all_at_time(0.0)
+	_emit_sim_tick(time_service, 10.0)
+	service.request_numeric_local_candidates(_ids([&"planet_a"]))
+	service.request_numeric_local_candidates(_ids([]))
+	_emit_sim_tick(time_service, 1.0)
+	ctx.assert_true(state.current_mode == OrbitMode.Kind.NUMERIC_LOCAL,
+		"Grace haelt den Body vor der Request-Rueckkehr noch im numerischen Regime")
+
+	var pos_before_return: Vector3 = state.position_parent_frame_m
+	var vel_before_return: Vector3 = state.velocity_parent_frame_mps
+	service.request_numeric_local_candidates(_ids([&"planet_a"]))
+	_emit_sim_tick(time_service, 1.0)
+
+	var expected: Dictionary = _integrator_script().step_velocity_verlet_substepped(
+		pos_before_return,
+		vel_before_return,
+		1.0,
+		_compute_parent_mu(reg, def),
+		service.numeric_local_target_substep_s,
+		service.numeric_local_max_substeps_per_tick
+	)
+	ctx.assert_true(state.current_mode == OrbitMode.Kind.NUMERIC_LOCAL,
+		"Request-Rueckkehr waehrend der Grace behaelt den Body im numerischen Regime")
+	ctx.assert_vec_almost(
+		state.position_parent_frame_m,
+		expected.get("position_parent_frame_m", Vector3.ZERO),
+		1.0e-3,
+		"Request-Rueckkehr waehrend der Grace fuehrt nicht zu erneutem Kepler-Seeding"
+	)
+	ctx.assert_true(int(service._last_requested_tick_by_id.get(&"planet_a", -1)) == int(service._sim_tick_index - 1),
+		"Rueckkehr-Request aktualisiert den letzten Request-Tick vor dem Folgetick")
+
+	service.free()
+	time_service.free()
+	reg.free()
+
+
+static func _test_request_replace_semantics_drop_old_wish_after_grace(ctx) -> void:
 	var reg := _make_registry()
 	var time_service := _make_time_service()
 	var service = _make_orbit_service(reg, time_service)
 
 	service.request_numeric_local_candidates(_ids([&"planet_a"]))
-	service.recompute_all_at_time(10.0)
+	service.recompute_all_at_time(0.0)
+	_emit_sim_tick(time_service, 1.0)
+	service.request_numeric_local_candidates(_ids([&"planet_a"]))
 	service.request_numeric_local_candidates(_ids([&"moon_a"]))
-	service.recompute_all_at_time(20.0)
+
+	_emit_sim_tick(time_service, 1.0)
+	ctx.assert_true(reg.get_state(&"planet_a").current_mode == OrbitMode.Kind.NUMERIC_LOCAL,
+		"Replace-Request mit ineligible Body haelt den alten Wunsch noch genau einen Grace-Tick")
+
+	_emit_sim_tick(time_service, 1.0)
 
 	ctx.assert_true(reg.get_state(&"planet_a").current_mode == OrbitMode.Kind.KEPLER_APPROX,
-		"neuer Request ersetzt den alten Wish statt zu akkumulieren")
+		"neuer Request ersetzt den alten Wish statt zu akkumulieren und laesst ihn nach Grace auslaufen")
 
 	service.free()
 	time_service.free()
@@ -267,7 +432,7 @@ static func _test_identical_request_is_idempotent(ctx) -> void:
 	service.request_numeric_local_candidates(_ids([&"planet_a"]))
 	service.recompute_all_at_time(120.0)
 
-	var expected: Dictionary = load("res://src/sim/orbit/local_orbit_integrator.gd").step_velocity_verlet(
+	var expected: Dictionary = _integrator_script().step_velocity_verlet(
 		pos_before,
 		vel_before,
 		dt,
