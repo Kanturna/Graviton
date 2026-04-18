@@ -191,6 +191,23 @@ Erledigt:
 - neue Tests fuer Azimut-Vorzeichen, Polar-Faelle und
   `AUTHORED_ORBIT`-Saisonbasis
 
+## Prioritaet 12 - Content Slice: Asymmetrische BH-Referenzwelt - erledigt
+
+Ziel:
+`starter_world` als groessere, sichtbar asymmetrische
+Schwarzes-Loch-Referenzwelt ausbauen, ohne neue Simulationsmechanik
+einzuziehen.
+
+Erledigt:
+
+- `starter_world` traegt jetzt vier Sterne unter `obsidian`
+- die Sternsysteme sind bewusst ungleich gross (3/2/4/1 Planeten)
+- die Welt bleibt content-only: BH-Sterne bleiben
+  `AUTHORED_ORBIT`-Kreise
+- neue StarterWorld-Tests sichern Body-Anzahl, Topologie,
+  Sternorbit-Unikate und paarweise verschiedene planetare
+  `semi_major_axis_m` innerhalb jedes Sternsystems ab
+
 ## Danach - Weitere planetare Umweltableitung
 
 Nach dem ersten Guardrail-Block ist der naechste groessere Simulations-
@@ -226,16 +243,16 @@ Zielbild fuer diesen Strang:
 - Zufallsbereiche fuer Orbitachsen, Exzentrizitaeten und Orientierungen
 - deterministische Seeds / reproduzierbare Welten
 
-## Spaeter - Reichere Referenzwelten unter dem BH-Root
+## Spaeter - BH-Star-Ellipsen und weitere Root-Welt-Politur
 
 - `sample_system` bleibt bewusst klein und sauber als kompakte
   Referenzwelt
-- `starter_world` oder eine spaetere groessere Referenzwelt soll
-  deutlich mehr Sterne unter `obsidian` tragen
-- einzelne Sterne sollen deutlich unterschiedlich viele Planeten haben
+- `starter_world` ist jetzt bereits groesser und asymmetrischer, kann
+  spaeter aber weiter ausgebaut oder durch eine noch groessere
+  Referenzwelt ergaenzt werden
 - die BH-gebundenen Sternorbits muessen langfristig nicht auf perfekten
-  Kreisen bleiben; elliptischere und insgesamt asymmetrischere
-  Mehrstern-Anordnungen sind ausdruecklich gewuenscht
+  Kreisen bleiben; elliptische BH-Sternbahnen sind der naechste
+  naheliegende Welt-/Content-Folgeblock
 
 ## Bewusst nicht jetzt
 

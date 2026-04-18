@@ -89,10 +89,13 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   staerkere Zeitskalen.
 - Das Testbed kann jetzt explizit zwischen `starter_world` und
   `sample_system` als Referenzwelten umgeschaltet werden.
-- Die Toy-Orbitwerte der `StarterWorld` sind jetzt so getunt, dass Monde
+- `starter_world` ist jetzt als groessere asymmetrische BH-
+  Referenzwelt ausgebaut: vier Sterne unter `obsidian`, ungleich grosse
+  Planetensysteme und bewusst keine neue Spiegel-Symmetrie.
+- Die Toy-Orbitwerte der `starter_world` bleiben so getunt, dass Monde
   sichtbar schneller als Planeten und Planeten sichtbar schneller als
-  ihre Sterne um `obsidian` kreisen; die Planetenbahnen sind zudem
-  sichtbar elliptischer und pro Planet unterschiedlich ausgerichtet.
+  ihre Sterne um `obsidian` kreisen; die BH-Sterne bleiben dabei in
+  diesem Slice bewusst kreisfoermige `AUTHORED_ORBIT`.
 
 ## Ziel dieser Praesentationsschicht
 
@@ -183,9 +186,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   weitergehen statt bei nur skalaren Temperatur- und
   Habitability-Werten stehenzubleiben
 - parallel die Referenzwelt unter `obsidian` spaeter in Richtung eines
-  groesseren, asymmetrischeren Mehrstern-Roots weiterdenken: mehr
-  Sterne, mehr Planetensysteme und langfristig nicht nur perfekte
-  Kreisbahnen der Sterne um das schwarze Loch
+  noch reicheren Mehrstern-Roots weiterdenken: elliptischere
+  BH-Sternbahnen, noch mehr Sterne und ggf. weitere Referenzwelten
 - parallel kleine nicht-kanonische Doku-Drift bereinigen, wenn sie
   wieder sichtbar wird
 - spaeter numerische Guardrail-Parameter oder strengere Overspeed-

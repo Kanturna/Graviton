@@ -30,6 +30,21 @@ Konsequenz:
   sind keine langfristige Zielvorgabe; elliptischere und insgesamt
   weniger symmetrische Sternsysteme bleiben eine bewusste Ausbauoption
 
+## 2026-04-18 - P12B bleibt beim BH-Weltausbau bewusst content-only
+
+Der erste groessere Ausbau der BH-Referenzwelt erweitert bewusst nur die
+Inhaltsmenge und Asymmetrie von `starter_world`, ohne neue Orbit-
+Mechanik einzuziehen.
+
+Konsequenz:
+
+- BH-Sterne bleiben in P12B kreisfoermige `AUTHORED_ORBIT`
+- elliptische BH-Sternbahnen sind fuer diesen Slice ausdruecklich
+  deferiert
+- ein spaeterer Schritt darf Root-Star-Ellipsen nur als eigenen
+  expliziten Mechanik-/Weltentscheid einfuehren, nicht still als
+  Weltpflege-Nebenprodukt
+
 ## 2026-04-18 - Saisonale Strahlungsgeometrie bleibt im `ThermalService`
 
 Die P11-Saisongeometrie erweitert bewusst den bestehenden

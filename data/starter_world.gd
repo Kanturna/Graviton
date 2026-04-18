@@ -5,26 +5,38 @@ extends RefCounted
 # Diff-freundlich, reviewbar: das gesamte System ist in dieser Datei lesbar.
 # Keine .tres-Binaries, keine Inspector-gepflegte Resource.
 #
-# Inhalt (9 Koerper, topologische Reihenfolge):
-#   obsidian    — Schwarzes Loch, Wurzel
-#   alpha       — Stern A, AUTHORED_ORBIT um obsidian
-#   beta        — Stern B, AUTHORED_ORBIT um obsidian
-#   alpha_i     — Planet I um alpha,  KEPLER_APPROX
-#   alpha_ii    — Planet II um alpha, KEPLER_APPROX
-#   alpha_i_m   — Mond um alpha_i,   AUTHORED_ORBIT
-#   beta_i      — Planet I um beta,  KEPLER_APPROX
-#   beta_ii     — Planet II um beta, KEPLER_APPROX
-#   beta_i_m    — Mond um beta_i,    AUTHORED_ORBIT
+# Inhalt (18 Koerper, topologische Reihenfolge):
+#   obsidian    - Schwarzes Loch, Wurzel
+#   alpha       - Stern A, AUTHORED_ORBIT um obsidian
+#   beta        - Stern B, AUTHORED_ORBIT um obsidian
+#   gamma       - Stern C, AUTHORED_ORBIT um obsidian
+#   delta       - Stern D, AUTHORED_ORBIT um obsidian
+#   alpha_i     - Planet I um alpha,   KEPLER_APPROX
+#   alpha_ii    - Planet II um alpha,  KEPLER_APPROX
+#   alpha_iii   - Planet III um alpha, KEPLER_APPROX
+#   alpha_i_m   - Mond um alpha_i,     AUTHORED_ORBIT
+#   beta_i      - Planet I um beta,    KEPLER_APPROX
+#   beta_ii     - Planet II um beta,   KEPLER_APPROX
+#   beta_i_m    - Mond um beta_i,      AUTHORED_ORBIT
+#   gamma_i     - Planet I um gamma,   KEPLER_APPROX
+#   gamma_ii    - Planet II um gamma,  KEPLER_APPROX
+#   gamma_iii   - Planet III um gamma, KEPLER_APPROX
+#   gamma_iv    - Planet IV um gamma,  KEPLER_APPROX
+#   gamma_ii_m  - Mond um gamma_ii,    AUTHORED_ORBIT
+#   delta_i     - Planet I um delta,   KEPLER_APPROX
 #
 # Orbit-Modus-Entscheidungen:
-#   AUTHORED_ORBIT fuer Sterne und Monde: erlaubt freie Wahl von r und T unabhaengig
-#   von Parentmasse — vorhersagbare Visualisierung, keine Kepler-Rechnung noetig.
-#   KEPLER_APPROX fuer Planeten: testet die analytische Orbit-Pipeline (OrbitMath.kepler_position).
+#   AUTHORED_ORBIT fuer BH-Sterne und Monde: erlaubt freie Wahl von r und T
+#   unabhaengig von Parentmasse - vorhersagbare Visualisierung, keine
+#   Kepler-Rechnung noetig.
+#   KEPLER_APPROX fuer Planeten: testet die analytische Orbit-Pipeline
+#   (OrbitMath.kepler_position).
 #
-# Alle Werte sind bewusste Toy-Werte fuer Debugbarkeit, nicht astrophysikalisch korrekt.
-# Ziel-Hierarchie fuer die Lesbarkeit:
+# Alle Werte sind bewusste Toy-Werte fuer Debugbarkeit, nicht
+# astrophysikalisch korrekt. Ziel-Hierarchie fuer die Lesbarkeit:
 #   Monde kreisen sichtbar schneller um Planeten als Planeten um Sterne.
 #   Planeten kreisen sichtbar schneller um Sterne als Sterne um obsidian.
+#   Die vier Sternsysteme sollen im Root-View bewusst asymmetrisch wirken.
 
 
 static func build() -> Array[BodyDef]:
@@ -32,12 +44,21 @@ static func build() -> Array[BodyDef]:
 	out.append(_build_obsidian())
 	out.append(_build_alpha())
 	out.append(_build_beta())
+	out.append(_build_gamma())
+	out.append(_build_delta())
 	out.append(_build_alpha_i())
 	out.append(_build_alpha_ii())
+	out.append(_build_alpha_iii())
 	out.append(_build_alpha_i_m())
 	out.append(_build_beta_i())
 	out.append(_build_beta_ii())
 	out.append(_build_beta_i_m())
+	out.append(_build_gamma_i())
+	out.append(_build_gamma_ii())
+	out.append(_build_gamma_iii())
+	out.append(_build_gamma_iv())
+	out.append(_build_gamma_ii_m())
+	out.append(_build_delta_i())
 	return out
 
 
@@ -60,12 +81,9 @@ static func _build_obsidian() -> BodyDef:
 
 
 # --- Sterne (AUTHORED_ORBIT um obsidian) ---
-# T=4e4/7e4 s: Sterne bleiben klar langsamer als ihre Planeten, sind aber
-# im Root-View frueher wahrnehmbar als mit den vorherigen sehr traegen Toy-Werten.
-# phase=PI fuer beta: Sterne starten gegenueberliegend -> sofort erkennbar.
-# `3.0 * SOLAR_LUMINOSITY_W` ist bewusst Toy-Luminositaet und wird hier
-# nicht aus der Sternmasse abgeleitet. Debug-Lesbarkeit hat Vorrang vor
-# astrophysikalischer Genauigkeit.
+# P12B bleibt bewusst content-only: BH-Sterne bleiben Kreise statt schon
+# elliptische Root-Orbits zu erzwingen. Asymmetrie entsteht ueber r/T/Phase
+# und ungleich grosse Planetensysteme.
 
 static func _build_alpha() -> BodyDef:
 	var prof := OrbitProfile.new()
@@ -78,8 +96,6 @@ static func _build_alpha() -> BodyDef:
 	d.id = &"alpha"
 	d.display_name = "Alpha"
 	d.kind = BodyType.Kind.STAR
-	# Erhoehte Toy-Masse: haelt kompakte Planetensysteme lesbar und trotzdem
-	# sichtbar schneller als die BH-Sternorbits.
 	d.mass_kg = UnitSystem.SOLAR_MASS_KG * 3.0
 	d.radius_m = 6.957e8
 	d.rotation_period_s = 25.0 * UnitSystem.DAY_S
@@ -113,15 +129,55 @@ static func _build_beta() -> BodyDef:
 	return d
 
 
+static func _build_gamma() -> BodyDef:
+	var prof := OrbitProfile.new()
+	prof.mode = OrbitMode.Kind.AUTHORED_ORBIT
+	prof.authored_radius_m = 3.45e11
+	prof.authored_period_s = 9.5e4
+	prof.authored_phase_rad = 4.25
+
+	var d := BodyDef.new()
+	d.id = &"gamma"
+	d.display_name = "Gamma"
+	d.kind = BodyType.Kind.STAR
+	d.mass_kg = UnitSystem.SOLAR_MASS_KG * 1.8
+	d.radius_m = 5.8e8
+	d.rotation_period_s = 18.0 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.0
+	d.luminosity_w = 1.6 * UnitSystem.SOLAR_LUMINOSITY_W
+	d.albedo = 0.0
+	d.parent_id = &"obsidian"
+	d.orbit_profile = prof
+	return d
+
+
+static func _build_delta() -> BodyDef:
+	var prof := OrbitProfile.new()
+	prof.mode = OrbitMode.Kind.AUTHORED_ORBIT
+	prof.authored_radius_m = 4.8e11
+	prof.authored_period_s = 1.3e5
+	prof.authored_phase_rad = 0.95
+
+	var d := BodyDef.new()
+	d.id = &"delta"
+	d.display_name = "Delta"
+	d.kind = BodyType.Kind.STAR
+	d.mass_kg = UnitSystem.SOLAR_MASS_KG * 4.2
+	d.radius_m = 8.1e8
+	d.rotation_period_s = 31.0 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.0
+	d.luminosity_w = 5.0 * UnitSystem.SOLAR_LUMINOSITY_W
+	d.albedo = 0.0
+	d.parent_id = &"obsidian"
+	d.orbit_profile = prof
+	return d
+
+
 # --- Planeten (KEPLER_APPROX) ---
-# a/e-Werte so gewaehlt, dass bei RENDER_SCALE=1e9 m/Unit die Planeten
-# klar sichtbar von ihrem Stern getrennt sind, dabei aber in der Toy-Hierarchie
-# schneller um den Stern kreisen als der Stern um obsidian.
-# e ist bewusst hoeher als in einem "milden" Realismus-Setup, damit die
-# Ellipsen im Testbed auch wirklich erkennbar werden.
-# argument_periapsis_rad ist pro Planet unterschiedlich, damit die Bahnen
-# nicht alle gleich ausgerichtet wie technisch verschobene Kreise wirken.
-# mean_anomaly_epoch_rad unterschiedlich fuer sichtbar verschiedene Startphasen.
+# Die Planeten bleiben pro Sternsystem streng von innen nach aussen sortiert.
+# P12B verlangt hier keine ausgefeilte Nicht-Ueberlappungsanalyse, aber die
+# semi_major_axis_m-Werte bleiben innerhalb desselben Sternsystems bewusst
+# paarweise verschieden.
 
 static func _build_alpha_i() -> BodyDef:
 	var prof := OrbitProfile.new()
@@ -170,6 +226,32 @@ static func _build_alpha_ii() -> BodyDef:
 	d.axial_tilt_rad = 0.52
 	d.luminosity_w = 0.0
 	d.albedo = 0.36
+	d.parent_id = &"alpha"
+	d.orbit_profile = prof
+	return d
+
+
+static func _build_alpha_iii() -> BodyDef:
+	var prof := OrbitProfile.new()
+	prof.mode = OrbitMode.Kind.KEPLER_APPROX
+	prof.semi_major_axis_m = 4.2e9
+	prof.eccentricity = 0.18
+	prof.inclination_rad = 0.0
+	prof.longitude_ascending_node_rad = 0.0
+	prof.argument_periapsis_rad = 5.10
+	prof.mean_anomaly_epoch_rad = 2.55
+	prof.epoch_s = 0.0
+
+	var d := BodyDef.new()
+	d.id = &"alpha_iii"
+	d.display_name = "Alpha III"
+	d.kind = BodyType.Kind.PLANET
+	d.mass_kg = UnitSystem.EARTH_MASS_KG * 1.2
+	d.radius_m = 7.2e6
+	d.rotation_period_s = 2.10 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.09
+	d.luminosity_w = 0.0
+	d.albedo = 0.48
 	d.parent_id = &"alpha"
 	d.orbit_profile = prof
 	return d
@@ -227,10 +309,142 @@ static func _build_beta_ii() -> BodyDef:
 	return d
 
 
+static func _build_gamma_i() -> BodyDef:
+	var prof := OrbitProfile.new()
+	prof.mode = OrbitMode.Kind.KEPLER_APPROX
+	prof.semi_major_axis_m = 1.2e9
+	prof.eccentricity = 0.18
+	prof.inclination_rad = 0.0
+	prof.longitude_ascending_node_rad = 0.0
+	prof.argument_periapsis_rad = 0.40
+	prof.mean_anomaly_epoch_rad = 0.10
+	prof.epoch_s = 0.0
+
+	var d := BodyDef.new()
+	d.id = &"gamma_i"
+	d.display_name = "Gamma I"
+	d.kind = BodyType.Kind.PLANET
+	d.mass_kg = UnitSystem.EARTH_MASS_KG * 0.7
+	d.radius_m = 5.1e6
+	d.rotation_period_s = 0.70 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.12
+	d.luminosity_w = 0.0
+	d.albedo = 0.19
+	d.parent_id = &"gamma"
+	d.orbit_profile = prof
+	return d
+
+
+static func _build_gamma_ii() -> BodyDef:
+	var prof := OrbitProfile.new()
+	prof.mode = OrbitMode.Kind.KEPLER_APPROX
+	prof.semi_major_axis_m = 2.05e9
+	prof.eccentricity = 0.31
+	prof.inclination_rad = 0.0
+	prof.longitude_ascending_node_rad = 0.0
+	prof.argument_periapsis_rad = 2.20
+	prof.mean_anomaly_epoch_rad = 1.35
+	prof.epoch_s = 0.0
+
+	var d := BodyDef.new()
+	d.id = &"gamma_ii"
+	d.display_name = "Gamma II"
+	d.kind = BodyType.Kind.PLANET
+	d.mass_kg = UnitSystem.EARTH_MASS_KG * 1.4
+	d.radius_m = 7.8e6
+	d.rotation_period_s = 1.05 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.44
+	d.north_pole_orbit_frame_azimuth_rad = PI / 3.0
+	d.luminosity_w = 0.0
+	d.albedo = 0.41
+	d.parent_id = &"gamma"
+	d.orbit_profile = prof
+	return d
+
+
+static func _build_gamma_iii() -> BodyDef:
+	var prof := OrbitProfile.new()
+	prof.mode = OrbitMode.Kind.KEPLER_APPROX
+	prof.semi_major_axis_m = 3.4e9
+	prof.eccentricity = 0.15
+	prof.inclination_rad = 0.0
+	prof.longitude_ascending_node_rad = 0.0
+	prof.argument_periapsis_rad = 4.05
+	prof.mean_anomaly_epoch_rad = 2.65
+	prof.epoch_s = 0.0
+
+	var d := BodyDef.new()
+	d.id = &"gamma_iii"
+	d.display_name = "Gamma III"
+	d.kind = BodyType.Kind.PLANET
+	d.mass_kg = UnitSystem.EARTH_MASS_KG * 1.1
+	d.radius_m = 6.6e6
+	d.rotation_period_s = 1.80 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.08
+	d.luminosity_w = 0.0
+	d.albedo = 0.55
+	d.parent_id = &"gamma"
+	d.orbit_profile = prof
+	return d
+
+
+static func _build_gamma_iv() -> BodyDef:
+	var prof := OrbitProfile.new()
+	prof.mode = OrbitMode.Kind.KEPLER_APPROX
+	prof.semi_major_axis_m = 5.1e9
+	prof.eccentricity = 0.27
+	prof.inclination_rad = 0.0
+	prof.longitude_ascending_node_rad = 0.0
+	prof.argument_periapsis_rad = 5.30
+	prof.mean_anomaly_epoch_rad = 0.90
+	prof.epoch_s = 0.0
+
+	var d := BodyDef.new()
+	d.id = &"gamma_iv"
+	d.display_name = "Gamma IV"
+	d.kind = BodyType.Kind.PLANET
+	d.mass_kg = UnitSystem.EARTH_MASS_KG * 2.0
+	d.radius_m = 8.9e6
+	d.rotation_period_s = 2.60 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.71
+	d.luminosity_w = 0.0
+	d.albedo = 0.24
+	d.parent_id = &"gamma"
+	d.orbit_profile = prof
+	return d
+
+
+static func _build_delta_i() -> BodyDef:
+	var prof := OrbitProfile.new()
+	prof.mode = OrbitMode.Kind.KEPLER_APPROX
+	prof.semi_major_axis_m = 1.95e9
+	prof.eccentricity = 0.47
+	prof.inclination_rad = 0.0
+	prof.longitude_ascending_node_rad = 0.0
+	prof.argument_periapsis_rad = 3.10
+	prof.mean_anomaly_epoch_rad = 1.80
+	prof.epoch_s = 0.0
+
+	var d := BodyDef.new()
+	d.id = &"delta_i"
+	d.display_name = "Delta I"
+	d.kind = BodyType.Kind.PLANET
+	d.mass_kg = UnitSystem.EARTH_MASS_KG * 1.7
+	d.radius_m = 8.2e6
+	d.rotation_period_s = 1.35 * UnitSystem.DAY_S
+	d.axial_tilt_rad = 0.33
+	d.north_pole_orbit_frame_azimuth_rad = -PI / 4.0
+	d.luminosity_w = 0.0
+	d.albedo = 0.12
+	d.parent_id = &"delta"
+	d.orbit_profile = prof
+	return d
+
+
 # --- Monde (AUTHORED_ORBIT) ---
-# r/T frei gewaehlt fuer Debugbarkeit: Monde bleiben sichtbar, sitzen jetzt aber
-# deutlich enger an ihren Planeten, damit sie lokal gebunden wirken und nicht
-# visuell bis in Sternnaehe ausgreifen.
+# r/T frei gewaehlt fuer Debugbarkeit: Monde bleiben sichtbar, sitzen aber
+# enger an ihren Planeten, damit sie lokal gebunden wirken und nicht bis in
+# Sternnaehe ausgreifen.
 
 static func _build_alpha_i_m() -> BodyDef:
 	var prof := OrbitProfile.new()
@@ -264,5 +478,25 @@ static func _build_beta_i_m() -> BodyDef:
 	d.mass_kg = UnitSystem.LUNAR_MASS_KG
 	d.radius_m = 1.7374e6
 	d.parent_id = &"beta_i"
+	d.orbit_profile = prof
+	return d
+
+
+static func _build_gamma_ii_m() -> BodyDef:
+	var prof := OrbitProfile.new()
+	prof.mode = OrbitMode.Kind.AUTHORED_ORBIT
+	prof.authored_radius_m = 3.6e8
+	prof.authored_period_s = 1.1e4
+	prof.authored_phase_rad = 0.85
+
+	var d := BodyDef.new()
+	d.id = &"gamma_ii_m"
+	d.display_name = "Gamma II - Moon"
+	d.kind = BodyType.Kind.MOON
+	# P12B verteilt Monde bewusst nicht schematisch immer auf den jeweils
+	# ersten Planeten eines Sternsystems.
+	d.mass_kg = UnitSystem.LUNAR_MASS_KG * 1.3
+	d.radius_m = 1.96e6
+	d.parent_id = &"gamma_ii"
 	d.orbit_profile = prof
 	return d

@@ -15,13 +15,13 @@ static func run(ctx) -> void:
 	_test_parent_chains_valid(ctx)
 	_test_topological_order(ctx)
 	_test_world_model_fields(ctx)
+	_test_bh_star_authored_orbits_unique(ctx)
+	_test_planet_semi_major_axes_unique_per_star(ctx)
 	_test_authored_positions_finite(ctx)
 	_test_kepler_positions_finite(ctx)
 	_test_positions_differ_over_time(ctx)
 	_test_focus_stability(ctx)
 
-
-# --- helpers ---
 
 static func _make_loaded_registry():
 	var reg = load("res://src/sim/universe/universe_registry.gd").new()
@@ -38,11 +38,45 @@ static func _defs_by_id() -> Dictionary:
 	return out
 
 
-# --- tests ---
+static func _expected_order() -> Array[StringName]:
+	return [
+		&"obsidian",
+		&"alpha",
+		&"beta",
+		&"gamma",
+		&"delta",
+		&"alpha_i",
+		&"alpha_ii",
+		&"alpha_iii",
+		&"alpha_i_m",
+		&"beta_i",
+		&"beta_ii",
+		&"beta_i_m",
+		&"gamma_i",
+		&"gamma_ii",
+		&"gamma_iii",
+		&"gamma_iv",
+		&"gamma_ii_m",
+		&"delta_i",
+	]
+
+
+static func _planet_ids_for_star(star_id: StringName) -> Array[StringName]:
+	match star_id:
+		&"alpha":
+			return [&"alpha_i", &"alpha_ii", &"alpha_iii"]
+		&"beta":
+			return [&"beta_i", &"beta_ii"]
+		&"gamma":
+			return [&"gamma_i", &"gamma_ii", &"gamma_iii", &"gamma_iv"]
+		&"delta":
+			return [&"delta_i"]
+	return []
+
 
 static func _test_body_count(ctx) -> void:
 	var reg = _make_loaded_registry()
-	ctx.assert_true(reg.body_count() == 9, "body_count == 9")
+	ctx.assert_true(reg.body_count() == 18, "body_count == 18")
 	reg.free()
 
 
@@ -65,11 +99,22 @@ static func _test_no_other_roots(ctx) -> void:
 static func _test_kind_assignments(ctx) -> void:
 	var by_id := _defs_by_id()
 	ctx.assert_true(by_id[&"obsidian"].kind == BodyType.Kind.BLACK_HOLE, "obsidian ist BLACK_HOLE")
-	ctx.assert_true(by_id[&"alpha"].kind == BodyType.Kind.STAR, "alpha ist STAR")
-	ctx.assert_true(by_id[&"beta"].kind == BodyType.Kind.STAR, "beta ist STAR")
-	for id in [&"alpha_i", &"alpha_ii", &"beta_i", &"beta_ii"]:
+	for id in [&"alpha", &"beta", &"gamma", &"delta"]:
+		ctx.assert_true(by_id[id].kind == BodyType.Kind.STAR, "%s ist STAR" % id)
+	for id in [
+		&"alpha_i",
+		&"alpha_ii",
+		&"alpha_iii",
+		&"beta_i",
+		&"beta_ii",
+		&"gamma_i",
+		&"gamma_ii",
+		&"gamma_iii",
+		&"gamma_iv",
+		&"delta_i",
+	]:
 		ctx.assert_true(by_id[id].kind == BodyType.Kind.PLANET, "%s ist PLANET" % id)
-	for id in [&"alpha_i_m", &"beta_i_m"]:
+	for id in [&"alpha_i_m", &"beta_i_m", &"gamma_ii_m"]:
 		ctx.assert_true(by_id[id].kind == BodyType.Kind.MOON, "%s ist MOON" % id)
 
 
@@ -86,16 +131,10 @@ static func _test_parent_chains_valid(ctx) -> void:
 static func _test_topological_order(ctx) -> void:
 	var reg = _make_loaded_registry()
 	var order: Array[StringName] = reg.get_update_order()
-	var i := {}
-	for idx in order.size():
-		i[order[idx]] = idx
-	ctx.assert_true(i[&"obsidian"] < i[&"alpha"], "obsidian < alpha")
-	ctx.assert_true(i[&"obsidian"] < i[&"beta"], "obsidian < beta")
-	ctx.assert_true(i[&"alpha"] < i[&"alpha_i"], "alpha < alpha_i")
-	ctx.assert_true(i[&"alpha"] < i[&"alpha_ii"], "alpha < alpha_ii")
-	ctx.assert_true(i[&"alpha_i"] < i[&"alpha_i_m"], "alpha_i < alpha_i_m")
-	ctx.assert_true(i[&"beta"] < i[&"beta_i"], "beta < beta_i")
-	ctx.assert_true(i[&"beta_i"] < i[&"beta_i_m"], "beta_i < beta_i_m")
+	var expected: Array[StringName] = _expected_order()
+	ctx.assert_true(order.size() == expected.size(), "update_order hat erwartete Groesse")
+	for i in range(expected.size()):
+		ctx.assert_true(order[i] == expected[i], "update_order[%d] == %s" % [i, expected[i]])
 	reg.free()
 
 
@@ -107,9 +146,43 @@ static func _test_world_model_fields(ctx) -> void:
 	ctx.assert_almost(by_id[&"alpha_i"].rotation_period_s, 0.80 * UnitSystem.DAY_S, 1.0e-6, "alpha_i rotation_period_s gesetzt")
 	ctx.assert_almost(by_id[&"alpha_i"].axial_tilt_rad, 0.18, 1.0e-9, "alpha_i axial_tilt_rad gesetzt")
 	ctx.assert_almost(by_id[&"alpha_i"].albedo, 0.28, 1.0e-9, "alpha_i albedo gesetzt")
+	ctx.assert_almost(by_id[&"gamma"].luminosity_w, 1.6 * UnitSystem.SOLAR_LUMINOSITY_W, 1.0e12, "gamma luminosity_w gesetzt")
+	ctx.assert_almost(by_id[&"gamma_ii"].north_pole_orbit_frame_azimuth_rad, PI / 3.0, 1.0e-9, "gamma_ii saison-azimut gesetzt")
+	ctx.assert_almost(by_id[&"delta_i"].north_pole_orbit_frame_azimuth_rad, -PI / 4.0, 1.0e-9, "delta_i saison-azimut gesetzt")
 	ctx.assert_almost(by_id[&"beta_ii"].rotation_period_s, 1.60 * UnitSystem.DAY_S, 1.0e-6, "beta_ii rotation_period_s gesetzt")
 	ctx.assert_almost(by_id[&"beta_ii"].axial_tilt_rad, 0.61, 1.0e-9, "beta_ii axial_tilt_rad gesetzt")
 	ctx.assert_almost(by_id[&"beta_ii"].albedo, 0.42, 1.0e-9, "beta_ii albedo gesetzt")
+
+
+static func _test_bh_star_authored_orbits_unique(ctx) -> void:
+	var by_id := _defs_by_id()
+	var stars: Array[StringName] = [&"alpha", &"beta", &"gamma", &"delta"]
+	var radii := {}
+	var periods := {}
+	var phases := {}
+	for id in stars:
+		var prof: OrbitProfile = by_id[id].orbit_profile
+		ctx.assert_true(prof != null, "%s hat orbit_profile" % id)
+		ctx.assert_true(prof.mode == OrbitMode.Kind.AUTHORED_ORBIT, "%s bleibt AUTHORED_ORBIT" % id)
+		ctx.assert_true(not radii.has(prof.authored_radius_m), "%s authored_radius_m einzigartig" % id)
+		ctx.assert_true(not periods.has(prof.authored_period_s), "%s authored_period_s einzigartig" % id)
+		ctx.assert_true(not phases.has(prof.authored_phase_rad), "%s authored_phase_rad einzigartig" % id)
+		radii[prof.authored_radius_m] = true
+		periods[prof.authored_period_s] = true
+		phases[prof.authored_phase_rad] = true
+
+
+static func _test_planet_semi_major_axes_unique_per_star(ctx) -> void:
+	var by_id := _defs_by_id()
+	for star_id in [&"alpha", &"beta", &"gamma", &"delta"]:
+		var seen := {}
+		for planet_id in _planet_ids_for_star(star_id):
+			var prof: OrbitProfile = by_id[planet_id].orbit_profile
+			ctx.assert_true(prof != null, "%s hat orbit_profile" % planet_id)
+			ctx.assert_true(prof.mode == OrbitMode.Kind.KEPLER_APPROX, "%s bleibt KEPLER_APPROX" % planet_id)
+			ctx.assert_true(not seen.has(prof.semi_major_axis_m),
+				"%s semi_major_axis_m innerhalb von %s einzigartig" % [planet_id, star_id])
+			seen[prof.semi_major_axis_m] = true
 
 
 static func _test_authored_positions_finite(ctx) -> void:
@@ -183,8 +256,7 @@ static func _test_focus_stability(ctx) -> void:
 	var reg = _make_loaded_registry()
 	var bubble = load("res://src/runtime/local_bubble/local_bubble_manager.gd").new()
 	bubble.configure(reg)
-	for id in [&"obsidian", &"alpha", &"beta", &"alpha_i", &"alpha_ii",
-			&"alpha_i_m", &"beta_i", &"beta_ii", &"beta_i_m"]:
+	for id in reg.get_update_order():
 		bubble.set_focus(id)
 		ctx.assert_true(bubble.get_focus() == id, "focus stabil nach set_focus: %s" % id)
 		var pos: Vector3 = bubble.compose_view_position_m(id)

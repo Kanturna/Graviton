@@ -1,124 +1,100 @@
 # Graviton - Starter World
 
-Debug-fokussiertes 9-Koerper-System fuer das Foundation-Testbed.
+Debug-fokussierte 18-Koerper-Referenzwelt fuer das Foundation-Testbed.
 Alle Werte sind bewusste Toy-Werte - nicht astrophysikalisch korrekt.
 
 ## Systemuebersicht
 
-| ID | Kind | Orbit-Modus | Parent | Schluesselwerte | Begruendung |
-|---|---|---|---|---|---|
-| obsidian | BLACK_HOLE | root | - | mass=2e33 kg | Toy-Masse ~1000 Solarmassen; als Wurzel immer bei ZERO |
-| alpha | STAR | AUTHORED_ORBIT | obsidian | r=1.5e11 m, T=4e4 s | AUTHORED: etwas schnellerer Root-View; Parentmasse frei |
-| beta | STAR | AUTHORED_ORBIT | obsidian | r=2.5e11 m, T=7e4 s, phase=PI | phase=PI -> Sterne starten gegenueberliegend; sofort erkennbar |
-| alpha_i | PLANET | KEPLER_APPROX | alpha | a=1.4e9 m, e=0.36, w=0.75 | kompakt, klar elliptisch und anders ausgerichtet |
-| alpha_ii | PLANET | KEPLER_APPROX | alpha | a=2.52e9 m, e=0.22, w=2.35, M0=1.05 | aeussere Alpha-Bahn, weiter knapp schneller als alpha |
-| alpha_i_m | MOON | AUTHORED_ORBIT | alpha_i | r=3.0e8 m, T=8e3 s | enger an alpha_i gebunden; klar schneller als alpha_i |
-| beta_i | PLANET | KEPLER_APPROX | beta | a=1.6e9 m, e=0.40, w=1.55, M0=0.5 | kompakt und deutlich elliptischer |
-| beta_ii | PLANET | KEPLER_APPROX | beta | a=3.25e9 m, e=0.28, w=3.95, M0=2.0 | aeussere Beta-Bahn; lesbarer elliptischer Gegenspieler |
-| beta_i_m | MOON | AUTHORED_ORBIT | beta_i | r=2.4e8 m, T=6e3 s, phase=PI/2 | enger am Planeten; schnellster sichtbarer Orbit |
+`starter_world` bleibt der groessere BH-Root-Sandkasten:
+
+- Root:
+  - `obsidian`
+- Sterne:
+  - `alpha`, `beta`, `gamma`, `delta`
+- Planeten:
+  - `alpha_i`, `alpha_ii`, `alpha_iii`
+  - `beta_i`, `beta_ii`
+  - `gamma_i`, `gamma_ii`, `gamma_iii`, `gamma_iv`
+  - `delta_i`
+- Monde:
+  - `alpha_i_m`
+  - `beta_i_m`
+  - `gamma_ii_m`
+
+Die vier Sternsysteme sind bewusst ungleich gross:
+
+- `alpha`: 3 Planeten, 1 Mond
+- `beta`: 2 Planeten, 1 Mond
+- `gamma`: 4 Planeten, 1 Mond
+- `delta`: 1 Planet, 0 Monde
 
 ## Orbit-Modus-Entscheidungen
 
-- **AUTHORED_ORBIT fuer Sterne und Monde:** `r` und `T` sind frei waehlbar,
-  unabhaengig von der Parentmasse. Das liefert eine klare, vorhersagbare
-  Visualisierung ohne Kepler-Rechnung.
-- **KEPLER_APPROX fuer Planeten:** Testet die analytische Orbit-Pipeline
-  (`OrbitMath.kepler_position`). Planeten sind die primaeren
-  `NUMERIC_LOCAL`-Kandidaten fuer spaetere Schritte.
+- **AUTHORED_ORBIT fuer BH-Sterne und Monde:** `r` und `T` bleiben frei
+  waehlbar und liefern eine klare, vorhersagbare Visualisierung.
+- **KEPLER_APPROX fuer Planeten:** testet weiter die analytische
+  Orbit-Pipeline (`OrbitMath.kepler_position`) und bleibt der primaere
+  `NUMERIC_LOCAL`-Kandidat.
+- **Bewusst nicht in P12B:** elliptische Sternbahnen um `obsidian`.
+  Dieser Slice ist content-only; Root-Star-Ellipsen bleiben ein
+  spaeterer expliziter Folgeblock.
+
+## Wichtige Asymmetrien
+
+- vier verschiedene BH-Sternradien
+- vier verschiedene BH-Sternperioden
+- vier verschiedene BH-Sternphasen
+- deutlich unterschiedliche Planetenzahlen pro Stern
+- nur ein neuer Mond im `gamma`-System statt schematisch pro Stern ein
+  weiterer Mond
+- mindestens zwei neue Planeten mit explizit nicht-default
+  Saison-Azimutwerten (`gamma_ii`, `delta_i`)
 
 ## Render-Skalierung
 
 `RENDER_SCALE_M_PER_UNIT = 1e9`: 1 Render-Unit = 1e9 m.
 
-| Koerper | Orbit-Abstand (RU) | Mesh-Radius (RU) | Sichtbare Luecke |
-|---|---|---|---|
-| alpha/beta von obsidian | 150 / 250 | 0.8 | ~149 / 249 RU |
-| Planeten von Stern | 1.4-3.25 | 0.2 | >=1.2 RU |
-| Monde von Planet | 0.24-0.3 | 0.08 | >=0.16 RU |
+Grobe Sichtbarkeit:
+
+- BH-Sterne von `obsidian`: ca. `150 .. 480 RU`
+- Planeten von ihren Sternen: ca. `1.2 .. 5.1 RU`
+- Monde von ihren Planeten: ca. `0.24 .. 0.36 RU`
+
+Damit bleibt der Root-Fokus lesbar, waehrend die lokalen Sternsysteme
+weiter klar vom Parent getrennt sind.
 
 ## Testbed-Steuerung
 
 | Taste | Funktion |
 |---|---|
-| Tab | Fokus vorwaerts (Root -> alpha -> ... -> beta_i_m) |
+| Tab | Fokus vorwaerts durch `UniverseRegistry.get_update_order()` |
 | Shift+Tab | Fokus rueckwaerts |
 | Linksklick auf Body | Fokus direkt auf den angeklickten Body |
 | Home | Fokus zurueck auf den Root-Body / Gesamtueberblick |
-| `Q` / `[` / PageDown | Zeitskala langsamer (Preset runter) |
-| `E` / `]` / PageUp | Zeitskala schneller (Preset hoch) |
-| HUD-Speed-Slider | Sim-Speed stufenlos logarithmisch zwischen langsam und sehr schnell |
+| `Q` / `[` / PageDown | Zeitskala langsamer |
+| `E` / `]` / PageUp | Zeitskala schneller |
+| HUD-Speed-Slider | Sim-Speed stufenlos logarithmisch |
 | `W/A/S/D` | Kamera manuell verschieben |
 | Space | Pause / Weiter |
 | Mausrad | Zoom ein/aus (20%-2400%) |
-| Backspace | View zuruecksetzen (100% + Pan) |
+| Backspace | View zuruecksetzen |
 | F3 | Debug-Overlay ein/ausblenden |
 
-Hinweis:
-Der starke Nahzoom kann jetzt auch visuell weiter greifen; Bodies und
-Abstaende bleiben nicht mehr frueh an einer niedrigen internen
-Detail-/View-Grenze stehen.
+## Visuelle Zielwirkung
 
-Orbit-Hierarchie:
-
-- Monde sind im Starter-World-Tuning bewusst die schnellsten sichtbaren Orbits.
-- Planeten kreisen sichtbar schneller um ihre Sterne als die Sterne um `obsidian`.
-- Die Planetenbahnen sind jetzt deutlich elliptischer und pro Planet anders
-  ausgerichtet, damit sie im Testbed nicht mehr wie bloess verschobene Kreise wirken.
-- Die Monde sitzen wieder deutlich enger an ihren Planeten, damit sie lokal
-  gebunden wirken und nicht visuell bis in Sternnaehe ausgreifen.
-
-Zoom-Semantik:
-
-- `100%` = lokaler Fokus-Fit
-- `20%` = globaler Ueberblick mit zusaetzlichem Weitwinkel, auch von Stern-/Planeten-/Mondfokus aus
-- `2400%` = tieferer Close-up-Zoom ohne fruehen internen Scale-Cap
-
-HUD:
-
-- zeigt jetzt Fokus, Sim-Zeit, Step-Count, FPS, Speed-Multiplikator, Speed-Preset-Stufe, Zoom und Run/Pause-Status
-- Speed kann jetzt zusaetzlich ueber einen logarithmischen HUD-Slider geregelt werden; Hotkeys und Slider bleiben synchron
-
-Hinweis zur Sim-Speed:
-
-- Hohe `time_scale`-Werte skalieren jetzt das simulierte `dt` pro Physics-Frame,
-  statt hunderte Einzel-Ticks pro Frame zu emittieren. Das haelt hohe Speedstufen
-  deutlich fluessiger.
-
-**Zeitskalen-Presets:** 0.25x / 1x / 10x / 50x / 100x / **250x (Default)** / 500x / 1000x / 2500x / 5000x
-
-Bei **250x** (Default):
-
-- Monde: ~24-32 s/Umlauf
-- Innere Planeten: ~1-1.5 min/Umlauf
-- Sterne: ~2.5-4.7 min/Umlauf
-- Aeussere Planeten: ~2.8-4.1 min/Umlauf
-
-Bei **1000x**:
-
-- Monde: ~6-8 s/Umlauf
-- Innere Planeten: ~16-21 s/Umlauf
-- Sterne: ~40-70 s/Umlauf
-- Aeussere Planeten: ~40-65 s/Umlauf
-
-## Initialzustand
-
-`OrbitService.recompute_all_at_time(0.0)` wird in `_ready()` aufgerufen, bevor der erste
-Frame gerendert wird. Alle Bodies starten mit konsistenten Positionen statt Default-ZERO
-(ausser obsidian, das per Architektur immer bei ZERO bleibt).
+- Im Root-Fokus sollen alle vier Sterne gleichzeitig sichtbar sein.
+- Bei Default-`250x` soll mindestens einer der Sterne in wenigen Sekunden
+  klar erkennbar auf seiner BH-Bahn voranschreiten.
+- `gamma` soll als sichtbar reichstes Sternsystem wirken.
+- `delta` soll als kleinstes, sparsames Sternsystem lesbar bleiben.
 
 ## Aktuelle Einschraenkungen
 
-- `LocalBubbleManager` nutzt jetzt die Step-2-LCA-Komposition fuer die
-  fokus-relative Darstellung; Bodies aus anderen Roots liefern bewusst
-  `Vector3.INF`.
-- `BubbleActivationSet` ist jetzt read-only implementiert, wird im
-  Testbed pro Frame rebuilt und klassifiziert Bodies relativ zum Fokus.
-- Der minimale `NUMERIC_LOCAL`-Slice ist jetzt implementiert:
-  eligible `KEPLER_APPROX`-Planeten koennen ueber das Aktiv-Set in den
-  numerischen Parent-Only-Pfad wechseln; Sterne und Monde bleiben in
-  der StarterWorld authored.
-- Fuer hohe `time_scale` gibt es im numerischen Pfad noch keinen
-  Substepping-/Guardrail-Schritt. Das ist eine bekannte Folgeaufgabe,
-  kein versteckter Fehler dieser Toy-Welt.
-
-Diese Limits sind bewusst. Die spaeteren Architektur-Schritte bauen darauf auf.
+- `starter_world` bleibt weiterhin eine Toy-Referenzwelt und kein
+  astrophysikalisch kalibriertes Mehrsternsystem.
+- BH-Sternorbits bleiben absichtlich kreisfoermige `AUTHORED_ORBIT`.
+- Der numerische `NUMERIC_LOCAL`-Pfad bleibt auf eligible Planeten
+  beschraenkt; BH-Sterne und Monde bleiben authored.
+- Thermische, atmosphaerische und Umweltwerte fuer die neuen Bodies sind
+  bewusst minimal gehalten; `greenhouse_delta_k` bleibt auf `0.0`, wenn
+  nicht explizit anders gesetzt.
