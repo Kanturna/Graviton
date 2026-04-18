@@ -295,6 +295,8 @@ brechen.
 Erledigt:
 
 - absoluter Welt-Zoomfaktor statt fokus-relativem Zoom-%
+- Zoombereich fuer den manuellen Nahzoom-Follow-up auf `5%-10000%`
+  erweitert
 - stabiler Weltanker ueber beim Load gecachten Root-Overview-Radius
 - Fokuswechsel mit automatischem Fit-Fallback fuer unbrauchbare
   Kleinbody-/Ueberzoom-Faelle

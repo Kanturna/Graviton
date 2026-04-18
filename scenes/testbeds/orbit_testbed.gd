@@ -7,7 +7,7 @@ const VIEWPORT_RADIUS_FACTOR: float = 0.38
 const VIEW_SMOOTHNESS: float = 10.0
 const ZOOM_FACTOR_STEP: float = 1.20
 const MIN_ABSOLUTE_ZOOM_FACTOR: float = 0.05
-const MAX_ABSOLUTE_ZOOM_FACTOR: float = 50.0
+const MAX_ABSOLUTE_ZOOM_FACTOR: float = 100.0
 const GLOBAL_OVERVIEW_RADIUS_FACTOR: float = 1.75
 const MIN_FOCUS_KEEP_VIEWPORT_FRACTION: float = 0.08
 const MAX_FOCUS_KEEP_VIEWPORT_FRACTION: float = 0.60
@@ -221,7 +221,7 @@ func _update_hud() -> void:
 		UniverseRegistry.body_count(),
 		"Paused" if TimeService.paused else "Running"
 	]
-	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Q/E or PgUp/PgDn speed   HUD slider speed   WASD pan   Wheel zoom (5%-5000%)   Backspace fit focus   Space pause   F3 debug"
+	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Q/E or PgUp/PgDn speed   HUD slider speed   WASD pan   Wheel zoom (5%-10000%)   Backspace fit focus   Space pause   F3 debug"
 
 
 func _environment_hud_text(focus_id: StringName) -> String:

@@ -91,7 +91,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Derselbe angezeigte Zoomwert bedeutet innerhalb derselben Welt jetzt
   denselben Welt-Massstab, unabhaengig davon, ob `obsidian`, ein Stern
   oder ein Planet fokussiert ist.
-- Der Zoombereich reicht jetzt von `5%` bis `5000%`; `Backspace`
+- Der Zoombereich reicht jetzt von `5%` bis `10000%`; `Backspace`
   passt die Ansicht explizit wieder auf den aktuellen Fokus.
 - Root-Fokus und globaler Ueberblick werden dynamisch ueber den
   Root-Body bestimmt statt implizit ueber `obsidian`.

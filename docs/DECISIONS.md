@@ -20,7 +20,7 @@ Konsequenz:
   dafuer wird ein separater `focus_closeup_ratio` genutzt statt des
   rohen absoluten Zoomfaktors
  
-## 2026-04-18 - P14.1 erweitert den Zoombereich bewusst auf 5% bis 5000%
+## 2026-04-18 - P14.1 erweitert den Zoombereich bewusst auf 5% bis 10000%
 
 Der Zoombereich wird in P14.1 bewusst nach aussen und innen erweitert.
 
@@ -28,7 +28,7 @@ Konsequenz:
 
 - `5%` erlaubt einen sparsameren, weiter herausgezoomten Weltblick als
   das fruehere Minimum von `20%`
-- `5000%` erlaubt deutlich naeheren manuellen Root-Zoom als das
+- `10000%` erlaubt deutlich naeheren manuellen Root-Zoom als das
   fruehere Maximum von `2400%`
 - `100%` ist ab P14.1 kein Fokus-Fit mehr, sondern nur noch der
   Welt-Basiszoom

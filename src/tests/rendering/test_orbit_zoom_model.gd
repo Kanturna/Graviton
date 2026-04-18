@@ -26,29 +26,35 @@ static func _test_absolute_zoom_scale_mapping(ctx) -> void:
 		"100% mappt exakt auf 1.0 * world_base_scale"
 	)
 	ctx.assert_almost(
-		OrbitZoomModelScript.target_view_scale(world_base_scale, 50.0),
-		600.0,
+		OrbitZoomModelScript.target_view_scale(world_base_scale, 100.0),
+		1200.0,
 		0.000001,
-		"5000% mappt exakt auf 50.0 * world_base_scale"
+		"10000% mappt exakt auf 100.0 * world_base_scale"
 	)
 
 
 static func _test_fit_zoom_factor_clamps_to_range(ctx) -> void:
 	ctx.assert_almost(
-		OrbitZoomModelScript.fit_zoom_factor(18.0, 12.0, 0.05, 50.0),
+		OrbitZoomModelScript.fit_zoom_factor(18.0, 12.0, 0.05, 100.0),
 		1.5,
 		0.000001,
 		"fit current focus berechnet focus_fit_scale / world_base_scale"
 	)
 	ctx.assert_almost(
-		OrbitZoomModelScript.fit_zoom_factor(0.01, 12.0, 0.05, 50.0),
+		OrbitZoomModelScript.fit_zoom_factor(0.01, 12.0, 0.05, 100.0),
 		0.05,
 		0.000001,
 		"fit current focus clampt nach unten in den neuen Zoombereich"
 	)
 	ctx.assert_almost(
-		OrbitZoomModelScript.fit_zoom_factor(900.0, 12.0, 0.05, 50.0),
-		50.0,
+		OrbitZoomModelScript.fit_zoom_factor(900.0, 12.0, 0.05, 100.0),
+		75.0,
+		0.000001,
+		"fit current focus bleibt innerhalb des erweiterten Zoombereichs, wenn kein oberer Clamp noetig ist"
+	)
+	ctx.assert_almost(
+		OrbitZoomModelScript.fit_zoom_factor(1800.0, 12.0, 0.05, 100.0),
+		100.0,
 		0.000001,
 		"fit current focus clampt nach oben in den neuen Zoombereich"
 	)
