@@ -199,7 +199,16 @@ Schritt wieder die planetare Ableitung:
 - breiten- oder saisonabhaengige Umweltbewertung auf Basis der neuen
   latitudenbewussten Thermalgeometrie
 - weitere Atmosphaerenfaktoren jenseits des additiven `greenhouse_delta_k`
+- Wasser-/Volatile-Logik als Grundlage fuer globale planetare
+  Oekosystem-Typen
 - spaeter weitere Umweltgroessen / Strahlung / Atmosphaerenklassen
+
+Zielbild fuer diesen Strang:
+
+- weg von nur globalen Temperatur- und Habitability-Skalarwerten
+- hin zu glaubwuerdigen planetaren Gesamtzustaenden wie Eiswelt,
+  trockene Welt, saisonal habitabler Planet oder greenhouse-getriebene
+  Heisswelt
 
 ## Offene Folgeaufgabe - NUMERIC_LOCAL Tuning / staerkere Policies
 
@@ -216,6 +225,17 @@ Schritt wieder die planetare Ableitung:
 - Generator-Konzept fuer Root-Systeme, Sterne, Planeten und Monde
 - Zufallsbereiche fuer Orbitachsen, Exzentrizitaeten und Orientierungen
 - deterministische Seeds / reproduzierbare Welten
+
+## Spaeter - Reichere Referenzwelten unter dem BH-Root
+
+- `sample_system` bleibt bewusst klein und sauber als kompakte
+  Referenzwelt
+- `starter_world` oder eine spaetere groessere Referenzwelt soll
+  deutlich mehr Sterne unter `obsidian` tragen
+- einzelne Sterne sollen deutlich unterschiedlich viele Planeten haben
+- die BH-gebundenen Sternorbits muessen langfristig nicht auf perfekten
+  Kreisen bleiben; elliptischere und insgesamt asymmetrischere
+  Mehrstern-Anordnungen sind ausdruecklich gewuenscht
 
 ## Bewusst nicht jetzt
 

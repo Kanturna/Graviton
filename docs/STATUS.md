@@ -179,6 +179,13 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - als naechsten grossen Simulationsschritt weitere planetare
   Umweltfaktoren jenseits des additiven Greenhouse-Toy-Modells
   betrachten
+- dabei bewusst in Richtung globaler planetarer Oekosystem-Typen
+  weitergehen statt bei nur skalaren Temperatur- und
+  Habitability-Werten stehenzubleiben
+- parallel die Referenzwelt unter `obsidian` spaeter in Richtung eines
+  groesseren, asymmetrischeren Mehrstern-Roots weiterdenken: mehr
+  Sterne, mehr Planetensysteme und langfristig nicht nur perfekte
+  Kreisbahnen der Sterne um das schwarze Loch
 - parallel kleine nicht-kanonische Doku-Drift bereinigen, wenn sie
   wieder sichtbar wird
 - spaeter numerische Guardrail-Parameter oder strengere Overspeed-

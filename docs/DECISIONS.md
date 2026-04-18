@@ -1,5 +1,35 @@
 # Graviton - Decisions
 
+## 2026-04-18 - Umwelt-Roadmap zielt auf planetare Oekosystem-Typen
+
+Die weitere planetare Umweltableitung soll nicht bei globalen
+Temperatur- und Habitability-Skalarwerten stehen bleiben, sondern
+schrittweise in Richtung globaler planetarer Oekosystem-Typen fuehren.
+
+Konsequenz:
+
+- breiten- und saisonabhaengige Thermalgeometrie ist nur ein
+  Zwischenschritt
+- weitere Atmosphaeren- und Wasser-/Volatile-Faktoren sind die
+  naechsten sinnvollen Fundamentbloeke
+- detailreiche Laender-/Biome- oder Oberflaechenmodelle sind dafuer
+  ausdruecklich nicht sofort Voraussetzung
+
+## 2026-04-18 - `sample_system` bleibt klein; reichere BH-Systeme gehoeren in `starter_world` oder eine spaetere grosse Referenzwelt
+
+Die aktuelle kleine Referenzwelt `sample_system` bleibt bewusst kompakt
+und sauber. Ein deutlich groesseres, asymmetrischeres
+Schwarzes-Loch-Mehrsternsystem soll stattdessen ueber `starter_world`
+oder eine spaetere groessere Referenzwelt entstehen.
+
+Konsequenz:
+
+- mehr Sterne unter `obsidian` sind ausdruecklich gewuenscht
+- einzelne Sterne duerfen deutlich unterschiedlich viele Planeten tragen
+- die heutigen perfekten Kreisbahnen der Sterne um das schwarze Loch
+  sind keine langfristige Zielvorgabe; elliptischere und insgesamt
+  weniger symmetrische Sternsysteme bleiben eine bewusste Ausbauoption
+
 ## 2026-04-18 - Saisonale Strahlungsgeometrie bleibt im `ThermalService`
 
 Die P11-Saisongeometrie erweitert bewusst den bestehenden
