@@ -228,6 +228,21 @@ Erledigt:
 - `sample_system` bleibt der kanonische habitable Showcase; die
   thermisch extreme `starter_world` wurde bewusst nicht retuned
 
+## Prioritaet 13.1 - Content-Follow-up: sichtbarer habitaler Kandidat in `starter_world` - erledigt
+
+Ziel:
+Die grosse BH-Referenzwelt soll nicht nur extreme hot/frozen-Beispiele
+zeigen, sondern mindestens einen im laufenden Testbed auffindbaren
+habitablen Kandidaten tragen.
+
+Erledigt:
+
+- `gamma_iv` wurde als erster sichtbar habitabler Kandidat getunt
+- die Aenderung bleibt bewusst minimal und retuned nicht das gesamte
+  `starter_world`-System
+- Tests pinnen jetzt, dass `gamma_iv` in `starter_world` als
+  `HABITABLE` erkannt wird
+
 ## Danach - Weitere planetare Umweltableitung
 
 Nach dem ersten Guardrail-Block ist der naechste groessere Simulations-

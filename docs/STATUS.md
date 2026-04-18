@@ -102,6 +102,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   sichtbar schneller als Planeten und Planeten sichtbar schneller als
   ihre Sterne um `obsidian` kreisen; die BH-Sterne bleiben dabei in
   diesem Slice bewusst kreisfoermige `AUTHORED_ORBIT`.
+- `starter_world` enthaelt jetzt zusaetzlich mit `gamma_iv` einen
+  ersten bewusst sichtbaren habitablen Kandidaten, damit Habitability
+  nicht nur in der separaten `sample_system`-Welt demonstriert wird.
 
 ## Ziel dieser Praesentationsschicht
 
@@ -167,9 +170,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   oder exzentrischen Bahnen sichtbar ueber das Orbitaljahr
   oszillieren.
 - `sample_system` ist jetzt der explizite habitable Showcase fuer die
-  neue zonale Umweltkette; `starter_world` bleibt bewusst der thermisch
-  extreme Mehrstern-Sandkasten und wurde in P12A nicht auf
-  Habitability retuned.
+- neue zonale Umweltkette; `starter_world` bleibt weitgehend der
+  thermisch extreme Mehrstern-Sandkasten, traegt jetzt aber bewusst
+  genau einen sichtbaren habitablen Kandidaten.
 - Der Wish-Pfad fuer `NUMERIC_LOCAL` bleibt bewusst um einen Frame
   gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`),
   wird jetzt aber im `OrbitService` ueber einen Grace-Tick abgefedert.

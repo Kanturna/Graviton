@@ -28,6 +28,13 @@ Die vier Sternsysteme sind bewusst ungleich gross:
 - `gamma`: 4 Planeten, 1 Mond
 - `delta`: 1 Planet, 0 Monde
 
+Zusatz seit dem kleinen P12A-Folge-Tuning:
+
+- `gamma_iv` ist der erste bewusst sichtbare habitabele Kandidat der
+  `starter_world`
+- die restliche BH-Referenzwelt darf weiter ueberwiegend thermisch
+  extrem bleiben
+
 ## Orbit-Modus-Entscheidungen
 
 - **AUTHORED_ORBIT fuer BH-Sterne und Monde:** `r` und `T` bleiben frei
@@ -49,6 +56,9 @@ Die vier Sternsysteme sind bewusst ungleich gross:
   weiterer Mond
 - mindestens zwei neue Planeten mit explizit nicht-default
   Saison-Azimutwerten (`gamma_ii`, `delta_i`)
+- `gamma_iv` sitzt bewusst deutlich weiter draussen und traegt einen
+  expliziten Greenhouse-Beitrag, damit der Default-Testbed-Start in der
+  grossen BH-Welt nicht nur `HOT`- und `FROZEN`-Beispiele zeigt
 
 ## Render-Skalierung
 
@@ -102,3 +112,6 @@ weiter klar vom Parent getrennt sind.
   Showcase-Welt. Die thermischen Extreme im BH-Sandkasten sind kein
   Fehler; der kanonische habitable Referenzkoerper bleibt
   `sample_system.planet_a`.
+- Ausnahme: `gamma_iv` ist jetzt als einzelner sichtbar habitabler
+  Kandidat bewusst getunt. Das ist ein kleiner Produkt-/Content-Hook,
+  kein Umbau der gesamten BH-Welt zu einer freundlichen Referenzwelt.

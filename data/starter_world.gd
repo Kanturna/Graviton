@@ -391,8 +391,8 @@ static func _build_gamma_iii() -> BodyDef:
 static func _build_gamma_iv() -> BodyDef:
 	var prof := OrbitProfile.new()
 	prof.mode = OrbitMode.Kind.KEPLER_APPROX
-	prof.semi_major_axis_m = 5.1e9
-	prof.eccentricity = 0.27
+	prof.semi_major_axis_m = 1.95e11
+	prof.eccentricity = 0.04
 	prof.inclination_rad = 0.0
 	prof.longitude_ascending_node_rad = 0.0
 	prof.argument_periapsis_rad = 5.30
@@ -406,9 +406,13 @@ static func _build_gamma_iv() -> BodyDef:
 	d.mass_kg = UnitSystem.EARTH_MASS_KG * 2.0
 	d.radius_m = 8.9e6
 	d.rotation_period_s = 2.60 * UnitSystem.DAY_S
-	d.axial_tilt_rad = 0.71
+	# P12A-Folge-Tuning: Gamma IV ist der erste bewusst sichtbare
+	# habitable Kandidat der StarterWorld, damit Habitability nicht nur in
+	# sample_system demonstriert wird.
+	d.axial_tilt_rad = 0.26
 	d.luminosity_w = 0.0
 	d.albedo = 0.24
+	d.greenhouse_delta_k = 24.0
 	d.parent_id = &"gamma"
 	d.orbit_profile = prof
 	return d

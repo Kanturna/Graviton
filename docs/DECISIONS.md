@@ -1,5 +1,21 @@
 # Graviton - Decisions
 
+## 2026-04-18 - `starter_world` bekommt genau einen sichtbaren habitablen Kandidaten
+
+Nach P12A wird `starter_world` bewusst nicht flaechig auf Habitability
+retuned, bekommt aber genau einen explizit sichtbaren Kandidaten
+(`gamma_iv`), damit der Default-Testbed-Start nicht nur extreme
+`HOT`-/`FROZEN`-Faelle zeigt.
+
+Konsequenz:
+
+- `sample_system` bleibt weiter der kanonische kleine habitable
+  Showcase
+- `starter_world` bleibt insgesamt ein asymmetrischer BH-Sandkasten und
+  wird nicht breit auf „freundliche“ Planeten umgebaut
+- einzelne gezielte Content-Tunes fuer Sichtbarkeit sind erlaubt, wenn
+  sie explizit gepinnt und getestet werden
+
 ## 2026-04-18 - P12A bewertet momentane Umweltzonen, keine Jahresmittel
 
 Die erste zonenbewusste Umweltklassifikation in P12A bewertet bewusst

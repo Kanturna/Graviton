@@ -61,6 +61,7 @@ static func run(ctx) -> void:
 	ctx.current_suite = "test_environment_service"
 	_test_sample_system_planet_a_is_habitable_and_seasonal(ctx)
 	_test_sample_system_moon_a_is_supported_and_band_aware(ctx)
+	_test_starter_world_gamma_iv_is_visible_habitable_candidate(ctx)
 	_test_sample_system_sol_is_unsupported(ctx)
 	_test_supported_body_without_luminous_ancestor_is_hostile(ctx)
 	_test_describe_and_classify_stay_consistent(ctx)
@@ -232,6 +233,23 @@ static func _test_sample_system_moon_a_is_supported_and_band_aware(ctx) -> void:
 	ctx.assert_true(
 		float(desc.get("equator_surface_temperature_k", 0.0)) > 0.0,
 		"moon_a meldet eine endliche aequatoriale Bandtemperatur"
+	)
+	_cleanup_setup(setup)
+
+
+static func _test_starter_world_gamma_iv_is_visible_habitable_candidate(ctx) -> void:
+	var setup: Dictionary = _setup_named_world(&"starter_world")
+	var environment_service = setup["environment_service"]
+	var desc: Dictionary = environment_service.describe_body(&"gamma_iv")
+	ctx.assert_true(bool(desc.get("is_supported_body_kind", false)), "gamma_iv bleibt ein unterstuetzter Umweltkoerper")
+	ctx.assert_true(bool(desc.get("has_latitudinal_surface_basis", false)), "gamma_iv hat eine latitudinale Umweltbasis")
+	ctx.assert_true(bool(desc.get("has_habitable_band", false)), "gamma_iv hat mindestens ein habitales Band")
+	ctx.assert_true(bool(desc.get("has_liquid_water_band", false)), "gamma_iv hat mindestens ein Fluessigwasser-Band")
+	_assert_class_eq(
+		ctx,
+		environment_service.classify(&"gamma_iv"),
+		EnvironmentServiceScript.Class.HABITABLE,
+		"gamma_iv ist der erste sichtbar habitabele Kandidat der StarterWorld"
 	)
 	_cleanup_setup(setup)
 
