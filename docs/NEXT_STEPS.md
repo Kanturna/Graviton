@@ -1,6 +1,6 @@
 # Graviton - Next Steps
 
-Stand: 2026-04-18
+Stand: 2026-04-19
 
 ## Prioritaet 0 - Test-Baseline wieder gruen machen - erledigt
 
@@ -285,26 +285,42 @@ Erledigt:
 - neue Rendering-Tests pinnen synthetische Resolver-Regeln plus die
   stabilen Live-Welt-Faelle `planet_a` und `gamma_iv @ t=0.0`
 
-## Prioritaet 14.1 - View Phase B: Absoluten Welt-Zoom einfuehren - erledigt
+## Prioritaet 14.1 - View Phase B: Stabilen Weltanker fuer den Kamera-Zoom einfuehren - erledigt
 
 Ziel:
-Die Kamera-Semantik innerhalb einer geladenen Welt konsistent machen,
-ohne die bestehende Fokus-Topologie oder die P14-Nahdetail-Schwellen zu
-brechen.
+Den globalen Weltblick an einen stabilen, beim Load gecachten
+Weltanker binden, ohne die bestehende Fokus-Topologie oder die
+P14-Nahdetail-Schwellen zu brechen.
 
 Erledigt:
 
-- absoluter Welt-Zoomfaktor statt fokus-relativem Zoom-%
+- beim Load gecachter Root-Overview-Radius als Weltanker
 - Zoombereich fuer den manuellen Nahzoom-Follow-up auf `5%-10000%`
   erweitert
-- stabiler Weltanker ueber beim Load gecachten Root-Overview-Radius
-- Fokuswechsel mit automatischem Fit-Fallback fuer unbrauchbare
-  Kleinbody-/Ueberzoom-Faelle
-- `Backspace` ist jetzt explizit `fit current focus`
 - Renderer-Nahdetail und Fokus-Emphasis laufen weiter fokus-relativ
   ueber einen separaten `focus_closeup_ratio`
-- neuer reiner Zoom-Helper-Testblock fuer Mapping, Clamp, Fallback und
-  Closeup-Semantik
+- neuer reiner Zoom-Helper-Testblock fuer Weltanker, Mapping und
+  fokus-relatives Closeup-Verhaeltnis
+
+## Prioritaet 14.2 - View Phase C: Hybrid-Zoom fuer Weltblick und lokalen Nahzoom - erledigt
+
+Ziel:
+Den guten globalen Rauszoom aus P14.1 behalten, aber fokussierte
+Sterne, Planeten und Monde wieder mit einem brauchbaren lokalen
+Nahzoom erreichbar machen.
+
+Erledigt:
+
+- `5% .. 100%` bilden jetzt explizit `world -> fit current focus` ab
+- `100%` bedeutet wieder exakt `fit current focus`
+- `100% .. 10000%` sind jetzt bewusster lokaler Fokus-Closeup statt
+  global vergleichbarer Welt-Massstab
+- Fokuswechsel behalten den Sliderwert, interpretieren hohe Zoomwerte
+  aber unter dem neuen Fokus lokal neu
+- HUD-Zoomwerte zeigen jetzt explizit den Modus
+  (`world` / `fit` / `focus`)
+- die fruehere P14.1-Invariante "gleiche Zoomzahl = gleicher
+  Welt-Massstab unabhaengig vom Fokus" wurde bewusst zurueckgenommen
 
 ## Danach - Weitere planetare Umweltableitung
 

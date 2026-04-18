@@ -1,6 +1,6 @@
 # Graviton - Status
 
-Stand: 2026-04-18
+Stand: 2026-04-19
 
 ## Kurzfassung
 
@@ -86,13 +86,17 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Hohe Speedstufen erzeugen keinen Tick-Sturm pro Frame mehr;
   `time_scale` skaliert das simulierte `dt` pro Physics-Frame.
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
-- Die Kamera nutzt jetzt einen absoluten Zoomfaktor pro geladener Welt
-  statt eines fokus-relativen Fit-Multiplikators.
-- Derselbe angezeigte Zoomwert bedeutet innerhalb derselben Welt jetzt
-  denselben Welt-Massstab, unabhaengig davon, ob `obsidian`, ein Stern
-  oder ein Planet fokussiert ist.
-- Der Zoombereich reicht jetzt von `5%` bis `10000%`; `Backspace`
-  passt die Ansicht explizit wieder auf den aktuellen Fokus.
+- Die Kamera nutzt jetzt ein bewusstes Hybrid-Zoommodell:
+  `5% .. 100%` interpoliert von Welt-Ueberblick zu `fit current focus`,
+  und oberhalb von `100%` wird Zoom wieder als lokaler Closeup relativ
+  zum aktuellen Fokus interpretiert.
+- `100%` bedeutet im Testbed wieder explizit `fit current focus`;
+  `Backspace` springt auf genau diesen Fokus-Fit zurueck.
+- Der Zoombereich bleibt bei `5%` bis `10000%`; der gute globale
+  Rauszoom bleibt erhalten, aber fokussierte Sterne, Planeten und Monde
+  koennen wieder deutlich naeher herangezoomt werden als unter P14.1.
+- Das HUD macht die Zoom-Semantik jetzt explizit sichtbar:
+  `Zoom ... world`, `Zoom 100% fit` und `Zoom ... focus`.
 - Root-Fokus und globaler Ueberblick werden dynamisch ueber den
   Root-Body bestimmt statt implizit ueber `obsidian`.
 - Das Testbed unterstuetzt Camera-Panning, klickbaren Fokus und
@@ -211,10 +215,13 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   texturfrei; `DESERT` wurde in diesem ersten Slice ausdruecklich nicht
   eingefuehrt, weil dafuer noch keine staerkere Sim-Basis fuer Ariditaet
   oder Wasserverteilung existiert.
-- Der neue absolute Kamera-Zoom ist pro geladener Welt ueber einen beim
-  Load gecachten Root-Overview-Radius stabilisiert; Renderer-Nahdetail
-  bleibt davon getrennt fokus-relativ, damit die P14-Archetypen bei
-  gleicher lokaler Naehe weiterhin dieselben Detail-Schwellen behalten.
+- Der Zoom nutzt weiter einen beim Load gecachten Root-Overview-Radius
+  als Weltanker fuer den guten Fernblick, gibt oberhalb von `100%` aber
+  den global vergleichbaren Welt-Massstab bewusst zugunsten eines
+  brauchbaren lokalen Fokus-Closeups wieder auf.
+- Renderer-Nahdetail bleibt weiterhin getrennt fokus-relativ, damit die
+  P14-Archetypen bei gleicher lokaler Naehe dieselben Detail-Schwellen
+  behalten.
 - Der Wish-Pfad fuer `NUMERIC_LOCAL` bleibt bewusst um einen Frame
   gegenueber `sim_tick` versetzt (`_process()` vs. `_physics_process()`),
   wird jetzt aber im `OrbitService` ueber einen Grace-Tick abgefedert.

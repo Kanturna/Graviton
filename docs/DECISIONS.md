@@ -1,38 +1,38 @@
 # Graviton - Decisions
 
-## 2026-04-18 - Kamera-Zoom ist jetzt absolut pro geladener Welt, Detail aber weiter fokus-relativ
+## 2026-04-19 - P14.2 nutzt bewusst Hybrid-Zoom: `world -> fit -> focus`
 
-P14.1 trennt bewusst zwischen zwei verschiedenen Bedeutungen von
-"Zoom": Kamera-Skala und Nahdetail.
-
-Konsequenz:
-
-- die Kamera nutzt jetzt einen absoluten Zoomfaktor relativ zu einem
-  beim Welt-Load gecachten Root-Overview-Radius
-- derselbe angezeigte Zoomwert bedeutet innerhalb derselben Welt
-  denselben Welt-Massstab, unabhaengig vom aktuellen Fokus
-- Fokuswechsel duerfen aus Ergonomiegruenden automatisch auf
-  Fokus-Fit zurueckfallen, wenn der neue Fokus unter dem aktuellen Zoom
-  unbrauchbar klein oder gross waere
-- `get_focus_frame(...)` bleibt fuer Fit-/Framing-Aufgaben erhalten,
-  bestimmt aber nicht mehr kontinuierlich die Bedeutung der Zoom-%
-- Renderer-Nahdetail und Fokus-Emphasis bleiben bewusst fokus-relativ;
-  dafuer wird ein separater `focus_closeup_ratio` genutzt statt des
-  rohen absoluten Zoomfaktors
-
-## 2026-04-18 - P14.1 erweitert den Zoombereich bewusst auf 5% bis 10000%
-
-Der Zoombereich wird in P14.1 bewusst nach aussen und innen erweitert.
+P14.2 ersetzt die reine P14.1-Semantik "gleiche Zoomzahl = gleicher
+Welt-Massstab" durch ein bewusstes Hybridmodell, weil der globale
+Rauszoom gut funktionierte, der lokale Nahzoom auf fokussierte Systeme
+und Planeten aber spielerisch zu schwach wurde.
 
 Konsequenz:
 
-- `5%` erlaubt einen sparsameren, weiter herausgezoomten Weltblick als
-  das fruehere Minimum von `20%`
-- `10000%` erlaubt deutlich naeheren manuellen Root-Zoom als das
-  fruehere Maximum von `2400%`
-- `100%` ist ab P14.1 kein Fokus-Fit mehr, sondern nur noch der
-  Welt-Basiszoom
-- `Backspace` ist der explizite `fit current focus`-Reset
+- `5% .. 100%` bilden jetzt explizit `world -> fit current focus` ab
+- `100%` bedeutet wieder exakt `fit current focus`
+- oberhalb von `100%` ist Zoom bewusst wieder lokaler Closeup relativ
+  zum aktuellen Fokus
+- gleiche Zoomzahlen oberhalb von `100%` sind damit nicht mehr
+  fokusuebergreifend als gleicher Welt-Massstab interpretierbar
+- das HUD macht diese Semantik explizit sichtbar ueber
+  `Zoom ... world`, `Zoom 100% fit` und `Zoom ... focus`
+
+## 2026-04-19 - Der globale Weltanker bleibt, aber nur fuer den Fernblick
+
+P14.2 verwirft nicht den Weltanker aus P14.1, sondern grenzt ihn klarer
+ein.
+
+Konsequenz:
+
+- der beim Load gecachte Root-Overview-Radius bleibt der Anker fuer den
+  guten globalen Rauszoom
+- der Zoombereich bleibt bei `5%` bis `10000%`
+- `Backspace` bleibt der explizite `fit current focus`-Reset
+- Renderer-Nahdetail und Fokus-Emphasis bleiben weiter fokus-relativ
+  ueber `focus_closeup_ratio`
+- P14.2 ist bewusst kein Render-/Body-Size-Pass; Sprite-Groesse,
+  `detail_factor` und P14-Klima-Archetypen bleiben unangetastet
 
 ## 2026-04-18 - Planet-/Mond-Visuals bleiben Projektion bestehender Sim-/Derived-Daten
 

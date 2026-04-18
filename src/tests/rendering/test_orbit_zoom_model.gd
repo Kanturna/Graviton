@@ -2,81 +2,178 @@ extends RefCounted
 
 const OrbitZoomModelScript = preload("res://src/tools/rendering/orbit_zoom_model.gd")
 
+const OVERVIEW_RATIO: float = 0.4
+const MAX_CLOSEUP_BIAS: float = 10.0
+
 
 static func run(ctx) -> void:
 	ctx.current_suite = "test_orbit_zoom_model"
-	_test_absolute_zoom_scale_mapping(ctx)
-	_test_fit_zoom_factor_clamps_to_range(ctx)
-	_test_focus_fallback_thresholds(ctx)
+	_test_hybrid_zoom_scale_mapping(ctx)
+	_test_world_overview_scale_ratio(ctx)
+	_test_focus_relative_closeup_semantics(ctx)
+	_test_zoom_mode_labels(ctx)
 	_test_focus_closeup_ratio_semantics(ctx)
 
 
-static func _test_absolute_zoom_scale_mapping(ctx) -> void:
-	var world_base_scale: float = 12.0
+static func _test_hybrid_zoom_scale_mapping(ctx) -> void:
+	var root_fit_scale: float = 20.0
+	var focus_fit_scale: float = 50.0
+	var world_overview_scale: float = OrbitZoomModelScript.world_overview_scale(
+		root_fit_scale,
+		OVERVIEW_RATIO
+	)
+
 	ctx.assert_almost(
-		OrbitZoomModelScript.target_view_scale(world_base_scale, 0.05),
-		0.60,
+		OrbitZoomModelScript.target_view_scale(
+			root_fit_scale,
+			focus_fit_scale,
+			0.05,
+			OVERVIEW_RATIO,
+			MAX_CLOSEUP_BIAS
+		),
+		world_overview_scale,
 		0.000001,
-		"5% mappt exakt auf 0.05 * world_base_scale"
+		"5% mappt exakt auf world_overview_scale"
 	)
 	ctx.assert_almost(
-		OrbitZoomModelScript.target_view_scale(world_base_scale, 1.0),
-		12.0,
+		OrbitZoomModelScript.target_view_scale(
+			root_fit_scale,
+			focus_fit_scale,
+			1.0,
+			OVERVIEW_RATIO,
+			MAX_CLOSEUP_BIAS
+		),
+		focus_fit_scale,
 		0.000001,
-		"100% mappt exakt auf 1.0 * world_base_scale"
+		"100% mappt exakt auf focus_fit_scale"
 	)
 	ctx.assert_almost(
-		OrbitZoomModelScript.target_view_scale(world_base_scale, 100.0),
-		1200.0,
+		OrbitZoomModelScript.target_view_scale(
+			root_fit_scale,
+			focus_fit_scale,
+			100.0,
+			OVERVIEW_RATIO,
+			MAX_CLOSEUP_BIAS
+		),
+		focus_fit_scale * MAX_CLOSEUP_BIAS,
 		0.000001,
-		"10000% mappt exakt auf 100.0 * world_base_scale"
+		"10000% mappt exakt auf focus_fit_scale * MAX_FOCUS_CLOSEUP_BIAS"
+	)
+	ctx.assert_true(
+		OrbitZoomModelScript.target_view_scale(
+			root_fit_scale,
+			focus_fit_scale,
+			0.20,
+			OVERVIEW_RATIO,
+			MAX_CLOSEUP_BIAS
+		) > world_overview_scale
+		and OrbitZoomModelScript.target_view_scale(
+			root_fit_scale,
+			focus_fit_scale,
+			0.20,
+			OVERVIEW_RATIO,
+			MAX_CLOSEUP_BIAS
+		) < focus_fit_scale,
+		"Zwischen 5% und 100% bleibt der Scale im Overview->Fit-Bereich"
 	)
 
 
-static func _test_fit_zoom_factor_clamps_to_range(ctx) -> void:
-	ctx.assert_almost(
-		OrbitZoomModelScript.fit_zoom_factor(18.0, 12.0, 0.05, 100.0),
-		1.5,
-		0.000001,
-		"fit current focus berechnet focus_fit_scale / world_base_scale"
+static func _test_world_overview_scale_ratio(ctx) -> void:
+	var root_fit_scale: float = 20.0
+	var world_overview_scale: float = OrbitZoomModelScript.world_overview_scale(
+		root_fit_scale,
+		OVERVIEW_RATIO
 	)
 	ctx.assert_almost(
-		OrbitZoomModelScript.fit_zoom_factor(0.01, 12.0, 0.05, 100.0),
-		0.05,
+		world_overview_scale,
+		root_fit_scale * OVERVIEW_RATIO,
 		0.000001,
-		"fit current focus clampt nach unten in den neuen Zoombereich"
+		"world_overview_scale == root_fit_scale * 0.4"
 	)
-	ctx.assert_almost(
-		OrbitZoomModelScript.fit_zoom_factor(900.0, 12.0, 0.05, 100.0),
-		75.0,
-		0.000001,
-		"fit current focus bleibt innerhalb des erweiterten Zoombereichs, wenn kein oberer Clamp noetig ist"
-	)
-	ctx.assert_almost(
-		OrbitZoomModelScript.fit_zoom_factor(1800.0, 12.0, 0.05, 100.0),
-		100.0,
-		0.000001,
-		"fit current focus clampt nach oben in den neuen Zoombereich"
+	ctx.assert_true(
+		world_overview_scale < root_fit_scale,
+		"Unter Root-Fokus ist 5% kleiner als 100% und damit ein echter sichtbarer Bereich"
 	)
 
 
-static func _test_focus_fallback_thresholds(ctx) -> void:
-	var viewport_size := Vector2(2000.0, 1200.0)
+static func _test_focus_relative_closeup_semantics(ctx) -> void:
+	var root_fit_scale: float = 20.0
+	var first_focus_fit_scale: float = 30.0
+	var second_focus_fit_scale: float = 45.0
+	ctx.assert_almost(
+		OrbitZoomModelScript.target_view_scale(
+			root_fit_scale,
+			first_focus_fit_scale,
+			1.0,
+			OVERVIEW_RATIO,
+			MAX_CLOSEUP_BIAS
+		),
+		30.0,
+		0.000001,
+		"100% ergibt fuer den ersten Fokus dessen Fit-Skala"
+	)
+	ctx.assert_almost(
+		OrbitZoomModelScript.target_view_scale(
+			root_fit_scale,
+			second_focus_fit_scale,
+			1.0,
+			OVERVIEW_RATIO,
+			MAX_CLOSEUP_BIAS
+		),
+		45.0,
+		0.000001,
+		"100% ergibt fuer den zweiten Fokus dessen Fit-Skala"
+	)
+	ctx.assert_almost(
+		OrbitZoomModelScript.target_view_scale(
+			root_fit_scale,
+			first_focus_fit_scale,
+			100.0,
+			OVERVIEW_RATIO,
+			MAX_CLOSEUP_BIAS
+		),
+		300.0,
+		0.000001,
+		"10000% ergibt fuer den ersten Fokus lokalen Closeup"
+	)
+	ctx.assert_almost(
+		OrbitZoomModelScript.target_view_scale(
+			root_fit_scale,
+			second_focus_fit_scale,
+			100.0,
+			OVERVIEW_RATIO,
+			MAX_CLOSEUP_BIAS
+		),
+		450.0,
+		0.000001,
+		"10000% ergibt fuer den zweiten Fokus einen anderen lokalen Closeup"
+	)
+	ctx.assert_almost(
+		OrbitZoomModelScript.focus_closeup_bias(1.0, MAX_CLOSEUP_BIAS),
+		1.0,
+		0.000001,
+		"Der lokale Closeup-Bias startet auf Fokus-Fit bei 1.0"
+	)
+	ctx.assert_almost(
+		OrbitZoomModelScript.focus_closeup_bias(100.0, MAX_CLOSEUP_BIAS),
+		10.0,
+		0.000001,
+		"Der lokale Closeup-Bias endet bei 10000% exakt auf 10.0"
+	)
+
+
+static func _test_zoom_mode_labels(ctx) -> void:
 	ctx.assert_true(
-		OrbitZoomModelScript.should_auto_fit_for_focus(95.0, viewport_size, 0.08, 0.60),
-		"projected focus radius unter 8% der kurzen Viewport-Seite erzwingt auto-fit"
+		OrbitZoomModelScript.zoom_mode_label(0.4) == "world",
+		"Zoomwerte unter 100% tragen das HUD-Label world"
 	)
 	ctx.assert_true(
-		not OrbitZoomModelScript.should_auto_fit_for_focus(96.0, viewport_size, 0.08, 0.60),
-		"projected focus radius exakt auf 8% bleibt im Zoom-erhalten-Fenster"
+		OrbitZoomModelScript.zoom_mode_label(1.0) == "fit",
+		"100% traegt das HUD-Label fit"
 	)
 	ctx.assert_true(
-		not OrbitZoomModelScript.should_auto_fit_for_focus(720.0, viewport_size, 0.08, 0.60),
-		"projected focus radius exakt auf 60% bleibt im Zoom-erhalten-Fenster"
-	)
-	ctx.assert_true(
-		OrbitZoomModelScript.should_auto_fit_for_focus(721.0, viewport_size, 0.08, 0.60),
-		"projected focus radius ueber 60% der kurzen Viewport-Seite erzwingt auto-fit"
+		OrbitZoomModelScript.zoom_mode_label(32.0) == "focus",
+		"Zoomwerte ueber 100% tragen das HUD-Label focus"
 	)
 
 

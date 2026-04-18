@@ -9,8 +9,8 @@ const ZOOM_FACTOR_STEP: float = 1.20
 const MIN_ABSOLUTE_ZOOM_FACTOR: float = 0.05
 const MAX_ABSOLUTE_ZOOM_FACTOR: float = 100.0
 const GLOBAL_OVERVIEW_RADIUS_FACTOR: float = 1.75
-const MIN_FOCUS_KEEP_VIEWPORT_FRACTION: float = 0.08
-const MAX_FOCUS_KEEP_VIEWPORT_FRACTION: float = 0.60
+const WORLD_OVERVIEW_SCALE_RATIO: float = 0.4
+const MAX_FOCUS_CLOSEUP_BIAS: float = 10.0
 const PAN_SPEED_PX_PER_S: float = 960.0
 
 @export_enum("starter_world", "sample_system") var initial_world_id: String = "starter_world"
@@ -166,7 +166,8 @@ func _set_focus(body_id: StringName, immediate: bool = false, force_fit: bool = 
 	_renderer.clear_trails()
 	_manual_pan_ru = Vector2.ZERO
 	_refresh_focus_frame_radius(body_id)
-	_adjust_zoom_for_focus(get_viewport_rect().size, force_fit)
+	if force_fit:
+		_fit_current_focus_zoom()
 	_refresh_target_view()
 	if immediate:
 		_apply_view_transform(true)
@@ -177,8 +178,15 @@ func _refresh_target_view() -> void:
 	var focus_center: Vector2 = _renderer.get_body_view_position_ru(_bubble.get_focus())
 	if not _is_finite_vec2(focus_center):
 		focus_center = Vector2.ZERO
-	var world_base_scale: float = _world_base_scale(viewport_size)
-	_target_view_scale = OrbitZoomModelScript.target_view_scale(world_base_scale, _absolute_zoom_factor)
+	var root_fit_scale: float = _root_fit_scale(viewport_size)
+	var focus_fit_scale: float = _current_focus_fit_scale(viewport_size)
+	_target_view_scale = OrbitZoomModelScript.target_view_scale(
+		root_fit_scale,
+		focus_fit_scale,
+		_absolute_zoom_factor,
+		WORLD_OVERVIEW_SCALE_RATIO,
+		MAX_FOCUS_CLOSEUP_BIAS
+	)
 	_target_world_offset = viewport_size * 0.5 - (focus_center + _manual_pan_ru) * _target_view_scale
 
 
@@ -212,10 +220,11 @@ func _update_hud() -> void:
 	_climate_value.text = _climate_hud_text(focus_id)
 	_season_value.text = _season_hud_text(focus_id)
 	_time_value.text = "T+ %.2f d   steps %d   FPS %d" % [sim_days, TimeService.tick_count, fps]
-	_scale_value.text = "Speed x%s   Preset %s   Zoom %.0f%%" % [
+	_scale_value.text = "Speed x%s   Preset %s   Zoom %.0f%% %s" % [
 		_stripped_float(TimeService.time_scale),
 		speed_step_label,
-		_absolute_zoom_factor * 100.0
+		_absolute_zoom_factor * 100.0,
+		OrbitZoomModelScript.zoom_mode_label(_absolute_zoom_factor)
 	]
 	_mode_value.text = "Bodies %d   %s" % [
 		UniverseRegistry.body_count(),
@@ -291,7 +300,7 @@ func _fit_scale_for_radius(focus_radius: float, viewport_size: Vector2) -> float
 	return target_screen_radius / safe_radius
 
 
-func _world_base_scale(viewport_size: Vector2) -> float:
+func _root_fit_scale(viewport_size: Vector2) -> float:
 	return maxf(_fit_scale_for_radius(_world_overview_radius_ru, viewport_size), 0.0001)
 
 
@@ -312,49 +321,9 @@ func _refresh_focus_frame_radius(body_id: StringName) -> void:
 	_current_focus_frame_radius_ru = maxf(float(frame.get("radius", 1.0)), 1.0)
 
 
-func _adjust_zoom_for_focus(viewport_size: Vector2, force_fit: bool) -> void:
-	var focus_fit_scale: float = _current_focus_fit_scale(viewport_size)
-	var world_base_scale: float = _world_base_scale(viewport_size)
-	if force_fit:
-		_absolute_zoom_factor = OrbitZoomModelScript.fit_zoom_factor(
-			focus_fit_scale,
-			world_base_scale,
-			MIN_ABSOLUTE_ZOOM_FACTOR,
-			MAX_ABSOLUTE_ZOOM_FACTOR
-		)
-		return
-
-	var target_view_scale: float = OrbitZoomModelScript.target_view_scale(
-		world_base_scale,
-		_absolute_zoom_factor
-	)
-	var projected_focus_radius_px: float = OrbitZoomModelScript.projected_focus_radius_px(
-		_current_focus_frame_radius_ru,
-		target_view_scale
-	)
-	if OrbitZoomModelScript.should_auto_fit_for_focus(
-		projected_focus_radius_px,
-		viewport_size,
-		MIN_FOCUS_KEEP_VIEWPORT_FRACTION,
-		MAX_FOCUS_KEEP_VIEWPORT_FRACTION
-	):
-		_absolute_zoom_factor = OrbitZoomModelScript.fit_zoom_factor(
-			focus_fit_scale,
-			world_base_scale,
-			MIN_ABSOLUTE_ZOOM_FACTOR,
-			MAX_ABSOLUTE_ZOOM_FACTOR
-		)
-
-
 func _fit_current_focus_zoom() -> void:
-	var viewport_size: Vector2 = get_viewport_rect().size
 	_refresh_focus_frame_radius(_bubble.get_focus())
-	_absolute_zoom_factor = OrbitZoomModelScript.fit_zoom_factor(
-		_current_focus_fit_scale(viewport_size),
-		_world_base_scale(viewport_size),
-		MIN_ABSOLUTE_ZOOM_FACTOR,
-		MAX_ABSOLUTE_ZOOM_FACTOR
-	)
+	_absolute_zoom_factor = OrbitZoomModelScript.FIT_ZOOM_FACTOR
 
 
 func _current_focus_fit_scale(viewport_size: Vector2) -> float:
