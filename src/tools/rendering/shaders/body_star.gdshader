@@ -11,6 +11,42 @@ uniform float filament_scale = 3.1;
 uniform float rim_hotness = 0.78;
 uniform float edge_activity_strength = 0.22;
 uniform float edge_activity_scale = 5.0;
+uniform float macro_surface_strength = 0.26;
+uniform float macro_surface_scale = 1.35;
+uniform float meso_breakup_strength = 0.22;
+uniform float meso_breakup_scale = 2.40;
+uniform float granulation_contrast = 1.12;
+uniform float channel_contrast = 1.18;
+uniform float hotspot_contrast = 1.10;
+
+
+float _hash21(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+
+float _noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	float a = _hash21(i);
+	float b = _hash21(i + vec2(1.0, 0.0));
+	float c = _hash21(i + vec2(0.0, 1.0));
+	float d = _hash21(i + vec2(1.0, 1.0));
+	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+
+float _fbm(vec2 p) {
+	float value = 0.0;
+	float amplitude = 0.5;
+	for (int i = 0; i < 4; i++) {
+		value += _noise(p) * amplitude;
+		p = p * 2.03 + vec2(17.3, 11.7);
+		amplitude *= 0.5;
+	}
+	return value;
+}
 
 void fragment() {
 	vec2 uv = UV - vec2(0.5);
@@ -40,6 +76,21 @@ void fragment() {
 	// Radial color temperature: center near-white, edge warmer/more saturated
 	vec3 col = mix(star_core_color, star_mid_color, pow(t_w, 1.8)) * limb;
 
+	// Macro surface field stays static: it organizes the star into broad
+	// basins / convection regions without making the whole surface drift.
+	vec2 macro_uv = n_xy * macro_surface_scale + vec2(2.7, -1.9);
+	vec2 macro_warp = vec2(
+		_fbm(macro_uv * 0.85 + vec2(4.1, -2.3)),
+		_fbm(macro_uv * 0.79 + vec2(-3.6, 5.2))
+	) - 0.5;
+	macro_uv += macro_warp * 0.85;
+	float macro_raw = _fbm(macro_uv);
+	float macro_centered = (macro_raw - 0.5) * 2.0;
+	float macro_df = mix(0.05, 1.0, smoothstep(0.08, 0.60, df_t));
+	float macro_mod = macro_centered * macro_surface_strength * macro_df
+		* max(0.0, 1.0 - t * 0.38);
+	col *= 1.0 + macro_mod;
+
 	// Three-direction hexagonal granulation — avoids cross/grid artifact of sin(x)*sin(y)
 	// Angles ~0°/60°/115° (slightly off perfect hexagonal to break mathematical regularity)
 	// df_t scales amplitude: subtle in overview, distinct at close-up
@@ -63,11 +114,22 @@ void fragment() {
 	float dark   = pow(cell_neg, 2.40);   // narrow, hard cool lanes
 	float asym = bright * 0.60 - dark * 1.35;
 	float gran = asym * (1.0 - t * 0.65) * mix(0.11, 0.28, df_t);
-	col *= 1.0 + gran;
+	col *= 1.0 + gran * granulation_contrast;
 	// Temperature tint: lanes pick up a warmer/redder hue, bright centers stay near white.
 	// Activity remains color-only; alpha never changes.
 	float lane_tint = max(0.0, -asym) * mix(0.18, 0.70, df_t);
-	col = mix(col, mix(col, star_channel_color, 0.44), lane_tint);
+
+	// Add a new meso breakup layer between macro organization and the
+	// existing activity fields. It drifts only very slowly.
+	float meso_df = smoothstep(0.10, 0.68, df_t);
+	vec2 meso_uv = n_xy * meso_breakup_scale + vec2(TIME * 0.018, -TIME * 0.014);
+	meso_uv += vec2(macro_centered * 0.70, -macro_centered * 0.45);
+	float meso_raw = _fbm(meso_uv + vec2(1.2, -3.4)) * 0.72
+		+ _noise(meso_uv * 2.15 + vec2(-2.8, 4.6)) * 0.28;
+	float meso_faculae = smoothstep(0.60, 0.82, meso_raw);
+	float meso_faculae_add = meso_faculae * meso_breakup_strength * meso_df
+		* max(0.0, 1.0 - t * 0.46);
+	col += mix(star_mid_color, star_core_color, 0.64) * meso_faculae_add;
 
 	// Add a coarser solar-activity layer above the fine granulation:
 	// bright faculae / active regions plus darker channel structures.
@@ -83,8 +145,9 @@ void fragment() {
 	float activity_raw = (a0 * 1.00 + a1 * 0.82 + a2 * 0.74) / 2.56;
 	float faculae = pow(max(0.0, activity_raw), 1.35);
 	float activity_mask = max(0.0, 1.0 - t * 0.52);
-	col += mix(star_mid_color, star_core_color, 0.72) * faculae
-		* activity_strength * activity_df * activity_mask * 0.58;
+	float activity_faculae_add = faculae * activity_strength * activity_df
+		* activity_mask * 0.58 * hotspot_contrast;
+	col += mix(star_mid_color, star_core_color, 0.72) * activity_faculae_add;
 
 	vec2 fp = n_xy * filament_scale;
 	fp += vec2(
@@ -98,7 +161,8 @@ void fragment() {
 	float filaments = pow(max(0.0, -filament_raw), 1.85);
 	float filament_mix = filaments * filament_strength * activity_df
 		* max(0.0, 1.0 - t * 0.42) * 0.42;
-	col = mix(col, mix(col, star_channel_color, 0.78), clamp(filament_mix, 0.0, 0.88));
+	float channel_mix = clamp(lane_tint + filament_mix * channel_contrast, 0.0, 0.88);
+	col = mix(col, mix(col, star_channel_color, 0.78), channel_mix);
 
 	// Build the hotter inner rim in-shader first; the CPU halo only stays
 	// as a subtle atmosphere around it.

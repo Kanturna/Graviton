@@ -344,6 +344,13 @@ static func _make_sphere_material(kind: int) -> ShaderMaterial:
 		mat.set_shader_parameter("rim_hotness", 0.78)
 		mat.set_shader_parameter("edge_activity_strength", 0.22)
 		mat.set_shader_parameter("edge_activity_scale", 5.0)
+		mat.set_shader_parameter("macro_surface_strength", 0.26)
+		mat.set_shader_parameter("macro_surface_scale", 1.35)
+		mat.set_shader_parameter("meso_breakup_strength", 0.22)
+		mat.set_shader_parameter("meso_breakup_scale", 2.40)
+		mat.set_shader_parameter("granulation_contrast", 1.12)
+		mat.set_shader_parameter("channel_contrast", 1.18)
+		mat.set_shader_parameter("hotspot_contrast", 1.10)
 	else:
 		mat.shader = _SHADER_SPHERE
 		var is_moon: bool = kind == BodyType.Kind.MOON

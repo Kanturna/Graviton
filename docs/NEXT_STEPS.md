@@ -391,6 +391,46 @@ Offen / spaeter:
   eigener spaeterer Pass (`gamma` ist physikalisch weiter Red-Dwarf,
   visuell aber bewusst noch Teil derselben Sonnenfamilie)
 
+## Prioritaet 14.5 - View Phase F: Sterne von gutem Pattern zu tiefer mehrskaliger Sonnen-Textur weiterziehen - erledigt
+
+Ziel:
+Die verbleibende Schwaeche des P14.4-Sternlooks lag nicht mehr in
+Rundheit oder Glow, sondern in der fehlenden Materialtiefe. P14.5 zieht
+die Sternoberflaeche deshalb ueber eine feste mehrskalige
+Frequenzhierarchie von "gutem Pattern" zu deutlich tieferer, NASA-naher
+Solartextur weiter - weiterhin vollstaendig shader-only.
+
+Erledigt:
+
+- `body_star.gdshader` hat jetzt eine feste 4+1-Frequenzleiter:
+  statisches Macro-Feld (`1.35`), neue Meso-Breakup-Zwischenskala
+  (`2.40`), bestehende Activity (`4.20`), Filament-Channels (`3.10`)
+  und feine Granulation (`~11.0`)
+- neues internes Noise-/FBM-Set (`_hash21`, `_noise`, `_fbm`) lebt
+  ausschliesslich im Sternshader; keine Asset-Texturen und keine
+  gemeinsame Shader-Bibliothek
+- Macro-Feld bleibt bewusst komplett statisch (kein `TIME`); Meso
+  driftet nur sehr langsam und organisiert die Oberflaeche, ohne den
+  ganzen Stern unruhig zu machen
+- Blending-Reihenfolge ist jetzt explizit festgezogen:
+  Basisfarbe -> Macro multiplikativ -> Granulation multiplikativ ->
+  Meso additiv -> Activity additiv -> Channels dunkler Mix -> Rim/Edge
+  zuletzt
+- neue Star-Uniforms fuer Surface-Tiefe und Kontrast
+  (`macro_surface_strength`, `meso_breakup_strength`,
+  `granulation_contrast`, `channel_contrast`, `hotspot_contrast`) werden
+  ausschliesslich im `STAR`-Pfad von `OrbitBodyVisual` gesetzt
+- `alpha` bleibt weiter rein ueber `t` definiert; auch P14.5 moduliert
+  niemals die Silhouette
+
+Offen / spaeter:
+
+- echte aussen sichtbare Prominenzen / Protuberanzen bleiben weiter ein
+  moeglicher spaeterer Follow-up
+- Star-Typisierung / Spektralklassen / luminosity-getriebene Palette als
+  eigener spaeterer Pass (`gamma` ist physikalisch weiter Red-Dwarf,
+  visuell aber bewusst noch Teil derselben Sonnenfamilie)
+
 ## Danach - Weitere planetare Umweltableitung
 
 Nach dem ersten Guardrail-Block ist der naechste groessere Simulations-

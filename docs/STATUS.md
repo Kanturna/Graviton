@@ -148,6 +148,22 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   weniger nach konzentrischen Glow-Scheiben und mehr nach aktiven Sonnen
   lesen. Alle Sterne teilen weiter bewusst denselben Sun-Look;
   Spektralklassen-/Typ-Unterscheidung ist explizit vertagt.
+- P14.5 vertieft den Stern-Look jetzt zusaetzlich ueber eine
+  mehrskalige Surface-Hierarchie: ein statisches grobes Macro-Feld,
+  eine neue Meso-Breakup-Zwischenskala, die bestehende Activity-Ebene,
+  feine Granulation und dunkle Channel-Layer arbeiten jetzt als feste
+  Frequenzleiter zusammen statt nur als guter Einzel-Pattern-Shader.
+- Die neue Tiefe bleibt bewusst shader-only und entsteht nur ueber
+  Farb-/Luminanzmodulation: Macro-Feld wirkt multiplikativ, Meso- und
+  Activity-Faculae additiv, Channels schneiden zuletzt dunkler ein;
+  `alpha` bleibt weiter unangetastet und der sichtbare Stern-Footprint
+  waechst nicht.
+- Der Sternshader traegt dafuer jetzt eigene kleine Noise-/FBM-Helfer
+  sowie neue Star-Uniforms fuer Macro-/Meso-Staerke und
+  Oberflaechenkontrast (`macro_surface_strength`,
+  `meso_breakup_strength`, `granulation_contrast`,
+  `channel_contrast`, `hotspot_contrast`), die ausschliesslich im
+  `STAR`-Pfad von `OrbitBodyVisual` gesetzt werden.
 
 ## Ziel dieser Praesentationsschicht
 
@@ -192,6 +208,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tools/rendering/planet_visual_theme.gd`
 - `src/tools/rendering/planet_visual_profile.gd`
 - `src/tools/rendering/shaders/body_sphere.gdshader`
+- `src/tools/rendering/shaders/body_star.gdshader`
 - `src/tests/rendering/test_planet_visual_profile.gd`
 - `src/tests/rendering/test_orbit_zoom_model.gd`
 - `src/tools/rendering/space_backdrop.gd`

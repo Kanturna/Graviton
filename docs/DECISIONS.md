@@ -1,5 +1,31 @@
 # Graviton - Decisions
 
+## 2026-04-19 - P14.5 vertieft Sterne ueber mehrskalige Surface-Hierarchie statt ueber Assets
+
+P14.5 baut auf P14.4 auf und adressiert die verbleibende Schwaeche des
+Sternlooks als Materialtiefe-Problem, nicht als weiteres Halo- oder
+Kamera-Problem. Der Sternshader bekommt deshalb eine feste
+Frequenzleiter aus statischem Macro-Feld, neuer Meso-Breakup-Ebene,
+bestehender Activity, bestehender feiner Granulation und dunklen
+Filament-/Channel-Layern. Die neue Tiefe bleibt vollstaendig
+shader-only; es werden bewusst keine Textur-Assets importiert.
+
+Konsequenz:
+
+- das Macro-Feld bleibt explizit statisch und traegt keine globale
+  Sternbewegung; `TIME` bleibt auf langsamere mittlere und feine
+  Aktivitaetslagen begrenzt
+- die Layer-Komposition ist festgezogen:
+  Macro und Granulation modulieren multiplikativ, Meso und Activity
+  additiv, Channels schneiden danach dunkler ein, Rim/Edge bleiben
+  zuletzt
+- auch P14.5 haelt die P14.3-Rundheits-Invariante aufrecht: neue
+  Surface-Layer modulieren nur `col`, nie `alpha`
+- P14.5 bleibt bewusst ein Surface-Depth-Pass; Halo, Kamera,
+  Orbit-Komposition, Body-Size und Planetpfade bleiben unangetastet
+- Stern-Typisierung / Spektralklassen bleiben weiterhin ein spaeterer
+  separater Pass
+
 ## 2026-04-19 - P14.4 zieht Sterne bewusst in Richtung NASA-naher aktiver Sonnenoberflaeche
 
 P14.4 baut auf P14.3 auf, ersetzt ihn aber nicht. Die runde
