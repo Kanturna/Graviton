@@ -30,6 +30,17 @@ static func target_view_scale(
 	return safe_focus_fit_scale * focus_closeup_bias(clamped_zoom_factor, max_focus_closeup_bias)
 
 
+static func target_view_anchor(world_anchor: Vector2, focus_anchor: Vector2, zoom_factor: float) -> Vector2:
+	return world_anchor.lerp(focus_anchor, focus_anchor_blend(zoom_factor))
+
+
+static func focus_anchor_blend(zoom_factor: float) -> float:
+	var clamped_zoom_factor: float = clampf(zoom_factor, MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR)
+	if clamped_zoom_factor >= FIT_ZOOM_FACTOR:
+		return 1.0
+	return _log_progress(clamped_zoom_factor, MIN_ZOOM_FACTOR, FIT_ZOOM_FACTOR)
+
+
 static func focus_closeup_bias(zoom_factor: float, max_focus_closeup_bias: float) -> float:
 	var safe_max_focus_closeup_bias: float = maxf(max_focus_closeup_bias, FIT_ZOOM_FACTOR)
 	var clamped_zoom_factor: float = clampf(zoom_factor, FIT_ZOOM_FACTOR, MAX_ZOOM_FACTOR)

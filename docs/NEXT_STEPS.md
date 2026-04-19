@@ -312,6 +312,9 @@ Nahzoom erreichbar machen.
 Erledigt:
 
 - `0.5% .. 100%` bilden jetzt explizit `world -> fit current focus` ab
+- der `world`-Abschnitt interpoliert jetzt zusaetzlich den Kameraanker
+  `root -> focus` statt nur die Skala; Root-Fernblick bleibt damit auch
+  bei Stern-/Planetenfokus raeumlich konsistent
 - `100%` bedeutet wieder exakt `fit current focus`
 - `100% .. 10000%` sind jetzt bewusster lokaler Fokus-Closeup statt
   global vergleichbarer Welt-Massstab

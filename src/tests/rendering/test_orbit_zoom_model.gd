@@ -10,6 +10,7 @@ static func run(ctx) -> void:
 	ctx.current_suite = "test_orbit_zoom_model"
 	_test_hybrid_zoom_scale_mapping(ctx)
 	_test_world_overview_scale_ratio(ctx)
+	_test_world_to_focus_anchor_mapping(ctx)
 	_test_focus_relative_closeup_semantics(ctx)
 	_test_zoom_mode_labels(ctx)
 	_test_focus_closeup_ratio_semantics(ctx)
@@ -93,6 +94,66 @@ static func _test_world_overview_scale_ratio(ctx) -> void:
 	ctx.assert_true(
 		world_overview_scale < root_fit_scale,
 		"Unter Root-Fokus ist 0.5% kleiner als 100% und damit ein echter sichtbarer Bereich"
+	)
+
+
+static func _test_world_to_focus_anchor_mapping(ctx) -> void:
+	var world_anchor: Vector2 = Vector2(120.0, -45.0)
+	var focus_anchor: Vector2 = Vector2.ZERO
+	var world_view_anchor: Vector2 = OrbitZoomModelScript.target_view_anchor(
+		world_anchor,
+		focus_anchor,
+		0.005
+	)
+	ctx.assert_almost(
+		world_view_anchor.x,
+		world_anchor.x,
+		0.000001,
+		"0.5% behaelt den Weltanker auf x"
+	)
+	ctx.assert_almost(
+		world_view_anchor.y,
+		world_anchor.y,
+		0.000001,
+		"0.5% behaelt den Weltanker auf y"
+	)
+
+	var fit_view_anchor: Vector2 = OrbitZoomModelScript.target_view_anchor(
+		world_anchor,
+		focus_anchor,
+		1.0
+	)
+	ctx.assert_almost(
+		fit_view_anchor.x,
+		focus_anchor.x,
+		0.000001,
+		"100% zentriert den Fokusanker auf x"
+	)
+	ctx.assert_almost(
+		fit_view_anchor.y,
+		focus_anchor.y,
+		0.000001,
+		"100% zentriert den Fokusanker auf y"
+	)
+
+	var mid_view_anchor: Vector2 = OrbitZoomModelScript.target_view_anchor(
+		world_anchor,
+		focus_anchor,
+		0.20
+	)
+	ctx.assert_true(
+		mid_view_anchor.x > focus_anchor.x and mid_view_anchor.x < world_anchor.x,
+		"Zwischen 0.5% und 100% interpoliert der Anker zwischen Welt und Fokus auf x"
+	)
+	ctx.assert_true(
+		mid_view_anchor.y < focus_anchor.y and mid_view_anchor.y > world_anchor.y,
+		"Zwischen 0.5% und 100% interpoliert der Anker zwischen Welt und Fokus auf y"
+	)
+	ctx.assert_almost(
+		OrbitZoomModelScript.focus_anchor_blend(5.0),
+		1.0,
+		0.000001,
+		"Oberhalb von 100% bleibt der Anker voll fokuszentriert"
 	)
 
 

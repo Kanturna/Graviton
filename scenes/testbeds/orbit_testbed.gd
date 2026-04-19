@@ -165,6 +165,7 @@ func _set_focus(body_id: StringName, immediate: bool = false, force_fit: bool = 
 	_renderer.set_focus(body_id)
 	_renderer.clear_trails()
 	_manual_pan_ru = Vector2.ZERO
+	_refresh_world_overview_radius(body_id)
 	_refresh_focus_frame_radius(body_id)
 	if force_fit:
 		_fit_current_focus_zoom()
@@ -175,9 +176,16 @@ func _set_focus(body_id: StringName, immediate: bool = false, force_fit: bool = 
 
 func _refresh_target_view() -> void:
 	var viewport_size: Vector2 = get_viewport_rect().size
-	var focus_center: Vector2 = _renderer.get_body_view_position_ru(_bubble.get_focus())
+	var focus_id: StringName = _bubble.get_focus()
+	var focus_center: Vector2 = _renderer.get_body_view_position_ru(focus_id)
 	if not _is_finite_vec2(focus_center):
 		focus_center = Vector2.ZERO
+	var world_anchor: Vector2 = focus_center
+	var world_anchor_id: StringName = _focus_root_id(focus_id)
+	if world_anchor_id != StringName(""):
+		var root_center: Vector2 = _renderer.get_body_view_position_ru(world_anchor_id)
+		if _is_finite_vec2(root_center):
+			world_anchor = root_center
 	var root_fit_scale: float = _root_fit_scale(viewport_size)
 	var focus_fit_scale: float = _current_focus_fit_scale(viewport_size)
 	_target_view_scale = OrbitZoomModelScript.target_view_scale(
@@ -187,7 +195,12 @@ func _refresh_target_view() -> void:
 		WORLD_OVERVIEW_SCALE_RATIO,
 		MAX_FOCUS_CLOSEUP_BIAS
 	)
-	_target_world_offset = viewport_size * 0.5 - (focus_center + _manual_pan_ru) * _target_view_scale
+	var target_anchor: Vector2 = OrbitZoomModelScript.target_view_anchor(
+		world_anchor,
+		focus_center,
+		_absolute_zoom_factor
+	)
+	_target_world_offset = viewport_size * 0.5 - (target_anchor + _manual_pan_ru) * _target_view_scale
 
 
 func _apply_view_transform(immediate: bool, delta: float = 0.0) -> void:
@@ -305,7 +318,11 @@ func _root_fit_scale(viewport_size: Vector2) -> float:
 
 
 func _cache_world_overview_radius() -> void:
-	var root_id: StringName = _root_focus_id()
+	_refresh_world_overview_radius(_bubble.get_focus())
+
+
+func _refresh_world_overview_radius(body_id: StringName) -> void:
+	var root_id: StringName = _focus_root_id(body_id)
 	if root_id == StringName(""):
 		_world_overview_radius_ru = 1.0
 		return
@@ -342,6 +359,20 @@ func _root_focus_id() -> StringName:
 		var def: BodyDef = UniverseRegistry.get_def(id)
 		if def != null and def.is_root():
 			return id
+	return StringName("")
+
+
+func _focus_root_id(body_id: StringName) -> StringName:
+	var cursor: StringName = body_id
+	var hop_limit: int = 64
+	while cursor != StringName("") and hop_limit > 0:
+		var def: BodyDef = UniverseRegistry.get_def(cursor)
+		if def == null:
+			return StringName("")
+		if def.is_root():
+			return cursor
+		cursor = def.parent_id
+		hop_limit -= 1
 	return StringName("")
 
 

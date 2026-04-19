@@ -87,9 +87,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `time_scale` skaliert das simulierte `dt` pro Physics-Frame.
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
 - Die Kamera nutzt jetzt ein bewusstes Hybrid-Zoommodell:
-  `0.5% .. 100%` interpoliert von Welt-Ueberblick zu `fit current focus`,
-  und oberhalb von `100%` wird Zoom wieder als lokaler Closeup relativ
-  zum aktuellen Fokus interpretiert.
+  `0.5% .. 100%` interpoliert jetzt nicht nur den Scale von
+  Welt-Ueberblick zu `fit current focus`, sondern auch den Kameraanker
+  vom aktuellen Root zum Fokus; oberhalb von `100%` wird Zoom wieder als
+  lokaler Closeup relativ zum aktuellen Fokus interpretiert.
 - `100%` bedeutet im Testbed wieder explizit `fit current focus`;
   `Backspace` springt auf genau diesen Fokus-Fit zurueck.
 - Der Zoombereich bleibt bei `0.5%` bis `10000%`; der gute globale
@@ -97,6 +98,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   koennen wieder deutlich naeher herangezoomt werden als unter P14.1.
 - Das HUD macht die Zoom-Semantik jetzt explizit sichtbar:
   `Zoom ... world`, `Zoom 100% fit` und `Zoom ... focus`.
+- Unter `Zoom ... world` bleibt der gewaehlte Body damit raeumlich im
+  selben Root/System verortet, statt die ganze Welt im Fernblick still
+  fokuszentriert ins Bildschirmzentrum zu ziehen.
 - Root-Fokus und globaler Ueberblick werden dynamisch ueber den
   Root-Body bestimmt statt implizit ueber `obsidian`.
 - Das Testbed unterstuetzt Camera-Panning, klickbaren Fokus und

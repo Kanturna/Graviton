@@ -64,6 +64,8 @@ und Planeten aber spielerisch zu schwach wurde.
 Konsequenz:
 
 - `0.5% .. 100%` bilden jetzt explizit `world -> fit current focus` ab
+- der `world`-Abschnitt ist nicht nur ein Scale-Blend; der Kameraanker
+  interpoliert dort bewusst von Root-/Weltanker zu Fokusanker
 - `100%` bedeutet wieder exakt `fit current focus`
 - oberhalb von `100%` ist Zoom bewusst wieder lokaler Closeup relativ
   zum aktuellen Fokus
