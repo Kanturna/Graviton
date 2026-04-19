@@ -59,7 +59,7 @@ class TopologyStub:
 static func run(ctx) -> void:
 	ctx.current_suite = "test_orbit_camera_controller"
 	_test_force_fit_centers_on_focus_and_resets_pan(ctx)
-	_test_wide_zoom_keeps_focus_centered(ctx)
+	_test_wide_zoom_recenters_on_root_for_nested_focus(ctx)
 	_test_zoom_multiplier_clamps_to_bounds(ctx)
 	_test_closeup_zoom_updates_focus_ratio(ctx)
 	_test_focus_change_resets_to_new_scope_fit(ctx)
@@ -117,17 +117,22 @@ static func _test_force_fit_centers_on_focus_and_resets_pan(ctx) -> void:
 	_teardown_controller_setup(setup)
 
 
-static func _test_wide_zoom_keeps_focus_centered(ctx) -> void:
+static func _test_wide_zoom_recenters_on_root_for_nested_focus(ctx) -> void:
 	var setup := _make_controller()
 	var controller = setup["controller"]
 	var renderer: RendererStub = setup["renderer"]
 	controller.set_focus(&"planet", false, true)
 	controller.handle_zoom_multiplier(0.005)
 	controller.step(0.0, Vector2(400.0, 200.0))
-	var screen_pos: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
+	var root_screen_pos: Vector2 = renderer.positions[&"root"] * renderer.scale.x + renderer.position
+	var planet_screen_pos: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
 	ctx.assert_almost(controller.get_zoom_factor(), 0.005, 1.0e-9, "Wide-Zoom clamp't auf MIN_ZOOM_FACTOR")
-	ctx.assert_almost(screen_pos.x, 200.0, 1.0e-6, "Wide-Zoom haelt den Fokuskoerper im Viewportzentrum (x)")
-	ctx.assert_almost(screen_pos.y, 100.0, 1.0e-6, "Wide-Zoom haelt den Fokuskoerper im Viewportzentrum (y)")
+	ctx.assert_almost(root_screen_pos.x, 200.0, 1.0e-6, "Wide-Zoom zentriert bei nested Fokus wieder den Root-Anker (x)")
+	ctx.assert_almost(root_screen_pos.y, 100.0, 1.0e-6, "Wide-Zoom zentriert bei nested Fokus wieder den Root-Anker (y)")
+	ctx.assert_true(
+		not is_equal_approx(planet_screen_pos.x, 200.0) or not is_equal_approx(planet_screen_pos.y, 100.0),
+		"Wide-Zoom haelt den nested Fokus nicht mehr kuenstlich im Viewportzentrum"
+	)
 	_teardown_controller_setup(setup)
 
 
@@ -148,8 +153,11 @@ static func _test_closeup_zoom_updates_focus_ratio(ctx) -> void:
 	controller.set_focus(&"planet", false, true)
 	controller.handle_zoom_multiplier(2.0)
 	controller.step(0.0, Vector2(400.0, 200.0))
+	var planet_screen_pos: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
 	ctx.assert_true(controller.get_current_view_scale() > 3.04, "Closeup-Zoom vergroessert die aktuelle View-Skala ueber FIT")
 	ctx.assert_true(renderer.last_focus_closeup_ratio > 1.0, "Renderer erhaelt fuer Closeups ein Ratio > 1.0")
+	ctx.assert_almost(planet_screen_pos.x, 200.0, 1.0e-6, "Detail-Zoom behaelt den Fokuskoerper weiter im Zentrum (x)")
+	ctx.assert_almost(planet_screen_pos.y, 100.0, 1.0e-6, "Detail-Zoom behaelt den Fokuskoerper weiter im Zentrum (y)")
 	_teardown_controller_setup(setup)
 
 

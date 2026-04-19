@@ -95,20 +95,25 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `time_scale` skaliert das simulierte `dt` pro Physics-Frame.
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
 - Die Kamera nutzt jetzt ein bewusst scope-relatives Zoommodell:
-  Der geklickte Fokus-Body bleibt immer der Kameraanker; der sichtbare
+  `fit` und `detail` bleiben fokuszentriert, der sichtbare
   `fit`-Rahmen wird ueber einen expliziten lokalen Scope des Fokus
-  bestimmt statt ueber einen Root-/Weltanker-Blend.
+  bestimmt, und nur `wide` auf verschachtelten Stern-/Planeten-/Mond-
+  Foki zieht den Kameraanker wieder auf den jeweiligen Root-/BH-Anker
+  zurueck, damit grosse BH-Systeme im Fernblick stabil um ihr Zentrum
+  lesen.
 - `100%` bedeutet im Testbed jetzt explizit `fit current focus scope`;
   `Backspace` springt auf genau diesen Scope-Fit zurueck.
 - Der Zoombereich bleibt bei `0.5%` bis `10000%`; unter `100%` wird nur
   innerhalb des aktuellen Fokus-Scopes weiter herausgezoomt (`wide`),
-  oberhalb von `100%` bleibt Zoom ein lokaler Detail-Zoom (`detail`)
-  relativ zu demselben Fokus.
+  aber der Kameraanker faellt dort bei verschachtelten Foki wieder auf
+  den Root-/BH-Mittelpunkt zurueck; oberhalb von `100%` bleibt Zoom ein
+  lokaler Detail-Zoom (`detail`) relativ zu demselben Fokus.
 - Das HUD macht die Zoom-Semantik jetzt explizit sichtbar:
   `Zoom ... wide`, `Zoom 100% fit` und `Zoom ... detail`.
-- Explizite Root-/BH-Overview gibt es jetzt nur noch ueber Root-Fokus
-  bzw. `Home`; Rauszoomen auf einem Stern-, Planeten- oder Mondfokus
-  zieht die Kamera nicht mehr strukturell Richtung Root.
+- Explizite Root-/BH-Overview gibt es weiter ueber Root-Fokus bzw.
+  `Home`; zusaetzlich darf `wide` auf einem Stern-, Planeten- oder
+  Mondfokus den Kameraanker wieder auf den Root-/BH-Mittelpunkt
+  zurueckziehen, ohne den lokalen Fokus-Scope selbst zu verwerfen.
 - Fokuswechsel resetten bewusst auf den neuen Scope-Fit und loeschen
   manuelles Pan, damit unterschiedlich grosse Systeme nicht denselben
   Detailzoom mitschleppen.
@@ -311,8 +316,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Der Zoom ist jetzt bewusst per Fokus-Scope statt globalem Weltanker
   definiert; gleiche Zoomzahlen sind damit nicht mehr
   fokusuebergreifend als gleicher Welt-Massstab interpretierbar.
-- Expliziter globaler Ueberblick ist jetzt nur noch ein Root-/BH-Fokus
-  bzw. `Home`, nicht mehr ein impliziter Nebeneffekt des Rauszoomens.
+- Expliziter globaler Ueberblick ist weiter primaer Root-/BH-Fokus bzw.
+  `Home`; `wide` auf verschachtelten Foki haelt aber den Root-/BH-
+  Mittelpunkt wieder stabil im Zentrum, damit grosse Mehrsternsysteme im
+  Fernblick nicht um den Subfokus kreisen.
 - Renderer-Nahdetail bleibt weiterhin getrennt fokus-relativ, damit die
   P14-Archetypen bei gleicher lokaler Naehe dieselben Detail-Schwellen
   behalten.

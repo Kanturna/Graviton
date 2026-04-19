@@ -1,5 +1,24 @@
 # Graviton - Decisions
 
+## 2026-04-19 - `wide` auf verschachtelten Foki darf den Kameraanker wieder auf den Root/BH ziehen
+
+Die erste scope-relative P16-Kameralogik hat `wide` auf Sternen,
+Planeten und Monden komplett fokuszentriert gelassen. Das war fuer
+lokale Scopes konsistent, fuehrte in grossen BH-Systemen aber dazu,
+dass der gesamte Fernblick um den Subfokus "kreiste" und der Root-/BH-
+Mittelpunkt seine Rolle als ruhiger visueller Systemanker verlor.
+
+Konsequenz:
+
+- `fit` und `detail` bleiben weiter strikt fokuszentriert
+- `wide` auf einem verschachtelten Fokus darf den Kameraanker aber
+  wieder auf `topology.root_id_of(focus_id)` zurueckziehen
+- der lokale Fokus-Scope selbst bleibt dabei unveraendert; nur der
+  Kameraanker aendert sich
+- Root-/BH-Fokus bleibt weiterhin der explizite volle Overview-Pfad,
+  aber verschachtelte `wide`-Ansichten halten den Root-/BH-Mittelpunkt
+  wieder stabil im Zentrum
+
 ## 2026-04-19 - P14.6b macht die Stern-Detailmap statisch, zentriert und dominant im Closeup
 
 P14.6 hat bewusst einen Hybridpfad aus prozeduralem Sternshader und
