@@ -20,7 +20,7 @@ class BubbleStub:
 class RendererStub:
 	extends RefCounted
 
-	var positions: Dictionary = {}
+	var world_positions: Dictionary = {}
 	var frames: Dictionary = {}
 	var focused_id: StringName = &""
 	var cleared_trails: int = 0
@@ -36,7 +36,15 @@ class RendererStub:
 		cleared_trails += 1
 
 	func get_body_view_position_ru(body_id: StringName) -> Vector2:
-		return positions.get(body_id, Vector2(INF, INF))
+		var raw: Vector2 = world_positions.get(body_id, Vector2(INF, INF))
+		if not (is_finite(raw.x) and is_finite(raw.y)):
+			return raw
+		if focused_id == StringName("") or not world_positions.has(focused_id):
+			return raw
+		var focus_raw: Vector2 = world_positions[focused_id]
+		if not (is_finite(focus_raw.x) and is_finite(focus_raw.y)):
+			return raw
+		return raw - focus_raw
 
 	func get_scope_frame(body_id: StringName) -> Dictionary:
 		return frames.get(body_id, {"center": Vector2.ZERO, "radius": 1.0})
@@ -46,6 +54,9 @@ class RendererStub:
 
 	func set_focus_closeup_ratio(value: float) -> void:
 		last_focus_closeup_ratio = value
+
+	func screen_pos_of(body_id: StringName) -> Vector2:
+		return get_body_view_position_ru(body_id) * scale.x + position
 
 
 class TopologyStub:
@@ -67,6 +78,7 @@ static func run(ctx) -> void:
 	_test_explicit_root_focus_uses_root_scope(ctx)
 	_test_wide_fit_transition_is_visually_continuous(ctx)
 	_test_manual_pan_bypasses_smoothing(ctx)
+	_test_camera_lag_tracks_focus_world_motion(ctx)
 
 
 static func _make_controller() -> Dictionary:
@@ -75,7 +87,7 @@ static func _make_controller() -> Dictionary:
 	var bubble := BubbleStub.new()
 	var topology := TopologyStub.new()
 	var registry := Node.new()
-	renderer.positions = {
+	renderer.world_positions = {
 		&"root": Vector2.ZERO,
 		&"planet": Vector2(100.0, 50.0),
 	}
@@ -115,8 +127,9 @@ static func _test_force_fit_centers_focus_and_resets_pan(ctx) -> void:
 	ctx.assert_true(renderer.cleared_trails == 1, "Fokuswechsel leert Trails")
 	ctx.assert_almost(controller.get_zoom_factor(), 1.0, 1.0e-9, "force_fit setzt Zoom auf FIT")
 	ctx.assert_almost(renderer.scale.x, 3.04, 1.0e-6, "FIT-Skala basiert auf dem Fokus-Scope")
-	ctx.assert_almost(renderer.position.x, -104.0, 1.0e-6, "FIT zentriert den Fokus im Viewport (x)")
-	ctx.assert_almost(renderer.position.y, -52.0, 1.0e-6, "FIT zentriert den Fokus im Viewport (y)")
+	var planet_screen: Vector2 = renderer.screen_pos_of(&"planet")
+	ctx.assert_almost(planet_screen.x, 200.0, 1.0e-6, "Snap-Step zentriert den Fokus im Viewport (x)")
+	ctx.assert_almost(planet_screen.y, 100.0, 1.0e-6, "Snap-Step zentriert den Fokus im Viewport (y)")
 	ctx.assert_true(
 		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_FOCUS_ANCHOR,
 		"Fit-Modus meldet focus-anchor als frame_label"
@@ -131,7 +144,7 @@ static func _test_wide_zoom_keeps_focus_centered(ctx) -> void:
 	controller.set_focus(&"planet", false, true)
 	controller.handle_zoom_multiplier(0.005)
 	controller.step(0.0, Vector2(400.0, 200.0))
-	var planet_screen: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
+	var planet_screen: Vector2 = renderer.screen_pos_of(&"planet")
 	ctx.assert_almost(controller.get_zoom_factor(), 0.005, 1.0e-9, "Wide-Zoom clamp't auf MIN_ZOOM_FACTOR")
 	ctx.assert_true(
 		controller.get_zoom_mode() == OrbitCameraFramingScript.ZOOM_MODE_WIDE,
@@ -139,19 +152,19 @@ static func _test_wide_zoom_keeps_focus_centered(ctx) -> void:
 	)
 	ctx.assert_true(
 		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_FOCUS_ANCHOR,
-		"Wide-Mode zieht den Anker nicht mehr zum Root; Fokus bleibt Referenz"
+		"Wide-Mode haelt den Anker weiterhin am Fokus"
 	)
 	ctx.assert_almost(
 		planet_screen.x,
 		200.0,
 		1.0e-6,
-		"Extremes wide haelt den Fokus im Viewport-Zentrum (x)"
+		"Auch extremes wide haelt den Fokus im Viewport-Zentrum (Snap-Step) (x)"
 	)
 	ctx.assert_almost(
 		planet_screen.y,
 		100.0,
 		1.0e-6,
-		"Extremes wide haelt den Fokus im Viewport-Zentrum (y)"
+		"Auch extremes wide haelt den Fokus im Viewport-Zentrum (Snap-Step) (y)"
 	)
 	_teardown_controller_setup(setup)
 
@@ -173,7 +186,7 @@ static func _test_detail_zoom_keeps_focus_centered(ctx) -> void:
 	controller.set_focus(&"planet", false, true)
 	controller.handle_zoom_multiplier(2.0)
 	controller.step(0.0, Vector2(400.0, 200.0))
-	var planet_screen: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
+	var planet_screen: Vector2 = renderer.screen_pos_of(&"planet")
 	ctx.assert_true(
 		controller.get_zoom_mode() == OrbitCameraFramingScript.ZOOM_MODE_DETAIL,
 		"Zoomwerte ueber FIT_PLATEAU_HIGH setzen zoom_mode auf detail"
@@ -202,6 +215,7 @@ static func _test_focus_change_resets_zoom_to_fit(ctx) -> void:
 	controller.handle_pan_input(Vector2.RIGHT, 1.0)
 	controller.set_focus(&"root")
 	controller.step(0.0, Vector2(400.0, 200.0))
+	var root_screen: Vector2 = renderer.screen_pos_of(&"root")
 	ctx.assert_almost(
 		controller.get_zoom_factor(),
 		1.0,
@@ -209,8 +223,8 @@ static func _test_focus_change_resets_zoom_to_fit(ctx) -> void:
 		"Fokuswechsel resetet den Zoom-Factor auf FIT"
 	)
 	ctx.assert_almost(renderer.scale.x, 0.76, 1.0e-6, "Neuer Fokus nutzt seinen eigenen Scope-Fit")
-	ctx.assert_almost(renderer.position.x, 200.0, 1.0e-6, "Neuer Fokus landet zentriert im Viewport (x)")
-	ctx.assert_almost(renderer.position.y, 100.0, 1.0e-6, "Neuer Fokus landet zentriert im Viewport (y)")
+	ctx.assert_almost(root_screen.x, 200.0, 1.0e-6, "Neuer Fokus landet zentriert im Viewport (x)")
+	ctx.assert_almost(root_screen.y, 100.0, 1.0e-6, "Neuer Fokus landet zentriert im Viewport (y)")
 	_teardown_controller_setup(setup)
 
 
@@ -220,9 +234,10 @@ static func _test_explicit_root_focus_uses_root_scope(ctx) -> void:
 	var renderer: RendererStub = setup["renderer"]
 	controller.set_focus(&"root", false, true)
 	controller.step(0.0, Vector2(400.0, 200.0))
+	var root_screen: Vector2 = renderer.screen_pos_of(&"root")
 	ctx.assert_almost(renderer.scale.x, 0.76, 1.0e-6, "Root-Fokus nutzt den Root-Scope als expliziten Overview")
-	ctx.assert_almost(renderer.position.x, 200.0, 1.0e-6, "Root-Fokus zentriert den Root-Anker im Viewport (x)")
-	ctx.assert_almost(renderer.position.y, 100.0, 1.0e-6, "Root-Fokus zentriert den Root-Anker im Viewport (y)")
+	ctx.assert_almost(root_screen.x, 200.0, 1.0e-6, "Root-Fokus zentriert den Root-Anker im Viewport (x)")
+	ctx.assert_almost(root_screen.y, 100.0, 1.0e-6, "Root-Fokus zentriert den Root-Anker im Viewport (y)")
 	_teardown_controller_setup(setup)
 
 
@@ -233,7 +248,7 @@ static func _test_wide_fit_transition_is_visually_continuous(ctx) -> void:
 	controller_below.set_focus(&"planet", false, true)
 	controller_below.handle_zoom_multiplier(0.915)
 	controller_below.step(0.0, Vector2(400.0, 200.0))
-	var focus_below: Vector2 = renderer_below.positions[&"planet"] * renderer_below.scale.x + renderer_below.position
+	var focus_below: Vector2 = renderer_below.screen_pos_of(&"planet")
 	var scale_below: float = renderer_below.scale.x
 
 	var setup_above := _make_controller()
@@ -242,7 +257,7 @@ static func _test_wide_fit_transition_is_visually_continuous(ctx) -> void:
 	controller_above.set_focus(&"planet", false, true)
 	controller_above.handle_zoom_multiplier(0.925)
 	controller_above.step(0.0, Vector2(400.0, 200.0))
-	var focus_above: Vector2 = renderer_above.positions[&"planet"] * renderer_above.scale.x + renderer_above.position
+	var focus_above: Vector2 = renderer_above.screen_pos_of(&"planet")
 	var scale_above: float = renderer_above.scale.x
 
 	ctx.assert_true(
@@ -270,5 +285,33 @@ static func _test_manual_pan_bypasses_smoothing(ctx) -> void:
 	ctx.assert_true(
 		position_after.x < position_before.x - 1.0,
 		"Manueller Pan wirkt sofort auf den Welt-Offset, ohne Smoothing-Verzoegerung"
+	)
+	_teardown_controller_setup(setup)
+
+
+static func _test_camera_lag_tracks_focus_world_motion(ctx) -> void:
+	var setup := _make_controller()
+	var controller = setup["controller"]
+	var renderer: RendererStub = setup["renderer"]
+	controller.set_focus(&"planet", false, true)
+	controller.step(0.0, Vector2(400.0, 200.0))
+	var planet_centered: Vector2 = renderer.screen_pos_of(&"planet")
+	ctx.assert_almost(
+		planet_centered.x,
+		200.0,
+		1.0e-6,
+		"Vor Welt-Bewegung ist der Fokus zentriert"
+	)
+
+	renderer.world_positions[&"planet"] = Vector2(1000.0, 0.0)
+	controller.step(0.05, Vector2(400.0, 200.0))
+	var planet_drifted: Vector2 = renderer.screen_pos_of(&"planet")
+	ctx.assert_true(
+		abs(planet_drifted.x - 200.0) > 1.0,
+		"Bei schneller Welt-Bewegung holt die Kamera nicht sofort auf; Fokus driftet sichtbar"
+	)
+	ctx.assert_true(
+		planet_drifted.distance_to(Vector2(200.0, 100.0)) < (1000.0 - 100.0) * renderer.scale.x,
+		"Die Kamera-Lag begrenzt die Drift auf weniger als die volle Welt-Bewegung"
 	)
 	_teardown_controller_setup(setup)
