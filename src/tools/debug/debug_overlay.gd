@@ -16,15 +16,17 @@ var _bubble: Node = null
 var _activation_set: Node = null
 var _thermal_service: Node = null
 var _snapshot_cache = null
+var _backdrop = null
 
 
-func configure(registry: Node, time_service: Node, bubble: Node, activation_set: Node = null, thermal_service: Node = null, snapshot_cache = null) -> void:
+func configure(registry: Node, time_service: Node, bubble: Node, activation_set: Node = null, thermal_service: Node = null, snapshot_cache = null, backdrop = null) -> void:
 	_registry = registry
 	_time = time_service
 	_bubble = bubble
 	_activation_set = activation_set
 	_thermal_service = thermal_service
 	_snapshot_cache = snapshot_cache
+	_backdrop = backdrop
 
 
 func _process(_delta: float) -> void:
@@ -50,6 +52,27 @@ func _build_text() -> String:
 			% [
 				_format_metric(float(activation_desc.get(BubbleActivationSetScript.KEY_ACTIVATION_RADIUS_M, 0.0))),
 				int(activation_desc.get(BubbleActivationSetScript.KEY_ACTIVE_COUNT, 0))
+			]
+		)
+	if _backdrop != null and _backdrop.has_method("debug_snapshot"):
+		var backdrop_desc: Dictionary = _backdrop.debug_snapshot()
+		lines.append(
+			"backdrop control=%s  viewport=%s  render=%s  bake=%s  composition=%s"
+			% [
+				str(backdrop_desc.get("control_size", Vector2.ZERO)),
+				str(backdrop_desc.get("viewport_rect_size", Vector2.ZERO)),
+				str(backdrop_desc.get("render_target_size", Vector2.ZERO)),
+				str(backdrop_desc.get("bake_size", Vector2.ZERO)),
+				str(backdrop_desc.get("composition_size", Vector2.ZERO)),
+			]
+		)
+		lines.append(
+			"backdrop sync/bake=%d/%d  resize=%d  viewport_resize=%d"
+			% [
+				int(backdrop_desc.get("sync_count", 0)),
+				int(backdrop_desc.get("bake_count", 0)),
+				int(backdrop_desc.get("resize_count", 0)),
+				int(backdrop_desc.get("viewport_resize_count", 0)),
 			]
 		)
 	lines.append("")

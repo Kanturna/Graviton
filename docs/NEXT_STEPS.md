@@ -2,6 +2,17 @@
 
 Stand: 2026-04-19
 
+## Akut - Backdrop-Flicker im Editor beseitigen - erledigt
+
+Erledigt:
+
+- der live geshaderte Backdrop wurde auf einen Bake-Pfad ueber
+  `SubViewport` + `TextureRect` umgestellt
+- damit verschwanden das gemeldete Nebel-Springen und das Stern-
+  Britzeln bei `WASD`/Zoom
+- der kurz getestete Kamera-Kopplungsversuch blieb bewusst nicht
+  erhalten; der funktionierende Fix ist der statische Bake-Pfad
+
 ## Prioritaet 0 - Test-Baseline wieder gruen machen - erledigt
 
 Ziel:
@@ -668,9 +679,10 @@ Zielbild fuer diesen Strang:
   sauber lesbar, ohne dass helle Nebelzonen die Szene ueberladen
 - dabei auch bestaetigen, dass der Backdrop wirklich rein screen-fixed
   liest und nicht wie ein versehentlich mitwandernder View-/Root-Layer
-- und dabei speziell pruefen, ob nach dem Freeze der initialen
-  Kompositions-Viewport-Groesse keine sichtbaren Helligkeitsspruenge der
-  grossen Dust-/Nebel-Felder mehr auftreten
+- falls spaeter neue Artefakte am Backdrop auftauchen, zuerst den
+  vorhandenen Debug-Pfad mit `control`, `viewport`, `render`, `bake`,
+  `composition` und den Resize-/Sync-Zaehlern nutzen, statt sofort
+  wieder einen per-frame-Follow-/Parallaxe-Fix zu versuchen
 - die neuen Archetypen-Referenzen im Editor gezielt gegenpruefen:
   lesen `temperate_reference.png`, `frozen_reference.png` und
   `hot_scorched_reference.png` im Nahzoom wirklich als "Bild fuehrt,

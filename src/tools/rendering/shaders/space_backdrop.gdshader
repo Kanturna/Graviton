@@ -2,6 +2,7 @@ shader_type canvas_item;
 render_mode unshaded;
 
 uniform vec2 viewport_size = vec2(1920.0, 1080.0);
+uniform vec2 render_size = vec2(1920.0, 1080.0);
 uniform float seed = 424242.0;
 uniform float star_density : hint_range(0.25, 2.5) = 1.0;
 uniform float band_strength : hint_range(0.0, 2.0) = 1.0;
@@ -101,10 +102,13 @@ vec3 _sample_star_layer(
 
 void fragment() {
 	vec2 safe_viewport = max(viewport_size, vec2(1.0));
+	vec2 safe_render = max(render_size, vec2(1.0));
 	float aspect = safe_viewport.x / safe_viewport.y;
 	float density_t = clamp((star_density - 0.25) / 2.25, 0.0, 1.0);
 
-	vec2 uv = SCREEN_UV;
+	vec2 screen_px = FRAGCOORD.xy;
+	vec2 composition_px = screen_px;
+	vec2 uv = composition_px / safe_viewport;
 	vec2 p = (uv - vec2(0.5)) * vec2(aspect, 1.0);
 	float radius = length(p * vec2(1.0, 1.25));
 
@@ -203,10 +207,12 @@ void fragment() {
 	);
 	color += stars * star_boost;
 
-	float fine_specks = pow(max(_noise(uv * safe_viewport * 0.36 + vec2(seed * 0.00041, seed * 0.00023)) - 0.84, 0.0) / 0.16, 4.0);
+	vec2 render_uv = clamp(screen_px / safe_render, vec2(0.0), vec2(1.0));
+	float render_fade = 1.0 - smoothstep(1.0, 1.08, length((render_uv - vec2(0.5)) * vec2(safe_render.x / safe_render.y, 1.0)));
+	float fine_specks = pow(max(_noise(composition_px * 0.36 + vec2(seed * 0.00041, seed * 0.00023)) - 0.84, 0.0) / 0.16, 4.0);
 	color += vec3(0.26, 0.30, 0.38) * fine_specks * (0.02 + band_wide * 0.02);
 
-	color *= 1.0 - smoothstep(0.82, 1.28, radius) * 0.38;
+	color *= 1.0 - smoothstep(0.82, 1.28, radius) * 0.38 * render_fade;
 	color = clamp(color, vec3(0.0), vec3(1.0));
 	COLOR = vec4(color, 1.0);
 }

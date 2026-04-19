@@ -86,7 +86,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist wieder reproduzierbar: direkter
   `godot_console.exe --headless ...`-Aufruf und `run_tests.bat` laufen
-  beide mit `914` erfolgreichen Assertions.
+  beide mit `919` erfolgreichen Assertions.
 
 ### Aktuelle Praesentation
 
@@ -100,10 +100,23 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Dieser neue Backdrop bleibt bewusst rein dekorativ im
   `CanvasLayer`: kein Fokus-/Root-Follow, kein BH-zentrierter Wirbel,
   keine neue Simulationswahrheit.
-- Die grossskalige Staub-/Nebel-Komposition wird dabei bewusst nur aus
-  der ersten gueltigen Viewport-Groesse abgeleitet; spaetere
-  Resize-Ereignisse sollen die helleren Dust-Bereiche nicht mehr
-  sichtbar umverteilen.
+- Die grossskalige Staub-/Nebel-Komposition wird dabei bewusst aus der
+  ersten gueltigen Viewport-Groesse abgeleitet und anschliessend ueber
+  einen Bake-Pfad stabil gehalten; spaetere Resize-, Zoom- oder
+  Pan-Vorgaenge verteilen den Nebel dadurch nicht mehr sichtbar um.
+- Der Backdrop wird dafuer nicht mehr live auf dem Haupt-Canvas-Pfad
+  geshadert, sondern ueber `SubViewport` + `TextureRect` als gebackene
+  Textur dargestellt. Das beseitigt den gemeldeten Flicker-/Britzel-
+  Effekt beim Bewegen und Zoomen und haelt den laufenden Frame-Pfad
+  schlanker.
+- Ein kurz getesteter Kamera-Kopplungsversuch fuer den Backdrop wurde
+  bewusst wieder verworfen: er fuehrte zu sichtbarem Stern-/Nebel-
+  Britzeln bei `WASD`/Zoom sowie zu unnoetigem per-frame-Churn und FPS-
+  Verlust.
+- Das Debug-Overlay zeigt jetzt optional live die Backdrop-Werte
+  `control`, `viewport`, `render`, `bake`, `composition` sowie
+  Resize-/Sync-Zaehler an, damit kuenftige Viewport-/Sampling-
+  Regressionen schnell eingegrenzt werden koennen.
 - Bodies werden jetzt als 2D-Visuals mit Glow, Orbit-Linien und Trails
   dargestellt.
 - Planet-/Mond-Themes werden nicht mehr blind pro Frame komplett neu
@@ -496,6 +509,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   dekorativ; ein spaeterer root-aware oder BH-zentrierter Spezialeffekt
   waere ein eigener View-Pass und kein stilles Follow-up dieses
   Hintergrunds.
+- Der gemeldete Backdrop-Flicker war ein Render-/Sampling-Problem des
+  frueheren live geshaderten Hintergrundpfads, nicht der
+  Simulationsdaten oder Orbitlogik; der aktuelle Bake-Pfad ist der
+  bewusst beibehaltene Endzustand dieses Fixes.
 - Die neuen `KEY_*`-Konstanten stabilisieren jetzt die wichtigsten
   Service-/HUD-Schnittstellen; ein spaeterer Test-only-Aufraeumpass
   koennte verbleibende rohe String-Key-Zugriffe in aelteren Suites

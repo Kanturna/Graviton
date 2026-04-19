@@ -19,6 +19,7 @@ const ZOOM_FACTOR_STEP: float = 1.12
 @onready var _activation_set = $BubbleActivationSet
 @onready var _renderer: OrbitViewRenderer = $WorldRoot
 @onready var _debug_overlay: DebugOverlay = $DebugOverlay
+@onready var _backdrop: Control = $BackdropLayer/Backdrop
 
 @onready var _focus_value: Label = $HudLayer/TopPanel/Margin/VBox/FocusValue
 @onready var _environment_value: Label = $HudLayer/TopPanel/Margin/VBox/EnvironmentValue
@@ -83,7 +84,7 @@ func _ready() -> void:
 	)
 	_renderer.set_derived_snapshot_cache(_derived_snapshot_cache)
 	_camera_controller.configure(_renderer, _bubble, UniverseRegistry, _topology)
-	_debug_overlay.configure(UniverseRegistry, TimeService, _bubble, _activation_set, _thermal_service, _derived_snapshot_cache)
+	_debug_overlay.configure(UniverseRegistry, TimeService, _bubble, _activation_set, _thermal_service, _derived_snapshot_cache, _backdrop)
 	_debug_overlay.visible = false
 
 	_time_scale_controller.configure(_speed_slider)
