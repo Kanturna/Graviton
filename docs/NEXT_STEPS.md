@@ -562,16 +562,30 @@ Erledigt:
 - die P16.1-Korrektur fuehrt fuer verschachtelte `wide`-Views wieder
   einen weichen Focus->Root-Anchor-Blend ein, ohne die scope-relative
   Scale-Semantik selbst anzutasten
-- `fit/detail` bleiben strikt fokuszentriert; nur `wide` darf den
-  Kameraanker progressiv Richtung Root/BH ziehen
+- der Folgefix zieht diese Stabilisierung jetzt von `wide` auf eine
+  sichtbarkeitsbasierte Root-Lock-Semantik hoch: `wide / fit / detail`
+  bleiben reine Zoommodi; der Kameraanker folgt dem Root immer dann,
+  wenn das BH im aktuellen Bildmassstab sinnvoll sichtbar ist
+- ein kurzlebiger world-space-Follow-Regressionpfad im
+  `OrbitCameraController` ist wieder entfernt; der Kameraanker folgt
+  jetzt direkt dem berechneten Fokus-/Wide-Anker statt zeitlich
+  hinterherzulaufen
 - Fokuswechsel resetten bewusst auf `fit` (`zoom_factor = 1.0`) und
   loeschen manuelles Pan
 - Root-/BH-Overview ist jetzt nur noch explizit ueber Root-Fokus bzw.
   `Home` erreichbar
 - HUD-Zoomlabels wurden von `world / fit / focus` auf
   `wide / fit / detail` umgestellt
+- HUD-Frame-Labels unterscheiden jetzt zwischen `root-overview`,
+  `root-lock` und `focus-lock`; kleine Hysterese verhindert Flackern im
+  Uebergangsband
 - neue Tests fuer `OrbitCameraScope`; Zoom- und Controller-Tests auf
   die neue Scope-Semantik umgestellt
+- Controller-Regressionstests pinnen jetzt zusaetzlich die
+  sichtbarkeitsbasierte Umschalt-Stetigkeit nahe `root_lock_phase = 0.5`
+  sowie die Pan-Unabhaengigkeit des Lock-Zustands
+- Controller-Regressionstests pinnen jetzt zusaetzlich dynamische
+  No-Drift-Faelle fuer schnelle Fokus- und Root-Bewegung
 - die fruehere P14.1-Invariante "gleiche Zoomzahl = gleicher
   Welt-Massstab" wurde bewusst endgueltig aufgegeben
 

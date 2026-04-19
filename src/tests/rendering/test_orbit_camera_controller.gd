@@ -4,6 +4,10 @@ extends RefCounted
 const OrbitCameraControllerScript = preload("res://src/tools/rendering/orbit_camera_controller.gd")
 const OrbitCameraFramingScript = preload("res://src/tools/rendering/orbit_camera_framing.gd")
 
+const DEFAULT_PLANET_WORLD_POS: Vector2 = Vector2(100.0, 50.0)
+const CLOSE_PLANET_WORLD_POS: Vector2 = Vector2(10.0, 5.0)
+const PLANET_SCOPE_RADIUS_RU: float = 25.0
+
 
 class BubbleStub:
 	extends RefCounted
@@ -71,17 +75,20 @@ class TopologyStub:
 static func run(ctx) -> void:
 	ctx.current_suite = "test_orbit_camera_controller"
 	_test_force_fit_centers_focus_and_resets_pan(ctx)
-	_test_wide_zoom_keeps_focus_centered(ctx)
+	_test_visible_root_locks_even_in_fit_mode(ctx)
 	_test_zoom_multiplier_clamps_to_bounds(ctx)
-	_test_detail_zoom_keeps_focus_centered(ctx)
+	_test_detail_zoom_keeps_focus_centered_when_root_is_not_visible(ctx)
 	_test_focus_change_resets_zoom_to_fit(ctx)
-	_test_explicit_root_focus_uses_root_scope(ctx)
-	_test_wide_fit_transition_is_visually_continuous(ctx)
-	_test_manual_pan_bypasses_smoothing(ctx)
-	_test_camera_lag_tracks_focus_world_motion(ctx)
+	_test_explicit_root_focus_uses_root_overview_label(ctx)
+	_test_non_finite_root_falls_back_to_focus_lock(ctx)
+	_test_visibility_transition_is_continuous(ctx)
+	_test_lock_label_uses_hysteresis(ctx)
+	_test_manual_pan_is_additive_and_keeps_lock_state(ctx)
+	_test_focus_follow_tracks_world_motion_without_drift(ctx)
+	_test_root_lock_tracks_world_motion_without_drift(ctx)
 
 
-static func _make_controller() -> Dictionary:
+static func _make_controller(planet_world_pos: Vector2 = DEFAULT_PLANET_WORLD_POS) -> Dictionary:
 	var controller = OrbitCameraControllerScript.new()
 	var renderer := RendererStub.new()
 	var bubble := BubbleStub.new()
@@ -89,11 +96,11 @@ static func _make_controller() -> Dictionary:
 	var registry := Node.new()
 	renderer.world_positions = {
 		&"root": Vector2.ZERO,
-		&"planet": Vector2(100.0, 50.0),
+		&"planet": planet_world_pos,
 	}
 	renderer.frames = {
 		&"root": {"center": Vector2.ZERO, "radius": 100.0},
-		&"planet": {"center": Vector2(100.0, 50.0), "radius": 25.0},
+		&"planet": {"center": planet_world_pos, "radius": PLANET_SCOPE_RADIUS_RU},
 	}
 	topology.roots = {
 		&"planet": &"root",
@@ -114,6 +121,31 @@ static func _teardown_controller_setup(setup: Dictionary) -> void:
 		registry.free()
 
 
+static func _set_zoom_factor(controller, target_zoom_factor: float) -> void:
+	var current_zoom_factor: float = maxf(float(controller.get_zoom_factor()), 0.000001)
+	controller.handle_zoom_multiplier(target_zoom_factor / current_zoom_factor)
+
+
+static func _zoom_factor_for_phase(viewport_size: Vector2, planet_world_pos: Vector2, phase: float) -> float:
+	var min_viewport_dim: float = minf(viewport_size.x, viewport_size.y)
+	var target_root_distance_screen_px: float = _root_distance_screen_px_for_phase(phase, min_viewport_dim)
+	var scope_fit_scale: float = (min_viewport_dim * OrbitCameraFramingScript.VIEWPORT_RADIUS_FACTOR) / PLANET_SCOPE_RADIUS_RU
+	return target_root_distance_screen_px / maxf(planet_world_pos.length() * scope_fit_scale, 0.0001)
+
+
+static func _root_distance_screen_px_for_phase(phase: float, min_viewport_dim: float) -> float:
+	var low: float = min_viewport_dim * OrbitCameraFramingScript.ROOT_LOCK_IN_VIEWPORT_FRACTION
+	var high: float = min_viewport_dim * OrbitCameraFramingScript.ROOT_LOCK_OUT_VIEWPORT_FRACTION
+	for _i in range(40):
+		var mid: float = (low + high) * 0.5
+		var mid_phase: float = OrbitCameraFramingScript.root_lock_phase_for_distance(mid, min_viewport_dim)
+		if mid_phase > phase:
+			low = mid
+		else:
+			high = mid
+	return (low + high) * 0.5
+
+
 static func _test_force_fit_centers_focus_and_resets_pan(ctx) -> void:
 	var setup := _make_controller()
 	var controller = setup["controller"]
@@ -131,40 +163,33 @@ static func _test_force_fit_centers_focus_and_resets_pan(ctx) -> void:
 	ctx.assert_almost(planet_screen.x, 200.0, 1.0e-6, "Snap-Step zentriert den Fokus im Viewport (x)")
 	ctx.assert_almost(planet_screen.y, 100.0, 1.0e-6, "Snap-Step zentriert den Fokus im Viewport (y)")
 	ctx.assert_true(
-		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_FOCUS_ANCHOR,
-		"Fit-Modus meldet focus-anchor als frame_label"
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK,
+		"Fit-Modus ohne sichtbaren Root meldet focus-lock"
 	)
 	_teardown_controller_setup(setup)
 
 
-static func _test_wide_zoom_keeps_focus_centered(ctx) -> void:
-	var setup := _make_controller()
+static func _test_visible_root_locks_even_in_fit_mode(ctx) -> void:
+	var setup := _make_controller(CLOSE_PLANET_WORLD_POS)
 	var controller = setup["controller"]
 	var renderer: RendererStub = setup["renderer"]
 	controller.set_focus(&"planet", false, true)
-	controller.handle_zoom_multiplier(0.005)
 	controller.step(0.0, Vector2(400.0, 200.0))
+	var root_screen: Vector2 = renderer.screen_pos_of(&"root")
 	var planet_screen: Vector2 = renderer.screen_pos_of(&"planet")
-	ctx.assert_almost(controller.get_zoom_factor(), 0.005, 1.0e-9, "Wide-Zoom clamp't auf MIN_ZOOM_FACTOR")
 	ctx.assert_true(
-		controller.get_zoom_mode() == OrbitCameraFramingScript.ZOOM_MODE_WIDE,
-		"Zoomwerte unter FIT_PLATEAU_LOW setzen zoom_mode auf wide"
+		controller.get_zoom_mode() == OrbitCameraFramingScript.ZOOM_MODE_FIT,
+		"Zoom-Modus bleibt fit; Root-Lock ist nicht mehr wide-exklusiv"
 	)
 	ctx.assert_true(
-		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_FOCUS_ANCHOR,
-		"Wide-Mode haelt den Anker weiterhin am Fokus"
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_ROOT_LOCK,
+		"Sichtbarer Root verankert die Kamera auch im fit-Modus am Root"
 	)
-	ctx.assert_almost(
-		planet_screen.x,
-		200.0,
-		1.0e-6,
-		"Auch extremes wide haelt den Fokus im Viewport-Zentrum (Snap-Step) (x)"
-	)
-	ctx.assert_almost(
-		planet_screen.y,
-		100.0,
-		1.0e-6,
-		"Auch extremes wide haelt den Fokus im Viewport-Zentrum (Snap-Step) (y)"
+	ctx.assert_almost(root_screen.x, 200.0, 1.0e-6, "Sichtbarer Root bleibt im Viewport zentriert (x)")
+	ctx.assert_almost(root_screen.y, 100.0, 1.0e-6, "Sichtbarer Root bleibt im Viewport zentriert (y)")
+	ctx.assert_true(
+		planet_screen.distance_to(Vector2(200.0, 100.0)) > 1.0,
+		"Der Fokuskoerper bleibt relativ zum Root sichtbar beweglich"
 	)
 	_teardown_controller_setup(setup)
 
@@ -179,7 +204,7 @@ static func _test_zoom_multiplier_clamps_to_bounds(ctx) -> void:
 	_teardown_controller_setup(setup)
 
 
-static func _test_detail_zoom_keeps_focus_centered(ctx) -> void:
+static func _test_detail_zoom_keeps_focus_centered_when_root_is_not_visible(ctx) -> void:
 	var setup := _make_controller()
 	var controller = setup["controller"]
 	var renderer: RendererStub = setup["renderer"]
@@ -190,6 +215,10 @@ static func _test_detail_zoom_keeps_focus_centered(ctx) -> void:
 	ctx.assert_true(
 		controller.get_zoom_mode() == OrbitCameraFramingScript.ZOOM_MODE_DETAIL,
 		"Zoomwerte ueber FIT_PLATEAU_HIGH setzen zoom_mode auf detail"
+	)
+	ctx.assert_true(
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK,
+		"Unsichtbarer Root faellt im Detailbereich auf focus-lock zurueck"
 	)
 	ctx.assert_true(
 		controller.get_current_view_scale() > 3.04,
@@ -225,10 +254,14 @@ static func _test_focus_change_resets_zoom_to_fit(ctx) -> void:
 	ctx.assert_almost(renderer.scale.x, 0.76, 1.0e-6, "Neuer Fokus nutzt seinen eigenen Scope-Fit")
 	ctx.assert_almost(root_screen.x, 200.0, 1.0e-6, "Neuer Fokus landet zentriert im Viewport (x)")
 	ctx.assert_almost(root_screen.y, 100.0, 1.0e-6, "Neuer Fokus landet zentriert im Viewport (y)")
+	ctx.assert_true(
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW,
+		"Root-Fokus nutzt den expliziten root-overview-Label"
+	)
 	_teardown_controller_setup(setup)
 
 
-static func _test_explicit_root_focus_uses_root_scope(ctx) -> void:
+static func _test_explicit_root_focus_uses_root_overview_label(ctx) -> void:
 	var setup := _make_controller()
 	var controller = setup["controller"]
 	var renderer: RendererStub = setup["renderer"]
@@ -238,58 +271,126 @@ static func _test_explicit_root_focus_uses_root_scope(ctx) -> void:
 	ctx.assert_almost(renderer.scale.x, 0.76, 1.0e-6, "Root-Fokus nutzt den Root-Scope als expliziten Overview")
 	ctx.assert_almost(root_screen.x, 200.0, 1.0e-6, "Root-Fokus zentriert den Root-Anker im Viewport (x)")
 	ctx.assert_almost(root_screen.y, 100.0, 1.0e-6, "Root-Fokus zentriert den Root-Anker im Viewport (y)")
+	ctx.assert_true(
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW,
+		"Expliziter Root-Fokus meldet root-overview"
+	)
 	_teardown_controller_setup(setup)
 
 
-static func _test_wide_fit_transition_is_visually_continuous(ctx) -> void:
-	var setup_below := _make_controller()
-	var controller_below = setup_below["controller"]
-	var renderer_below: RendererStub = setup_below["renderer"]
-	controller_below.set_focus(&"planet", false, true)
-	controller_below.handle_zoom_multiplier(0.915)
-	controller_below.step(0.0, Vector2(400.0, 200.0))
-	var focus_below: Vector2 = renderer_below.screen_pos_of(&"planet")
-	var scale_below: float = renderer_below.scale.x
-
-	var setup_above := _make_controller()
-	var controller_above = setup_above["controller"]
-	var renderer_above: RendererStub = setup_above["renderer"]
-	controller_above.set_focus(&"planet", false, true)
-	controller_above.handle_zoom_multiplier(0.925)
-	controller_above.step(0.0, Vector2(400.0, 200.0))
-	var focus_above: Vector2 = renderer_above.screen_pos_of(&"planet")
-	var scale_above: float = renderer_above.scale.x
-
-	ctx.assert_true(
-		focus_below.distance_to(focus_above) < 2.0,
-		"Plateau-Grenze wide->fit erzeugt keinen sichtbaren Sprung in der Fokus-Position"
-	)
-	ctx.assert_true(
-		abs(scale_above - scale_below) < 0.05,
-		"Plateau-Grenze wide->fit erzeugt keinen sichtbaren Sprung in der View-Skala"
-	)
-	_teardown_controller_setup(setup_below)
-	_teardown_controller_setup(setup_above)
-
-
-static func _test_manual_pan_bypasses_smoothing(ctx) -> void:
+static func _test_non_finite_root_falls_back_to_focus_lock(ctx) -> void:
 	var setup := _make_controller()
+	var controller = setup["controller"]
+	var renderer: RendererStub = setup["renderer"]
+	renderer.world_positions[&"root"] = Vector2(INF, INF)
+	controller.set_focus(&"planet", false, true)
+	_set_zoom_factor(controller, 0.10)
+	controller.step(0.0, Vector2(400.0, 200.0))
+	var planet_screen: Vector2 = renderer.screen_pos_of(&"planet")
+	ctx.assert_almost(planet_screen.x, 200.0, 1.0e-6, "Nicht-finites root_center faellt auf focus-lock zurueck (x)")
+	ctx.assert_almost(planet_screen.y, 100.0, 1.0e-6, "Nicht-finites root_center faellt auf focus-lock zurueck (y)")
+	ctx.assert_true(
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK,
+		"Ohne valid root meldet der Controller focus-lock"
+	)
+	_teardown_controller_setup(setup)
+
+
+static func _test_visibility_transition_is_continuous(ctx) -> void:
+	var viewport: Vector2 = Vector2(100.0, 100.0)
+
+	var setup_root_side := _make_controller()
+	var controller_root_side = setup_root_side["controller"]
+	var renderer_root_side: RendererStub = setup_root_side["renderer"]
+	controller_root_side.set_focus(&"planet", false, true)
+	_set_zoom_factor(controller_root_side, _zoom_factor_for_phase(viewport, DEFAULT_PLANET_WORLD_POS, 0.51))
+	controller_root_side.step(0.0, viewport)
+	var root_side_focus: Vector2 = renderer_root_side.screen_pos_of(&"planet")
+	var root_side_root: Vector2 = renderer_root_side.screen_pos_of(&"root")
+
+	var setup_focus_side := _make_controller()
+	var controller_focus_side = setup_focus_side["controller"]
+	var renderer_focus_side: RendererStub = setup_focus_side["renderer"]
+	controller_focus_side.set_focus(&"planet", false, true)
+	_set_zoom_factor(controller_focus_side, _zoom_factor_for_phase(viewport, DEFAULT_PLANET_WORLD_POS, 0.49))
+	controller_focus_side.step(0.0, viewport)
+	var focus_side_focus: Vector2 = renderer_focus_side.screen_pos_of(&"planet")
+	var focus_side_root: Vector2 = renderer_focus_side.screen_pos_of(&"root")
+
+	ctx.assert_true(
+		root_side_focus.distance_to(focus_side_focus) < 1.0,
+		"Nahe der 0.5-Phase bleibt die Fokus-Position stetig"
+	)
+	ctx.assert_true(
+		root_side_root.distance_to(focus_side_root) < 1.0,
+		"Nahe der 0.5-Phase bleibt die Root-Position stetig"
+	)
+	_teardown_controller_setup(setup_root_side)
+	_teardown_controller_setup(setup_focus_side)
+
+
+static func _test_lock_label_uses_hysteresis(ctx) -> void:
+	var setup := _make_controller()
+	var controller = setup["controller"]
+	var viewport: Vector2 = Vector2(400.0, 200.0)
+	controller.set_focus(&"planet", false, true)
+
+	_set_zoom_factor(controller, _zoom_factor_for_phase(viewport, DEFAULT_PLANET_WORLD_POS, 0.62))
+	controller.step(0.0, viewport)
+	ctx.assert_true(
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_ROOT_LOCK,
+		"Phase ueber 0.60 setzt root-lock"
+	)
+
+	_set_zoom_factor(controller, _zoom_factor_for_phase(viewport, DEFAULT_PLANET_WORLD_POS, 0.50))
+	controller.step(0.0, viewport)
+	ctx.assert_true(
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_ROOT_LOCK,
+		"Zwischen 0.40 und 0.60 haelt das Label den letzten root-lock-Zustand"
+	)
+
+	_set_zoom_factor(controller, _zoom_factor_for_phase(viewport, DEFAULT_PLANET_WORLD_POS, 0.38))
+	controller.step(0.0, viewport)
+	ctx.assert_true(
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK,
+		"Phase unter 0.40 setzt focus-lock"
+	)
+
+	_set_zoom_factor(controller, _zoom_factor_for_phase(viewport, DEFAULT_PLANET_WORLD_POS, 0.50))
+	controller.step(0.0, viewport)
+	ctx.assert_true(
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK,
+		"Zwischen 0.40 und 0.60 haelt das Label auch den letzten focus-lock-Zustand"
+	)
+	_teardown_controller_setup(setup)
+
+
+static func _test_manual_pan_is_additive_and_keeps_lock_state(ctx) -> void:
+	var setup := _make_controller(CLOSE_PLANET_WORLD_POS)
 	var controller = setup["controller"]
 	var renderer: RendererStub = setup["renderer"]
 	controller.set_focus(&"planet", false, true)
 	controller.step(0.0, Vector2(400.0, 200.0))
 	var position_before: Vector2 = renderer.position
+	ctx.assert_true(
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_ROOT_LOCK,
+		"Der Ausgangszustand ist root-lock"
+	)
 	controller.handle_pan_input(Vector2.RIGHT, 0.25)
 	controller.step(0.001, Vector2(400.0, 200.0))
 	var position_after: Vector2 = renderer.position
 	ctx.assert_true(
 		position_after.x < position_before.x - 1.0,
-		"Manueller Pan wirkt sofort auf den Welt-Offset, ohne Smoothing-Verzoegerung"
+		"Manueller Pan wirkt weiter sofort als additiver View-Offset"
+	)
+	ctx.assert_true(
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_ROOT_LOCK,
+		"Manual Pan veraendert den Lock-Zustand nicht"
 	)
 	_teardown_controller_setup(setup)
 
 
-static func _test_camera_lag_tracks_focus_world_motion(ctx) -> void:
+static func _test_focus_follow_tracks_world_motion_without_drift(ctx) -> void:
 	var setup := _make_controller()
 	var controller = setup["controller"]
 	var renderer: RendererStub = setup["renderer"]
@@ -305,13 +406,31 @@ static func _test_camera_lag_tracks_focus_world_motion(ctx) -> void:
 
 	renderer.world_positions[&"planet"] = Vector2(1000.0, 0.0)
 	controller.step(0.05, Vector2(400.0, 200.0))
-	var planet_drifted: Vector2 = renderer.screen_pos_of(&"planet")
+	var planet_after_motion: Vector2 = renderer.screen_pos_of(&"planet")
+	ctx.assert_almost(planet_after_motion.x, 200.0, 1.0e-6, "Focus-Lock haelt den Fokus auch bei schneller Welt-Bewegung zentriert (x)")
+	ctx.assert_almost(planet_after_motion.y, 100.0, 1.0e-6, "Focus-Lock haelt den Fokus auch bei schneller Welt-Bewegung zentriert (y)")
+	_teardown_controller_setup(setup)
+
+
+static func _test_root_lock_tracks_world_motion_without_drift(ctx) -> void:
+	var setup := _make_controller(CLOSE_PLANET_WORLD_POS)
+	var controller = setup["controller"]
+	var renderer: RendererStub = setup["renderer"]
+	controller.set_focus(&"planet", false, true)
+	controller.step(0.0, Vector2(400.0, 200.0))
+	var root_centered: Vector2 = renderer.screen_pos_of(&"root")
+	var planet_before_motion: Vector2 = renderer.screen_pos_of(&"planet")
+	ctx.assert_almost(root_centered.x, 200.0, 1.0e-6, "Vor Welt-Bewegung ist der Root-Anker zentriert (x)")
+	ctx.assert_almost(root_centered.y, 100.0, 1.0e-6, "Vor Welt-Bewegung ist der Root-Anker zentriert (y)")
+
+	renderer.world_positions[&"planet"] = Vector2(12.0, 5.0)
+	controller.step(0.05, Vector2(400.0, 200.0))
+	var root_after_motion: Vector2 = renderer.screen_pos_of(&"root")
+	var planet_after_motion: Vector2 = renderer.screen_pos_of(&"planet")
+	ctx.assert_almost(root_after_motion.x, 200.0, 1.0e-6, "Root-Lock behaelt den Root auch bei schneller lokaler Bewegung zentriert (x)")
+	ctx.assert_almost(root_after_motion.y, 100.0, 1.0e-6, "Root-Lock behaelt den Root auch bei schneller lokaler Bewegung zentriert (y)")
 	ctx.assert_true(
-		abs(planet_drifted.x - 200.0) > 1.0,
-		"Bei schneller Welt-Bewegung holt die Kamera nicht sofort auf; Fokus driftet sichtbar"
-	)
-	ctx.assert_true(
-		planet_drifted.distance_to(Vector2(200.0, 100.0)) < (1000.0 - 100.0) * renderer.scale.x,
-		"Die Kamera-Lag begrenzt die Drift auf weniger als die volle Welt-Bewegung"
+		planet_after_motion.distance_to(planet_before_motion) > 1.0,
+		"Der Fokuskoerper bleibt im Root-Lock sichtbar in Bewegung"
 	)
 	_teardown_controller_setup(setup)

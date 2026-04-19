@@ -6,7 +6,6 @@ const OrbitZoomModelScript = preload("res://src/tools/rendering/orbit_zoom_model
 const OrbitCameraFramingScript = preload("res://src/tools/rendering/orbit_camera_framing.gd")
 
 const VIEW_SMOOTHNESS: float = 10.0
-const CAMERA_FOLLOW_RATE: float = 2.5
 const MIN_ABSOLUTE_ZOOM_FACTOR: float = 0.005
 const MAX_ABSOLUTE_ZOOM_FACTOR: float = 100.0
 const PAN_SPEED_PX_PER_S: float = 960.0
@@ -21,12 +20,13 @@ var _current_view_scale: float = 1.0
 var _manual_pan_ru: Vector2 = Vector2.ZERO
 var _current_scope_radius_ru: float = 1.0
 var _current_zoom_mode: StringName = OrbitCameraFramingScript.ZOOM_MODE_FIT
-var _current_frame_label: StringName = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_ANCHOR
+var _current_frame_label: StringName = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
 var _last_viewport_size: Vector2 = Vector2.ZERO
 
-var _camera_world_pos_ru: Vector2 = Vector2.ZERO
-var _camera_world_initialized: bool = false
 var _current_base_anchor_ru: Vector2 = Vector2.ZERO
+var _current_root_lock_phase: float = 0.0
+var _last_non_overview_frame_label: StringName = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
+var _has_non_overview_frame_label: bool = false
 
 
 func configure(renderer, bubble, registry: Node, topology) -> void:
@@ -44,7 +44,8 @@ func set_focus(body_id: StringName, immediate := false, force_fit := false) -> v
 	_manual_pan_ru = Vector2.ZERO
 	_absolute_zoom_factor = OrbitZoomModelScript.FIT_ZOOM_FACTOR
 	_refresh_scope_radius(body_id)
-	_camera_world_initialized = false
+	_has_non_overview_frame_label = false
+	_last_non_overview_frame_label = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
 	if force_fit:
 		fit_current_focus()
 	if _last_viewport_size != Vector2.ZERO:
@@ -101,7 +102,7 @@ func get_frame_label() -> StringName:
 	return _current_frame_label
 
 
-func _refresh_target_view(viewport_size: Vector2, delta: float) -> void:
+func _refresh_target_view(viewport_size: Vector2, _delta: float) -> void:
 	var focus_id: StringName = _bubble.get_focus()
 	var focus_center: Vector2 = _renderer.get_body_view_position_ru(focus_id)
 	if not _is_finite_vec2(focus_center):
@@ -112,23 +113,8 @@ func _refresh_target_view(viewport_size: Vector2, delta: float) -> void:
 		if root_id != StringName("") and root_id != focus_id:
 			root_center = _renderer.get_body_view_position_ru(root_id)
 
-	var has_valid_root: bool = (
-		_is_finite_vec2(root_center)
-		and not root_center.is_equal_approx(focus_center)
-	)
-	var focus_world_pos: Vector2 = -root_center if has_valid_root else Vector2.ZERO
-
-	if not _camera_world_initialized:
-		_camera_world_pos_ru = focus_world_pos
-		_camera_world_initialized = true
-	elif delta <= 0.0:
-		_camera_world_pos_ru = focus_world_pos
-	else:
-		var follow_weight: float = 1.0 - exp(-CAMERA_FOLLOW_RATE * delta)
-		_camera_world_pos_ru = _camera_world_pos_ru.lerp(focus_world_pos, follow_weight)
-
-	_current_base_anchor_ru = _camera_world_pos_ru - focus_world_pos
-
+	# Manual pan stays a pure additive view offset. Lock state is derived from
+	# the unpanned focus/root relation and must not switch because the player pans.
 	var layout: Dictionary = OrbitCameraFramingScript.compute_layout(
 		focus_center,
 		root_center,
@@ -138,8 +124,10 @@ func _refresh_target_view(viewport_size: Vector2, delta: float) -> void:
 	)
 
 	_target_view_scale = float(layout.get("target_view_scale", 1.0))
+	_current_base_anchor_ru = layout.get("base_anchor_ru", focus_center)
+	_current_root_lock_phase = clampf(float(layout.get("root_lock_phase", 0.0)), 0.0, 1.0)
 	_current_zoom_mode = layout.get("zoom_mode", OrbitCameraFramingScript.ZOOM_MODE_FIT)
-	_current_frame_label = layout.get("frame_label", OrbitCameraFramingScript.FRAME_LABEL_FOCUS_ANCHOR)
+	_current_frame_label = _resolve_frame_label(focus_id)
 
 
 func _apply_view_transform(immediate: bool, delta: float, viewport_size: Vector2) -> void:
@@ -164,6 +152,29 @@ func _refresh_scope_radius(body_id: StringName) -> void:
 		return
 	var frame: Dictionary = _renderer.get_scope_frame(body_id)
 	_current_scope_radius_ru = maxf(float(frame.get("radius", 1.0)), 1.0)
+
+
+func _resolve_frame_label(focus_id: StringName) -> StringName:
+	var root_id: StringName = StringName("")
+	if _topology != null:
+		root_id = _topology.root_id_of(focus_id)
+	if root_id != StringName("") and root_id == focus_id:
+		return OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW
+	if _current_root_lock_phase >= 0.60:
+		return _remember_non_overview_frame_label(OrbitCameraFramingScript.FRAME_LABEL_ROOT_LOCK)
+	if _current_root_lock_phase <= 0.40:
+		return _remember_non_overview_frame_label(OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK)
+	if _has_non_overview_frame_label:
+		return _last_non_overview_frame_label
+	if _current_root_lock_phase >= 0.50:
+		return _remember_non_overview_frame_label(OrbitCameraFramingScript.FRAME_LABEL_ROOT_LOCK)
+	return _remember_non_overview_frame_label(OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK)
+
+
+func _remember_non_overview_frame_label(label: StringName) -> StringName:
+	_last_non_overview_frame_label = label
+	_has_non_overview_frame_label = true
+	return label
 
 
 static func _is_finite_vec2(value: Vector2) -> bool:

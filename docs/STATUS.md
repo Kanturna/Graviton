@@ -95,20 +95,31 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `time_scale` skaliert das simulierte `dt` pro Physics-Frame.
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
 - Die Kamera nutzt jetzt ein bewusst scope-relatives Zoommodell:
-  `fit` und `detail` bleiben fokuszentriert, der sichtbare
-  `fit`-Rahmen wird weiter ueber einen expliziten lokalen Scope des
-  Fokus bestimmt, und nur `wide` auf verschachtelten Stern-/Planeten-/
-  Mondfoki blendet den Kameraanker wieder weich Richtung Root-/BH-
-  Mittelpunkt.
+  `fit`, `wide` und `detail` bleiben weiter reine Massstabsmodi, aber
+  der Kameraanker wird jetzt sichtbarkeitsbasiert bestimmt: sobald der
+  Root-/BH-Mittelpunkt im aktuellen Massstab sinnvoll im Bild sein kann,
+  verankert sich die Ansicht wieder weich am Root; erst wenn der Root
+  faktisch ausser Reichweite liegt, faellt die Kamera auf lokalen
+  Fokus-Lock zurueck.
 - `100%` bedeutet im Testbed jetzt explizit `fit current focus scope`;
   `Backspace` springt auf genau diesen Scope-Fit zurueck.
 - Der Zoombereich bleibt bei `0.5%` bis `10000%`; unter `100%` wird nur
   innerhalb des aktuellen Fokus-Scopes weiter herausgezoomt (`wide`),
-  aber der Kameraanker kann dort auf verschachtelten Foki progressiv
-  Richtung Root-/BH-Mittelpunkt driften; oberhalb von `100%` bleibt
-  Zoom ein lokaler Detail-Zoom (`detail`) relativ zu demselben Fokus.
+  aber Root-Stabilitaet haengt nicht mehr nur an `wide`: auch in `fit`
+  oder moderatem Zoom bleibt das BH stabil, solange es im aktuellen
+  Bildausschnitt sinnvoll sichtbar ist; oberhalb davon bleibt Zoom ein
+  lokaler Detail-Zoom (`detail`) relativ zu demselben Fokus.
+- Ein kurzlebiger world-space-Follow im `OrbitCameraController` wurde
+  wieder entfernt: `fit/detail` halten den Fokus auch bei hoher
+  Sim-Speed exakt, und der sichtbarkeitsbasierte Root-Lock stabilisiert
+  den Root-/BH-Anker ohne sichtbares Kamera-Nachziehen.
 - Das HUD macht die Zoom-Semantik jetzt explizit sichtbar:
   `Zoom ... wide`, `Zoom 100% fit` und `Zoom ... detail`.
+- Das HUD trennt jetzt explizit zwischen expliziter Root-Uebersicht und
+  implizitem Kamera-Lock: `root-overview` fuer echten Root-Fokus,
+  `root-lock` fuer sichtbarkeitsbasierten Root-Anker und `focus-lock`
+  fuer lokalen Fokus-Lock; kleine Hysterese verhindert Label-Flackern im
+  Uebergangsband.
 - Explizite Root-/BH-Overview gibt es weiter ueber Root-Fokus bzw.
   `Home`; `wide` auf einem Stern-, Planeten- oder Mondfokus darf den
   Kameraanker aber wieder weich Richtung Root/BH ziehen, damit grosse
@@ -316,9 +327,13 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   definiert; gleiche Zoomzahlen sind damit nicht mehr
   fokusuebergreifend als gleicher Welt-Massstab interpretierbar.
 - Expliziter globaler Ueberblick ist weiter primaer Root-/BH-Fokus bzw.
-  `Home`; `wide` auf verschachtelten Foki stabilisiert aber den
-  Root-/BH-Mittelpunkt wieder weich im Fernblick, ohne die P16-
-  Scope-Scale-Semantik aufzugeben.
+  `Home`; verschachtelte Foki koennen den Root-/BH-Mittelpunkt jetzt
+  wieder weich stabilisieren, sobald dieser im aktuellen Bildmassstab
+  sinnvoll sichtbar ist, ohne die P16-Scope-Scale-Semantik aufzugeben.
+- Die dokumentierte P16.1-Kameralogik ist jetzt auch controller- und
+  testseitig wieder konsistent: kein separater Kamera-World-State, kein
+  zeitliches Nachlaufen des Fokus-/Root-Ankers, und Manual Pan bleibt
+  ein rein additiver View-Offset ohne Einfluss auf den Lock-Modus.
 - Renderer-Nahdetail bleibt weiterhin getrennt fokus-relativ, damit die
   P14-Archetypen bei gleicher lokaler Naehe dieselben Detail-Schwellen
   behalten.

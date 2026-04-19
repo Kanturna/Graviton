@@ -1,5 +1,47 @@
 # Graviton - Decisions
 
+## 2026-04-19 - Root-Stabilitaet ist sichtbarkeitsbasiert, nicht mehr `wide`- oder lag-basiert
+
+Der erste P16.1-Fix hat den Root-/BH-Anker nur fuer verschachtelte
+`wide`-Views weich zurueckgebracht. Das war besser als die rein
+fokuszentrierte Variante, blieb aber semantisch zu eng: sobald das BH
+bei anderen Zoomstufen ebenfalls sinnvoll sichtbar war, wirkte es weiter
+unnatuerlich, wenn der Fokuskoerper eingefroren blieb und alles andere
+scheinbar um ihn kreiste.
+
+Konsequenz:
+
+- `wide / fit / detail` bleiben reine Zoom-/Massstabsmodi
+- der Kameraanker wird separat ueber die aktuelle Root-Sichtbarkeit im
+  Screen-Space entschieden
+- solange das BH im aktuellen Bildmassstab sinnvoll sichtbar ist, bleibt
+  es der stabile Bildanker (`root-lock`)
+- erst wenn der Root faktisch nicht mehr sinnvoll im Bild liegt, faellt
+  die Kamera auf lokalen Fokus-Lock zurueck (`focus-lock`)
+- expliziter Root-Fokus (`Home`) wird im HUD separat als
+  `root-overview` gekennzeichnet
+- Manual Pan bleibt ein rein additiver View-Offset und darf den
+  Lock-Zustand nicht beeinflussen
+
+## 2026-04-19 - Kamera folgt dem berechneten Framing-Anker direkt, nicht ueber separaten World-Space-Lag
+
+Ein kurzer Follow-Experimentpfad im `OrbitCameraController` hat eine
+eigene geglaettete Kamera-World-Position eingefuehrt. Das loeste das
+urspruengliche Fernblick-Problem nicht, weil es nur zeitliches
+Nachziehen auf die bereits fokus-relative Bubble-Projektion addierte:
+bei hoher Sim-Speed driftete der Fokus sichtbar aus der Mitte, und auch
+der `wide`-Root-/BH-Anker konnte hinterherhaengen.
+
+Konsequenz:
+
+- es gibt keinen separaten kameraeigenen World-Space-Tracking-State mehr
+- `fit/detail` folgen dem Fokuskoerper exakt; sichtbare Drift ist dort
+  ein Bug und kein Trade-off
+- `wide` nutzt weiter den dokumentierten weichen Focus->Root-/BH-Blend,
+  aber ohne zeitliches Anchor-Lag
+- weiche Bewegung bleibt auf Zoom-/Scale-Smoothing begrenzt; die
+  Ankerposition selbst wird nicht mehr als eigener Low-Pass gefiltert
+
 ## 2026-04-19 - P16.1 bringt den Root-/BH-Anker fuer verschachtelte `wide`-Views weich zurueck
 
 Der erste P16-Slice hat Kamera und Scope-Scale voll fokuszentriert

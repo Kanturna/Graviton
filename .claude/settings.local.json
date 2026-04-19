@@ -1,10 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(\"D:\\\\Programme\\\\Godot\\\\Godot.exe\" --headless --path \"D:\\\\Projekte\\\\Godot\\\\Graviton\" -s src/tests/test_runner.gd)",
-      "Bash(cmd //c \"D:\\\\Programme\\\\Godot\\\\Godot.exe --headless --path D:\\\\Projekte\\\\Godot\\\\Graviton -s src/tests/test_runner.gd\")",
-      "Bash(\"D:\\\\Programme\\\\Godot\\\\godot_console.exe\" --headless --path \"D:\\\\Projekte\\\\Godot\\\\Graviton\" -s src/tests/test_runner.gd)",
-      "Bash(cmd.exe //c \"d:\\\\\\\\Projekte\\\\\\\\Godot\\\\\\\\Graviton\\\\\\\\run_tests.bat\")"
+      "Bash(\"D:\\\\Programme\\\\Godot\\\\godot_console.exe\" --headless --path \"D:\\\\Projekte\\\\Godot\\\\Graviton\" -s src/tests/test_runner.gd --quit)",
+      "Bash(cmd.exe //c \"d:\\\\\\\\Projekte\\\\\\\\Godot\\\\\\\\Graviton\\\\\\\\run_tests.bat\")",
+      "PowerShell(& \"D:\\\\Programme\\\\Godot\\\\godot_console.exe\" --path \"D:\\\\Projekte\\\\Godot\\\\Graviton\" --headless --script res://src/tests/test_runner.gd --quit 2>&1)"
     ]
   }
 }

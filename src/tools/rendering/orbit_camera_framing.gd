@@ -5,6 +5,8 @@ extends RefCounted
 const OrbitZoomModelScript = preload("res://src/tools/rendering/orbit_zoom_model.gd")
 
 const VIEWPORT_RADIUS_FACTOR: float = 0.38
+const ROOT_LOCK_IN_VIEWPORT_FRACTION: float = 0.35
+const ROOT_LOCK_OUT_VIEWPORT_FRACTION: float = 0.55
 
 const FIT_PLATEAU_LOW: float = 0.92
 const FIT_PLATEAU_HIGH: float = 1.08
@@ -13,12 +15,16 @@ const ZOOM_MODE_WIDE: StringName = &"wide"
 const ZOOM_MODE_FIT: StringName = &"fit"
 const ZOOM_MODE_DETAIL: StringName = &"detail"
 
-const FRAME_LABEL_FOCUS_ANCHOR: StringName = &"focus-anchor"
+const FRAME_LABEL_ROOT_OVERVIEW: StringName = &"root-overview"
+const FRAME_LABEL_ROOT_LOCK: StringName = &"root-lock"
+const FRAME_LABEL_FOCUS_LOCK: StringName = &"focus-lock"
+const FRAME_LABEL_FOCUS_ANCHOR: StringName = FRAME_LABEL_FOCUS_LOCK
+const FRAME_LABEL_ROOT_ANCHOR: StringName = FRAME_LABEL_ROOT_LOCK
 
 
 static func compute_layout(
 	focus_center_ru: Vector2,
-	_root_center_ru: Vector2,
+	root_center_ru: Vector2,
 	focus_scope_radius_ru: float,
 	zoom_factor: float,
 	viewport_size: Vector2
@@ -30,18 +36,29 @@ static func compute_layout(
 		OrbitZoomModelScript.MIN_ZOOM_FACTOR,
 		OrbitZoomModelScript.MAX_ZOOM_FACTOR
 	)
+	var has_valid_root: bool = (
+		_is_finite_vec2(root_center_ru)
+		and not root_center_ru.is_equal_approx(focus_center_ru)
+	)
 
 	var zoom_mode: StringName = _zoom_mode(clamped_zoom)
 	var min_viewport_dim: float = minf(safe_viewport.x, safe_viewport.y)
 	var scope_fit_scale: float = (min_viewport_dim * VIEWPORT_RADIUS_FACTOR) / safe_focus_radius
 	var target_view_scale: float = scope_fit_scale * clamped_zoom
+	var base_anchor_ru: Vector2 = focus_center_ru
+	var root_lock_phase: float = 0.0
+	if has_valid_root:
+		var root_distance_screen_px: float = focus_center_ru.distance_to(root_center_ru) * target_view_scale
+		root_lock_phase = root_lock_phase_for_distance(root_distance_screen_px, min_viewport_dim)
+		if root_lock_phase > 0.0:
+			base_anchor_ru = focus_center_ru.lerp(root_center_ru, root_lock_phase)
 
 	return {
 		"target_view_scale": target_view_scale,
-		"base_anchor_ru": focus_center_ru,
+		"base_anchor_ru": base_anchor_ru,
 		"auto_composition_offset_ru": Vector2.ZERO,
 		"zoom_mode": zoom_mode,
-		"frame_label": FRAME_LABEL_FOCUS_ANCHOR,
+		"root_lock_phase": root_lock_phase,
 	}
 
 
@@ -51,6 +68,12 @@ static func _zoom_mode(clamped_zoom: float) -> StringName:
 	if clamped_zoom > FIT_PLATEAU_HIGH:
 		return ZOOM_MODE_DETAIL
 	return ZOOM_MODE_FIT
+
+
+static func root_lock_phase_for_distance(root_distance_screen_px: float, min_viewport_dim: float) -> float:
+	var lock_in_px: float = min_viewport_dim * ROOT_LOCK_IN_VIEWPORT_FRACTION
+	var lock_out_px: float = min_viewport_dim * ROOT_LOCK_OUT_VIEWPORT_FRACTION
+	return 1.0 - smoothstep(lock_in_px, lock_out_px, root_distance_screen_px)
 
 
 static func _is_finite_vec2(value: Vector2) -> bool:
