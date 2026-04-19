@@ -195,6 +195,16 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Ableitungsskript aus der Referenzdatei `sun.png` in den Repo-Workflow;
   P14.6 fuehrt dafuer ein eigenes Rendering-Asset und eine kurze
   Asset-Notiz ein, statt die Detailquelle nur lokal implizit zu halten.
+- P14.6b zieht diese Detailmap jetzt bewusst wieder auf eine
+  disc-zentrierte, statische Closeup-Schicht zurecht: die abgeleitete
+  `star_detailmap.png` wird neu zentriert, aeussere Protuberanzen werden
+  aus der Map abgeschnitten, und der Shader sampelt die Bildstruktur
+  ohne `TIME`-Translation fest im Sternzentrum.
+- Im Stern-Closeup darf damit nur noch eine Oberflaechenlogik dominieren:
+  die sichtbare Detailmap fuehrt die Surface-Lesbarkeit, waehrend
+  Granulation, Activity, Filament- und Meso-Layer nur amplitude-seitig
+  gedimmt als animierter Unterbau erhalten bleiben; das statische
+  Macro-Feld sowie Rim/Edge bleiben unveraendert voll aktiv.
 
 ## Ziel dieser Praesentationsschicht
 

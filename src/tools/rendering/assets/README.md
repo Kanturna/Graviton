@@ -2,10 +2,10 @@
 
 ## `star_detailmap.png`
 
-Derived reusable structure map for the P14.6 star closeup shader.
+Derived reusable structure map for the P14.6/P14.6b focused-star closeup shader.
 
 - Source basis: user-provided solar reference image at `D:/Downloads/sun.png`
-- Usage: structure/luminance source for focused-star closeups
+- Usage: centered structure/luminance source for focused-star closeups
 - Not used as a direct photo skin for stars
 
 Regeneration:
@@ -20,7 +20,14 @@ C:\Users\Sh4man\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\
 
 The derivation intentionally:
 
-- crops to a square
-- keeps only the solar disc / near-disc structure
+- detects the solar disc and centers it on a square canvas
+- clips outer protuberances from the source image
+- keeps only the inner solar disc structure
 - normalizes luminance and contrast
 - produces a reusable grayscale detail map for shader modulation
+
+The shader intentionally samples the map statically:
+
+- no `TIME`-based translation
+- no rotation
+- centered disc-aligned UV sampling only

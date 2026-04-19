@@ -426,10 +426,10 @@ static func _make_sphere_material(kind: int) -> ShaderMaterial:
 		mat.set_shader_parameter("granulation_contrast", 1.12)
 		mat.set_shader_parameter("channel_contrast", 1.18)
 		mat.set_shader_parameter("hotspot_contrast", 1.10)
-		mat.set_shader_parameter("detailmap_strength", 0.42)
+		mat.set_shader_parameter("detailmap_strength", 0.50)
 		mat.set_shader_parameter("detailmap_scale", 1.15)
 		mat.set_shader_parameter("prominence_strength", 0.28)
-		mat.set_shader_parameter("sunspot_strength", 0.24)
+		mat.set_shader_parameter("sunspot_strength", 0.20)
 	else:
 		mat.shader = _SHADER_SPHERE
 		var is_moon: bool = kind == BodyType.Kind.MOON

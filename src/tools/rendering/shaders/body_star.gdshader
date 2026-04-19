@@ -20,10 +20,10 @@ uniform float meso_breakup_scale = 2.40;
 uniform float granulation_contrast = 1.12;
 uniform float channel_contrast = 1.18;
 uniform float hotspot_contrast = 1.10;
-uniform float detailmap_strength = 0.42;
+uniform float detailmap_strength = 0.50;
 uniform float detailmap_scale = 1.15;
 uniform float prominence_strength = 0.28;
-uniform float sunspot_strength = 0.24;
+uniform float sunspot_strength = 0.20;
 
 
 float _hash21(vec2 p) {
@@ -81,6 +81,11 @@ void fragment() {
 
 	// Radial color temperature: center near-white, edge warmer/more saturated
 	vec3 col = mix(star_core_color, star_mid_color, pow(t_w, 1.8)) * limb;
+	float closeup_gate = smoothstep(0.35, 1.0, star_closeup_phase);
+	float granulation_amp = mix(1.0, 0.35, closeup_gate);
+	float meso_amp = mix(1.0, 0.60, closeup_gate);
+	float activity_amp = mix(1.0, 0.45, closeup_gate);
+	float filament_amp = mix(1.0, 0.50, closeup_gate);
 
 	// Macro surface field stays static: it organizes the star into broad
 	// basins / convection regions without making the whole surface drift.
@@ -120,10 +125,10 @@ void fragment() {
 	float dark   = pow(cell_neg, 2.40);   // narrow, hard cool lanes
 	float asym = bright * 0.60 - dark * 1.35;
 	float gran = asym * (1.0 - t * 0.65) * mix(0.11, 0.28, df_t);
-	col *= 1.0 + gran * granulation_contrast;
+	col *= 1.0 + gran * granulation_contrast * granulation_amp;
 	// Temperature tint: lanes pick up a warmer/redder hue, bright centers stay near white.
 	// Activity remains color-only; alpha never changes.
-	float lane_tint = max(0.0, -asym) * mix(0.18, 0.70, df_t);
+	float lane_tint = max(0.0, -asym) * mix(0.18, 0.70, df_t) * granulation_amp;
 
 	// Add a new meso breakup layer between macro organization and the
 	// existing activity fields. It drifts only very slowly.
@@ -134,7 +139,7 @@ void fragment() {
 		+ _noise(meso_uv * 2.15 + vec2(-2.8, 4.6)) * 0.28;
 	float meso_faculae = smoothstep(0.60, 0.82, meso_raw);
 	float meso_faculae_add = meso_faculae * meso_breakup_strength * meso_df
-		* max(0.0, 1.0 - t * 0.46);
+		* max(0.0, 1.0 - t * 0.46) * meso_amp;
 	col += mix(star_mid_color, star_core_color, 0.64) * meso_faculae_add;
 
 	// Add a coarser solar-activity layer above the fine granulation:
@@ -152,7 +157,7 @@ void fragment() {
 	float faculae = pow(max(0.0, activity_raw), 1.35);
 	float activity_mask = max(0.0, 1.0 - t * 0.52);
 	float activity_faculae_add = faculae * activity_strength * activity_df
-		* activity_mask * 0.58 * hotspot_contrast;
+		* activity_mask * 0.58 * hotspot_contrast * activity_amp;
 	col += mix(star_mid_color, star_core_color, 0.72) * activity_faculae_add;
 
 	vec2 fp = n_xy * filament_scale;
@@ -166,16 +171,15 @@ void fragment() {
 	float filament_raw = (f0 * 0.90 + f1 * 1.00 + f2 * 0.70) / 2.60;
 	float filaments = pow(max(0.0, -filament_raw), 1.85);
 	float filament_mix = filaments * filament_strength * activity_df
-		* max(0.0, 1.0 - t * 0.42) * 0.42;
+		* max(0.0, 1.0 - t * 0.42) * 0.42 * filament_amp;
 	float channel_mix = clamp(lane_tint + filament_mix * channel_contrast, 0.0, 0.88);
 	col = mix(col, mix(col, star_channel_color, 0.78), channel_mix);
 
-	// P14.6 hybrid closeup layer: a derived detailmap adds structured
-	// faculae and darker sunspot/channel complexes only for the focused
-	// star closeup path. Alpha stays untouched.
+	// P14.6b keeps the detailmap static and centered. The image layer
+	// leads the visible closeup structure while the animated procedural
+	// layers stay underneath with reduced amplitude.
 	float detail_phase = smoothstep(0.10, 1.0, star_closeup_phase);
-	vec2 detail_drift = vec2(TIME * 0.007, -TIME * 0.005) * detail_phase;
-	vec2 detail_uv = n_xy * (0.5 / max(detailmap_scale, 0.001)) + vec2(0.5) + detail_drift;
+	vec2 detail_uv = n_xy * (0.5 / max(detailmap_scale, 0.001)) + vec2(0.5);
 	float detail_sample = texture(star_detail_tex, detail_uv).r;
 	float detail_signal = (detail_sample - 0.5) * 2.0;
 	float detail_mask = detail_phase * smoothstep(1.02, 0.82, t);
@@ -183,9 +187,6 @@ void fragment() {
 	float detail_sunspots = max(0.0, -detail_signal) * sunspot_strength * detail_mask;
 	col += mix(star_mid_color, star_core_color, 0.82) * detail_faculae_add;
 	col = mix(col, mix(col, star_channel_color * 0.82, 0.86), clamp(detail_sunspots, 0.0, 0.68));
-	float prominence_hint = max(0.0, detail_signal) * prominence_strength * detail_phase
-		* smoothstep(0.62, 0.96, t_w) * (1.0 - smoothstep(0.98, 1.05, t_w));
-	col += vec3(1.0, 0.84, 0.38) * prominence_hint * 0.34;
 
 	// Build the hotter inner rim in-shader first; the CPU halo only stays
 	// as a subtle atmosphere around it.

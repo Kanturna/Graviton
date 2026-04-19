@@ -478,6 +478,34 @@ Offen / spaeter:
   `prominence_strength`, `sunspot_strength` und die Fokusstern-Skalierung
   vorgesehen, nicht ueber einen neuen Kamera-Umbau
 
+## Prioritaet 14.6b - View Phase G Follow-up: Detailmap entkoppeln, zentrieren und als statische Closeup-Hauptschicht fuehren - erledigt
+
+Ziel:
+Der erste P14.6-Hybridpfad machte zwei Probleme gleichzeitig sichtbar:
+die abgeleitete Bildmap war nicht sauber disc-zentriert und sie lief im
+Shader mit einer eigenen `TIME`-Translation gegen die prozedurale
+Sternoberflaeche. P14.6b zieht diesen Closeup-Pfad deshalb auf eine
+statische, zentrierte und im High-Closeup dominante Surface-Lesart
+zurecht.
+
+Erledigt:
+
+- `derive_star_detailmap.py` bestimmt jetzt den Disc-Bereich aus der
+  Referenz, schneidet aeussere Protuberanzen ab und erzeugt eine
+  zentrierte `512x512`-Structure-Map statt nur eines quadratischen
+  Roh-Crops
+- `star_detailmap.png` wurde entsprechend neu generiert; die
+  Asset-Notiz dokumentiert jetzt zentrierte Disc-Nutzung und statisches
+  Shader-Sampling ohne `TIME`-Translation
+- `body_star.gdshader` sampelt die Detailmap jetzt komplett statisch
+  und disc-zentriert
+- im High-Closeup wird die Detailmap als sichtbare Surface-Leader-Lage
+  gefuehrt; Granulation, Activity, Filamente und Meso-Layer werden ueber
+  einen `smoothstep`-Gate nur amplitude-seitig gedimmt, bleiben aber als
+  subtil animierter Unterbau erhalten
+- das statische Macro-Feld bleibt bewusst ungedaempft, damit die
+  Sternscheibe trotz staerkerer Bildstruktur nicht flach wird
+
 ## Prioritaet 15 - Architektur-Cleanup: Topologie, Test-Harness und View-Split - erledigt
 
 Ziel:

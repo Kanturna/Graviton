@@ -1,5 +1,27 @@
 # Graviton - Decisions
 
+## 2026-04-19 - P14.6b macht die Stern-Detailmap statisch, zentriert und dominant im Closeup
+
+P14.6 hat bewusst einen Hybridpfad aus prozeduralem Sternshader und
+abgeleiteter Detailmap eingefuehrt. Der erste Lauf zeigte aber zwei
+gekoppelte Probleme: die Detailmap war nicht sauber auf die
+Sternscheibe zentriert und sie lief mit eigener `TIME`-Translation
+gegen die animierte P14.5/P14.6-Prozeduralbasis. P14.6b zieht diesen
+Pfad deshalb explizit gerade:
+
+- die abgeleitete `star_detailmap.png` wird als disc-zentrierte innere
+  Strukturmap erzeugt; aeussere Protuberanzen aus der Referenz werden
+  bewusst abgeschnitten
+- der Shader sampelt die Detailmap statisch und ohne Rotation oder
+  Translation fest im Sternzentrum
+- im Stern-Closeup darf nur noch eine Oberflaechenlogik dominant lesen:
+  die sichtbare Detailmap fuehrt, waehrend Granulation, Activity,
+  Filamente und Meso-Layer nur amplitude-seitig gedimmt als animierter
+  Unterbau erhalten bleiben
+- das statische Macro-Feld bleibt bewusst auf `100%`, ebenso Rim/Edge;
+  nur die konkurrierenden Mid-/Fine-Layer werden ueber einen
+  `smoothstep`-gated `lerp` reduziert
+
 ## 2026-04-19 - P14.6 gibt Sterne bewusst einen eigenen Fokus-Closeup-Mode
 
 P14.6 baut auf P14.5 auf, loest dessen verbleibende Schwaeche aber
