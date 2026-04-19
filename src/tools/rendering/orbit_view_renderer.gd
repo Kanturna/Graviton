@@ -133,6 +133,10 @@ func clear_trails() -> void:
 		_clear_trail(id)
 
 
+func rebuild_from_registry() -> void:
+	_rebuild_visuals()
+
+
 func _ready() -> void:
 	_apply_line_widths()
 

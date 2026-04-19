@@ -648,6 +648,60 @@ Erledigt:
 - die Doku trennt jetzt wieder sauber zwischen genau zwei
   projekt-eigenen Sim-Autoloads und plugin-provided Addon-Autoloads
 
+## Prioritaet 18 - Large-World Pilot / Dirty Tracking - erledigt
+
+Ziel:
+Den ersten grossen Mehr-Root-Slice bauen, ohne in Chunk-/Sektorlogik
+abzugleiten, und gleichzeitig die offensichtlichen O(N)-Hotpaths vor
+dem Content-Ausbau entschlacken.
+
+Erledigt:
+
+- `OrbitService` emittiert jetzt explizit `bodies_updated(ids, reason)`
+  fuer geaenderte Runtime-Bodies
+- `BubbleActivationSet` rebuilt im steady-state nicht mehr blind den
+  ganzen geladenen Slice, sondern reagiert auf dirty markierte IDs /
+  Teilbaeume
+- `DerivedSnapshotCache` fuehrt jetzt ein explizites Interest-Set und
+  refreshes bei verdrahtetem `OrbitService` nur dirty-abhaengige
+  Bodies; `sim_tick` bleibt der Fallback
+- neue Large-World-Datenmodelle unter `src/sim/world/`:
+  `GalaxyDef`, `RootSystemManifest`, `RootStarManifest`,
+  `RootSystemGenerator`, `PilotGalaxyWorld`
+- `WorldLoader` kann jetzt Galaxy-Katalog und gezielte Root-
+  Materialisierung fuer `pilot_galaxy`
+- `GalaxyStreamingController` materialisiert focus-/zoomgetrieben
+  maximal einen Nachbar-Root zusaetzlich
+- `GalaxyProxyRenderer` zeigt entfernte BH-/Stern-Proxies in
+  Galaxy-Koordinaten
+- `orbit_testbed.gd` unterstuetzt jetzt `pilot_galaxy` als 3-Root-
+  Pilotwelt (1 Hero-Root, 2 generierte Roots)
+- neue Tests decken Dirty-/Interest-Hotpaths, deterministische
+  Root-Materialisierung und Proxy<->Detail-Handoff fuer Position und
+  Velocity ab
+
+## Prioritaet 19 - Pilot im Editor validieren
+
+Ziel:
+Den headless-gruenen 3-Root-Pilot jetzt als echte Runtime-/UX-
+Integration pruefen, bevor die Root-Anzahl hochgezogen wird.
+
+Konkreter Arbeitsblock:
+
+- `pilot_galaxy` im Editor / Testbed manuell durchzoomen
+- bestaetigen, dass Proxy->Detail und Detail->Proxy ohne sichtbares Pop
+  lesen
+- bestaetigen, dass immer nur der Fokus-Root plus hoechstens ein
+  Nachbar resident sind
+- Kamera-/HUD-/Fokus-Haptik im grossen Weltmodus gegenpruefen
+- kurzen Profil-/Playtest fuer einen Detail-Root plus Proxies machen
+
+Erfolgskriterium:
+
+- der 3-Root-Pilot fuehlt sich als kontinuierlicher Fokus-/Scale-Pfad
+  an und nicht wie "Sektoren 2.0"
+- danach erst auf 10 Roots skalieren
+
 ## Danach - Weitere planetare Umweltableitung
 
 Nach dem ersten Guardrail-Block ist der naechste groessere Simulations-
@@ -739,8 +793,10 @@ Zielbild fuer diesen Strang:
 
 - `generated_system` ist jetzt als erster deterministischer
   Showcase-Seed im Loader vorhanden
-- als naechster Generator-Block: mehr Seeds, mehr Stern-/Root-Varianten
-  und mehr Vergleichswelten statt nur eines festen Beispiels
+- der neue per-root-Generator treibt bereits `pilot_galaxy`; als
+  naechster Generator-Block geht es nach dem Pilot-Playtest um mehr
+  Seeds, mehr Stern-/Root-Varianten und spaeter mehr Galaxy-Layouts
+  statt nur eines festen Beispiels
 - erst auf dieser Basis eine read-only Survey-/Notebook-/Scanner-UX
   planen
 - auch diese spaetere Survey-Schicht bleibt reiner Viewer ueber

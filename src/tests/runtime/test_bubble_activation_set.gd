@@ -10,6 +10,9 @@ static func run(ctx) -> void:
 	_test_zero_radius_only_keeps_focus_active(ctx)
 	_test_active_ids_follow_topological_order(ctx)
 	_test_focus_changed_auto_rebuilds_without_manual_rebuild(ctx)
+	_test_steady_state_rebuild_skips_full_scan(ctx)
+	_test_dirty_leaf_rebuild_only_recomputes_impacted_subtree(ctx)
+	_test_dirty_focus_rebuild_recomputes_same_root(ctx)
 	_test_describe_reports_consistent_counts(ctx)
 
 
@@ -184,6 +187,71 @@ static func _test_focus_changed_auto_rebuilds_without_manual_rebuild(ctx) -> voi
 		"nach Fokuswechsel wird star_b ohne manuellen rebuild ACTIVE")
 	_assert_state(ctx, activation_set, &"near_b", "ACTIVE",
 		"same-root Kind von Root B wird ohne manuellen rebuild ACTIVE")
+
+	activation_set.free()
+	bubble.free()
+	reg.free()
+
+
+static func _test_steady_state_rebuild_skips_full_scan(ctx) -> void:
+	var reg := _make_registry()
+	var bubble := _make_bubble(reg)
+	bubble.set_focus(&"star_a")
+	var activation_set := _make_activation_set(reg, bubble)
+
+	activation_set.activation_radius_m = 5.0e8
+	activation_set.rebuild()
+	ctx.assert_true(activation_set.get_last_rebuild_eval_count() == 4, "full rebuild evaluiert nur die same-root Bodies")
+	ctx.assert_true(not activation_set.was_last_rebuild_incremental(), "erste Klassifikation ist kein inkrementeller Rebuild")
+
+	activation_set.rebuild()
+	ctx.assert_true(activation_set.get_last_rebuild_eval_count() == 0, "steady-state rebuild ohne Dirty-IDs evaluiert nichts")
+	ctx.assert_true(not activation_set.was_last_rebuild_incremental(), "steady-state no-op bleibt kein inkrementeller Rebuild")
+
+	activation_set.free()
+	bubble.free()
+	reg.free()
+
+
+static func _test_dirty_leaf_rebuild_only_recomputes_impacted_subtree(ctx) -> void:
+	var reg := _make_registry()
+	var bubble := _make_bubble(reg)
+	bubble.set_focus(&"star_a")
+	var activation_set := _make_activation_set(reg, bubble)
+
+	activation_set.activation_radius_m = 5.0e8
+	activation_set.rebuild()
+	reg.get_state(&"near_a").position_parent_frame_m = Vector3(7.0e8, 0.0, 0.0)
+	var dirty_leaf_ids: Array[StringName] = [&"near_a"]
+	activation_set.mark_ids_dirty(dirty_leaf_ids)
+	activation_set.rebuild()
+
+	ctx.assert_true(activation_set.was_last_rebuild_incremental(), "dirty leaf nutzt den inkrementellen Rebuild-Pfad")
+	ctx.assert_true(activation_set.get_last_rebuild_eval_count() == 1, "dirty leaf recomputed nur den betroffenen Teilbaum")
+	_assert_state(ctx, activation_set, &"near_a", "INACTIVE_DISTANT", "dirty leaf wird nach dem inkrementellen Rebuild korrekt reklassifiziert")
+	var active_ids: Array[StringName] = activation_set.get_active_ids()
+	ctx.assert_true(active_ids.size() == 2 and active_ids[0] == &"root_a" and active_ids[1] == &"star_a",
+		"inkrementeller Leaf-Rebuild aktualisiert das Aktiv-Set ohne Full-Scan")
+
+	activation_set.free()
+	bubble.free()
+	reg.free()
+
+
+static func _test_dirty_focus_rebuild_recomputes_same_root(ctx) -> void:
+	var reg := _make_registry()
+	var bubble := _make_bubble(reg)
+	bubble.set_focus(&"star_a")
+	var activation_set := _make_activation_set(reg, bubble)
+
+	activation_set.activation_radius_m = 5.0e8
+	activation_set.rebuild()
+	var dirty_focus_ids: Array[StringName] = [&"star_a"]
+	activation_set.mark_ids_dirty(dirty_focus_ids)
+	activation_set.rebuild()
+
+	ctx.assert_true(activation_set.was_last_rebuild_incremental(), "dirty focus nutzt weiter den inkrementellen Pfad")
+	ctx.assert_true(activation_set.get_last_rebuild_eval_count() == 4, "dirty focus recomputed bewusst den ganzen same-root Slice")
 
 	activation_set.free()
 	bubble.free()

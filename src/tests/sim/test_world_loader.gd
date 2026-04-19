@@ -18,6 +18,9 @@ static func run(ctx) -> void:
 	_test_load_named_starter_world(ctx)
 	_test_load_named_sample_system(ctx)
 	_test_load_named_generated_system(ctx)
+	_test_load_named_pilot_galaxy(ctx)
+	_test_load_named_galaxy_returns_catalog(ctx)
+	_test_materialize_galaxy_roots_swaps_resident_defs(ctx)
 	_test_world_loaded_signal_emits_named_world_id(ctx)
 	_test_unknown_world_id_keeps_registry_unchanged(ctx)
 	_test_load_defs_accepts_two_root_world(ctx)
@@ -66,10 +69,11 @@ static func _child_def(id: StringName, parent: StringName) -> BodyDef:
 static func _test_available_world_ids(ctx) -> void:
 	var loader := _make_loader()
 	var ids: Array[StringName] = loader.available_world_ids()
-	ctx.assert_true(ids.size() == 3, "available_world_ids liefert genau drei Eintraege")
+	ctx.assert_true(ids.size() == 4, "available_world_ids liefert genau vier Eintraege")
 	ctx.assert_true(ids[0] == &"starter_world", "starter_world steht an erster Stelle")
 	ctx.assert_true(ids[1] == &"sample_system", "sample_system steht an zweiter Stelle")
 	ctx.assert_true(ids[2] == &"generated_system", "generated_system steht an dritter Stelle")
+	ctx.assert_true(ids[3] == &"pilot_galaxy", "pilot_galaxy steht an vierter Stelle")
 	loader.free()
 
 
@@ -132,6 +136,52 @@ static func _test_load_named_generated_system(ctx) -> void:
 	reg.free()
 
 
+static func _test_load_named_pilot_galaxy(ctx) -> void:
+	var loader := _make_loader()
+	var reg := _make_registry()
+	ctx.assert_true(loader.load_named_world(&"pilot_galaxy", reg), "pilot_galaxy laedt erfolgreich")
+	ctx.assert_true(reg.body_count() == 18, "pilot_galaxy materialisiert im Loader-Default genau den Hero-Root")
+	ctx.assert_true(reg.has_body(&"obsidian"), "pilot_galaxy enthaelt den Hero-Root")
+	ctx.assert_true(not reg.has_body(&"onyx"), "pilot_galaxy laedt standardmaessig keinen zweiten Detail-Root")
+	ctx.assert_true(not reg.has_body(&"umbra"), "pilot_galaxy laedt standardmaessig keinen dritten Root")
+	loader.free()
+	reg.free()
+
+
+static func _test_load_named_galaxy_returns_catalog(ctx) -> void:
+	var loader := _make_loader()
+	var galaxy = loader.load_named_galaxy(&"pilot_galaxy")
+	ctx.assert_true(galaxy != null, "pilot_galaxy Catalog laedt erfolgreich")
+	ctx.assert_true(galaxy.galaxy_id == &"pilot_galaxy", "Catalog meldet die korrekte Galaxy-ID")
+	ctx.assert_true(galaxy.focus_root_id == &"obsidian", "Catalog setzt obsidian als Fokus-Root")
+	ctx.assert_true(galaxy.root_ids().size() == 3, "Catalog enthaelt genau drei Roots")
+	ctx.assert_true(galaxy.get_manifest(&"obsidian") != null, "Catalog enthaelt den Hero-Root")
+	ctx.assert_true(galaxy.get_manifest(&"onyx") != null, "Catalog enthaelt den ersten generierten Root")
+	ctx.assert_true(galaxy.get_manifest(&"umbra") != null, "Catalog enthaelt den zweiten generierten Root")
+	ctx.assert_true(galaxy.default_resident_root_ids.size() == 1 and galaxy.default_resident_root_ids[0] == &"obsidian",
+		"Catalog startet bewusst mit genau einem Detail-Root")
+	loader.free()
+
+
+static func _test_materialize_galaxy_roots_swaps_resident_defs(ctx) -> void:
+	var loader := _make_loader()
+	var reg := _make_registry()
+	var galaxy = loader.load_named_galaxy(&"pilot_galaxy")
+	var resident_root_ids: Array[StringName] = [&"onyx"]
+	ctx.assert_true(loader.materialize_galaxy_roots(galaxy, resident_root_ids, reg), "onyx laesst sich als einzelner Detail-Root materialisieren")
+	ctx.assert_true(reg.has_body(&"onyx"), "materialize_galaxy_roots registriert den angeforderten Root")
+	ctx.assert_true(not reg.has_body(&"obsidian"), "materialize_galaxy_roots ersetzt den vorherigen Detail-Slice")
+	ctx.assert_true(not reg.has_body(&"umbra"), "materialize_galaxy_roots laedt weiterhin nur den angeforderten Root")
+	var seen_ids: Dictionary = {}
+	for id in reg.get_update_order():
+		var def: BodyDef = reg.get_def(id)
+		if def.parent_id != StringName(""):
+			ctx.assert_true(seen_ids.has(def.parent_id), "materialisierter Root behaelt Parent-vor-Child-Order fuer %s" % String(id))
+		seen_ids[id] = true
+	loader.free()
+	reg.free()
+
+
 static func _test_world_loaded_signal_emits_named_world_id(ctx) -> void:
 	var loader := _make_loader()
 	var reg := _make_registry()
@@ -140,6 +190,9 @@ static func _test_world_loaded_signal_emits_named_world_id(ctx) -> void:
 	ctx.assert_true(loader.load_named_world(&"sample_system", reg), "sample_system laedt fuer Signaltest erfolgreich")
 	ctx.assert_true(probe.loaded_world_ids.size() == 1, "world_loaded signal emittiert genau einmal")
 	ctx.assert_true(probe.loaded_world_ids[0] == &"sample_system", "world_loaded signal meldet die geladene Welt-ID")
+	ctx.assert_true(loader.load_named_world(&"pilot_galaxy", reg), "pilot_galaxy laedt fuer Signaltest erfolgreich")
+	ctx.assert_true(probe.loaded_world_ids.size() == 2, "world_loaded signal emittiert auch fuer pilot_galaxy")
+	ctx.assert_true(probe.loaded_world_ids[1] == &"pilot_galaxy", "world_loaded signal meldet auch die Galaxy-Welt-ID")
 	loader.free()
 	reg.free()
 

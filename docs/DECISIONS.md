@@ -1,5 +1,58 @@
 # Graviton - Decisions
 
+## 2026-04-19 - Grosse Multi-Root-Welten bleiben ein Proxy-/Streaming-Pfad statt Bubble- oder Sektor-Rewrite
+
+Der neue Large-World-Slice wird bewusst nicht als Erweiterung des
+`LocalBubbleManager` auf mehrere Roots gebaut. Die bestehende Bubble-
+Semantik bleibt same-root und fokusrelativ korrekt. Die Cross-Root-
+Uebersicht entsteht stattdessen als paralleler Galaxy-Space-
+Proxy-Layer.
+
+Konsequenz:
+
+- `GalaxyDef` / `RootSystemManifest` beschreiben den grossen
+  Weltkatalog ausserhalb des aktiven Detail-Slices
+- `GalaxyStreamingController` materialisiert nur den relevanten
+  Root-Slice in `UniverseRegistry`
+- `GalaxyProxyRenderer` zeigt entfernte Roots rein view-seitig
+- die Architektur bewegt sich damit bewusst in Richtung eines
+  kontinuierlichen Fokus-/Scale-Pfads und nicht in Richtung
+  "Sektoren 2.0"
+
+## 2026-04-19 - Runtime-Hotpaths fuer Bubble- und Derived-Daten werden dirty-/interest-getrieben statt Full-Scan
+
+Vor dem Multi-Root-Content-Ausbau wurden die beiden offensichtlichen
+O(N)-Hotpaths bewusst aus dem "alles jedes Tick"-Modell gezogen.
+
+Konsequenz:
+
+- `OrbitService` emittiert jetzt `bodies_updated(ids, reason)` als
+  kleine Dirty-Schiene fuer Runtime-Konsumenten
+- `BubbleActivationSet` rebuilt same-root Bodies nur noch fuer dirty
+  IDs / Teilbaeume bzw. bei Fokus-/World-Wechsel voll
+- `DerivedSnapshotCache` fuehrt ein explizites Interest-Set und
+  refreshed bei verdrahtetem Orbit-Dirty nur abhaengige interessierte
+  Bodies
+- `TimeService.sim_tick` bleibt nur der konservative Fallback, wenn
+  kein Dirty-Signal verfuegbar ist
+
+## 2026-04-19 - Der erste Large-World-Milestone startet bewusst als 3-Root-Pilot
+
+Das Ziel "spaeter 30 Roots" bleibt erhalten, wird aber nicht als erster
+Sprint umgesetzt. Die Architektur und Streaming-Haptik werden zuerst an
+einem kleinen, absichtlich kontrollierten Slice validiert.
+
+Konsequenz:
+
+- `pilot_galaxy` besteht aus genau drei Roots:
+  `obsidian` als Hero-Root plus `onyx` und `umbra` als generierte Roots
+- der Loader startet defaultmaessig mit genau einem residenten
+  Detail-Root
+- beim Herauszoomen darf maximal ein Nachbar-Root zusaetzlich resident
+  werden
+- Skalierung auf 10 oder 30 Roots ist ausdruecklich ein Folgeblock nach
+  Pilot-Playtest und Profiling
+
 ## 2026-04-19 - Projekt-Autoload-ADR bleibt bei genau zwei projekt-eigenen Autoloads; Addon-Autoloads werden separat dokumentiert
 
 `project.godot` listet aktuell zusaetzlich
@@ -16,7 +69,7 @@ Konsequenz:
 - weder `AntialiasedLine2DTexture` noch `PhantomCameraManager` zaehlen
   als Erweiterung der Simulationsarchitektur
 
-## 2026-04-19 - Thermal-/Environment-Snapshots invalidieren nur explizit, nie still pro Frame
+## 2026-04-19 - Thermal-/Environment-Snapshots invalidieren weiter explizit, jetzt aber dirty-/interest-getrieben
 
 Der Renderer und das HUD brauchen dieselben Derived-Daten fuer
 Environment-/Thermal-Anzeige und planetare Themes. Diese Glue-Schicht
@@ -24,8 +77,12 @@ wird bewusst nicht als neuer per-frame-Recompute versteckt.
 
 Konsequenz:
 
-- `DerivedSnapshotCache` rebuilt nur bei `TimeService.sim_tick`,
-  `LocalBubbleManager.focus_changed` und `WorldLoader.world_loaded`
+- `DerivedSnapshotCache` fuehrt jetzt ein explizites Interest-Set
+- bei verdrahtetem `OrbitService.bodies_updated(...)` rebuilt der Cache
+  nur dirty-abhaengige interessierte Bodies
+- `TimeService.sim_tick`, `LocalBubbleManager.focus_changed` und
+  `WorldLoader.world_loaded` bleiben als explizite Invalidierungsfaelle
+  bzw. Fallback erhalten
 - `_process()` konsumiert nur den letzten Snapshot
 - `ThermalService` und `EnvironmentService` bleiben on-demand/read-only;
   der Cache fuehrt keine neue Simulationswahrheit ein

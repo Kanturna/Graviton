@@ -15,15 +15,17 @@ versteckter Zustand in Szenen. Keine globale Physik-Engine fuer Orbits.
 ## Schichten und Abhaengigkeitsrichtung
 
 ```text
-scenes/     (duenn, nur Projektion + Composition Root)
+scenes/     (duenn, nur Projektion + Composition Root,
+             z. B. OrbitViewRenderer + GalaxyProxyRenderer)
    |
    v
-src/runtime/       LocalBubbleManager, BubbleActivationSet
-                   DerivedSnapshotCache
+src/runtime/       LocalBubbleManager, BubbleActivationSet,
+                   DerivedSnapshotCache, GalaxyStreamingController
    |
    v
 src/sim/           UniverseRegistry, WorldLoader, OrbitService, LocalOrbitIntegrator,
                    ThermalService, AtmosphereService, EnvironmentService,
+                   GalaxyDef/RootSystemManifest/RootSystemGenerator,
                    BodyDef/State, OrbitProfile, OrbitMode
    |
    v
@@ -134,9 +136,13 @@ _ready():
         LocalBubbleManager,
         WorldLoader,
         ThermalService,
-        EnvironmentService
+        EnvironmentService,
+        OrbitService
     )
     OrbitViewRenderer.set_derived_snapshot_cache(DerivedSnapshotCache)
+    OrbitService.bodies_updated.connect(
+        BubbleActivationSet.mark_ids_dirty
+    )
     DebugOverlay.configure(
         UniverseRegistry,
         TimeService,
@@ -159,9 +165,23 @@ treibt keine Zeit vorwaerts. Es stellt nur sicher, dass alle
 `BodyState`s vor dem ersten `_process`-Frame konsistent befuellt sind.
 
 `DerivedSnapshotCache` ist ausdruecklich read-only Glue zwischen
-`sim/` und View. Er rebuilt nur bei `TimeService.sim_tick`,
-`LocalBubbleManager.focus_changed` und `WorldLoader.world_loaded`; im
-Frame-Loop werden nur bereits berechnete Snapshots konsumiert.
+`sim/` und View. Wenn ein `OrbitService` mit
+`bodies_updated(...)` verdrahtet ist, rebuilt der Cache nur dirty-
+abhaengige interessierte Bodies; ohne dieses Signal bleibt
+`TimeService.sim_tick` der konservative Fallback. Im Frame-Loop werden
+nur bereits berechnete Snapshots konsumiert.
+
+Fuer grosse Multi-Root-Welten bleibt dieselbe Schichtung erhalten:
+
+- `WorldLoader` laedt zunaechst nur einen leichten `GalaxyDef`-Katalog
+  plus den aktuell residenten Detail-Slice in die Registry
+- `GalaxyStreamingController` entscheidet focus-/zoomgetrieben, welche
+  Root-Defs materialisiert bleiben
+- `GalaxyProxyRenderer` zeigt nichtresidente Roots als reine
+  View-Proxies im Galaxy-Space
+- `LocalBubbleManager` und `BubbleActivationSet` bleiben bewusst
+  same-root im Detail-Slice; die Cross-Root-Uebersicht ist ein
+  paralleler Projektionpfad, keine Bubble-Umschreibung
 
 Kein impliziter `get_node("/root/...")`-Griff aus tiefen Skripten.
 
@@ -178,13 +198,19 @@ eine Gottklasse.
 **Verantwortung:** Liest `registry.get_update_order()` und
 `bubble.compose_view_position_m()`. Schreibt nichts. Kein Autoload.
 
-**Rebuild-Strategie:** Explizit pro Frame aus dem Testbed plus
-Auto-Rebuild bei `focus_changed`. Bewusste Uebergangsloesung fuer
-kleines N.
+**Rebuild-Strategie:** Die Szene darf `rebuild()` weiter pro Frame
+aufrufen, aber der Dienst scannt nicht mehr blind alles neu. Same-root-
+Bodies werden nur bei Fokus-/World-Wechsel voll neu klassifiziert;
+normale Tick-Arbeit laeuft inkrementell ueber explizit dirty markierte
+IDs bzw. betroffene Teilbaeume.
 
 **Klassifikation:** Drei explizite Zustaende - `ACTIVE`,
 `INACTIVE_DISTANT`, `INACTIVE_NO_LCA`. Kein stilles "inaktiv ist
 inaktiv".
+
+**Dirty-Quelle:** `OrbitService.bodies_updated(...)` markiert geaenderte
+Bodies ueber den Composition Root dirty; Registry-Materialisierung und
+`focus_changed` forcieren weiter den Full-Rebuild des lokalen Slices.
 
 **Aktueller Stand:** Implementiert als read-only Runtime-Service in
 `src/runtime/local_bubble/bubble_activation_set.gd`. `classify(id)`
@@ -322,9 +348,35 @@ Schnittstelle soll nicht wieder still in `_process()` rekursiv
 den aktuellen Fokus. Kein eigener Sim-Zustand, keine neue Wahrheit,
 keine `BodyState`-Mutation.
 
-**Invalidierung:** Ausschliesslich bei `TimeService.sim_tick`,
-`LocalBubbleManager.focus_changed` und `WorldLoader.world_loaded`.
-Keine stillen Rebuilds im Frame-Loop.
+**Invalidierung / Interesse:** Der Cache fuehrt ein explizites
+Interest-Set (Fokus plus angeforderte Bodies) und refreshes nur diese
+Bodies. Wenn ein `OrbitService` mit `bodies_updated(...)` verdrahtet
+ist, folgt die Invalidierung den dirty IDs plus Ancestor-Kette. Ohne
+diesen Hook bleibt `TimeService.sim_tick` der konservative Fallback.
+
+**Wichtig:** Keine stillen Rebuilds im Frame-Loop; `_process()`
+konsumiert nur den letzten Snapshot.
+
+## Large-World Proxy-Layer - ADR
+
+**Entscheidung:** Cross-Root-Uebersicht fuer grosse Galaxien lebt in
+einem separaten Proxy-/Streaming-Pfad statt als Erweiterung des
+`LocalBubbleManager` oder als Sektorsystem.
+
+**Grund:** Die bestehende Bubble-Lokalisierung bleibt same-root und
+fokusrelativ korrekt. Mehrere Root-Systeme gleichzeitig in denselben
+Bubble-Frame zu pressen, wuerde diese Semantik aufweichen und fuehrte
+leicht zu "Sektoren 2.0"-Komplexitaet.
+
+**Konsequenz:**
+
+- `GalaxyDef` / `RootSystemManifest` beschreiben die Galaxy-Metadaten
+- `GalaxyStreamingController` materialisiert nur den relevanten
+  Detail-Slice in `UniverseRegistry`
+- `GalaxyProxyRenderer` zeigt entfernte BH-/Stern-Proxies ausserhalb
+  dieses Detail-Slices
+- Proxy und Detail teilen dieselben analytischen Orbit-Parameter, damit
+  Materialisierung und Rueckfall positions- und velocity-stetig bleiben
 
 ## Regime-Wechsel-Modell - ADR
 

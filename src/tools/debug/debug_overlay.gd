@@ -97,7 +97,9 @@ func _format_body_line(id: StringName) -> String:
 		activation_txt = "  activation=%s" % _activation_set.to_string_state(_activation_set.classify(id))
 	var thermal_txt: String = ""
 	if _snapshot_cache != null or _thermal_service != null:
-		var thermal_desc: Dictionary = _snapshot_cache.get_thermal_desc(id) if _snapshot_cache != null else _thermal_service.describe_body(id)
+		var thermal_desc: Dictionary = _snapshot_cache.get_thermal_desc(id) if _snapshot_cache != null else {}
+		if thermal_desc.is_empty() and _thermal_service != null:
+			thermal_desc = _thermal_service.describe_body(id)
 		var source_id: StringName = thermal_desc.get(ThermalServiceScript.KEY_SOURCE_ID, StringName(""))
 		var source_txt: String = "none" if source_id == StringName("") else String(source_id)
 		thermal_txt = "  primary_source=%s  insolation=%s W/m^2  absorbed=%s W/m^2  teq=%s K" % [

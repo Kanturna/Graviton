@@ -25,6 +25,10 @@ const VELOCITY_SEED_EPSILON_S: float = 1.0
 # Eintritt in NUMERIC_LOCAL und beim Rueckwechsel nach KEPLER_APPROX.
 const LOCAL_ORBIT_INTEGRATOR_SCRIPT := preload("res://src/sim/orbit/local_orbit_integrator.gd")
 const NO_REQUEST_TICK: int = -2147483648
+const UPDATE_REASON_SIM_TICK: StringName = &"sim_tick"
+const UPDATE_REASON_RECOMPUTE: StringName = &"recompute"
+
+signal bodies_updated(ids: Array[StringName], reason: StringName)
 
 @export_range(0.0, 3600.0, 1.0, "or_greater") var numeric_local_target_substep_s: float = 10.0
 @export_range(1, 4096, 1, "or_greater") var numeric_local_max_substeps_per_tick: int = 64
@@ -65,12 +69,17 @@ func _on_sim_tick(_dt: float) -> void:
 		return
 	_sim_tick_index += 1
 	var t: float = _time.sim_time_s
+	var updated_ids: Array[StringName] = []
 	for id in _registry.get_update_order():
 		var state: BodyState = _registry.get_state(id)
 		var def: BodyDef = _registry.get_def(id)
 		if state == null or def == null:
 			continue
+		var before: Dictionary = _capture_runtime_state(state)
 		update_body(state, def, t)
+		if _runtime_state_changed(before, state):
+			updated_ids.append(id)
+	_emit_bodies_updated(updated_ids, UPDATE_REASON_SIM_TICK)
 
 
 func request_numeric_local_candidates(ids: Array[StringName]) -> void:
@@ -132,9 +141,19 @@ func _update_authored(state: BodyState, profile: OrbitProfile, t_s: float) -> vo
 		profile.authored_phase_rad,
 		t_s,
 	)
-	var dt: float = t_s - state.last_update_time_s
-	if dt > 0.0:
-		state.velocity_parent_frame_mps = (pos - state.position_parent_frame_m) / dt
+	var pos_prev: Vector3 = OrbitMath.authored_circular_position(
+		profile.authored_radius_m,
+		profile.authored_period_s,
+		profile.authored_phase_rad,
+		t_s - VELOCITY_SEED_EPSILON_S,
+	)
+	var pos_next: Vector3 = OrbitMath.authored_circular_position(
+		profile.authored_radius_m,
+		profile.authored_period_s,
+		profile.authored_phase_rad,
+		t_s + VELOCITY_SEED_EPSILON_S,
+	)
+	state.velocity_parent_frame_mps = (pos_next - pos_prev) / (2.0 * VELOCITY_SEED_EPSILON_S)
 	state.position_parent_frame_m = pos
 	state.current_mode = OrbitMode.Kind.AUTHORED_ORBIT
 
@@ -142,12 +161,17 @@ func _update_authored(state: BodyState, profile: OrbitProfile, t_s: float) -> vo
 func recompute_all_at_time(t_s: float) -> void:
 	if not _configured:
 		return
+	var updated_ids: Array[StringName] = []
 	for id in _registry.get_update_order():
 		var state: BodyState = _registry.get_state(id)
 		var def: BodyDef = _registry.get_def(id)
 		if state == null or def == null:
 			continue
+		var before: Dictionary = _capture_runtime_state(state)
 		update_body(state, def, t_s)
+		if _runtime_state_changed(before, state):
+			updated_ids.append(id)
+	_emit_bodies_updated(updated_ids, UPDATE_REASON_RECOMPUTE)
 
 
 func _update_kepler(state: BodyState, def: BodyDef, profile: OrbitProfile, t_s: float) -> void:
@@ -297,3 +321,28 @@ func _warn_on_substep_cap(id: StringName, dt_s: float, integrated: Dictionary) -
 func _clear_numeric_local_runtime_for(id: StringName) -> void:
 	_last_requested_tick_by_id.erase(id)
 	_substep_cap_warning_active_by_id.erase(id)
+
+
+func _emit_bodies_updated(ids: Array[StringName], reason: StringName) -> void:
+	if ids.is_empty():
+		return
+	bodies_updated.emit(ids, reason)
+
+
+static func _capture_runtime_state(state: BodyState) -> Dictionary:
+	return {
+		"position_parent_frame_m": state.position_parent_frame_m,
+		"velocity_parent_frame_mps": state.velocity_parent_frame_mps,
+		"current_mode": state.current_mode,
+	}
+
+
+static func _runtime_state_changed(before: Dictionary, state: BodyState) -> bool:
+	if int(before.get("current_mode", -1)) != state.current_mode:
+		return true
+	var before_pos: Vector3 = before.get("position_parent_frame_m", Vector3.INF)
+	var before_vel: Vector3 = before.get("velocity_parent_frame_mps", Vector3.INF)
+	return (
+		not before_pos.is_equal_approx(state.position_parent_frame_m)
+		or not before_vel.is_equal_approx(state.velocity_parent_frame_mps)
+	)

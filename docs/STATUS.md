@@ -8,6 +8,10 @@ Stand: 2026-04-19
 Weltraum-/Systemsimulation und eine erste stilisierte 2D-
 Praesentationsschicht.
 
+Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pilot:
+eine kleine Multi-Root-Galaxie mit Proxy-Layer, Streaming und
+inkrementellen Runtime-Hotpath-Fixes fuer Bubble- und Derived-Daten.
+
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 - `src/core/` -> Zeit, Einheiten, IDs, Mathematik
@@ -63,9 +67,29 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   planetare Oekosystem-Typen (`FROZEN`, `TEMPERATE`, `SEASONAL`,
   `HOT`) ab.
 - `DerivedSnapshotCache` verteilt jetzt read-only den letzten
-  Thermal-/Environment-Snapshot an HUD und Renderer und invalidiert
-  bewusst nur bei `TimeService.sim_tick`,
-  `LocalBubbleManager.focus_changed` und `WorldLoader.world_loaded`.
+  Thermal-/Environment-Snapshot an HUD und Renderer, fuehrt jetzt aber
+  ein explizites Interest-Set und invalidiert bei verdrahtetem
+  `OrbitService` nur dirty-abhaengige interessierte Bodies; ohne diesen
+  Hook bleibt `TimeService.sim_tick` der Fallback.
+- `OrbitService` emittiert jetzt explizit `bodies_updated(ids, reason)`
+  fuer geaenderte Runtime-Bodies und nutzt fuer `AUTHORED_ORBIT`-
+  Velocities denselben zentralen Finite-Difference-Pfad wie der neue
+  Proxy-Layer.
+- `BubbleActivationSet` scannt im steady-state nicht mehr jedes Frame
+  den ganzen geladenen Slice: same-root Bodies werden jetzt ueber dirty
+  markierte IDs / Teilbaeume inkrementell reklassifiziert; Fokus- und
+  World-Wechsel forcieren weiter den Full-Rebuild des aktuellen
+  Detail-Slices.
+- `src/sim/world/` traegt jetzt erste Large-World-Datenmodelle:
+  `GalaxyDef`, `RootSystemManifest`, `RootStarManifest`,
+  `RootSystemGenerator` und `PilotGalaxyWorld`.
+- `WorldLoader` kann jetzt neben flachen Named Worlds auch einen
+  leichten `GalaxyDef`-Katalog fuer `pilot_galaxy` laden und gezielt
+  einzelne Root-Slices materialisieren.
+- Der erste Large-World-Content-Milestone ist jetzt eine kleine
+  3-Root-Pilotgalaxie:
+  `obsidian` als Hero-Root plus zwei deterministisch generierte
+  Nachbar-Roots `onyx` und `umbra`.
 - Topologie-Helfer sind jetzt in einem read-only
   `UniverseTopology`-Helper ueber `UniverseRegistry` gebuendelt statt
   parallel in Bubble-, Renderer- und Testbed-Code verteilt.
@@ -86,7 +110,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist wieder reproduzierbar: direkter
   `godot_console.exe --headless ...`-Aufruf und `run_tests.bat` laufen
-  beide mit `919` erfolgreichen Assertions.
+  beide mit `1013` erfolgreichen Assertions.
 
 ### Aktuelle Praesentation
 
@@ -196,6 +220,15 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   durchgezogen statt nur in den wichtigsten Runtime-Konsumenten.
 - Das Testbed kann jetzt explizit zwischen `starter_world` und
   `sample_system` als Referenzwelten umgeschaltet werden.
+- Das Testbed unterstuetzt jetzt zusaetzlich `pilot_galaxy` als grossen
+  Weltmodus: ein Root bleibt detailliert materialisiert, entfernte
+  Roots erscheinen als eigene BH-/Stern-Proxies im Galaxy-Space, und
+  beim Herauszoomen darf genau ein Nachbar-Root zusaetzlich resident
+  werden.
+- Der neue `GalaxyProxyRenderer` bleibt bewusst reine Projektion:
+  Proxy-Sterne animieren mit denselben authored Orbit-Parametern wie
+  der Detail-Slice, damit Proxy->Detail-Handoffs ohne sichtbaren
+  Positions- oder Velocity-Sprung moeglich bleiben.
 - `starter_world` ist jetzt als groessere asymmetrische BH-
   Referenzwelt ausgebaut: vier Sterne unter `obsidian`, ungleich grosse
   Planetensysteme und bewusst keine neue Spiegel-Symmetrie.
@@ -367,7 +400,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `data/sample_system.gd`
 - `src/tests/sim/test_body_def_world_model.gd`
 - `src/runtime/local_bubble/bubble_activation_set.gd`
+- `src/runtime/streaming/galaxy_streaming_controller.gd`
+- `src/runtime/streaming/galaxy_proxy_math.gd`
 - `src/tests/runtime/test_bubble_activation_set.gd`
+- `src/tests/runtime/test_large_world_streaming.gd`
 - `src/sim/orbit/local_orbit_integrator.gd`
 - `src/tests/orbit/test_local_orbit_integrator.gd`
 - `src/tests/sim/test_orbit_service_numeric_local.gd`
@@ -426,6 +462,12 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tools/debug/debug_overlay.gd`
 - `src/runtime/derived/derived_snapshot_cache.gd`
 - `src/tests/runtime/test_derived_snapshot_cache.gd`
+- `src/sim/world/galaxy_def.gd`
+- `src/sim/world/root_system_manifest.gd`
+- `src/sim/world/root_star_manifest.gd`
+- `src/sim/world/root_system_generator.gd`
+- `src/sim/world/pilot_galaxy_world.gd`
+- `src/tools/rendering/galaxy_proxy_renderer.gd`
 - `src/tests/rendering/test_debug_overlay.gd`
 - `src/tests/rendering/test_orbit_hud_formatter.gd`
 - `run_tests.bat`
@@ -440,7 +482,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `LocalBubbleManager` liefert jetzt die dokumentierte LCA-/
   praezisionsbewusste Bubble-Komposition fuer same-root-Faelle.
 - `BubbleActivationSet` ist jetzt implementiert, wird im Testbed pro
-  Frame rebuilt und wird jetzt read-only als Wish-Quelle fuer
+  Frame aufgerufen, macht im steady-state aber keinen Full-Scan mehr
+  und wird jetzt read-only als Wish-Quelle fuer
   `OrbitService.request_numeric_local_candidates(...)` genutzt.
 - Das Projekt ist topologisch offen fuer mehrere Root-Systeme und hat
   jetzt eine explizite Loader-, Aktivierungs- und erste
@@ -503,8 +546,17 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   aber `orbit_testbed.gd` bleibt trotz Controller-/HUD-Split noch
   ein relativ dichter Composition-Root fuer Input und Zeitskala.
 - Der neue Snapshot-/Theme-Cache reduziert den offensichtlichen
-  per-frame-Derived-Workload, ist aber noch nicht durch einen laengeren
-  visuellen Idle-/Playtest profiliert.
+  per-frame-Derived-Workload jetzt deutlich staerker ueber
+  Interest-/Dirty-Tracking, ist aber noch nicht durch einen laengeren
+  visuellen Idle-/Playtest im neuen `pilot_galaxy`-Modus profiliert.
+- Der neue Large-World-Pilot ist bewusst erst ein 3-Root-Slice.
+  Mehr Root-Anzahl, reichere Galaxy-Layout-Regeln und laengerer
+  Resident-Root-Lebenszyklus sind ausdruecklich nach dem Pilot-
+  Playtest vertagt.
+- `GalaxyStreamingController` materialisiert aktuell hart um:
+  der Pilot ist headless-seitig abgesichert, aber sichtbare
+  Streaming-Haptik und Schwellwerte brauchen noch Editor-/Playtest-
+  Sanity.
 - Der neue galaktische Backdrop ist bewusst screen-fixed und
   dekorativ; ein spaeterer root-aware oder BH-zentrierter Spezialeffekt
   waere ein eigener View-Pass und kein stilles Follow-up dieses
@@ -528,28 +580,21 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- als naechsten grossen Simulationsschritt weitere planetare
-  Umweltfaktoren jenseits des additiven Greenhouse-Toy-Modells und der
-  momentanen Drei-Band-Klassifikation betrachten
-- dabei zuerst die additive Mehrquellenstrahlung fuer Mehrstern-Faelle
-  als echten `ThermalService`-Block angehen
-- dabei bewusst in Richtung globaler planetarer Oekosystem-Typen mit
-  Wasser-/Volatile-Logik und spaeterer Jahresmittel-/Stabilitaetslogik
-  weitergehen
-- parallel den deterministischen Generator von einem festen
-  Showcase-Seed auf mehrere Vergleichswelten ausbauen
+- als naechsten grossen Architektur-/Playtest-Block den neuen
+  `pilot_galaxy`-Slice im Editor und unter Bewegung/Zoom validieren
+- dabei besonders Proxy-/Detail-Handoffs, Nachbar-Root-Streaming,
+  Kamera-Haptik und den neuen steady-state-Frame-Workload beobachten
+- danach den Large-World-Pilot kontrolliert von 3 Roots auf 10 und
+  spaeter 30 skalieren, statt die erste Implementierung sofort breit zu
+  ziehen
+- parallel die additive Mehrquellenstrahlung fuer Mehrstern-Faelle als
+  naechsten grossen `ThermalService`-Block vorbereiten
+- danach weiter bewusst in Richtung globaler planetarer Oekosystem-
+  Typen mit Wasser-/Volatile-Logik und spaeterer Jahresmittel-/
+  Stabilitaetslogik gehen
+- parallel den neuen per-root Generator spaeter um weitere Galaxy-
+  Layout-Regeln und Vergleichswelten ausbauen
 - erst auf dieser Basis eine read-only Survey-/Notebook-/Scanner-
   Schicht ueber bestehender Sim-Wahrheit planen
-- parallel die Referenzwelt unter `obsidian` spaeter in Richtung eines
-  noch reicheren Mehrstern-Roots weiterdenken: elliptischere
-  BH-Sternbahnen, noch mehr Sterne und ggf. weitere Referenzwelten
 - parallel kleine nicht-kanonische Doku-Drift bereinigen, wenn sie
   wieder sichtbar wird
-- spaeter numerische Guardrail-Parameter oder strengere Overspeed-
-  Policies nachziehen, falls hohe `time_scale`-Faelle das praktisch
-  noetig machen
-- als naechsten kleineren Architektur-/Qualitaetsblock die verbleibende
-  Test-/Dokudrift nach dem Cleanup glattschleifen
-- dabei insbesondere die neue Camera-/Renderer-Aufteilung einmal
-  visuell im Editor gegenpruefen und verbliebene test-only
-  String-Key-Zugriffe optional auf die neuen `KEY_*`-Konstanten ziehen
