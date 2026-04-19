@@ -13,6 +13,19 @@ extends Node
 
 const HALF_PI: float = PI * 0.5
 const POLAR_LATITUDE_EPSILON_RAD: float = 1.0e-6
+const KEY_BODY_ID: StringName = &"body_id"
+const KEY_SOURCE_ID: StringName = &"source_id"
+const KEY_DISTANCE_TO_SOURCE_M: StringName = &"distance_to_source_m"
+const KEY_INSOLATION_WPM2: StringName = &"insolation_wpm2"
+const KEY_ALBEDO: StringName = &"albedo"
+const KEY_ABSORBED_FLUX_WPM2: StringName = &"absorbed_flux_wpm2"
+const KEY_EQUILIBRIUM_TEMPERATURE_K: StringName = &"equilibrium_temperature_k"
+const KEY_HAS_LUMINOUS_ANCESTOR: StringName = &"has_luminous_ancestor"
+const KEY_HAS_SEASONAL_BASIS: StringName = &"has_seasonal_basis"
+const KEY_SUBSOLAR_LATITUDE_RAD: StringName = &"subsolar_latitude_rad"
+const KEY_EQUATOR_DAILY_MEAN_INSOLATION_WPM2: StringName = &"equator_daily_mean_insolation_wpm2"
+const KEY_NORTH_POLE_DAILY_MEAN_INSOLATION_WPM2: StringName = &"north_pole_daily_mean_insolation_wpm2"
+const KEY_SOUTH_POLE_DAILY_MEAN_INSOLATION_WPM2: StringName = &"south_pole_daily_mean_insolation_wpm2"
 
 var _registry: Node = null
 
@@ -23,19 +36,19 @@ func configure(registry: Node) -> void:
 
 
 func compute_insolation_wpm2(id: StringName) -> float:
-	return float(describe_body(id).get("insolation_wpm2", 0.0))
+	return float(describe_body(id).get(KEY_INSOLATION_WPM2, 0.0))
 
 
 func compute_absorbed_flux_wpm2(id: StringName) -> float:
-	return float(describe_body(id).get("absorbed_flux_wpm2", 0.0))
+	return float(describe_body(id).get(KEY_ABSORBED_FLUX_WPM2, 0.0))
 
 
 func compute_equilibrium_temperature_k(id: StringName) -> float:
-	return float(describe_body(id).get("equilibrium_temperature_k", 0.0))
+	return float(describe_body(id).get(KEY_EQUILIBRIUM_TEMPERATURE_K, 0.0))
 
 
 func compute_subsolar_latitude_rad(id: StringName) -> float:
-	return float(describe_body(id).get("subsolar_latitude_rad", 0.0))
+	return float(describe_body(id).get(KEY_SUBSOLAR_LATITUDE_RAD, 0.0))
 
 
 func compute_daily_mean_insolation_wpm2(id: StringName, latitude_rad: float) -> float:

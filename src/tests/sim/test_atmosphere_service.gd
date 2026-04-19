@@ -1,6 +1,8 @@
 extends RefCounted
 
 const AtmosphereServiceScript = preload("res://src/sim/atmosphere/atmosphere_service.gd")
+const SimTestHarnessScript = preload("res://src/tests/helpers/sim_test_harness.gd")
+const HK_ATMOSPHERE_SERVICE: StringName = SimTestHarnessScript.HARNESS_KEY_ATMOSPHERE_SERVICE
 
 
 static func run(ctx) -> void:
@@ -14,10 +16,6 @@ static func run(ctx) -> void:
 	_test_missing_luminous_source_keeps_greenhouse_but_zero_surface_temperature(ctx)
 	_test_describe_matches_compute(ctx)
 	_test_unknown_id_returns_full_default_shape(ctx)
-
-
-static func _make_loader() -> Node:
-	return load("res://src/sim/world/world_loader.gd").new()
 
 
 static func _make_registry() -> Node:
@@ -47,44 +45,11 @@ static func _make_atmosphere_service(registry: Node, thermal_service: Node):
 
 
 static func _setup_named_world(world_id: StringName) -> Dictionary:
-	var loader := _make_loader()
-	var registry := _make_registry()
-	var time_service := _make_time_service()
-	var orbit_service = _make_orbit_service(registry, time_service)
-	var loaded: bool = loader.load_named_world(world_id, registry)
-	assert(loaded, "test setup failed to load named world '%s'" % world_id)
-	orbit_service.recompute_all_at_time(0.0)
-	var thermal_service = _make_thermal_service(registry)
-	var atmosphere_service = _make_atmosphere_service(registry, thermal_service)
-	return {
-		"loader": loader,
-		"registry": registry,
-		"time_service": time_service,
-		"orbit_service": orbit_service,
-		"thermal_service": thermal_service,
-		"atmosphere_service": atmosphere_service,
-	}
+	return SimTestHarnessScript.build_named_world_context(world_id)
 
 
 static func _cleanup_setup(setup: Dictionary) -> void:
-	var atmosphere_service = setup.get("atmosphere_service", null)
-	if atmosphere_service != null:
-		atmosphere_service.free()
-	var thermal_service = setup.get("thermal_service", null)
-	if thermal_service != null:
-		thermal_service.free()
-	var orbit_service = setup.get("orbit_service", null)
-	if orbit_service != null:
-		orbit_service.free()
-	var time_service = setup.get("time_service", null)
-	if time_service != null:
-		time_service.free()
-	var registry = setup.get("registry", null)
-	if registry != null:
-		registry.free()
-	var loader = setup.get("loader", null)
-	if loader != null:
-		loader.free()
+	SimTestHarnessScript.teardown_context(setup)
 
 
 static func _root_def(id: StringName, luminosity_w: float) -> BodyDef:
@@ -129,7 +94,7 @@ static func _planet_def(
 
 static func _test_sample_system_planet_a_reports_greenhouse_and_surface_temperature(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var atmosphere_service = setup["atmosphere_service"]
+	var atmosphere_service = setup[HK_ATMOSPHERE_SERVICE]
 	var desc: Dictionary = atmosphere_service.describe_body(&"planet_a")
 	var equilibrium_temperature_k: float = float(desc.get("equilibrium_temperature_k", 0.0))
 	var greenhouse_delta_k: float = float(desc.get("greenhouse_delta_k", -1.0))
@@ -146,7 +111,7 @@ static func _test_sample_system_planet_a_reports_greenhouse_and_surface_temperat
 
 static func _test_sample_system_planet_a_reports_latitudinal_surface_temperatures(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var atmosphere_service = setup["atmosphere_service"]
+	var atmosphere_service = setup[HK_ATMOSPHERE_SERVICE]
 	var desc: Dictionary = atmosphere_service.describe_body(&"planet_a")
 	ctx.assert_true(bool(desc.get("has_latitudinal_surface_basis", false)), "planet_a hat latitudinale surface basis")
 	var south_midlatitude_surface_temperature_k: float = float(
@@ -169,7 +134,7 @@ static func _test_sample_system_planet_a_reports_latitudinal_surface_temperature
 
 static func _test_latitudinal_compute_matches_describe_for_fixed_bands(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var atmosphere_service = setup["atmosphere_service"]
+	var atmosphere_service = setup[HK_ATMOSPHERE_SERVICE]
 	var desc: Dictionary = atmosphere_service.describe_body(&"planet_a")
 	ctx.assert_almost(
 		float(desc.get("south_midlatitude_surface_temperature_k", 0.0)),
@@ -194,7 +159,7 @@ static func _test_latitudinal_compute_matches_describe_for_fixed_bands(ctx) -> v
 
 static func _test_exact_poles_and_latitude_clamping_work(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var atmosphere_service = setup["atmosphere_service"]
+	var atmosphere_service = setup[HK_ATMOSPHERE_SERVICE]
 	var south_pole_surface_temperature_k: float = atmosphere_service.compute_surface_temperature_at_latitude_k(
 		&"planet_a",
 		-PI * 0.5
@@ -222,7 +187,7 @@ static func _test_exact_poles_and_latitude_clamping_work(ctx) -> void:
 
 static func _test_invalid_latitude_returns_zero(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var atmosphere_service = setup["atmosphere_service"]
+	var atmosphere_service = setup[HK_ATMOSPHERE_SERVICE]
 	ctx.assert_almost(
 		atmosphere_service.compute_surface_temperature_at_latitude_k(&"planet_a", NAN),
 		0.0,
@@ -240,7 +205,7 @@ static func _test_invalid_latitude_returns_zero(ctx) -> void:
 
 static func _test_sample_system_moon_a_keeps_zero_greenhouse_and_sol_source(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var atmosphere_service = setup["atmosphere_service"]
+	var atmosphere_service = setup[HK_ATMOSPHERE_SERVICE]
 	var desc: Dictionary = atmosphere_service.describe_body(&"moon_a")
 	ctx.assert_true(desc.get("source_id", StringName("")) == &"sol", "moon_a behaelt sol als Quelle")
 	ctx.assert_true(bool(desc.get("has_luminous_ancestor", false)), "moon_a behaelt luminous ancestor")
@@ -286,7 +251,7 @@ static func _test_missing_luminous_source_keeps_greenhouse_but_zero_surface_temp
 
 static func _test_describe_matches_compute(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var atmosphere_service = setup["atmosphere_service"]
+	var atmosphere_service = setup[HK_ATMOSPHERE_SERVICE]
 	var desc: Dictionary = atmosphere_service.describe_body(&"planet_a")
 	ctx.assert_almost(
 		float(desc.get("greenhouse_delta_k", 0.0)),
@@ -311,7 +276,7 @@ static func _test_describe_matches_compute(ctx) -> void:
 
 static func _test_unknown_id_returns_full_default_shape(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var atmosphere_service = setup["atmosphere_service"]
+	var atmosphere_service = setup[HK_ATMOSPHERE_SERVICE]
 	var desc: Dictionary = atmosphere_service.describe_body(&"missing_body")
 	ctx.assert_true(desc.has("body_id"), "Default-Shape enthaelt body_id")
 	ctx.assert_true(desc.has("source_id"), "Default-Shape enthaelt source_id")

@@ -1,0 +1,89 @@
+extends RefCounted
+
+
+static func focus_emphasis_for(
+	id: StringName,
+	focus_def: BodyDef,
+	registry: Node,
+	topology,
+	focus_closeup_ratio: float
+) -> Dictionary:
+	if focus_def == null:
+		return {"body": 1.0, "orbit": 1.0, "trail": 1.0}
+
+	if id == focus_def.id:
+		var focus_orbit_alpha: float = clampf(0.28 / maxf(focus_closeup_ratio * 0.45, 1.0), 0.04, 0.28)
+		return {"body": 1.0, "orbit": focus_orbit_alpha, "trail": 0.92}
+
+	var def: BodyDef = registry.get_def(id)
+	if def == null:
+		return {"body": 1.0, "orbit": 1.0, "trail": 1.0}
+
+	if def.parent_id == focus_def.id:
+		var child_trail_alpha: float = 1.0
+		if focus_def.kind == BodyType.Kind.PLANET or focus_def.kind == BodyType.Kind.MOON:
+			child_trail_alpha = clampf(0.40 / maxf(focus_closeup_ratio * 0.40, 1.0), 0.02, 0.40)
+		return {"body": 1.0, "orbit": 1.0, "trail": child_trail_alpha}
+
+	if topology != null and topology.is_descendant_of(id, focus_def.id):
+		return {"body": 0.90, "orbit": 0.80, "trail": 0.86}
+
+	if topology != null and topology.is_descendant_of(focus_def.id, id):
+		return {"body": 0.42, "orbit": 0.10, "trail": 0.18}
+
+	if def.parent_id != StringName("") and def.parent_id == focus_def.parent_id:
+		return {"body": 0.52, "orbit": 0.18, "trail": 0.28}
+
+	return {"body": 0.24, "orbit": 0.06, "trail": 0.10}
+
+
+static func body_detail_factor(
+	id: StringName,
+	def: BodyDef,
+	focus_id: StringName,
+	topology,
+	focus_closeup_ratio: float
+) -> float:
+	var closeup: float = clampf(pow(focus_closeup_ratio, 0.90), 1.0, 12.0)
+	var weight: float = _body_closeup_weight(id, def, focus_id, topology)
+	var factor: float = 1.0 + (closeup - 1.0) * weight
+	return clampf(factor, 1.0, _max_body_detail_factor(def.kind))
+
+
+static func _body_closeup_weight(id: StringName, def: BodyDef, focus_id: StringName, topology) -> float:
+	if id == focus_id:
+		match def.kind:
+			BodyType.Kind.BLACK_HOLE:
+				return 0.42
+			BodyType.Kind.STAR:
+				return 0.72
+			BodyType.Kind.MOON:
+				return 1.08
+			_:
+				return 0.96
+
+	if def.parent_id == focus_id:
+		match def.kind:
+			BodyType.Kind.MOON:
+				return 0.48
+			BodyType.Kind.PLANET:
+				return 0.42
+			_:
+				return 0.28
+
+	if topology != null and topology.is_descendant_of(id, focus_id):
+		return 0.24
+
+	return 0.0
+
+
+static func _max_body_detail_factor(kind: int) -> float:
+	match kind:
+		BodyType.Kind.BLACK_HOLE:
+			return 4.0
+		BodyType.Kind.STAR:
+			return 8.5
+		BodyType.Kind.MOON:
+			return 12.0
+		_:
+			return 10.0

@@ -11,6 +11,12 @@ enum State {
 	INACTIVE_NO_LCA,
 }
 
+const KEY_FOCUS_ID: StringName = &"focus_id"
+const KEY_ACTIVATION_RADIUS_M: StringName = &"activation_radius_m"
+const KEY_ACTIVE_COUNT: StringName = &"active_count"
+const KEY_INACTIVE_DISTANT_COUNT: StringName = &"inactive_distant_count"
+const KEY_INACTIVE_NO_LCA_COUNT: StringName = &"inactive_no_lca_count"
+
 @export_range(0.0, 1.0e13, 1.0e7, "or_greater") var activation_radius_m: float = 5.0e8
 
 var _registry: Node = null
@@ -75,11 +81,11 @@ func classify(id: StringName) -> int:
 
 func describe() -> Dictionary:
 	return {
-		"focus_id": StringName("") if _bubble == null else _bubble.get_focus(),
-		"activation_radius_m": activation_radius_m,
-		"active_count": _active_count,
-		"inactive_distant_count": _inactive_distant_count,
-		"inactive_no_lca_count": _inactive_no_lca_count,
+		KEY_FOCUS_ID: StringName("") if _bubble == null else _bubble.get_focus(),
+		KEY_ACTIVATION_RADIUS_M: activation_radius_m,
+		KEY_ACTIVE_COUNT: _active_count,
+		KEY_INACTIVE_DISTANT_COUNT: _inactive_distant_count,
+		KEY_INACTIVE_NO_LCA_COUNT: _inactive_no_lca_count,
 	}
 
 

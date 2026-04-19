@@ -12,6 +12,16 @@ const MAX_GREENHOUSE_DELTA_K: float = 2000.0
 const SOUTH_MIDLATITUDE_RAD: float = -PI / 3.0
 const EQUATOR_RAD: float = 0.0
 const NORTH_MIDLATITUDE_RAD: float = PI / 3.0
+const KEY_BODY_ID: StringName = &"body_id"
+const KEY_SOURCE_ID: StringName = &"source_id"
+const KEY_EQUILIBRIUM_TEMPERATURE_K: StringName = &"equilibrium_temperature_k"
+const KEY_GREENHOUSE_DELTA_K: StringName = &"greenhouse_delta_k"
+const KEY_SURFACE_TEMPERATURE_K: StringName = &"surface_temperature_k"
+const KEY_HAS_LATITUDINAL_SURFACE_BASIS: StringName = &"has_latitudinal_surface_basis"
+const KEY_SOUTH_MIDLATITUDE_SURFACE_TEMPERATURE_K: StringName = &"south_midlatitude_surface_temperature_k"
+const KEY_EQUATOR_SURFACE_TEMPERATURE_K: StringName = &"equator_surface_temperature_k"
+const KEY_NORTH_MIDLATITUDE_SURFACE_TEMPERATURE_K: StringName = &"north_midlatitude_surface_temperature_k"
+const KEY_HAS_LUMINOUS_ANCESTOR: StringName = &"has_luminous_ancestor"
 
 var _registry: Node = null
 var _thermal_service: Node = null
@@ -27,11 +37,11 @@ func configure(registry: Node, thermal_service: Node) -> void:
 
 
 func compute_greenhouse_delta_k(id: StringName) -> float:
-	return float(describe_body(id).get("greenhouse_delta_k", 0.0))
+	return float(describe_body(id).get(KEY_GREENHOUSE_DELTA_K, 0.0))
 
 
 func compute_surface_temperature_k(id: StringName) -> float:
-	return float(describe_body(id).get("surface_temperature_k", 0.0))
+	return float(describe_body(id).get(KEY_SURFACE_TEMPERATURE_K, 0.0))
 
 
 func compute_surface_temperature_at_latitude_k(id: StringName, latitude_rad: float) -> float:

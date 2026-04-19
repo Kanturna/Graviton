@@ -12,19 +12,19 @@ static func resolve(def: BodyDef, environment_desc: Dictionary):
 	if not _is_supported_visual_kind(def.kind):
 		return _make_barren_theme(false)
 
-	var has_valid_environment_basis: bool = bool(environment_desc.get("is_supported_body_kind", false)) \
-		and bool(environment_desc.get("has_luminous_ancestor", false)) \
-		and bool(environment_desc.get("has_latitudinal_surface_basis", false))
+	var has_valid_environment_basis: bool = bool(environment_desc.get(EnvironmentServiceScript.KEY_IS_SUPPORTED_BODY_KIND, false)) \
+		and bool(environment_desc.get(EnvironmentServiceScript.KEY_HAS_LUMINOUS_ANCESTOR, false)) \
+		and bool(environment_desc.get(EnvironmentServiceScript.KEY_HAS_LATITUDINAL_SURFACE_BASIS, false))
 	if not has_valid_environment_basis:
 		return _finalize_for_body_kind(_make_barren_theme(false), def.kind)
 
 	var ecosystem_type: int = int(
 		environment_desc.get(
-			"ecosystem_type",
+			EnvironmentServiceScript.KEY_ECOSYSTEM_TYPE,
 			EnvironmentServiceScript.EcosystemType.FROZEN_WORLD
 		)
 	)
-	var has_habitable_band: bool = bool(environment_desc.get("has_habitable_band", false))
+	var has_habitable_band: bool = bool(environment_desc.get(EnvironmentServiceScript.KEY_HAS_HABITABLE_BAND, false))
 
 	match ecosystem_type:
 		EnvironmentServiceScript.EcosystemType.HOT_WORLD:

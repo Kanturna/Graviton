@@ -59,6 +59,12 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `HABITABLE`, `MARGINAL` oder `HOSTILE` und leitet zusaetzlich erste
   planetare Oekosystem-Typen (`FROZEN`, `TEMPERATE`, `SEASONAL`,
   `HOT`) ab.
+- Topologie-Helfer sind jetzt in einem read-only
+  `UniverseTopology`-Helper ueber `UniverseRegistry` gebuendelt statt
+  parallel in Bubble-, Renderer- und Testbed-Code verteilt.
+- Die wiederkehrenden Named-World-Test-Setups laufen jetzt ueber einen
+  gemeinsamen `SimTestHarness` mit festem Build-/Teardown-Pfad statt
+  ueber kopierte Boilerplate in mehreren Suites.
 - Bodies aus einem anderen Root als der aktuelle Fokus liefern bewusst
   `Vector3.INF` und werden im Renderer nicht lokalisiert.
 - `TimeService` und `UniverseRegistry` sind die zentralen Autoloads.
@@ -105,6 +111,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Root-Body bestimmt statt implizit ueber `obsidian`.
 - Das Testbed unterstuetzt Camera-Panning, klickbaren Fokus und
   staerkere Zeitskalen.
+- Die Kameralogik lebt jetzt nicht mehr direkt im Testbed-Script,
+  sondern in einem eigenen `OrbitCameraController`; HUD-Strings sind in
+  `OrbitHudFormatter` gebuendelt, und `OrbitViewRenderer` nutzt jetzt
+  reine Helper fuer Focus-Frame-, Orbit-Geometrie- und Emphasis-Regeln.
 - Das Testbed kann jetzt explizit zwischen `starter_world` und
   `sample_system` als Referenzwelten umgeschaltet werden.
 - `starter_world` ist jetzt als groessere asymmetrische BH-
@@ -201,7 +211,17 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/runtime/local_bubble/local_bubble_manager.gd`
 - `src/tests/runtime/test_local_bubble_step2.gd`
 - `src/tools/rendering/orbit_view_renderer.gd`
+- `src/sim/topology/universe_topology.gd`
+- `src/tests/sim/test_universe_topology.gd`
+- `src/tests/helpers/sim_test_harness.gd`
+- `src/tests/sim/test_sim_test_harness.gd`
 - `src/tools/rendering/orbit_zoom_model.gd`
+- `src/tools/rendering/orbit_camera_controller.gd`
+- `src/tools/rendering/orbit_hud_formatter.gd`
+- `src/tools/rendering/orbit_focus_frame.gd`
+- `src/tools/rendering/orbit_emphasis_rules.gd`
+- `src/tools/rendering/orbit_orbit_geometry.gd`
+- `src/tests/rendering/test_orbit_camera_controller.gd`
 - `scenes/testbeds/orbit_testbed.gd`
 - `scenes/testbeds/orbit_testbed.tscn`
 - `src/tools/rendering/orbit_body_visual.gd`
@@ -264,9 +284,13 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `Cap+Warn` ist bewusst nur eine Best-Effort-Policy: bei dauerhaft
   gecappten Bodies kann weiter langsame Energie- und Bahndrift
   auftreten, auch wenn der Body im numerischen Regime bleibt.
-- Topologie-Helfer liegen aktuell noch an mehreren Stellen
-  (`OrbitViewRenderer`, `LocalBubbleManager`, Debug/Test-Helfer) und
-  koennen spaeter sinnvoll zentralisiert werden.
+- Die Runtime-/View-Architektur ist jetzt deutlich besser getrennt,
+  aber `orbit_testbed.gd` bleibt trotz Controller-/HUD-Split noch
+  ein relativ dichter Composition-Root fuer Input und Zeitskala.
+- Die neuen `KEY_*`-Konstanten stabilisieren jetzt die wichtigsten
+  Service-/HUD-Schnittstellen; ein spaeterer Test-only-Aufraeumpass
+  koennte verbleibende rohe String-Key-Zugriffe in aelteren Suites
+  noch weiter vereinheitlichen.
 - `phantom_camera` ist im Projekt vorhanden, wird aber in der aktuellen
   Runtime noch nicht aktiv genutzt.
 - Die Praesentation ist fuer das aktuelle Testbed gut genug; der
@@ -292,5 +316,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - spaeter numerische Guardrail-Parameter oder strengere Overspeed-
   Policies nachziehen, falls hohe `time_scale`-Faelle das praktisch
   noetig machen
-- spaeter Topologie-Helfer konsolidieren, wenn Bubble-/Activation-
-  Schicht und Mehrwurzel-Pfade stabil sind
+- als naechsten kleineren Architektur-/Qualitaetsblock die verbleibende
+  Test-/Dokudrift nach dem Cleanup glattschleifen
+- dabei insbesondere die neue Camera-/Renderer-Aufteilung einmal
+  visuell im Editor gegenpruefen und verbliebene test-only
+  String-Key-Zugriffe optional auf die neuen `KEY_*`-Konstanten ziehen

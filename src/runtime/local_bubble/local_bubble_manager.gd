@@ -24,8 +24,10 @@ extends Node
 signal focus_changed(new_id: StringName)
 
 const _HOP_LIMIT: int = 64
+const UniverseTopologyScript := preload("res://src/sim/topology/universe_topology.gd")
 
 var _registry: Node = null
+var _topology = null
 var _focus_id: StringName = &""
 var _reported_issues: Dictionary = {}
 
@@ -33,6 +35,8 @@ var _reported_issues: Dictionary = {}
 func configure(registry: Node) -> void:
 	assert(registry != null, "LocalBubbleManager.configure: registry is null")
 	_registry = registry
+	_topology = UniverseTopologyScript.new()
+	_topology.configure(registry)
 
 
 func set_focus(body_id: StringName) -> void:
@@ -84,12 +88,15 @@ func compose_view_position_m(id: StringName) -> Vector3:
 			"compose_view_position_m: Target '%s' existiert nicht in der Registry" % String(id))
 		return Vector3.INF
 
-	var focus_path: Array[StringName] = _ancestor_path_root_to_leaf(_focus_id)
-	var target_path: Array[StringName] = _ancestor_path_root_to_leaf(id)
+	if _topology == null:
+		return Vector3.INF
+
+	var focus_path: Array[StringName] = _topology.ancestor_path_root_to_leaf(_focus_id)
+	var target_path: Array[StringName] = _topology.ancestor_path_root_to_leaf(id)
 	if focus_path.is_empty() or target_path.is_empty():
 		return Vector3.INF
 
-	var lca_id: StringName = _find_lowest_common_ancestor(focus_path, target_path)
+	var lca_id: StringName = _topology.lowest_common_ancestor(_focus_id, id)
 	if lca_id == StringName(""):
 		_warn_once(
 			"bubble_no_lca:%s->%s" % [String(_focus_id), String(id)],
@@ -109,41 +116,6 @@ func compose_view_position_m(id: StringName) -> Vector3:
 		float(target_offset.get("y", 0.0)) - float(focus_offset.get("y", 0.0)),
 		float(target_offset.get("z", 0.0)) - float(focus_offset.get("z", 0.0))
 	)
-
-
-func _ancestor_path_root_to_leaf(id: StringName) -> Array[StringName]:
-	var path: Array[StringName] = []
-	var cursor: StringName = id
-	var hop_limit: int = _HOP_LIMIT
-	while cursor != StringName("") and hop_limit > 0:
-		var state: BodyState = _registry.get_state(cursor)
-		if state == null:
-			_warn_once("bubble_missing_state_path:%s" % String(id),
-				"_ancestor_path_root_to_leaf: fehlender BodyState fuer '%s'" % String(cursor))
-			return []
-		path.append(cursor)
-		cursor = state.parent_id
-		hop_limit -= 1
-
-	if cursor != StringName(""):
-		_warn_once("bubble_hop_limit_path:%s" % String(id),
-			"_ancestor_path_root_to_leaf: Hop-Limit bei '%s' erreicht" % String(id),
-			true
-		)
-		return []
-
-	path.reverse()
-	return path
-
-
-func _find_lowest_common_ancestor(a: Array[StringName], b: Array[StringName]) -> StringName:
-	var limit: int = mini(a.size(), b.size())
-	var last_common: StringName = &""
-	for idx in range(limit):
-		if a[idx] != b[idx]:
-			break
-		last_common = a[idx]
-	return last_common
 
 
 func _accumulate_to_ancestor_exclusive(from_id: StringName, stop_id: StringName) -> Dictionary:

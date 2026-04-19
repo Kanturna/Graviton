@@ -2,6 +2,8 @@ extends RefCounted
 
 const AtmosphereServiceScript = preload("res://src/sim/atmosphere/atmosphere_service.gd")
 const EnvironmentServiceScript = preload("res://src/sim/environment/environment_service.gd")
+const SimTestHarnessScript = preload("res://src/tests/helpers/sim_test_harness.gd")
+const HK_ENVIRONMENT_SERVICE: StringName = SimTestHarnessScript.HARNESS_KEY_ENVIRONMENT_SERVICE
 
 
 class AtmosphereStub:
@@ -70,10 +72,6 @@ static func run(ctx) -> void:
 	_test_unknown_id_returns_full_default_shape(ctx)
 
 
-static func _make_loader() -> Node:
-	return load("res://src/sim/world/world_loader.gd").new()
-
-
 static func _make_registry() -> Node:
 	return load("res://src/sim/universe/universe_registry.gd").new()
 
@@ -107,49 +105,11 @@ static func _make_environment_service(registry: Node, atmosphere_service: Node):
 
 
 static func _setup_named_world(world_id: StringName) -> Dictionary:
-	var loader := _make_loader()
-	var registry := _make_registry()
-	var time_service := _make_time_service()
-	var orbit_service = _make_orbit_service(registry, time_service)
-	var loaded: bool = loader.load_named_world(world_id, registry)
-	assert(loaded, "test setup failed to load named world '%s'" % world_id)
-	orbit_service.recompute_all_at_time(0.0)
-	var thermal_service = _make_thermal_service(registry)
-	var atmosphere_service = _make_atmosphere_service(registry, thermal_service)
-	var environment_service = _make_environment_service(registry, atmosphere_service)
-	return {
-		"loader": loader,
-		"registry": registry,
-		"time_service": time_service,
-		"orbit_service": orbit_service,
-		"thermal_service": thermal_service,
-		"atmosphere_service": atmosphere_service,
-		"environment_service": environment_service,
-	}
+	return SimTestHarnessScript.build_named_world_context(world_id)
 
 
 static func _cleanup_setup(setup: Dictionary) -> void:
-	var environment_service = setup.get("environment_service", null)
-	if environment_service != null:
-		environment_service.free()
-	var atmosphere_service = setup.get("atmosphere_service", null)
-	if atmosphere_service != null:
-		atmosphere_service.free()
-	var thermal_service = setup.get("thermal_service", null)
-	if thermal_service != null:
-		thermal_service.free()
-	var orbit_service = setup.get("orbit_service", null)
-	if orbit_service != null:
-		orbit_service.free()
-	var time_service = setup.get("time_service", null)
-	if time_service != null:
-		time_service.free()
-	var registry = setup.get("registry", null)
-	if registry != null:
-		registry.free()
-	var loader = setup.get("loader", null)
-	if loader != null:
-		loader.free()
+	SimTestHarnessScript.teardown_context(setup)
 
 
 static func _root_def(id: StringName, luminosity_w: float) -> BodyDef:
@@ -194,7 +154,7 @@ static func _planet_def(
 
 static func _test_sample_system_planet_a_is_habitable_and_seasonal(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var environment_service = setup["environment_service"]
+	var environment_service = setup[HK_ENVIRONMENT_SERVICE]
 	var desc: Dictionary = environment_service.describe_body(&"planet_a")
 	ctx.assert_true(bool(desc.get("is_supported_body_kind", false)), "planet_a ist ein unterstuetzter Umweltkoerper")
 	ctx.assert_true(bool(desc.get("has_latitudinal_surface_basis", false)), "planet_a hat latitudinale Umweltbasis")
@@ -253,7 +213,7 @@ static func _test_player_facing_string_mappings(ctx) -> void:
 
 static func _test_sample_system_moon_a_is_supported_and_band_aware(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var environment_service = setup["environment_service"]
+	var environment_service = setup[HK_ENVIRONMENT_SERVICE]
 	var desc: Dictionary = environment_service.describe_body(&"moon_a")
 	ctx.assert_true(bool(desc.get("is_supported_body_kind", false)), "moon_a bleibt ein unterstuetzter Umweltkoerper")
 	ctx.assert_true(bool(desc.get("has_latitudinal_surface_basis", false)), "moon_a hat eine latitudinale Umweltbasis")
@@ -271,7 +231,7 @@ static func _test_sample_system_moon_a_is_supported_and_band_aware(ctx) -> void:
 
 static func _test_starter_world_gamma_iv_is_compact_habitable_candidate_at_t0(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"starter_world")
-	var environment_service = setup["environment_service"]
+	var environment_service = setup[HK_ENVIRONMENT_SERVICE]
 	var desc: Dictionary = environment_service.describe_body(&"gamma_iv")
 	ctx.assert_true(bool(desc.get("is_supported_body_kind", false)), "gamma_iv bleibt ein unterstuetzter Umweltkoerper")
 	ctx.assert_true(bool(desc.get("has_latitudinal_surface_basis", false)), "gamma_iv hat eine latitudinale Umweltbasis")
@@ -294,7 +254,7 @@ static func _test_starter_world_gamma_iv_is_compact_habitable_candidate_at_t0(ct
 
 static func _test_sample_system_sol_is_unsupported(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var environment_service = setup["environment_service"]
+	var environment_service = setup[HK_ENVIRONMENT_SERVICE]
 	var desc: Dictionary = environment_service.describe_body(&"sol")
 	ctx.assert_true(not bool(desc.get("is_supported_body_kind", true)), "sol ist kein unterstuetzter Umweltkoerper")
 	ctx.assert_true(not bool(desc.get("has_habitable_band", true)), "unsupported bodies melden kein habitales Band")
@@ -343,7 +303,7 @@ static func _test_supported_body_without_luminous_ancestor_is_hostile(ctx) -> vo
 
 static func _test_describe_and_classify_stay_consistent(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var environment_service = setup["environment_service"]
+	var environment_service = setup[HK_ENVIRONMENT_SERVICE]
 	var desc: Dictionary = environment_service.describe_body(&"planet_a")
 	_assert_class_eq(
 		ctx,

@@ -1,5 +1,7 @@
 extends RefCounted
 
+const BubbleActivationSetScript = preload("res://src/runtime/local_bubble/bubble_activation_set.gd")
+
 
 static func run(ctx) -> void:
 	ctx.current_suite = "test_bubble_activation_set"
@@ -198,11 +200,11 @@ static func _test_describe_reports_consistent_counts(ctx) -> void:
 	activation_set.rebuild()
 
 	var desc: Dictionary = activation_set.describe()
-	ctx.assert_true(desc.get("focus_id", &"") == &"star_a", "describe meldet den aktuellen Fokus")
-	ctx.assert_almost(float(desc.get("activation_radius_m", 0.0)), 5.0e8, 1.0, "describe meldet den Aktivierungsradius")
-	ctx.assert_true(int(desc.get("active_count", -1)) == 3, "describe meldet drei aktive Bodies")
-	ctx.assert_true(int(desc.get("inactive_distant_count", -1)) == 1, "describe meldet einen fernen same-root Body")
-	ctx.assert_true(int(desc.get("inactive_no_lca_count", -1)) == 3, "describe meldet drei cross-root Bodies")
+	ctx.assert_true(desc.get(BubbleActivationSetScript.KEY_FOCUS_ID, &"") == &"star_a", "describe meldet den aktuellen Fokus")
+	ctx.assert_almost(float(desc.get(BubbleActivationSetScript.KEY_ACTIVATION_RADIUS_M, 0.0)), 5.0e8, 1.0, "describe meldet den Aktivierungsradius")
+	ctx.assert_true(int(desc.get(BubbleActivationSetScript.KEY_ACTIVE_COUNT, -1)) == 3, "describe meldet drei aktive Bodies")
+	ctx.assert_true(int(desc.get(BubbleActivationSetScript.KEY_INACTIVE_DISTANT_COUNT, -1)) == 1, "describe meldet einen fernen same-root Body")
+	ctx.assert_true(int(desc.get(BubbleActivationSetScript.KEY_INACTIVE_NO_LCA_COUNT, -1)) == 3, "describe meldet drei cross-root Bodies")
 
 	activation_set.free()
 	bubble.free()

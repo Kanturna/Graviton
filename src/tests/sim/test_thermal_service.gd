@@ -1,5 +1,9 @@
 extends RefCounted
 
+const SimTestHarnessScript = preload("res://src/tests/helpers/sim_test_harness.gd")
+const HK_REGISTRY: StringName = SimTestHarnessScript.HARNESS_KEY_REGISTRY
+const HK_THERMAL_SERVICE: StringName = SimTestHarnessScript.HARNESS_KEY_THERMAL_SERVICE
+
 
 static func run(ctx) -> void:
 	ctx.current_suite = "test_thermal_service"
@@ -23,10 +27,6 @@ static func run(ctx) -> void:
 	_test_describe_body_unknown_returns_full_default_shape(ctx)
 
 
-static func _make_loader() -> Node:
-	return load("res://src/sim/world/world_loader.gd").new()
-
-
 static func _make_registry() -> Node:
 	return load("res://src/sim/universe/universe_registry.gd").new()
 
@@ -48,39 +48,11 @@ static func _make_thermal_service(registry: Node):
 
 
 static func _setup_named_world(world_id: StringName) -> Dictionary:
-	var loader := _make_loader()
-	var registry := _make_registry()
-	var time_service := _make_time_service()
-	var orbit_service = _make_orbit_service(registry, time_service)
-	var loaded: bool = loader.load_named_world(world_id, registry)
-	assert(loaded, "test setup failed to load named world '%s'" % world_id)
-	orbit_service.recompute_all_at_time(0.0)
-	var thermal_service = _make_thermal_service(registry)
-	return {
-		"loader": loader,
-		"registry": registry,
-		"time_service": time_service,
-		"orbit_service": orbit_service,
-		"thermal_service": thermal_service,
-	}
+	return SimTestHarnessScript.build_named_world_context(world_id)
 
 
 static func _cleanup_setup(setup: Dictionary) -> void:
-	var thermal_service = setup.get("thermal_service", null)
-	if thermal_service != null:
-		thermal_service.free()
-	var orbit_service = setup.get("orbit_service", null)
-	if orbit_service != null:
-		orbit_service.free()
-	var time_service = setup.get("time_service", null)
-	if time_service != null:
-		time_service.free()
-	var registry = setup.get("registry", null)
-	if registry != null:
-		registry.free()
-	var loader = setup.get("loader", null)
-	if loader != null:
-		loader.free()
+	SimTestHarnessScript.teardown_context(setup)
 
 
 static func _root_def(id: StringName, luminosity_w: float) -> BodyDef:
@@ -140,8 +112,8 @@ static func _authored_orbit_body_def(id: StringName, parent: StringName, radius_
 
 static func _test_sample_system_planet_a_matches_inverse_square_law(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var registry: Node = setup["registry"]
-	var thermal_service = setup["thermal_service"]
+	var registry: Node = setup[HK_REGISTRY]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	var sol: BodyDef = registry.get_def(&"sol")
 	var planet_state: BodyState = registry.get_state(&"planet_a")
 	var radius_m: float = planet_state.position_parent_frame_m.length()
@@ -158,8 +130,8 @@ static func _test_sample_system_planet_a_matches_inverse_square_law(ctx) -> void
 
 static func _test_sample_system_planet_a_absorbed_flux_and_temperature_match_formula(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var registry: Node = setup["registry"]
-	var thermal_service = setup["thermal_service"]
+	var registry: Node = setup[HK_REGISTRY]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	var planet_def: BodyDef = registry.get_def(&"planet_a")
 	var insolation_wpm2: float = thermal_service.compute_insolation_wpm2(&"planet_a")
 	var expected_absorbed_wpm2: float = _expected_absorbed_flux_wpm2(insolation_wpm2, planet_def.albedo)
@@ -183,7 +155,7 @@ static func _test_sample_system_planet_a_absorbed_flux_and_temperature_match_for
 
 static func _test_sample_system_planet_a_temperature_matches_earth_like_sanity(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var thermal_service = setup["thermal_service"]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	var teq_k: float = thermal_service.compute_equilibrium_temperature_k(&"planet_a")
 	ctx.assert_true(
 		absf(teq_k - 257.0) <= 10.0,
@@ -194,7 +166,7 @@ static func _test_sample_system_planet_a_temperature_matches_earth_like_sanity(c
 
 static func _test_self_is_not_treated_as_source(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var thermal_service = setup["thermal_service"]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	ctx.assert_almost(
 		thermal_service.compute_insolation_wpm2(&"sol"),
 		0.0,
@@ -218,7 +190,7 @@ static func _test_self_is_not_treated_as_source(ctx) -> void:
 
 static func _test_dark_parent_is_skipped_for_moon_and_keeps_non_zero_thermal_values(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var thermal_service = setup["thermal_service"]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	var moon_wpm2: float = thermal_service.compute_insolation_wpm2(&"moon_a")
 	var moon_absorbed_wpm2: float = thermal_service.compute_absorbed_flux_wpm2(&"moon_a")
 	var moon_teq_k: float = thermal_service.compute_equilibrium_temperature_k(&"moon_a")
@@ -232,7 +204,7 @@ static func _test_dark_parent_is_skipped_for_moon_and_keeps_non_zero_thermal_val
 
 static func _test_starter_world_dark_root_yields_zero_for_root_and_stars(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"starter_world")
-	var thermal_service = setup["thermal_service"]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	ctx.assert_almost(thermal_service.compute_insolation_wpm2(&"obsidian"), 0.0, 1.0e-9, "obsidian hat keine Insolation")
 	ctx.assert_almost(thermal_service.compute_insolation_wpm2(&"alpha"), 0.0, 1.0e-9, "alpha hat unter dunklem Root keine Insolation")
 	ctx.assert_almost(thermal_service.compute_insolation_wpm2(&"beta"), 0.0, 1.0e-9, "beta hat unter dunklem Root keine Insolation")
@@ -247,7 +219,7 @@ static func _test_starter_world_dark_root_yields_zero_for_root_and_stars(ctx) ->
 
 static func _test_starter_world_relative_planet_insolation_order(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"starter_world")
-	var thermal_service = setup["thermal_service"]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	# Die Radienbereiche der jeweiligen Paare ueberlappen in der StarterWorld nicht:
 	# alpha_i bleibt stets naeher an alpha als alpha_ii, beta_i stets naeher an beta als beta_ii.
 	ctx.assert_true(
@@ -263,7 +235,7 @@ static func _test_starter_world_relative_planet_insolation_order(ctx) -> void:
 
 static func _test_starter_world_relative_planet_temperature_order(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"starter_world")
-	var thermal_service = setup["thermal_service"]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	# Dieselben nicht ueberlappenden Radiusbereiche wie im Insolation-Test
 	# halten auch die Gleichgewichtstemperatur-Ordnung robust.
 	ctx.assert_true(
@@ -279,8 +251,8 @@ static func _test_starter_world_relative_planet_temperature_order(ctx) -> void:
 
 static func _test_sample_system_planet_a_subsolar_latitude_matches_negative_tilt_at_t0(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var registry: Node = setup["registry"]
-	var thermal_service = setup["thermal_service"]
+	var registry: Node = setup[HK_REGISTRY]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	var planet_def: BodyDef = registry.get_def(&"planet_a")
 	var desc: Dictionary = thermal_service.describe_body(&"planet_a")
 	var subsolar_latitude_rad: float = thermal_service.compute_subsolar_latitude_rad(&"planet_a")
@@ -300,8 +272,8 @@ static func _test_sample_system_planet_a_subsolar_latitude_matches_negative_tilt
 
 static func _test_zero_tilt_keeps_subsolar_zero_and_poles_symmetric(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var registry: Node = setup["registry"]
-	var thermal_service = setup["thermal_service"]
+	var registry: Node = setup[HK_REGISTRY]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	var planet_def: BodyDef = registry.get_def(&"planet_a")
 	planet_def.axial_tilt_rad = 0.0
 	planet_def.north_pole_orbit_frame_azimuth_rad = 1.234
@@ -325,8 +297,8 @@ static func _test_zero_tilt_keeps_subsolar_zero_and_poles_symmetric(ctx) -> void
 
 static func _test_north_pole_orbit_frame_azimuth_flips_subsolar_sign(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var registry: Node = setup["registry"]
-	var thermal_service = setup["thermal_service"]
+	var registry: Node = setup[HK_REGISTRY]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	var planet_def: BodyDef = registry.get_def(&"planet_a")
 	planet_def.north_pole_orbit_frame_azimuth_rad = 0.0
 	var winter_subsolar_rad: float = thermal_service.compute_subsolar_latitude_rad(&"planet_a")
@@ -345,8 +317,8 @@ static func _test_north_pole_orbit_frame_azimuth_flips_subsolar_sign(ctx) -> voi
 
 static func _test_polar_day_and_polar_night_follow_explicit_branches(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var registry: Node = setup["registry"]
-	var thermal_service = setup["thermal_service"]
+	var registry: Node = setup[HK_REGISTRY]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	var planet_def: BodyDef = registry.get_def(&"planet_a")
 	var insolation_wpm2: float = thermal_service.compute_insolation_wpm2(&"planet_a")
 	planet_def.north_pole_orbit_frame_azimuth_rad = 0.0
@@ -445,8 +417,8 @@ static func _test_cross_root_light_does_not_leak(ctx) -> void:
 
 static func _test_albedo_boundaries_control_absorption_and_temperature(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var registry: Node = setup["registry"]
-	var thermal_service = setup["thermal_service"]
+	var registry: Node = setup[HK_REGISTRY]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	var planet_def: BodyDef = registry.get_def(&"planet_a")
 	var insolation_wpm2: float = thermal_service.compute_insolation_wpm2(&"planet_a")
 	planet_def.albedo = 0.0
@@ -478,8 +450,8 @@ static func _test_albedo_boundaries_control_absorption_and_temperature(ctx) -> v
 
 static func _test_unknown_and_non_finite_paths_return_zero(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var registry: Node = setup["registry"]
-	var thermal_service = setup["thermal_service"]
+	var registry: Node = setup[HK_REGISTRY]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	ctx.assert_almost(
 		thermal_service.compute_insolation_wpm2(&"missing_body"),
 		0.0,
@@ -547,8 +519,8 @@ static func _test_unknown_and_non_finite_paths_return_zero(ctx) -> void:
 
 static func _test_describe_body_matches_compute_and_reports_source(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var registry: Node = setup["registry"]
-	var thermal_service = setup["thermal_service"]
+	var registry: Node = setup[HK_REGISTRY]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	var desc: Dictionary = thermal_service.describe_body(&"planet_a")
 	var planet_def: BodyDef = registry.get_def(&"planet_a")
 	var computed_wpm2: float = thermal_service.compute_insolation_wpm2(&"planet_a")
@@ -600,7 +572,7 @@ static func _test_describe_body_matches_compute_and_reports_source(ctx) -> void:
 
 static func _test_describe_body_unknown_returns_full_default_shape(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var thermal_service = setup["thermal_service"]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
 	var desc: Dictionary = thermal_service.describe_body(&"missing_body")
 	ctx.assert_true(desc.has("body_id"), "Default-Shape enthaelt body_id")
 	ctx.assert_true(desc.has("source_id"), "Default-Shape enthaelt source_id")

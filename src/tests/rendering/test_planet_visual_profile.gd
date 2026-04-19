@@ -3,6 +3,9 @@ extends RefCounted
 const EnvironmentServiceScript = preload("res://src/sim/environment/environment_service.gd")
 const PlanetVisualProfileScript = preload("res://src/tools/rendering/planet_visual_profile.gd")
 const PlanetVisualThemeScript = preload("res://src/tools/rendering/planet_visual_theme.gd")
+const SimTestHarnessScript = preload("res://src/tests/helpers/sim_test_harness.gd")
+const HK_REGISTRY: StringName = SimTestHarnessScript.HARNESS_KEY_REGISTRY
+const HK_ENVIRONMENT_SERVICE: StringName = SimTestHarnessScript.HARNESS_KEY_ENVIRONMENT_SERVICE
 
 
 static func run(ctx) -> void:
@@ -40,86 +43,12 @@ static func _environment_desc(
 	}
 
 
-static func _make_loader() -> Node:
-	return load("res://src/sim/world/world_loader.gd").new()
-
-
-static func _make_registry() -> Node:
-	return load("res://src/sim/universe/universe_registry.gd").new()
-
-
-static func _make_time_service() -> Node:
-	return load("res://src/core/time/time_service.gd").new()
-
-
-static func _make_orbit_service(registry: Node, time_service: Node):
-	var service = load("res://src/sim/orbit/orbit_service.gd").new()
-	service.configure(registry, time_service)
-	return service
-
-
-static func _make_thermal_service(registry: Node):
-	var service = load("res://src/sim/thermal/thermal_service.gd").new()
-	service.configure(registry)
-	return service
-
-
-static func _make_atmosphere_service(registry: Node, thermal_service: Node):
-	var service = load("res://src/sim/atmosphere/atmosphere_service.gd").new()
-	service.configure(registry, thermal_service)
-	return service
-
-
-static func _make_environment_service(registry: Node, atmosphere_service: Node):
-	var service = EnvironmentServiceScript.new()
-	service.configure(registry, atmosphere_service)
-	return service
-
-
 static func _setup_named_world(world_id: StringName) -> Dictionary:
-	var loader := _make_loader()
-	var registry := _make_registry()
-	var time_service := _make_time_service()
-	var orbit_service = _make_orbit_service(registry, time_service)
-	var loaded: bool = loader.load_named_world(world_id, registry)
-	assert(loaded, "test setup failed to load named world '%s'" % world_id)
-	orbit_service.recompute_all_at_time(0.0)
-	var thermal_service = _make_thermal_service(registry)
-	var atmosphere_service = _make_atmosphere_service(registry, thermal_service)
-	var environment_service = _make_environment_service(registry, atmosphere_service)
-	return {
-		"loader": loader,
-		"registry": registry,
-		"time_service": time_service,
-		"orbit_service": orbit_service,
-		"thermal_service": thermal_service,
-		"atmosphere_service": atmosphere_service,
-		"environment_service": environment_service,
-	}
+	return SimTestHarnessScript.build_named_world_context(world_id)
 
 
 static func _cleanup_setup(setup: Dictionary) -> void:
-	var environment_service = setup.get("environment_service", null)
-	if environment_service != null:
-		environment_service.free()
-	var atmosphere_service = setup.get("atmosphere_service", null)
-	if atmosphere_service != null:
-		atmosphere_service.free()
-	var thermal_service = setup.get("thermal_service", null)
-	if thermal_service != null:
-		thermal_service.free()
-	var orbit_service = setup.get("orbit_service", null)
-	if orbit_service != null:
-		orbit_service.free()
-	var time_service = setup.get("time_service", null)
-	if time_service != null:
-		time_service.free()
-	var registry = setup.get("registry", null)
-	if registry != null:
-		registry.free()
-	var loader = setup.get("loader", null)
-	if loader != null:
-		loader.free()
+	SimTestHarnessScript.teardown_context(setup)
 
 
 static func _test_synthetic_resolver_rules_for_planets_and_moons(ctx) -> void:
@@ -217,8 +146,8 @@ static func _test_invalid_or_missing_environment_basis_falls_back_to_barren(ctx)
 
 static func _test_sample_system_planet_a_maps_to_temperate_ocean(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"sample_system")
-	var registry = setup["registry"]
-	var environment_service = setup["environment_service"]
+	var registry = setup[HK_REGISTRY]
+	var environment_service = setup[HK_ENVIRONMENT_SERVICE]
 	var def: BodyDef = registry.get_def(&"planet_a")
 	var desc: Dictionary = environment_service.describe_body(&"planet_a")
 	var theme = PlanetVisualProfileScript.resolve(def, desc)
@@ -237,8 +166,8 @@ static func _test_sample_system_planet_a_maps_to_temperate_ocean(ctx) -> void:
 
 static func _test_starter_world_gamma_iv_maps_to_temperate_ocean_at_t0(ctx) -> void:
 	var setup: Dictionary = _setup_named_world(&"starter_world")
-	var registry = setup["registry"]
-	var environment_service = setup["environment_service"]
+	var registry = setup[HK_REGISTRY]
+	var environment_service = setup[HK_ENVIRONMENT_SERVICE]
 	var def: BodyDef = registry.get_def(&"gamma_iv")
 	var desc: Dictionary = environment_service.describe_body(&"gamma_iv")
 	var theme = PlanetVisualProfileScript.resolve(def, desc)

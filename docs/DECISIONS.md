@@ -1,5 +1,30 @@
 # Graviton - Decisions
 
+## 2026-04-19 - Architektur-Cleanup bleibt helper-/controller-basiert statt neue globale Services einzuziehen
+
+Der Aufraeum-Pass fuer Topologie, Test-Setups und View-Logik wurde
+bewusst ohne Architekturbruch umgesetzt. Neue globale Wahrheit oder neue
+Autoloads wurden ausdruecklich nicht eingefuehrt.
+
+Konsequenz:
+
+- Topologie lebt jetzt in einem read-only `UniverseTopology`-Helper
+  ueber `UniverseRegistry`, nicht in einer erweiterten Registry-API und
+  nicht in einem neuen Singleton
+- wiederkehrende Named-World-Test-Setups laufen ueber den
+  test-only `SimTestHarness`; Produktivcode bekommt daraus keine neue
+  Runtime-Abhaengigkeit
+- die fruehere Testbed-Kameralogik sitzt jetzt in einem eigenen
+  `OrbitCameraController`; `orbit_testbed.gd` bleibt Composition Root
+  statt View-Gottklasse
+- HUD-Textformatierung ist bewusst in `OrbitHudFormatter` getrennt,
+  damit View-State und Player-Texte nicht weiter im Testbed vermischt
+  bleiben
+- `OrbitViewRenderer` bleibt `Node2D`-Fassade; reine Regeln fuer
+  Focus-Frame, Orbit-Geometrie und Emphasis wurden in kleine Helper
+  ausgelagert statt den Renderer durch ein Plugin oder einen grossen
+  Rewrite zu ersetzen
+
 ## 2026-04-19 - P14.5 vertieft Sterne ueber mehrskalige Surface-Hierarchie statt ueber Assets
 
 P14.5 baut auf P14.4 auf und adressiert die verbleibende Schwaeche des

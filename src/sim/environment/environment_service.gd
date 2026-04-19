@@ -27,6 +27,21 @@ const HABITABLE_MIN_T_K: float = 273.15
 const HABITABLE_MAX_T_K: float = 323.15
 const MARGINAL_MIN_T_K: float = 223.15
 const MARGINAL_MAX_T_K: float = 373.15
+const KEY_BODY_ID: StringName = &"body_id"
+const KEY_SOURCE_ID: StringName = &"source_id"
+const KEY_EQUILIBRIUM_TEMPERATURE_K: StringName = &"equilibrium_temperature_k"
+const KEY_GREENHOUSE_DELTA_K: StringName = &"greenhouse_delta_k"
+const KEY_SURFACE_TEMPERATURE_K: StringName = &"surface_temperature_k"
+const KEY_HAS_LATITUDINAL_SURFACE_BASIS: StringName = &"has_latitudinal_surface_basis"
+const KEY_SOUTH_MIDLATITUDE_SURFACE_TEMPERATURE_K: StringName = &"south_midlatitude_surface_temperature_k"
+const KEY_EQUATOR_SURFACE_TEMPERATURE_K: StringName = &"equator_surface_temperature_k"
+const KEY_NORTH_MIDLATITUDE_SURFACE_TEMPERATURE_K: StringName = &"north_midlatitude_surface_temperature_k"
+const KEY_ENVIRONMENT_CLASS: StringName = &"environment_class"
+const KEY_ECOSYSTEM_TYPE: StringName = &"ecosystem_type"
+const KEY_IS_SUPPORTED_BODY_KIND: StringName = &"is_supported_body_kind"
+const KEY_HAS_HABITABLE_BAND: StringName = &"has_habitable_band"
+const KEY_HAS_LIQUID_WATER_BAND: StringName = &"has_liquid_water_band"
+const KEY_HAS_LUMINOUS_ANCESTOR: StringName = &"has_luminous_ancestor"
 
 var _registry: Node = null
 var _atmosphere_service: Node = null
@@ -42,7 +57,7 @@ func configure(registry: Node, atmosphere_service: Node) -> void:
 
 
 func classify(id: StringName) -> int:
-	return int(describe_body(id).get("environment_class", Class.HOSTILE))
+	return int(describe_body(id).get(KEY_ENVIRONMENT_CLASS, Class.HOSTILE))
 
 
 func describe_body(id: StringName) -> Dictionary:

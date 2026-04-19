@@ -5,6 +5,10 @@ const ORBIT_SAMPLE_COUNT: int = 120
 const TRAIL_LINE_WIDTH_PX: float = 2.0
 const MIN_TRAIL_STEP_PX: float = 1.2
 
+const UniverseTopologyScript := preload("res://src/sim/topology/universe_topology.gd")
+const OrbitEmphasisRulesScript := preload("res://src/tools/rendering/orbit_emphasis_rules.gd")
+const OrbitFocusFrameScript := preload("res://src/tools/rendering/orbit_focus_frame.gd")
+const OrbitOrbitGeometryScript := preload("res://src/tools/rendering/orbit_orbit_geometry.gd")
 const BODY_VISUAL_SCRIPT := preload("res://src/tools/rendering/orbit_body_visual.gd")
 const PlanetVisualProfileScript := preload("res://src/tools/rendering/planet_visual_profile.gd")
 
@@ -14,6 +18,7 @@ const PlanetVisualProfileScript := preload("res://src/tools/rendering/planet_vis
 
 var _registry: Node = null
 var _bubble: Node = null
+var _topology = null
 var _environment_service: Node = null
 
 var _body_visuals: Dictionary = {}
@@ -27,9 +32,13 @@ var _focus_id: StringName = &""
 var _focus_closeup_ratio: float = 1.0
 
 
-func configure(registry: Node, bubble: Node) -> void:
+func configure(registry: Node, bubble: Node, topology = null) -> void:
 	_registry = registry
 	_bubble = bubble
+	_topology = topology
+	if _topology == null and _registry != null:
+		_topology = UniverseTopologyScript.new()
+		_topology.configure(_registry)
 	_rebuild_visuals()
 
 
@@ -68,7 +77,6 @@ func pick_body_at_screen(screen_pos: Vector2) -> StringName:
 	var best_id: StringName = StringName("")
 	var best_score: float = INF
 	var best_priority: int = -1
-
 	for id in _registry.get_update_order():
 		var visual: OrbitBodyVisual = _body_visuals.get(id, null)
 		var def: BodyDef = _registry.get_def(id)
@@ -103,39 +111,12 @@ func get_body_view_position_ru(id: StringName) -> Vector2:
 
 
 func get_focus_frame(focus_id: StringName) -> Dictionary:
-	if _registry == null or not _registry.has_body(focus_id):
-		return {"center": Vector2.ZERO, "radius": 120.0}
-
-	var focus_def: BodyDef = _registry.get_def(focus_id)
-	var center: Vector2 = get_body_view_position_ru(focus_id)
-	if not _is_finite_vec2(center):
-		return {"center": Vector2.ZERO, "radius": 120.0}
-	var radius: float = _minimum_focus_radius_ru(focus_def)
-	var related_ids: Array[StringName] = _related_ids_for_focus(focus_id)
-
-	for id in related_ids:
-		var def: BodyDef = _registry.get_def(id)
-		# Only the focus body and its direct children set the zoom frame.
-		# Ancestors and grandchildren are in related_ids for visual context but
-		# must not drive zoom — in world-space coordinates they are far away and
-		# would inflate the radius to system-wide scale even for moon/planet focus.
-		if id != focus_id and (def == null or def.parent_id != focus_id):
-			continue
-		var pos: Vector2 = get_body_view_position_ru(id)
-		if not _is_finite_vec2(pos):
-			continue
-		radius = maxf(radius, pos.distance_to(center) + 2.0)
-		# Orbit extent only for direct children (not the focus body's own orbit).
-		if id != focus_id and def != null and not def.is_root():
-			var parent_center: Vector2 = get_body_view_position_ru(def.parent_id)
-			if not _is_finite_vec2(parent_center):
-				continue
-			radius = maxf(radius, parent_center.distance_to(center) + _orbit_extent_ru(def))
-
-	return {
-		"center": center,
-		"radius": radius * _focus_frame_margin(focus_def),
-	}
+	return OrbitFocusFrameScript.get_focus_frame(
+		_registry,
+		_topology,
+		focus_id,
+		Callable(self, "get_body_view_position_ru")
+	)
 
 
 func clear_trails() -> void:
@@ -175,7 +156,7 @@ func _rebuild_visuals() -> void:
 			orbit_line.name = "%sOrbit" % id
 			orbit_line.default_color = _orbit_color(def.kind)
 			orbit_line.closed = false
-			orbit_line.points = _build_orbit_points(def)
+			orbit_line.points = OrbitOrbitGeometryScript.build_orbit_points(def, ORBIT_SAMPLE_COUNT)
 			orbit_line.z_index = -6
 			_orbit_layer.add_child(orbit_line)
 			_orbit_visuals[id] = {
@@ -222,6 +203,7 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 		var orbit_entry: Dictionary = _orbit_visuals.get(id, {})
 		var orbit_line: AntialiasedLine2D = orbit_entry.get("line", null)
 		var trail_line: AntialiasedLine2D = _trail_visuals.get(id, null)
+
 		if not is_finite:
 			if visual != null:
 				visual.visible = false
@@ -236,14 +218,18 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 		if visual != null:
 			visual.visible = true
 			visual.position = pos
-			var detail_factor: float = _body_detail_factor(id, def)
+			var detail_factor: float = OrbitEmphasisRulesScript.body_detail_factor(
+				id,
+				def,
+				_focus_id,
+				_topology,
+				_focus_closeup_ratio
+			)
 			visual.scale = Vector2.ONE * (detail_factor / _world_scale)
 			visual.set_detail_factor(detail_factor)
 			if _environment_service != null and (def.kind == BodyType.Kind.PLANET or def.kind == BodyType.Kind.MOON):
 				var environment_desc: Dictionary = _environment_service.describe_body(id)
-				visual.apply_planet_theme(
-					PlanetVisualProfileScript.resolve(def, environment_desc)
-				)
+				visual.apply_planet_theme(PlanetVisualProfileScript.resolve(def, environment_desc))
 
 		if not orbit_entry.is_empty():
 			var parent_id: StringName = orbit_entry.get("parent_id", &"")
@@ -262,14 +248,18 @@ func _apply_focus_emphasis() -> void:
 
 	var focus_def: BodyDef = _registry.get_def(_focus_id)
 	var show_all: bool = focus_def == null or focus_def.is_root()
-
 	for id in _body_visuals.keys():
 		var body_alpha: float = 1.0
 		var orbit_alpha: float = 1.0
 		var trail_alpha: float = 1.0
-
 		if not show_all:
-			var emphasis: Dictionary = _focus_emphasis_for(id, focus_def)
+			var emphasis: Dictionary = OrbitEmphasisRulesScript.focus_emphasis_for(
+				id,
+				focus_def,
+				_registry,
+				_topology,
+				_focus_closeup_ratio
+			)
 			body_alpha = float(emphasis.get("body", 1.0))
 			orbit_alpha = float(emphasis.get("orbit", 1.0))
 			trail_alpha = float(emphasis.get("trail", 1.0))
@@ -286,103 +276,6 @@ func _apply_focus_emphasis() -> void:
 		var trail_line: CanvasItem = _trail_visuals.get(id, null)
 		if trail_line != null:
 			trail_line.modulate = Color(1.0, 1.0, 1.0, trail_alpha)
-
-
-func _focus_emphasis_for(id: StringName, focus_def: BodyDef) -> Dictionary:
-	if focus_def == null:
-		return {"body": 1.0, "orbit": 1.0, "trail": 1.0}
-
-	if id == focus_def.id:
-		var focus_orbit_alpha: float = clampf(0.28 / maxf(_focus_closeup_ratio * 0.45, 1.0), 0.04, 0.28)
-		return {"body": 1.0, "orbit": focus_orbit_alpha, "trail": 0.92}
-
-	var def: BodyDef = _registry.get_def(id)
-	if def == null:
-		return {"body": 1.0, "orbit": 1.0, "trail": 1.0}
-
-	if def.parent_id == focus_def.id:
-		var child_trail_alpha: float = 1.0
-		if focus_def.kind == BodyType.Kind.PLANET or focus_def.kind == BodyType.Kind.MOON:
-			child_trail_alpha = clampf(0.40 / maxf(_focus_closeup_ratio * 0.40, 1.0), 0.02, 0.40)
-		return {"body": 1.0, "orbit": 1.0, "trail": child_trail_alpha}
-
-	if _is_descendant_of(id, focus_def.id):
-		return {"body": 0.90, "orbit": 0.80, "trail": 0.86}
-
-	if _is_descendant_of(focus_def.id, id):
-		return {"body": 0.42, "orbit": 0.10, "trail": 0.18}
-
-	if def.parent_id != StringName("") and def.parent_id == focus_def.parent_id:
-		return {"body": 0.52, "orbit": 0.18, "trail": 0.28}
-
-	return {"body": 0.24, "orbit": 0.06, "trail": 0.10}
-
-
-func _is_descendant_of(candidate_id: StringName, ancestor_id: StringName) -> bool:
-	if _registry == null or candidate_id == ancestor_id or ancestor_id == StringName(""):
-		return false
-
-	var def: BodyDef = _registry.get_def(candidate_id)
-	if def == null:
-		return false
-
-	var cursor: StringName = def.parent_id
-	var hop_limit: int = 64
-	while cursor != StringName("") and hop_limit > 0:
-		if cursor == ancestor_id:
-			return true
-		var cursor_def: BodyDef = _registry.get_def(cursor)
-		if cursor_def == null:
-			break
-		cursor = cursor_def.parent_id
-		hop_limit -= 1
-	return false
-
-
-func _body_detail_factor(id: StringName, def: BodyDef) -> float:
-	var closeup: float = clampf(pow(_focus_closeup_ratio, 0.90), 1.0, 12.0)
-	var weight: float = _body_closeup_weight(id, def)
-	var factor: float = 1.0 + (closeup - 1.0) * weight
-	return clampf(factor, 1.0, _max_body_detail_factor(def.kind))
-
-
-func _body_closeup_weight(id: StringName, def: BodyDef) -> float:
-	if id == _focus_id:
-		match def.kind:
-			BodyType.Kind.BLACK_HOLE:
-				return 0.42
-			BodyType.Kind.STAR:
-				return 0.72
-			BodyType.Kind.MOON:
-				return 1.08
-			_:
-				return 0.96
-
-	if def.parent_id == _focus_id:
-		match def.kind:
-			BodyType.Kind.MOON:
-				return 0.48
-			BodyType.Kind.PLANET:
-				return 0.42
-			_:
-				return 0.28
-
-	if _is_descendant_of(id, _focus_id):
-		return 0.24
-
-	return 0.0
-
-
-static func _max_body_detail_factor(kind: int) -> float:
-	match kind:
-		BodyType.Kind.BLACK_HOLE:
-			return 4.0
-		BodyType.Kind.STAR:
-			return 8.5
-		BodyType.Kind.MOON:
-			return 12.0
-		_:
-			return 10.0
 
 
 func _update_trail(id: StringName, pos: Vector2, reset_trails: bool) -> void:
@@ -428,140 +321,9 @@ func _apply_line_widths() -> void:
 			line.width = _orbit_line_width(kind) / _world_scale
 
 
-func _build_orbit_points(def: BodyDef) -> PackedVector2Array:
-	var profile: OrbitProfile = def.orbit_profile
-	if profile == null:
-		return PackedVector2Array()
-
-	var points: PackedVector2Array = PackedVector2Array()
-	for i in range(ORBIT_SAMPLE_COUNT):
-		var t: float = float(i) / float(ORBIT_SAMPLE_COUNT)
-		var point_m: Vector3 = Vector3.ZERO
-		match profile.mode:
-			OrbitMode.Kind.AUTHORED_ORBIT:
-				point_m = OrbitMath.authored_circular_position(
-					profile.authored_radius_m,
-					1.0,
-					t * TAU,
-					0.0
-				)
-			OrbitMode.Kind.KEPLER_APPROX:
-				var mean_anomaly: float = t * TAU
-				var ecc_anom: float = OrbitMath.solve_kepler(mean_anomaly, profile.eccentricity)
-				var nu: float = OrbitMath.true_anomaly_from_eccentric(ecc_anom, profile.eccentricity)
-				var plane: Vector2 = OrbitMath.position_in_orbit_plane(
-					profile.semi_major_axis_m,
-					profile.eccentricity,
-					nu
-				)
-				point_m = OrbitMath.rotate_to_3d(
-					plane,
-					profile.inclination_rad,
-					profile.longitude_ascending_node_rad,
-					profile.argument_periapsis_rad
-				)
-			_:
-				point_m = Vector3.ZERO
-		points.append(Vector2(point_m.x, point_m.y) / UnitSystem.RENDER_SCALE_M_PER_UNIT)
-
-	if points.size() >= 3:
-		return AntialiasedLine2D.construct_closed_line(points)
-	return points
-
-
-func _related_ids_for_focus(focus_id: StringName) -> Array[StringName]:
-	if _registry == null or not _registry.has_body(focus_id):
-		return []
-
-	var result_map: Dictionary = {}
-	result_map[focus_id] = true
-
-	var focus_def: BodyDef = _registry.get_def(focus_id)
-	if focus_def == null:
-		var fallback: Array[StringName] = []
-		fallback.append(focus_id)
-		return fallback
-
-	if focus_def.is_root() or focus_def.kind == BodyType.Kind.BLACK_HOLE:
-		for id in _registry.get_update_order():
-			result_map[id] = true
-		return _dict_keys_to_string_names(result_map)
-
-	if focus_def.parent_id != StringName(""):
-		result_map[focus_def.parent_id] = true
-
-	match focus_def.kind:
-		BodyType.Kind.STAR:
-			_collect_descendants(focus_id, result_map)
-		BodyType.Kind.PLANET:
-			_collect_descendants(focus_id, result_map)
-		BodyType.Kind.MOON:
-			for sibling in _registry.get_children_of(focus_def.parent_id):
-				result_map[sibling] = true
-			var parent_def: BodyDef = _registry.get_def(focus_def.parent_id)
-			if parent_def != null and parent_def.parent_id != StringName(""):
-				result_map[parent_def.parent_id] = true
-
-	return _dict_keys_to_string_names(result_map)
-
-
-func _collect_descendants(root_id: StringName, out: Dictionary) -> void:
-	for child_id in _registry.get_children_of(root_id):
-		out[child_id] = true
-		_collect_descendants(child_id, out)
-
-
 static func _clear_layer(layer: Node) -> void:
 	for child in layer.get_children():
 		child.queue_free()
-
-
-static func _dict_keys_to_string_names(source: Dictionary) -> Array[StringName]:
-	var out: Array[StringName] = []
-	for key in source.keys():
-		out.append(key)
-	return out
-
-
-static func _minimum_focus_radius_ru(focus_def: BodyDef) -> float:
-	if focus_def == null:
-		return 8.0
-	match focus_def.kind:
-		BodyType.Kind.BLACK_HOLE:
-			return 12.0
-		BodyType.Kind.STAR:
-			return 4.6
-		BodyType.Kind.MOON:
-			return 1.8
-		_:
-			return 2.8
-
-
-static func _focus_frame_margin(focus_def: BodyDef) -> float:
-	if focus_def == null:
-		return 1.18
-	match focus_def.kind:
-		BodyType.Kind.BLACK_HOLE:
-			return 1.16
-		BodyType.Kind.STAR:
-			return 1.10
-		BodyType.Kind.MOON:
-			return 1.04
-		_:
-			return 1.06
-
-
-static func _orbit_extent_ru(def: BodyDef) -> float:
-	if def == null or def.orbit_profile == null:
-		return 0.0
-	var profile: OrbitProfile = def.orbit_profile
-	match profile.mode:
-		OrbitMode.Kind.AUTHORED_ORBIT:
-			return profile.authored_radius_m / UnitSystem.RENDER_SCALE_M_PER_UNIT
-		OrbitMode.Kind.KEPLER_APPROX:
-			return profile.semi_major_axis_m * (1.0 + clampf(profile.eccentricity, 0.0, 0.999999)) / UnitSystem.RENDER_SCALE_M_PER_UNIT
-		_:
-			return 0.0
 
 
 static func _trail_point_budget(kind: int) -> int:

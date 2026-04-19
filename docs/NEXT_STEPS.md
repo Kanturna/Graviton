@@ -431,6 +431,41 @@ Offen / spaeter:
   eigener spaeterer Pass (`gamma` ist physikalisch weiter Red-Dwarf,
   visuell aber bewusst noch Teil derselben Sonnenfamilie)
 
+## Prioritaet 15 - Architektur-Cleanup: Topologie, Test-Harness und View-Split - erledigt
+
+Ziel:
+Die bestehende Architektur ohne Bruch aufraeumen: verteilte
+Topologie-Helfer zentralisieren, wiederkehrende Test-Setups
+vereinheitlichen und die Kamera-/HUD-/Renderer-Verantwortungen sauberer
+trennen.
+
+Erledigt:
+
+- neuer read-only `UniverseTopology`-Helper ueber `UniverseRegistry`
+- `LocalBubbleManager`, `OrbitViewRenderer` und `orbit_testbed.gd`
+  nutzen jetzt denselben Topologie-Pfad statt eigener Root-/Descendant-
+  Logik
+- neuer `SimTestHarness` mit festem Named-World-Build-/Teardown-Pfad
+- Migration der grossen Named-World-Suites auf den Harness
+  (`thermal`, `atmosphere`, `environment`, `planet_visual_profile`)
+- neuer `OrbitCameraController` fuer Zoom/Pan/Anker/View-State
+- neuer `OrbitHudFormatter` fuer player-facing HUD-Strings
+- `OrbitViewRenderer` in Node-/Canvas-Arbeit plus reine Helper fuer
+  Focus-Frame, Emphasis und Orbit-Geometrie getrennt
+- service-lokale `KEY_*`-Konstanten fuer `ThermalService`,
+  `AtmosphereService`, `EnvironmentService` und `BubbleActivationSet`
+  eingefuehrt; die wichtigsten Runtime-/HUD-Konsumenten haengen jetzt
+  daran
+- neue Tests fuer `UniverseTopology`, `SimTestHarness` und
+  `OrbitCameraController`
+
+Offen / spaeter:
+
+- kleiner Follow-up fuer verbleibende test-only String-Key-Zugriffe,
+  falls weitere Vereinheitlichung den Testcode lesbarer macht
+- manuelle Editor-/Playtest-Pruefung der neuen Camera-/Renderer-
+  Aufteilung als kurze visuelle Regression-Sanity
+
 ## Danach - Weitere planetare Umweltableitung
 
 Nach dem ersten Guardrail-Block ist der naechste groessere Simulations-
@@ -466,8 +501,9 @@ Zielbild fuer diesen Strang:
   wichtig werden
 - moegliche spaetere strengere Overspeed-Policies oder weitere
   High-Speed-Regeln im `OrbitService`
-- spaeter Topologie-Helfer sinnvoll zentralisieren, wenn die
-  Activation-/Mehrwurzel-Pfade stabil sind
+- Topologie-Helfer sind jetzt zentralisiert; spaetere Folgearbeit liegt
+  eher in weiteren Derived-/Planeten-Systemen als in erneutem
+  Architektur-Grundaufriss
 
 ## Spaeter - Prozedurale Systeme
 
