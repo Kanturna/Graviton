@@ -60,12 +60,11 @@ class TopologyStub:
 static func run(ctx) -> void:
 	ctx.current_suite = "test_orbit_camera_controller"
 	_test_force_fit_centers_focus_and_resets_pan(ctx)
-	_test_wide_zoom_blends_anchor_toward_root(ctx)
+	_test_wide_zoom_keeps_focus_centered(ctx)
 	_test_zoom_multiplier_clamps_to_bounds(ctx)
 	_test_detail_zoom_keeps_focus_centered(ctx)
 	_test_focus_change_resets_zoom_to_fit(ctx)
 	_test_explicit_root_focus_uses_root_scope(ctx)
-	_test_wide_zoom_falls_back_to_focus_when_root_is_non_finite(ctx)
 	_test_wide_fit_transition_is_visually_continuous(ctx)
 	_test_manual_pan_bypasses_smoothing(ctx)
 
@@ -125,14 +124,13 @@ static func _test_force_fit_centers_focus_and_resets_pan(ctx) -> void:
 	_teardown_controller_setup(setup)
 
 
-static func _test_wide_zoom_blends_anchor_toward_root(ctx) -> void:
+static func _test_wide_zoom_keeps_focus_centered(ctx) -> void:
 	var setup := _make_controller()
 	var controller = setup["controller"]
 	var renderer: RendererStub = setup["renderer"]
 	controller.set_focus(&"planet", false, true)
 	controller.handle_zoom_multiplier(0.005)
 	controller.step(0.0, Vector2(400.0, 200.0))
-	var root_screen: Vector2 = renderer.positions[&"root"] * renderer.scale.x + renderer.position
 	var planet_screen: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
 	ctx.assert_almost(controller.get_zoom_factor(), 0.005, 1.0e-9, "Wide-Zoom clamp't auf MIN_ZOOM_FACTOR")
 	ctx.assert_true(
@@ -140,31 +138,20 @@ static func _test_wide_zoom_blends_anchor_toward_root(ctx) -> void:
 		"Zoomwerte unter FIT_PLATEAU_LOW setzen zoom_mode auf wide"
 	)
 	ctx.assert_true(
-		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_ROOT_ANCHOR,
-		"Wide-Mode mit Nested Focus meldet root-anchor"
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_FOCUS_ANCHOR,
+		"Wide-Mode zieht den Anker nicht mehr zum Root; Fokus bleibt Referenz"
 	)
-	ctx.assert_almost(root_screen.x, 200.0, 1.0e-6, "Extremes wide zieht den Ankerpunkt auf den Root (x)")
-	ctx.assert_almost(root_screen.y, 100.0, 1.0e-6, "Extremes wide zieht den Ankerpunkt auf den Root (y)")
-	ctx.assert_true(
-		not planet_screen.is_equal_approx(Vector2(200.0, 100.0)),
-		"Nested Fokus wird in wide nicht kuenstlich im Zentrum gehalten"
-	)
-
-	controller.set_focus(&"planet", false, true)
-	controller.handle_zoom_multiplier(0.95)
-	controller.step(0.0, Vector2(400.0, 200.0))
-	planet_screen = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
 	ctx.assert_almost(
 		planet_screen.x,
 		200.0,
 		1.0e-6,
-		"Im fit-Plateau bleibt der Fokus im Zentrum (kein Wide-Blend) (x)"
+		"Extremes wide haelt den Fokus im Viewport-Zentrum (x)"
 	)
 	ctx.assert_almost(
 		planet_screen.y,
 		100.0,
 		1.0e-6,
-		"Im fit-Plateau bleibt der Fokus im Zentrum (kein Wide-Blend) (y)"
+		"Extremes wide haelt den Fokus im Viewport-Zentrum (y)"
 	)
 	_teardown_controller_setup(setup)
 
@@ -236,24 +223,6 @@ static func _test_explicit_root_focus_uses_root_scope(ctx) -> void:
 	ctx.assert_almost(renderer.scale.x, 0.76, 1.0e-6, "Root-Fokus nutzt den Root-Scope als expliziten Overview")
 	ctx.assert_almost(renderer.position.x, 200.0, 1.0e-6, "Root-Fokus zentriert den Root-Anker im Viewport (x)")
 	ctx.assert_almost(renderer.position.y, 100.0, 1.0e-6, "Root-Fokus zentriert den Root-Anker im Viewport (y)")
-	_teardown_controller_setup(setup)
-
-
-static func _test_wide_zoom_falls_back_to_focus_when_root_is_non_finite(ctx) -> void:
-	var setup := _make_controller()
-	var controller = setup["controller"]
-	var renderer: RendererStub = setup["renderer"]
-	renderer.positions[&"root"] = Vector2(INF, INF)
-	controller.set_focus(&"planet", false, true)
-	controller.handle_zoom_multiplier(0.005)
-	controller.step(0.0, Vector2(400.0, 200.0))
-	var planet_screen: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
-	ctx.assert_almost(planet_screen.x, 200.0, 1.0e-6, "Nicht-finites root_center faellt auf Fokusanker zurueck (x)")
-	ctx.assert_almost(planet_screen.y, 100.0, 1.0e-6, "Nicht-finites root_center faellt auf Fokusanker zurueck (y)")
-	ctx.assert_true(
-		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_FOCUS_ANCHOR,
-		"Ohne valid root meldet der Controller focus-anchor"
-	)
 	_teardown_controller_setup(setup)
 
 

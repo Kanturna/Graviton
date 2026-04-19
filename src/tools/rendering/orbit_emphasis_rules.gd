@@ -90,6 +90,9 @@ static func _body_closeup_weight(id: StringName, def: BodyDef, focus_id: StringN
 	if topology != null and topology.is_descendant_of(id, focus_id):
 		return 0.24
 
+	if topology != null and topology.is_descendant_of(focus_id, id):
+		return 0.55
+
 	return 0.0
 
 
