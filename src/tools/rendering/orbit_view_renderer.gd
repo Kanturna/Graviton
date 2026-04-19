@@ -225,8 +225,16 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 				_topology,
 				_focus_closeup_ratio
 			)
-			visual.scale = Vector2.ONE * (detail_factor / _world_scale)
+			var star_phase: float = OrbitEmphasisRulesScript.star_closeup_phase(
+				id,
+				def,
+				_focus_id,
+				_focus_closeup_ratio
+			)
+			var star_scale: float = OrbitEmphasisRulesScript.star_focus_scale(star_phase)
+			visual.scale = Vector2.ONE * ((detail_factor / _world_scale) * star_scale)
 			visual.set_detail_factor(detail_factor)
+			visual.set_star_closeup_phase(star_phase)
 			if _environment_service != null and (def.kind == BodyType.Kind.PLANET or def.kind == BodyType.Kind.MOON):
 				var environment_desc: Dictionary = _environment_service.describe_body(id)
 				visual.apply_planet_theme(PlanetVisualProfileScript.resolve(def, environment_desc))

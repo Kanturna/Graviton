@@ -440,6 +440,44 @@ Offen / spaeter:
   eigener spaeterer Pass (`gamma` ist physikalisch weiter Red-Dwarf,
   visuell aber bewusst noch Teil derselben Sonnenfamilie)
 
+## Prioritaet 14.6 - View Phase G: Sterne mit eigenem Closeup-Mode, Detailmap und solarer Randaktivitaet auf NASA-Naehe ziehen - erledigt
+
+Ziel:
+Die P14.5-Prozeduralbasis blieb fuer wirklich NASA-nahe Fokussterne noch
+zu nah an "kleiner Pattern-Disc". P14.6 fuehrt deshalb bewusst einen
+sternspezifischen Closeup-Mode ein, der nur fuer den fokussierten Stern
+zusaetzliche Surface- und Randlesbarkeit freischaltet.
+
+Erledigt:
+
+- neuer P14.6-Closeup-Helfer in `OrbitEmphasisRules`:
+  `star_closeup_phase = clamp(log(focus_closeup_ratio) / log(6.0), 0.0, 1.0)`
+- der fokussierte Stern bekommt jetzt kontrolliert mehr Footprint
+  (`1.0 -> 1.5`) statt nur weiter denselben generischen `df_t`-Pfad
+  vergroessert zu sehen
+- `OrbitBodyVisual` hat jetzt einen eigenen Stern-Closeup-State und
+  bindet im `STAR`-Pfad zusaetzlich eine `star_detailmap.png`
+- neues Ableitungsskript erzeugt diese Detailmap reproduzierbar aus
+  `sun.png`; eine Asset-Notiz dokumentiert Herkunft und Regeneration
+- `body_star.gdshader` ist jetzt hybrid: P14.5-Prozeduralbasis plus
+  Detailmap fuer additive Faculae und dunklere Sunspot-/Channel-
+  Komplexe, weiterhin nur ueber `col`, nie ueber `alpha`
+- `_draw_star_glow()` bleibt die Basis des P14.5-Halos, bekommt im
+  Stern-Closeup aber zusaetzlich begrenzte echte Randaktivitaet
+  (Spicules + kleine prominence-artige Boegen) mit maximal `+6 px`
+  Zusatzradius
+- neuer Rendering-Test pinnt die P14.6-Closeup-Phase und die
+  konservative Fokusstern-Skalierung
+
+Offen / spaeter:
+
+- weitergehende Spektralklassen-/Star-Typisierung bleibt weiterhin ein
+  spaeterer separater Pass
+- falls die neue Detailmap optisch zu stark oder zu direkt liest, ist
+  das erste Nachjustieren ueber `detailmap_strength`,
+  `prominence_strength`, `sunspot_strength` und die Fokusstern-Skalierung
+  vorgesehen, nicht ueber einen neuen Kamera-Umbau
+
 ## Prioritaet 15 - Architektur-Cleanup: Topologie, Test-Harness und View-Split - erledigt
 
 Ziel:

@@ -50,6 +50,22 @@ static func body_detail_factor(
 	return clampf(factor, 1.0, _max_body_detail_factor(def.kind))
 
 
+static func star_closeup_phase(
+	id: StringName,
+	def: BodyDef,
+	focus_id: StringName,
+	focus_closeup_ratio: float
+) -> float:
+	if def == null or def.kind != BodyType.Kind.STAR or id != focus_id:
+		return 0.0
+	var safe_ratio: float = maxf(focus_closeup_ratio, 1.0)
+	return clampf(log(safe_ratio) / log(6.0), 0.0, 1.0)
+
+
+static func star_focus_scale(star_closeup_phase_value: float) -> float:
+	return lerpf(1.0, 1.5, clampf(star_closeup_phase_value, 0.0, 1.0))
+
+
 static func _body_closeup_weight(id: StringName, def: BodyDef, focus_id: StringName, topology) -> float:
 	if id == focus_id:
 		match def.kind:

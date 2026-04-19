@@ -1,5 +1,33 @@
 # Graviton - Decisions
 
+## 2026-04-19 - P14.6 gibt Sterne bewusst einen eigenen Fokus-Closeup-Mode
+
+P14.6 baut auf P14.5 auf, loest dessen verbleibende Schwaeche aber
+nicht durch weiteres generisches `df_t`-Tuning. Stattdessen bekommt der
+fokussierte Stern bewusst einen eigenen Closeup-Mode mit kontrolliert
+groesserem Footprint, hybrider Detailmap-Unterstuetzung und begrenzter
+echter Randaktivitaet. Nicht-fokussierte Sterne bleiben bewusst auf
+P14.5-Niveau.
+
+Konsequenz:
+
+- der aktuelle scope-relative Zoom bleibt die feste Basis; P14.6 nutzt
+  `focus_closeup_ratio` nur noch sternspezifisch ueber eine eigene
+  `star_closeup_phase`
+- P14.6 lockert die fruehere Restriktion "kein Footprint-Wachstum" nur
+  fuer den fokussierten Stern und nur konservativ (`1.0 -> 1.5`)
+- der Sternshader wird bewusst hybrid:
+  prozedurale P14.5-Basis plus abgeleitete `star_detailmap.png` als
+  Strukturquelle fuer Faculae und Sunspot-/Channel-Komplexe
+- die neue Detailquelle wird ueber ein Repo-Skript reproduzierbar aus
+  `sun.png` abgeleitet; P14.6 fuehrt also kein stilles einmaliges
+  Lookdev-Binary ohne Herkunft ein
+- auch P14.6 haelt die P14.3-Rundheits-Invariante aufrecht: neue
+  Detailmap- und Closeup-Layer modulieren nur `col`, nie `alpha`
+- echte aussen sichtbare Randaktivitaet ist jetzt bewusst erlaubt, aber
+  nur fuer den fokussierten Stern und nur in einem kleinen zusaetzlichen
+  Radius
+
 ## 2026-04-19 - Kamera-Zoom ist ab P16 scope-relativ statt weltanker-hybrid
 
 P16 beendet bewusst die P14.1-/P14.2-Semantik aus Weltanker und

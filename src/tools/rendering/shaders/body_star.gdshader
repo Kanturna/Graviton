@@ -1,6 +1,8 @@
 shader_type canvas_item;
 
 uniform float df_t = 0.0;
+uniform sampler2D star_detail_tex;
+uniform float star_closeup_phase = 0.0;
 uniform vec3 star_core_color = vec3(1.0, 0.95, 0.80);
 uniform vec3 star_mid_color = vec3(1.0, 0.62, 0.18);
 uniform vec3 star_channel_color = vec3(0.62, 0.18, 0.08);
@@ -18,6 +20,10 @@ uniform float meso_breakup_scale = 2.40;
 uniform float granulation_contrast = 1.12;
 uniform float channel_contrast = 1.18;
 uniform float hotspot_contrast = 1.10;
+uniform float detailmap_strength = 0.42;
+uniform float detailmap_scale = 1.15;
+uniform float prominence_strength = 0.28;
+uniform float sunspot_strength = 0.24;
 
 
 float _hash21(vec2 p) {
@@ -163,6 +169,23 @@ void fragment() {
 		* max(0.0, 1.0 - t * 0.42) * 0.42;
 	float channel_mix = clamp(lane_tint + filament_mix * channel_contrast, 0.0, 0.88);
 	col = mix(col, mix(col, star_channel_color, 0.78), channel_mix);
+
+	// P14.6 hybrid closeup layer: a derived detailmap adds structured
+	// faculae and darker sunspot/channel complexes only for the focused
+	// star closeup path. Alpha stays untouched.
+	float detail_phase = smoothstep(0.10, 1.0, star_closeup_phase);
+	vec2 detail_drift = vec2(TIME * 0.007, -TIME * 0.005) * detail_phase;
+	vec2 detail_uv = n_xy * (0.5 / max(detailmap_scale, 0.001)) + vec2(0.5) + detail_drift;
+	float detail_sample = texture(star_detail_tex, detail_uv).r;
+	float detail_signal = (detail_sample - 0.5) * 2.0;
+	float detail_mask = detail_phase * smoothstep(1.02, 0.82, t);
+	float detail_faculae_add = max(0.0, detail_signal) * detailmap_strength * detail_mask;
+	float detail_sunspots = max(0.0, -detail_signal) * sunspot_strength * detail_mask;
+	col += mix(star_mid_color, star_core_color, 0.82) * detail_faculae_add;
+	col = mix(col, mix(col, star_channel_color * 0.82, 0.86), clamp(detail_sunspots, 0.0, 0.68));
+	float prominence_hint = max(0.0, detail_signal) * prominence_strength * detail_phase
+		* smoothstep(0.62, 0.96, t_w) * (1.0 - smoothstep(0.98, 1.05, t_w));
+	col += vec3(1.0, 0.84, 0.38) * prominence_hint * 0.34;
 
 	// Build the hotter inner rim in-shader first; the CPU halo only stays
 	// as a subtle atmosphere around it.

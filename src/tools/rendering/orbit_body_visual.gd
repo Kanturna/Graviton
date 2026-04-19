@@ -3,6 +3,7 @@ extends Node2D
 
 const _SHADER_SPHERE := preload("res://src/tools/rendering/shaders/body_sphere.gdshader")
 const _SHADER_STAR := preload("res://src/tools/rendering/shaders/body_star.gdshader")
+const _STAR_DETAIL_TEXTURE_PATH := "res://src/tools/rendering/assets/star_detailmap.png"
 const PlanetVisualThemeScript := preload("res://src/tools/rendering/planet_visual_theme.gd")
 
 # Star halo: 5 concentric discs, outermost first in draw order so inner rings
@@ -22,6 +23,7 @@ const _STAR_HALO_BREATH_AMPLITUDE: float = 0.10
 var _kind: int = BodyType.Kind.PLANET
 var _is_focused: bool = false
 var _detail_factor: float = 1.0
+var _star_closeup_phase: float = 0.0
 
 var _sphere: Sprite2D = null
 var _overlay: Node2D = null
@@ -55,6 +57,18 @@ func set_detail_factor(value: float) -> void:
 	var df_t: float = clampf((_detail_factor - 1.0) / 2.5, 0.0, 1.0)
 	if _sphere != null and _sphere.material != null:
 		(_sphere.material as ShaderMaterial).set_shader_parameter("df_t", df_t)
+	queue_redraw()
+	if _overlay != null:
+		_overlay.queue_redraw()
+
+
+func set_star_closeup_phase(value: float) -> void:
+	var clamped: float = clampf(value, 0.0, 1.0)
+	if is_equal_approx(clamped, _star_closeup_phase):
+		return
+	_star_closeup_phase = clamped
+	if _sphere != null and _sphere.material != null and _kind == BodyType.Kind.STAR:
+		(_sphere.material as ShaderMaterial).set_shader_parameter("star_closeup_phase", _star_closeup_phase)
 	queue_redraw()
 	if _overlay != null:
 		_overlay.queue_redraw()
@@ -163,6 +177,53 @@ func _draw_star_glow() -> void:
 	for i in range(_STAR_HALO_INNER_RINGS.size() - 1, -1, -1):
 		var ring: Array = _STAR_HALO_INNER_RINGS[i]
 		draw_circle(Vector2.ZERO, ring[0], ring[1])
+	if _star_closeup_phase <= 0.35:
+		return
+
+	var time_s: float = Time.get_ticks_msec() * 0.001
+	var spike_phase: float = smoothstep(0.35, 1.0, _star_closeup_phase)
+	var spike_base_radius: float = _STAR_HALO_OUTER_RADIUS - 0.8
+	var spike_lengths: Array[float] = [1.8, 2.6, 1.4, 3.0, 2.1, 1.7, 2.8, 1.5, 2.2, 1.9, 2.7, 1.6]
+	var spike_angles: Array[float] = [-2.92, -2.35, -1.82, -1.28, -0.71, -0.18, 0.42, 0.97, 1.54, 2.08, 2.63, 3.03]
+	for i in range(spike_angles.size()):
+		var angle: float = float(spike_angles[i]) + sin(time_s * 0.11 + float(i) * 0.73) * 0.04
+		var length: float = float(spike_lengths[i]) * spike_phase
+		var start: Vector2 = Vector2(cos(angle), sin(angle)) * spike_base_radius
+		var finish: Vector2 = Vector2(cos(angle), sin(angle)) * (spike_base_radius + length)
+		draw_line(start, finish, Color(1.0, 0.86, 0.34, 0.18 * spike_phase), 0.9, true)
+
+	var prominence_radius: float = _STAR_HALO_OUTER_RADIUS + 0.6
+	var prominence_boost: float = 0.28 * spike_phase
+	draw_arc(
+		Vector2.ZERO,
+		prominence_radius + 1.2 * spike_phase,
+		-2.74 + sin(time_s * 0.09) * 0.03,
+		-2.22 + sin(time_s * 0.12) * 0.03,
+		16,
+		Color(1.0, 0.74, 0.28, prominence_boost),
+		1.0,
+		true
+	)
+	draw_arc(
+		Vector2.ZERO,
+		prominence_radius + 1.8 * spike_phase,
+		-0.18 + sin(time_s * 0.08 + 0.8) * 0.02,
+		0.29 + sin(time_s * 0.10 + 0.4) * 0.02,
+		18,
+		Color(1.0, 0.70, 0.24, prominence_boost * 0.92),
+		1.0,
+		true
+	)
+	draw_arc(
+		Vector2.ZERO,
+		prominence_radius + 1.4 * spike_phase,
+		1.88 + sin(time_s * 0.07 + 1.3) * 0.02,
+		2.27 + sin(time_s * 0.09 + 0.6) * 0.02,
+		15,
+		Color(1.0, 0.72, 0.26, prominence_boost * 0.84),
+		0.9,
+		true
+	)
 
 
 func _draw_planet_overlay() -> void:
@@ -330,10 +391,24 @@ static func _sphere_local_scale(kind: int) -> Vector2:
 			return Vector2(14.0, 14.0)
 
 
+static func _load_star_detail_texture() -> Texture2D:
+	var png_bytes: PackedByteArray = FileAccess.get_file_as_bytes(_STAR_DETAIL_TEXTURE_PATH)
+	if png_bytes.is_empty():
+		return null
+	var image := Image.new()
+	if image.load_png_from_buffer(png_bytes) != OK:
+		return null
+	return ImageTexture.create_from_image(image)
+
+
 static func _make_sphere_material(kind: int) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	if kind == BodyType.Kind.STAR:
 		mat.shader = _SHADER_STAR
+		var star_detail_texture: Texture2D = _load_star_detail_texture()
+		if star_detail_texture != null:
+			mat.set_shader_parameter("star_detail_tex", star_detail_texture)
+		mat.set_shader_parameter("star_closeup_phase", 0.0)
 		mat.set_shader_parameter("star_core_color", Color(1.0, 0.95, 0.80))
 		mat.set_shader_parameter("star_mid_color", Color(1.0, 0.62, 0.18))
 		mat.set_shader_parameter("star_channel_color", Color(0.62, 0.18, 0.08))
@@ -351,6 +426,10 @@ static func _make_sphere_material(kind: int) -> ShaderMaterial:
 		mat.set_shader_parameter("granulation_contrast", 1.12)
 		mat.set_shader_parameter("channel_contrast", 1.18)
 		mat.set_shader_parameter("hotspot_contrast", 1.10)
+		mat.set_shader_parameter("detailmap_strength", 0.42)
+		mat.set_shader_parameter("detailmap_scale", 1.15)
+		mat.set_shader_parameter("prominence_strength", 0.28)
+		mat.set_shader_parameter("sunspot_strength", 0.24)
 	else:
 		mat.shader = _SHADER_SPHERE
 		var is_moon: bool = kind == BodyType.Kind.MOON

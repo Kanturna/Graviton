@@ -181,6 +181,20 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `meso_breakup_strength`, `granulation_contrast`,
   `channel_contrast`, `hotspot_contrast`), die ausschliesslich im
   `STAR`-Pfad von `OrbitBodyVisual` gesetzt werden.
+- P14.6 fuehrt jetzt zusaetzlich einen sternspezifischen Closeup-Mode
+  ein: nur der aktuell fokussierte Stern bekommt ueber
+  `star_closeup_phase` kontrolliert mehr Footprint, mehr aktive
+  Oberflaechencluster und begrenzte solare Randaktivitaet; nicht-
+  fokussierte Sterne bleiben optisch auf P14.5-Niveau.
+- Der Sternshader ist damit bewusst hybrid geworden: die P14.5-
+  Prozeduralbasis bleibt erhalten, wird aber im Fokusstern ueber eine
+  abgeleitete `star_detailmap.png` um eine zusaetzliche Strukturquelle
+  fuer helle Faculae und dunklere Sunspot-/Channel-Komplexe erweitert -
+  weiterhin ohne direkte Foto-Skin und ohne Alpha-Silhouetten-Aenderung.
+- Die neue Detailmap kommt reproduzierbar ueber ein kleines
+  Ableitungsskript aus der Referenzdatei `sun.png` in den Repo-Workflow;
+  P14.6 fuehrt dafuer ein eigenes Rendering-Asset und eine kurze
+  Asset-Notiz ein, statt die Detailquelle nur lokal implizit zu halten.
 
 ## Ziel dieser Praesentationsschicht
 
@@ -233,10 +247,15 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `scenes/testbeds/orbit_testbed.gd`
 - `scenes/testbeds/orbit_testbed.tscn`
 - `src/tools/rendering/orbit_body_visual.gd`
+- `src/tools/rendering/orbit_emphasis_rules.gd`
 - `src/tools/rendering/planet_visual_theme.gd`
 - `src/tools/rendering/planet_visual_profile.gd`
 - `src/tools/rendering/shaders/body_sphere.gdshader`
 - `src/tools/rendering/shaders/body_star.gdshader`
+- `src/tools/rendering/assets/README.md`
+- `src/tools/rendering/assets/star_detailmap.png`
+- `src/tools/rendering/scripts/derive_star_detailmap.py`
+- `src/tests/rendering/test_orbit_emphasis_rules.gd`
 - `src/tests/rendering/test_planet_visual_profile.gd`
 - `src/tests/rendering/test_orbit_zoom_model.gd`
 - `src/tools/rendering/space_backdrop.gd`
