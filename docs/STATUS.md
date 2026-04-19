@@ -94,29 +94,31 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Hohe Speedstufen erzeugen keinen Tick-Sturm pro Frame mehr;
   `time_scale` skaliert das simulierte `dt` pro Physics-Frame.
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
-- Die Kamera nutzt jetzt ein bewusstes Hybrid-Zoommodell:
-  `0.5% .. 100%` interpoliert jetzt nicht nur den Scale von
-  Welt-Ueberblick zu `fit current focus`, sondern auch den Kameraanker
-  vom aktuellen Root zum Fokus; oberhalb von `100%` wird Zoom wieder als
-  lokaler Closeup relativ zum aktuellen Fokus interpretiert.
-- `100%` bedeutet im Testbed wieder explizit `fit current focus`;
-  `Backspace` springt auf genau diesen Fokus-Fit zurueck.
-- Der Zoombereich bleibt bei `0.5%` bis `10000%`; der gute globale
-  Rauszoom bleibt erhalten, aber fokussierte Sterne, Planeten und Monde
-  koennen wieder deutlich naeher herangezoomt werden als unter P14.1.
+- Die Kamera nutzt jetzt ein bewusst scope-relatives Zoommodell:
+  Der geklickte Fokus-Body bleibt immer der Kameraanker; der sichtbare
+  `fit`-Rahmen wird ueber einen expliziten lokalen Scope des Fokus
+  bestimmt statt ueber einen Root-/Weltanker-Blend.
+- `100%` bedeutet im Testbed jetzt explizit `fit current focus scope`;
+  `Backspace` springt auf genau diesen Scope-Fit zurueck.
+- Der Zoombereich bleibt bei `0.5%` bis `10000%`; unter `100%` wird nur
+  innerhalb des aktuellen Fokus-Scopes weiter herausgezoomt (`wide`),
+  oberhalb von `100%` bleibt Zoom ein lokaler Detail-Zoom (`detail`)
+  relativ zu demselben Fokus.
 - Das HUD macht die Zoom-Semantik jetzt explizit sichtbar:
-  `Zoom ... world`, `Zoom 100% fit` und `Zoom ... focus`.
-- Unter `Zoom ... world` bleibt der gewaehlte Body damit raeumlich im
-  selben Root/System verortet, statt die ganze Welt im Fernblick still
-  fokuszentriert ins Bildschirmzentrum zu ziehen.
-- Root-Fokus und globaler Ueberblick werden dynamisch ueber den
-  Root-Body bestimmt statt implizit ueber `obsidian`.
+  `Zoom ... wide`, `Zoom 100% fit` und `Zoom ... detail`.
+- Explizite Root-/BH-Overview gibt es jetzt nur noch ueber Root-Fokus
+  bzw. `Home`; Rauszoomen auf einem Stern-, Planeten- oder Mondfokus
+  zieht die Kamera nicht mehr strukturell Richtung Root.
+- Fokuswechsel resetten bewusst auf den neuen Scope-Fit und loeschen
+  manuelles Pan, damit unterschiedlich grosse Systeme nicht denselben
+  Detailzoom mitschleppen.
 - Das Testbed unterstuetzt Camera-Panning, klickbaren Fokus und
   staerkere Zeitskalen.
 - Die Kameralogik lebt jetzt nicht mehr direkt im Testbed-Script,
   sondern in einem eigenen `OrbitCameraController`; HUD-Strings sind in
   `OrbitHudFormatter` gebuendelt, und `OrbitViewRenderer` nutzt jetzt
-  reine Helper fuer Focus-Frame-, Orbit-Geometrie- und Emphasis-Regeln.
+  reine Helper fuer Camera-Scope-, Orbit-Geometrie- und
+  Emphasis-Regeln.
 - Die service-lokalen `KEY_*`-Konstanten fuer Thermal-/Atmosphaeren-/
   Environment-Dictionaries werden jetzt auch producer-seitig intern
   durchgezogen statt nur in den wichtigsten Runtime-Konsumenten.
@@ -223,10 +225,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tools/rendering/orbit_zoom_model.gd`
 - `src/tools/rendering/orbit_camera_controller.gd`
 - `src/tools/rendering/orbit_hud_formatter.gd`
-- `src/tools/rendering/orbit_focus_frame.gd`
+- `src/tools/rendering/orbit_camera_scope.gd`
 - `src/tools/rendering/orbit_emphasis_rules.gd`
 - `src/tools/rendering/orbit_orbit_geometry.gd`
 - `src/tests/rendering/test_orbit_camera_controller.gd`
+- `src/tests/rendering/test_orbit_camera_scope.gd`
 - `scenes/testbeds/orbit_testbed.gd`
 - `scenes/testbeds/orbit_testbed.tscn`
 - `src/tools/rendering/orbit_body_visual.gd`
@@ -276,10 +279,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   texturfrei; `DESERT` wurde in diesem ersten Slice ausdruecklich nicht
   eingefuehrt, weil dafuer noch keine staerkere Sim-Basis fuer Ariditaet
   oder Wasserverteilung existiert.
-- Der Zoom nutzt weiter einen beim Load gecachten Root-Overview-Radius
-  als Weltanker fuer den guten Fernblick, gibt oberhalb von `100%` aber
-  den global vergleichbaren Welt-Massstab bewusst zugunsten eines
-  brauchbaren lokalen Fokus-Closeups wieder auf.
+- Der Zoom ist jetzt bewusst per Fokus-Scope statt globalem Weltanker
+  definiert; gleiche Zoomzahlen sind damit nicht mehr
+  fokusuebergreifend als gleicher Welt-Massstab interpretierbar.
+- Expliziter globaler Ueberblick ist jetzt nur noch ein Root-/BH-Fokus
+  bzw. `Home`, nicht mehr ein impliziter Nebeneffekt des Rauszoomens.
 - Renderer-Nahdetail bleibt weiterhin getrennt fokus-relativ, damit die
   P14-Archetypen bei gleicher lokaler Naehe dieselben Detail-Schwellen
   behalten.

@@ -6,8 +6,8 @@ const TRAIL_LINE_WIDTH_PX: float = 2.0
 const MIN_TRAIL_STEP_PX: float = 1.2
 
 const UniverseTopologyScript := preload("res://src/sim/topology/universe_topology.gd")
+const OrbitCameraScopeScript := preload("res://src/tools/rendering/orbit_camera_scope.gd")
 const OrbitEmphasisRulesScript := preload("res://src/tools/rendering/orbit_emphasis_rules.gd")
-const OrbitFocusFrameScript := preload("res://src/tools/rendering/orbit_focus_frame.gd")
 const OrbitOrbitGeometryScript := preload("res://src/tools/rendering/orbit_orbit_geometry.gd")
 const BODY_VISUAL_SCRIPT := preload("res://src/tools/rendering/orbit_body_visual.gd")
 const PlanetVisualProfileScript := preload("res://src/tools/rendering/planet_visual_profile.gd")
@@ -110,8 +110,8 @@ func get_body_view_position_ru(id: StringName) -> Vector2:
 	return Vector2(view_m.x, view_m.y) / UnitSystem.RENDER_SCALE_M_PER_UNIT
 
 
-func get_focus_frame(focus_id: StringName) -> Dictionary:
-	return OrbitFocusFrameScript.get_focus_frame(
+func get_scope_frame(focus_id: StringName) -> Dictionary:
+	return OrbitCameraScopeScript.get_scope_frame(
 		_registry,
 		_topology,
 		focus_id,

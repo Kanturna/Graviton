@@ -1,5 +1,30 @@
 # Graviton - Decisions
 
+## 2026-04-19 - Kamera-Zoom ist ab P16 scope-relativ statt weltanker-hybrid
+
+P16 beendet bewusst die P14.1-/P14.2-Semantik aus Weltanker und
+`world -> fit -> focus`-Hybridzoom. Die Kamera wird wieder direkt an
+dem Mental Model ausgerichtet: angeklickter Body = Kameraanker;
+sichtbarer Kontext = expliziter lokaler Scope dieses Fokus. Der fruehere
+Root-/Weltanker-Blend war kein Interpolationsdetail, sondern eine
+strukturelle Fehlsemantik fuer fokus-relative Bubble-Koordinaten.
+
+Konsequenz:
+
+- `100%` bedeutet ab jetzt `fit current focus scope`
+- `< 100%` ist `wide` innerhalb desselben Fokus-Scopes,
+  `> 100%` ist `detail` innerhalb desselben Fokus-Scopes
+- `Home` bzw. expliziter Root-/BH-Fokus ist der einzige globale
+  Overview-Pfad; Rauszoomen auf Stern-/Planeten-/Mondfokus darf nicht
+  mehr implizit Richtung Root ziehen
+- die P14.1-Invariante "gleiche Zoomzahl = gleicher Welt-Massstab"
+  wird endgueltig aufgegeben; Zoom-Prozente sind ab jetzt per Scope,
+  nicht fokusuebergreifend global zu lesen
+- `OrbitCameraScope` bestimmt den lokalen Sichtkontext per Body-Kind;
+  `OrbitCameraController` benutzt keinen separaten Weltanker mehr
+- das HUD benennt die neue Semantik ehrlich als
+  `wide / fit / detail`
+
 ## 2026-04-19 - Architektur-Cleanup bleibt helper-/controller-basiert statt neue globale Services einzuziehen
 
 Der Aufraeum-Pass fuer Topologie, Test-Setups und View-Logik wurde
@@ -21,7 +46,7 @@ Konsequenz:
   damit View-State und Player-Texte nicht weiter im Testbed vermischt
   bleiben
 - `OrbitViewRenderer` bleibt `Node2D`-Fassade; reine Regeln fuer
-  Focus-Frame, Orbit-Geometrie und Emphasis wurden in kleine Helper
+  Camera-Scope, Orbit-Geometrie und Emphasis wurden in kleine Helper
   ausgelagert statt den Renderer durch ein Plugin oder einen grossen
   Rewrite zu ersetzen
 

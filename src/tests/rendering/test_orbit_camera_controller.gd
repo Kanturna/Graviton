@@ -37,7 +37,7 @@ class RendererStub:
 	func get_body_view_position_ru(body_id: StringName) -> Vector2:
 		return positions.get(body_id, Vector2(INF, INF))
 
-	func get_focus_frame(body_id: StringName) -> Dictionary:
+	func get_scope_frame(body_id: StringName) -> Dictionary:
 		return frames.get(body_id, {"center": Vector2.ZERO, "radius": 1.0})
 
 	func set_world_scale(value: float) -> void:
@@ -59,9 +59,11 @@ class TopologyStub:
 static func run(ctx) -> void:
 	ctx.current_suite = "test_orbit_camera_controller"
 	_test_force_fit_centers_on_focus_and_resets_pan(ctx)
-	_test_world_zoom_anchors_to_root(ctx)
+	_test_wide_zoom_keeps_focus_centered(ctx)
 	_test_zoom_multiplier_clamps_to_bounds(ctx)
 	_test_closeup_zoom_updates_focus_ratio(ctx)
+	_test_focus_change_resets_to_new_scope_fit(ctx)
+	_test_explicit_root_focus_uses_root_scope(ctx)
 
 
 static func _make_controller() -> Dictionary:
@@ -109,22 +111,23 @@ static func _test_force_fit_centers_on_focus_and_resets_pan(ctx) -> void:
 	ctx.assert_true(renderer.focused_id == &"planet", "set_focus schreibt den Renderer-Fokus")
 	ctx.assert_true(renderer.cleared_trails == 1, "Fokuswechsel leert Trails")
 	ctx.assert_almost(controller.get_zoom_factor(), 1.0, 1.0e-9, "force_fit setzt Zoom auf FIT")
-	ctx.assert_almost(renderer.scale.x, 3.04, 1.0e-6, "FIT-Skala basiert auf Focus-Frame-Radius")
+	ctx.assert_almost(renderer.scale.x, 3.04, 1.0e-6, "FIT-Skala basiert auf dem Scope-Radius")
 	ctx.assert_almost(renderer.position.x, -104.0, 1.0e-6, "FIT zentriert den Fokus im Viewport (x)")
 	ctx.assert_almost(renderer.position.y, -52.0, 1.0e-6, "FIT zentriert den Fokus im Viewport (y)")
 	_teardown_controller_setup(setup)
 
 
-static func _test_world_zoom_anchors_to_root(ctx) -> void:
+static func _test_wide_zoom_keeps_focus_centered(ctx) -> void:
 	var setup := _make_controller()
 	var controller = setup["controller"]
 	var renderer: RendererStub = setup["renderer"]
 	controller.set_focus(&"planet", false, true)
 	controller.handle_zoom_multiplier(0.005)
 	controller.step(0.0, Vector2(400.0, 200.0))
-	ctx.assert_almost(controller.get_zoom_factor(), 0.005, 1.0e-9, "Weltzoom clamp't auf MIN_ZOOM_FACTOR")
-	ctx.assert_almost(renderer.position.x, 200.0, 1.0e-6, "Weltzoom verankert die Kamera am Root statt am Fokus (x)")
-	ctx.assert_almost(renderer.position.y, 100.0, 1.0e-6, "Weltzoom verankert die Kamera am Root statt am Fokus (y)")
+	var screen_pos: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
+	ctx.assert_almost(controller.get_zoom_factor(), 0.005, 1.0e-9, "Wide-Zoom clamp't auf MIN_ZOOM_FACTOR")
+	ctx.assert_almost(screen_pos.x, 200.0, 1.0e-6, "Wide-Zoom haelt den Fokuskoerper im Viewportzentrum (x)")
+	ctx.assert_almost(screen_pos.y, 100.0, 1.0e-6, "Wide-Zoom haelt den Fokuskoerper im Viewportzentrum (y)")
 	_teardown_controller_setup(setup)
 
 
@@ -147,4 +150,29 @@ static func _test_closeup_zoom_updates_focus_ratio(ctx) -> void:
 	controller.step(0.0, Vector2(400.0, 200.0))
 	ctx.assert_true(controller.get_current_view_scale() > 3.04, "Closeup-Zoom vergroessert die aktuelle View-Skala ueber FIT")
 	ctx.assert_true(renderer.last_focus_closeup_ratio > 1.0, "Renderer erhaelt fuer Closeups ein Ratio > 1.0")
+	_teardown_controller_setup(setup)
+
+
+static func _test_focus_change_resets_to_new_scope_fit(ctx) -> void:
+	var setup := _make_controller()
+	var controller = setup["controller"]
+	var renderer: RendererStub = setup["renderer"]
+	controller.set_focus(&"planet", false, true)
+	controller.handle_zoom_multiplier(2.0)
+	controller.set_focus(&"root")
+	controller.step(0.0, Vector2(400.0, 200.0))
+	ctx.assert_almost(controller.get_zoom_factor(), 1.0, 1.0e-9, "Fokuswechsel resetet auf FIT-Zoom")
+	ctx.assert_almost(renderer.scale.x, 0.76, 1.0e-6, "neuer Fokus nutzt dessen eigenen Scope-Fit")
+	_teardown_controller_setup(setup)
+
+
+static func _test_explicit_root_focus_uses_root_scope(ctx) -> void:
+	var setup := _make_controller()
+	var controller = setup["controller"]
+	var renderer: RendererStub = setup["renderer"]
+	controller.set_focus(&"root", false, true)
+	controller.step(0.0, Vector2(400.0, 200.0))
+	ctx.assert_almost(renderer.scale.x, 0.76, 1.0e-6, "Root-Fokus nutzt den Root-Scope als expliziten Overview")
+	ctx.assert_almost(renderer.position.x, 200.0, 1.0e-6, "Root-Fokus zentriert den Root-Anker im Viewport (x)")
+	ctx.assert_almost(renderer.position.y, 100.0, 1.0e-6, "Root-Fokus zentriert den Root-Anker im Viewport (y)")
 	_teardown_controller_setup(setup)

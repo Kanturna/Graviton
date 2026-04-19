@@ -292,6 +292,10 @@ Den globalen Weltblick an einen stabilen, beim Load gecachten
 Weltanker binden, ohne die bestehende Fokus-Topologie oder die
 P14-Nahdetail-Schwellen zu brechen.
 
+Historischer Zwischenstand:
+Die P14.1-Weltanker-Invariante wurde spaeter in P16 bewusst wieder
+aufgegeben. Der Eintrag bleibt nur als Verlaufsschritt stehen.
+
 Erledigt:
 
 - beim Load gecachter Root-Overview-Radius als Weltanker
@@ -308,6 +312,11 @@ Ziel:
 Den guten globalen Rauszoom aus P14.1 behalten, aber fokussierte
 Sterne, Planeten und Monde wieder mit einem brauchbaren lokalen
 Nahzoom erreichbar machen.
+
+Historischer Zwischenstand:
+Das P14.2-Hybridmodell wurde spaeter in P16 bewusst durch
+scope-relatives Zoom ersetzt. Der Eintrag bleibt nur als
+Zwischenetappe dokumentiert.
 
 Erledigt:
 
@@ -453,7 +462,7 @@ Erledigt:
 - neuer `OrbitTimeScaleController` fuer HUD-Slider, Preset-Schritte und
   logaritmisches Time-Scale-Mapping
 - `OrbitViewRenderer` in Node-/Canvas-Arbeit plus reine Helper fuer
-  Focus-Frame, Emphasis und Orbit-Geometrie getrennt
+  Camera-Scope, Emphasis und Orbit-Geometrie getrennt
 - service-lokale `KEY_*`-Konstanten fuer `ThermalService`,
   `AtmosphereService`, `EnvironmentService` und `BubbleActivationSet`
   eingefuehrt; Produzenten und die wichtigsten Runtime-/HUD-Konsumenten
@@ -469,6 +478,44 @@ Offen / spaeter:
 - optionaler weiterer Trim-Pass fuer `orbit_testbed.gd`, falls die
   verbleibende Input-/Hint-Verdrahtung noch aus dem Scene-Script
   herausgezogen werden soll
+
+## Prioritaet 16 - View Phase E: Scope-relatives Zoom statt Root-Anker-Hybrid - erledigt
+
+Ziel:
+Die Kamera-Semantik wieder an das Spieler-Mental-Model angleichen:
+Klick auf einen Body = dieser Body bleibt der Kameraanker; Zoom arbeitet
+relativ zu einem expliziten lokalen Scope statt ueber einen impliziten
+Root-/Weltanker-Blend.
+
+Erledigt:
+
+- neuer reiner `OrbitCameraScope`-Helper bestimmt den sichtbaren Scope
+  fuer `BLACK_HOLE`/Root, `STAR`, `PLANET` und `MOON`
+- `OrbitZoomModel` ist jetzt rein scope-relativ; `target_view_scale`
+  ist exakt `scope_fit_scale * zoom_factor`
+- `target_view_anchor(...)` und `focus_anchor_blend(...)` entfallen
+  komplett
+- Fokus bleibt jetzt immer der Kameraanker; beim Rauszoomen auf
+  Sternen, Planeten und Monden gibt es keinen strukturellen Zug mehr
+  Richtung Root/BH
+- Fokuswechsel resetten bewusst auf `fit` (`zoom_factor = 1.0`) und
+  loeschen manuelles Pan
+- Root-/BH-Overview ist jetzt nur noch explizit ueber Root-Fokus bzw.
+  `Home` erreichbar
+- HUD-Zoomlabels wurden von `world / fit / focus` auf
+  `wide / fit / detail` umgestellt
+- neue Tests fuer `OrbitCameraScope`; Zoom- und Controller-Tests auf
+  die neue Scope-Semantik umgestellt
+- die fruehere P14.1-Invariante "gleiche Zoomzahl = gleicher
+  Welt-Massstab" wurde bewusst endgueltig aufgegeben
+
+Offen / spaeter:
+
+- kurze manuelle Editor-Pruefung der neuen Scope-Zoom-Haptik in
+  `starter_world` und `sample_system`
+- spaeter optional feineres Scope-Tuning pro Body-Kind, falls Sterne,
+  Planeten oder Monde im Playtest noch zu eng oder zu weit geframet
+  wirken
 
 ## Danach - Weitere planetare Umweltableitung
 
@@ -497,6 +544,9 @@ Zielbild fuer diesen Strang:
   Klima-Archetypen allein noch nicht genug Charakter tragen
 - spaeter optional Theme-Caching im Renderer, falls die Body-Zahl
   deutlich waechst
+- spaeter optional kleine reine Feel-Tuning-Paesse fuer
+  Scope-Radius-/Margin-Werte, falls der neue Kamera-Slice im Playtest
+  noch Body-Kind-spezifisch Feinschliff braucht
 
 ## Offene Folgeaufgabe - NUMERIC_LOCAL Tuning / staerkere Policies
 
