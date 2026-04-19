@@ -1,78 +1,87 @@
 extends Control
 
-const STAR_COUNT: int = 180
-const DUST_COUNT: int = 5
+const _BACKDROP_SHADER := preload("res://src/tools/rendering/shaders/space_backdrop.gdshader")
 
-var _stars: Array = []
-var _dust_clouds: Array = []
+var _seed: int = 424242
+var _star_density: float = 1.0
+var _band_strength: float = 1.0
+var _nebula_strength: float = 1.0
+var _composition_viewport_size: Vector2 = Vector2.ZERO
+
+@export var seed: int:
+	get:
+		return _seed
+	set(value):
+		_seed = value
+		_sync_shader_params()
+@export_range(0.25, 2.50, 0.01) var star_density: float:
+	get:
+		return _star_density
+	set(value):
+		_star_density = value
+		_sync_shader_params()
+@export_range(0.0, 2.0, 0.01) var band_strength: float:
+	get:
+		return _band_strength
+	set(value):
+		_band_strength = value
+		_sync_shader_params()
+@export_range(0.0, 2.0, 0.01) var nebula_strength: float:
+	get:
+		return _nebula_strength
+	set(value):
+		_nebula_strength = value
+		_sync_shader_params()
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ensure_material()
 	if not resized.is_connected(_on_resized):
 		resized.connect(_on_resized)
-	_regenerate()
+	_capture_composition_viewport_size_if_needed()
+	_sync_shader_params()
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.014, 0.020, 0.055, 1.0), true)
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.012, 0.028, 0.080, 0.28), true)
-
-	for cloud in _dust_clouds:
-		draw_circle(cloud["position"], cloud["radius"], cloud["color"])
-
-	for star in _stars:
-		draw_circle(star["position"], star["radius"], star["color"])
+	if size.x <= 0.0 or size.y <= 0.0:
+		return
+	draw_rect(Rect2(Vector2.ZERO, size), Color.WHITE, true)
 
 
 func _on_resized() -> void:
-	_regenerate()
+	_capture_composition_viewport_size_if_needed()
+	_sync_shader_params()
 
 
-func _regenerate() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 424242
+func _ensure_material() -> ShaderMaterial:
+	var mat := material as ShaderMaterial
+	if mat != null and mat.shader == _BACKDROP_SHADER:
+		return mat
 
-	_stars.clear()
-	_dust_clouds.clear()
+	mat = ShaderMaterial.new()
+	mat.shader = _BACKDROP_SHADER
+	material = mat
+	return mat
 
-	var safe_size: Vector2 = size
-	if safe_size.x <= 0.0 or safe_size.y <= 0.0:
+
+func _sync_shader_params() -> void:
+	var mat := _ensure_material()
+	var composition_size := _composition_viewport_size if _composition_viewport_size != Vector2.ZERO else size
+	mat.set_shader_parameter("viewport_size", composition_size)
+	mat.set_shader_parameter("seed", float(_seed))
+	mat.set_shader_parameter("star_density", _star_density)
+	mat.set_shader_parameter("band_strength", _band_strength)
+	mat.set_shader_parameter("nebula_strength", _nebula_strength)
+	if is_inside_tree():
+		queue_redraw()
+
+
+func _capture_composition_viewport_size_if_needed() -> void:
+	if _composition_viewport_size != Vector2.ZERO:
 		return
-
-	for _i in range(DUST_COUNT):
-		var radius: float = rng.randf_range(140.0, 320.0)
-		var color := Color(
-			rng.randf_range(0.08, 0.18),
-			rng.randf_range(0.14, 0.24),
-			rng.randf_range(0.28, 0.42),
-			rng.randf_range(0.06, 0.12)
-		)
-		_dust_clouds.append({
-			"position": Vector2(
-				rng.randf_range(0.0, safe_size.x),
-				rng.randf_range(0.0, safe_size.y)
-			),
-			"radius": radius,
-			"color": color,
-		})
-
-	for _i in range(STAR_COUNT):
-		var brightness: float = rng.randf()
-		var radius: float = 0.6 if brightness < 0.72 else rng.randf_range(0.9, 1.8)
-		var alpha: float = rng.randf_range(0.30, 0.90)
-		_stars.append({
-			"position": Vector2(
-				rng.randf_range(0.0, safe_size.x),
-				rng.randf_range(0.0, safe_size.y)
-			),
-			"radius": radius,
-			"color": Color(
-				rng.randf_range(0.78, 1.0),
-				rng.randf_range(0.82, 1.0),
-				1.0,
-				alpha
-			),
-		})
-
-	queue_redraw()
+	if size.x <= 0.0 or size.y <= 0.0:
+		return
+	# Freeze the large-scale dust composition once so later editor/view
+	# resizes do not remap the whole backdrop.
+	_composition_viewport_size = size

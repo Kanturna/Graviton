@@ -1,5 +1,30 @@
 # Graviton - Decisions
 
+## 2026-04-19 - Der neue galaktische Backdrop bleibt bewusst screen-fixed und dekorativ
+
+Die neuen Referenzbilder legen einen reicheren, lebendigeren
+Weltraumhintergrund nahe. Fuer den aktuellen Pass wird dieser Look aber
+bewusst **nicht** an Fokus, Root oder die Position des schwarzen Lochs
+gekoppelt. Der Hintergrund bleibt ein rein dekorativer Screen-Space-
+Layer im bestehenden `CanvasLayer`.
+
+Konsequenz:
+
+- `space_backdrop.gd` wird als duenne Host-Schicht fuer einen
+  shadergetriebenen Hybrid-Look genutzt
+- die grossskalige Backdrop-Komposition wird bewusst an die erste
+  gueltige Viewport-Groesse gebunden; spaetere Editor-/Window-Resizes
+  duerfen die Dust-/Nebelfelder nicht neu remappen
+- der Look darf ein breites galaktisches Staubband, dunklere Dust-Lanes,
+  farbige Nebel-Akzente und ein dichteres Sternfeld tragen
+- es gibt in diesem Slice bewusst **keinen** BH-zentrierten Wirbel und
+  keinen impliziten Spezialfall fuer `obsidian`
+- Zoom, Pan und Fokuswechsel veraendern die Hintergrundkomposition
+  nicht; der Backdrop wandert nicht mit der Bubble oder dem Root mit
+- falls spaeter ein root-aware oder BH-zentrierter Spezialeffekt
+  gewuenscht ist, gehoert dieser in einen eigenen separaten View-Pass
+  statt als stiller Ausbau des dekorativen Backdrops
+
 ## 2026-04-19 - Die Sonne wird im Hybridpfad jetzt explizit color-led statt weiter nur detailmap-getrieben
 
 Der bisherige Stern-Hybrid nutzte `sun.png` nur indirekt ueber die

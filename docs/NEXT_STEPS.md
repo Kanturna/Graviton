@@ -628,6 +628,15 @@ Zielbild fuer diesen Strang:
 
 - spaeter `DESERT` erst dann einfuehren, wenn die Sim eine bessere
   Ariditaets-/Wassergrundlage liefert
+- den neuen galaktischen Screen-Backdrop im Editor gezielt
+  gegenpruefen: bleiben HUD, Orbit-Linien, Trails und Body-Silhouetten
+  in `starter_world` und `sample_system` auch bei Zoom/Pan/Fokuswechseln
+  sauber lesbar, ohne dass helle Nebelzonen die Szene ueberladen
+- dabei auch bestaetigen, dass der Backdrop wirklich rein screen-fixed
+  liest und nicht wie ein versehentlich mitwandernder View-/Root-Layer
+- und dabei speziell pruefen, ob nach dem Freeze der initialen
+  Kompositions-Viewport-Groesse keine sichtbaren Helligkeitsspruenge der
+  grossen Dust-/Nebel-Felder mehr auftreten
 - die neuen Archetypen-Referenzen im Editor gezielt gegenpruefen:
   lesen `temperate_reference.png`, `frozen_reference.png` und
   `hot_scorched_reference.png` im Nahzoom wirklich als "Bild fuehrt,
@@ -658,6 +667,9 @@ Zielbild fuer diesen Strang:
 - danach entscheiden, ob auch `BARREN` einen eigenen planetaren
   Hybridpfad bekommen soll oder bewusst als letzter klar
   shader-first-Archetyp stehenbleibt
+- falls spaeter ein BH-zentrierter oder root-aware Spezialhintergrund
+  gewuenscht ist, ihn als separaten View-Pass planen statt den neuen
+  dekorativen Screen-Backdrop still semantisch aufzuladen
 - spaeter Moon-spezifische Verfeinerungen, wenn die gemeinsamen
   Klima-Archetypen allein noch nicht genug Charakter tragen
 - spaeter optional noch feineres Texture-/Theme-Caching im Renderer,

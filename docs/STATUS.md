@@ -76,6 +76,18 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 - Das fruehere minimalistische 3D-Testbed wurde durch eine stilisierte
   2D-Orbit-Ansicht ersetzt.
+- Der bildschirmfeste Testbed-Hintergrund liest jetzt nicht mehr nur als
+  ein paar Sternpunkte, sondern als shadergetriebener galaktischer
+  Hybrid-Look: tiefer Navy-/Charcoal-Basisraum, breites diagonales
+  Staub-/Milchstrassenband, dunklere Dust-Lanes, sparsame farbige
+  Nebel-Akzente und ein dichteres mehrstufiges Sternfeld.
+- Dieser neue Backdrop bleibt bewusst rein dekorativ im
+  `CanvasLayer`: kein Fokus-/Root-Follow, kein BH-zentrierter Wirbel,
+  keine neue Simulationswahrheit.
+- Die grossskalige Staub-/Nebel-Komposition wird dabei bewusst nur aus
+  der ersten gueltigen Viewport-Groesse abgeleitet; spaetere
+  Resize-Ereignisse sollen die helleren Dust-Bereiche nicht mehr
+  sichtbar umverteilen.
 - Bodies werden jetzt als 2D-Visuals mit Glow, Orbit-Linien und Trails
   dargestellt.
 - Es gibt ein HUD fuer Fokus, Sim-Zeit, Zeitskala und Status.
@@ -370,7 +382,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tests/rendering/test_orbit_emphasis_rules.gd`
 - `src/tests/rendering/test_planet_visual_profile.gd`
 - `src/tests/rendering/test_orbit_zoom_model.gd`
+- `src/tests/rendering/test_space_backdrop.gd`
 - `src/tools/rendering/space_backdrop.gd`
+- `src/tools/rendering/shaders/space_backdrop.gdshader`
 - `src/tools/debug/debug_overlay.gd`
 
 ## Bekannte offene Punkte
@@ -440,6 +454,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Runtime-/View-Architektur ist jetzt deutlich besser getrennt,
   aber `orbit_testbed.gd` bleibt trotz Controller-/HUD-Split noch
   ein relativ dichter Composition-Root fuer Input und Zeitskala.
+- Der neue galaktische Backdrop ist bewusst screen-fixed und
+  dekorativ; ein spaeterer root-aware oder BH-zentrierter Spezialeffekt
+  waere ein eigener View-Pass und kein stilles Follow-up dieses
+  Hintergrunds.
 - Die neuen `KEY_*`-Konstanten stabilisieren jetzt die wichtigsten
   Service-/HUD-Schnittstellen; ein spaeterer Test-only-Aufraeumpass
   koennte verbleibende rohe String-Key-Zugriffe in aelteren Suites
