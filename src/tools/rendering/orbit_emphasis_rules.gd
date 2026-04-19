@@ -67,33 +67,30 @@ static func star_focus_scale(star_closeup_phase_value: float) -> float:
 
 
 static func _body_closeup_weight(id: StringName, def: BodyDef, focus_id: StringName, topology) -> float:
+	if def == null:
+		return 0.0
+	if not _shares_root_with_focus(id, focus_id, topology):
+		return 0.0
+	match def.kind:
+		BodyType.Kind.BLACK_HOLE:
+			return 0.42
+		BodyType.Kind.STAR:
+			return 0.72
+		BodyType.Kind.MOON:
+			return 1.08
+		_:
+			return 0.96
+
+
+static func _shares_root_with_focus(id: StringName, focus_id: StringName, topology) -> bool:
 	if id == focus_id:
-		match def.kind:
-			BodyType.Kind.BLACK_HOLE:
-				return 0.42
-			BodyType.Kind.STAR:
-				return 0.72
-			BodyType.Kind.MOON:
-				return 1.08
-			_:
-				return 0.96
-
-	if def.parent_id == focus_id:
-		match def.kind:
-			BodyType.Kind.MOON:
-				return 0.48
-			BodyType.Kind.PLANET:
-				return 0.42
-			_:
-				return 0.28
-
-	if topology != null and topology.is_descendant_of(id, focus_id):
-		return 0.24
-
-	if topology != null and topology.is_descendant_of(focus_id, id):
-		return 0.55
-
-	return 0.0
+		return true
+	if topology == null:
+		return false
+	var focus_root: StringName = topology.root_id_of(focus_id)
+	if focus_root == StringName(""):
+		return false
+	return topology.root_id_of(id) == focus_root
 
 
 static func _max_body_detail_factor(kind: int) -> float:
