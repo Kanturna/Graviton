@@ -16,8 +16,8 @@ var _topology = null
 
 var _absolute_zoom_factor: float = OrbitZoomModelScript.FIT_ZOOM_FACTOR
 var _target_view_scale: float = 1.0
-var _target_anchor_center: Vector2 = Vector2.ZERO
 var _current_view_scale: float = 1.0
+var _target_world_offset: Vector2 = Vector2.ZERO
 var _current_world_offset: Vector2 = Vector2.ZERO
 var _manual_pan_ru: Vector2 = Vector2.ZERO
 var _current_scope_radius_ru: float = 1.0
@@ -101,19 +101,19 @@ func _refresh_target_view(viewport_size: Vector2) -> void:
 				var blend: float = OrbitZoomModelScript.wide_anchor_blend(_absolute_zoom_factor)
 				anchor_center = focus_center.lerp(root_center, blend)
 
-	_target_anchor_center = anchor_center
 	var scope_fit_scale: float = _current_scope_fit_scale(viewport_size)
 	_target_view_scale = OrbitZoomModelScript.target_view_scale(scope_fit_scale, _absolute_zoom_factor)
+	_target_world_offset = viewport_size * 0.5 - (anchor_center + _manual_pan_ru) * _target_view_scale
 
 
 func _apply_view_transform(immediate: bool, delta: float, viewport_size: Vector2) -> void:
 	if immediate:
 		_current_view_scale = _target_view_scale
+		_current_world_offset = _target_world_offset
 	else:
 		var weight: float = 1.0 - exp(-VIEW_SMOOTHNESS * delta)
 		_current_view_scale = lerpf(_current_view_scale, _target_view_scale, weight)
-
-	_current_world_offset = viewport_size * 0.5 - (_target_anchor_center + _manual_pan_ru) * _current_view_scale
+		_current_world_offset = _current_world_offset.lerp(_target_world_offset, weight)
 
 	_renderer.scale = Vector2.ONE * _current_view_scale
 	_renderer.position = _current_world_offset

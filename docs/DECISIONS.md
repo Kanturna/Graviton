@@ -1,25 +1,5 @@
 # Graviton - Decisions
 
-## 2026-04-19 - P16.2 entfernt bewusst nur das zeitliche Offset-Smoothing der Kamera
-
-Nach P16.1 blieb bei hoher `time_scale` ein sichtbarer Root-/BH-
-Schweif zurueck. Die verbleibende Ursache wurde bewusst in zwei Teile
-getrennt: die strukturelle Teilkopplung durch den partiellen
-`wide_anchor_blend(...)` einerseits und der zeitliche Kamera-Lag durch
-Offset-Smoothing andererseits. P16.2 behebt bewusst nur den zweiten
-Teil:
-
-- der Bubble-Frame bleibt fokus-relativ; `LocalBubbleManager` wird
-  ausdruecklich nicht angefasst
-- `wide_anchor_blend(...)` bleibt in P16.2 unveraendert; moderates
-  `wide` darf also weiter strukturellen Restdrift aus partiellem Blend
-  zeigen
-- nur die View-Scale bleibt weich geglaettet; der Kameraanker bzw.
-  `world_offset` wird jetzt pro Frame instant aus aktuellem
-  `anchor_center`, `manual_pan` und aktueller Scale berechnet
-- Fokuswechsel lesen dadurch als "Anker sofort korrekt, Zoom weich",
-  statt als Offset-Glide auf einem bewegten Ziel
-
 ## 2026-04-19 - P16.1 bringt den Root-/BH-Anker fuer verschachtelte `wide`-Views weich zurueck
 
 Der erste P16-Slice hat Kamera und Scope-Scale voll fokuszentriert
