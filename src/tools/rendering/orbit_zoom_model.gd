@@ -13,6 +13,18 @@ static func target_view_scale(scope_fit_scale: float, zoom_factor: float) -> flo
 	return safe_scope_fit_scale * clamped_zoom_factor
 
 
+static func wide_anchor_blend(zoom_factor: float) -> float:
+	var clamped: float = clampf(zoom_factor, MIN_ZOOM_FACTOR, FIT_ZOOM_FACTOR)
+	if clamped >= FIT_ZOOM_FACTOR:
+		return 0.0
+	var log_span: float = log(FIT_ZOOM_FACTOR) - log(MIN_ZOOM_FACTOR)
+	return clampf(
+		1.0 - (log(clamped) - log(MIN_ZOOM_FACTOR)) / maxf(log_span, 0.0001),
+		0.0,
+		1.0
+	)
+
+
 static func zoom_mode_label(zoom_factor: float) -> String:
 	if zoom_factor < FIT_ZOOM_FACTOR:
 		return "wide"

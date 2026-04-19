@@ -12,6 +12,7 @@ const PAN_SPEED_PX_PER_S: float = 960.0
 
 var _renderer = null
 var _bubble = null
+var _topology = null
 
 var _absolute_zoom_factor: float = OrbitZoomModelScript.FIT_ZOOM_FACTOR
 var _target_view_scale: float = 1.0
@@ -26,6 +27,7 @@ var _last_viewport_size: Vector2 = Vector2.ZERO
 func configure(renderer, bubble, registry: Node, topology) -> void:
 	_renderer = renderer
 	_bubble = bubble
+	_topology = topology
 
 
 func set_focus(body_id: StringName, immediate := false, force_fit := false) -> void:
@@ -90,10 +92,18 @@ func _refresh_target_view(viewport_size: Vector2) -> void:
 	var focus_center: Vector2 = _renderer.get_body_view_position_ru(focus_id)
 	if not _is_finite_vec2(focus_center):
 		focus_center = Vector2.ZERO
+	var anchor_center: Vector2 = focus_center
+	if _absolute_zoom_factor < OrbitZoomModelScript.FIT_ZOOM_FACTOR and _topology != null:
+		var root_id: StringName = _topology.root_id_of(focus_id)
+		if root_id != StringName("") and root_id != focus_id:
+			var root_center: Vector2 = _renderer.get_body_view_position_ru(root_id)
+			if _is_finite_vec2(root_center):
+				var blend: float = OrbitZoomModelScript.wide_anchor_blend(_absolute_zoom_factor)
+				anchor_center = focus_center.lerp(root_center, blend)
 
 	var scope_fit_scale: float = _current_scope_fit_scale(viewport_size)
 	_target_view_scale = OrbitZoomModelScript.target_view_scale(scope_fit_scale, _absolute_zoom_factor)
-	_target_world_offset = viewport_size * 0.5 - (focus_center + _manual_pan_ru) * _target_view_scale
+	_target_world_offset = viewport_size * 0.5 - (anchor_center + _manual_pan_ru) * _target_view_scale
 
 
 func _apply_view_transform(immediate: bool, delta: float, viewport_size: Vector2) -> void:

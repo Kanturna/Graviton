@@ -559,11 +559,11 @@ Erledigt:
   fuer `BLACK_HOLE`/Root, `STAR`, `PLANET` und `MOON`
 - `OrbitZoomModel` ist jetzt rein scope-relativ; `target_view_scale`
   ist exakt `scope_fit_scale * zoom_factor`
-- `target_view_anchor(...)` und `focus_anchor_blend(...)` entfallen
-  komplett
-- Fokus bleibt jetzt immer der Kameraanker; beim Rauszoomen auf
-  Sternen, Planeten und Monden gibt es keinen strukturellen Zug mehr
-  Richtung Root/BH
+- die P16.1-Korrektur fuehrt fuer verschachtelte `wide`-Views wieder
+  einen weichen Focus->Root-Anchor-Blend ein, ohne die scope-relative
+  Scale-Semantik selbst anzutasten
+- `fit/detail` bleiben strikt fokuszentriert; nur `wide` darf den
+  Kameraanker progressiv Richtung Root/BH ziehen
 - Fokuswechsel resetten bewusst auf `fit` (`zoom_factor = 1.0`) und
   loeschen manuelles Pan
 - Root-/BH-Overview ist jetzt nur noch explizit ueber Root-Fokus bzw.

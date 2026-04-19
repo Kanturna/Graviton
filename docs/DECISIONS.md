@@ -1,5 +1,21 @@
 # Graviton - Decisions
 
+## 2026-04-19 - P16.1 bringt den Root-/BH-Anker fuer verschachtelte `wide`-Views weich zurueck
+
+Der erste P16-Slice hat Kamera und Scope-Scale voll fokuszentriert
+gezogen. Das war fuer lokale Scopes konsistent, fuehrte in grossen
+BH-Systemen aber dazu, dass der Fernblick um den aktuellen Subfokus zu
+kreisen schien, weil Bubble und Kamera beide strikt fokusgebunden
+waren. P16.1 korrigiert das bewusst nur im Kameraanker:
+
+- `fit` und `detail` bleiben strikt fokuszentriert
+- nur `wide` auf verschachtelten Stern-/Planeten-/Mondfoki blendet den
+  Kameraanker wieder weich vom Fokus zum Root-/BH-Mittelpunkt
+- der Bubble-Frame bleibt fokus-relativ; der Fix lebt ausdruecklich
+  nicht in `LocalBubbleManager`
+- die P16-Scope-Scale-Semantik bleibt unangetastet; nur der
+  Blickanker wird wieder weich stabilisiert
+
 ## 2026-04-19 - P14.6b macht die Stern-Detailmap statisch, zentriert und dominant im Closeup
 
 P14.6 hat bewusst einen Hybridpfad aus prozeduralem Sternshader und

@@ -59,11 +59,12 @@ class TopologyStub:
 static func run(ctx) -> void:
 	ctx.current_suite = "test_orbit_camera_controller"
 	_test_force_fit_centers_on_focus_and_resets_pan(ctx)
-	_test_wide_zoom_keeps_focus_centered(ctx)
+	_test_wide_zoom_blends_toward_root_for_nested_focus(ctx)
 	_test_zoom_multiplier_clamps_to_bounds(ctx)
 	_test_closeup_zoom_updates_focus_ratio(ctx)
 	_test_focus_change_resets_to_new_scope_fit(ctx)
 	_test_explicit_root_focus_uses_root_scope(ctx)
+	_test_wide_zoom_falls_back_to_focus_when_root_is_non_finite(ctx)
 
 
 static func _make_controller() -> Dictionary:
@@ -117,17 +118,32 @@ static func _test_force_fit_centers_on_focus_and_resets_pan(ctx) -> void:
 	_teardown_controller_setup(setup)
 
 
-static func _test_wide_zoom_keeps_focus_centered(ctx) -> void:
+static func _test_wide_zoom_blends_toward_root_for_nested_focus(ctx) -> void:
 	var setup := _make_controller()
 	var controller = setup["controller"]
 	var renderer: RendererStub = setup["renderer"]
 	controller.set_focus(&"planet", false, true)
 	controller.handle_zoom_multiplier(0.005)
 	controller.step(0.0, Vector2(400.0, 200.0))
-	var screen_pos: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
+	var root_screen_pos: Vector2 = renderer.positions[&"root"] * renderer.scale.x + renderer.position
+	var planet_screen_pos: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
 	ctx.assert_almost(controller.get_zoom_factor(), 0.005, 1.0e-9, "Wide-Zoom clamp't auf MIN_ZOOM_FACTOR")
-	ctx.assert_almost(screen_pos.x, 200.0, 1.0e-6, "Wide-Zoom haelt den Fokuskoerper im Viewportzentrum (x)")
-	ctx.assert_almost(screen_pos.y, 100.0, 1.0e-6, "Wide-Zoom haelt den Fokuskoerper im Viewportzentrum (y)")
+	ctx.assert_almost(root_screen_pos.x, 200.0, 1.0e-6, "Extremes wide zentriert den Root-Anker wieder (x)")
+	ctx.assert_almost(root_screen_pos.y, 100.0, 1.0e-6, "Extremes wide zentriert den Root-Anker wieder (y)")
+	ctx.assert_true(
+		not is_equal_approx(planet_screen_pos.x, 200.0) or not is_equal_approx(planet_screen_pos.y, 100.0),
+		"Extremes wide haelt den nested Fokus nicht mehr kuenstlich im Zentrum"
+	)
+
+	controller.set_focus(&"planet", false, true)
+	controller.handle_zoom_multiplier(0.95)
+	controller.step(0.0, Vector2(400.0, 200.0))
+	planet_screen_pos = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
+	root_screen_pos = renderer.positions[&"root"] * renderer.scale.x + renderer.position
+	ctx.assert_true(
+		root_screen_pos.x < 200.0 and planet_screen_pos.x > 200.0,
+		"Leichtes wide zieht den Blickanker nur teilweise Richtung Root, ohne den Fokus hart zu versetzen"
+	)
 	_teardown_controller_setup(setup)
 
 
@@ -148,8 +164,11 @@ static func _test_closeup_zoom_updates_focus_ratio(ctx) -> void:
 	controller.set_focus(&"planet", false, true)
 	controller.handle_zoom_multiplier(2.0)
 	controller.step(0.0, Vector2(400.0, 200.0))
+	var planet_screen_pos: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
 	ctx.assert_true(controller.get_current_view_scale() > 3.04, "Closeup-Zoom vergroessert die aktuelle View-Skala ueber FIT")
 	ctx.assert_true(renderer.last_focus_closeup_ratio > 1.0, "Renderer erhaelt fuer Closeups ein Ratio > 1.0")
+	ctx.assert_almost(planet_screen_pos.x, 200.0, 1.0e-6, "Detail-Zoom behaelt den Fokuskoerper im Zentrum (x)")
+	ctx.assert_almost(planet_screen_pos.y, 100.0, 1.0e-6, "Detail-Zoom behaelt den Fokuskoerper im Zentrum (y)")
 	_teardown_controller_setup(setup)
 
 
@@ -175,4 +194,18 @@ static func _test_explicit_root_focus_uses_root_scope(ctx) -> void:
 	ctx.assert_almost(renderer.scale.x, 0.76, 1.0e-6, "Root-Fokus nutzt den Root-Scope als expliziten Overview")
 	ctx.assert_almost(renderer.position.x, 200.0, 1.0e-6, "Root-Fokus zentriert den Root-Anker im Viewport (x)")
 	ctx.assert_almost(renderer.position.y, 100.0, 1.0e-6, "Root-Fokus zentriert den Root-Anker im Viewport (y)")
+	_teardown_controller_setup(setup)
+
+
+static func _test_wide_zoom_falls_back_to_focus_when_root_is_non_finite(ctx) -> void:
+	var setup := _make_controller()
+	var controller = setup["controller"]
+	var renderer: RendererStub = setup["renderer"]
+	renderer.positions[&"root"] = Vector2(INF, INF)
+	controller.set_focus(&"planet", false, true)
+	controller.handle_zoom_multiplier(0.005)
+	controller.step(0.0, Vector2(400.0, 200.0))
+	var planet_screen_pos: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
+	ctx.assert_almost(planet_screen_pos.x, 200.0, 1.0e-6, "Nicht-finites root_center faellt auf Fokusanker zurueck (x)")
+	ctx.assert_almost(planet_screen_pos.y, 100.0, 1.0e-6, "Nicht-finites root_center faellt auf Fokusanker zurueck (y)")
 	_teardown_controller_setup(setup)
