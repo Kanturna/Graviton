@@ -574,12 +574,6 @@ Erledigt:
   die neue Scope-Semantik umgestellt
 - die fruehere P14.1-Invariante "gleiche Zoomzahl = gleicher
   Welt-Massstab" wurde bewusst endgueltig aufgegeben
-- nach dem ersten Playtest wurde die reine Fokusanker-Regel fuer
-  verschachtelte Fernblicke noch einmal korrigiert:
-  `fit/detail` bleiben fokuszentriert, aber `wide` auf Stern-/Planeten-
-  /Mondfokus darf den Kameraanker wieder auf den Root-/BH-Mittelpunkt
-  zurueckziehen, damit grosse BH-Systeme im Fernblick nicht um den
-  Subfokus kreisen
 
 Offen / spaeter:
 
