@@ -31,6 +31,7 @@ The shader intentionally samples the map statically:
 - no `TIME`-based translation
 - no rotation
 - centered disc-aligned UV sampling only
+- refreshed in the current hybrid-follow-up with slightly stronger closeup weighting
 
 ## `moon_reference.png`
 
@@ -57,3 +58,42 @@ The derivation intentionally:
 - flattens the strongest radial baked-light bias toward a more albedo-like map
 - sharpens inner crater/detail signal
 - contracts the usable alpha mask inward so the shader does not re-import the original beauty rim
+
+## `temperate_reference.png`, `frozen_reference.png`, `hot_scorched_reference.png`
+
+Derived hybrid reference maps for the first planet-archetype expansion of the moon pilot.
+
+- Source basis:
+  - `temperate_reference.png` <- user-provided `D:/Downloads/Terran1.png`
+  - `frozen_reference.png` <- user-provided `D:/Downloads/Ice1.png`
+  - `hot_scorched_reference.png` <- user-provided `D:/Downloads/Lava1.png`
+- Usage: inner surface color/detail sources for `TEMPERATE_OCEAN`, `FROZEN` and `HOT_SCORCHED`
+- Not used as direct beauty-render sprites; the shader still owns lighting, rim and rotation semantics
+
+Regeneration:
+
+```powershell
+C:\Users\Sh4man\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe `
+  D:\Projekte\Godot\Graviton\src\tools\rendering\scripts\derive_planet_reference_map.py `
+  --input D:\Downloads\Terran1.png `
+  --output D:\Projekte\Godot\Graviton\src\tools\rendering\assets\temperate_reference.png `
+  --size 512
+
+C:\Users\Sh4man\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe `
+  D:\Projekte\Godot\Graviton\src\tools\rendering\scripts\derive_planet_reference_map.py `
+  --input D:\Downloads\Ice1.png `
+  --output D:\Projekte\Godot\Graviton\src\tools\rendering\assets\frozen_reference.png `
+  --size 512
+
+C:\Users\Sh4man\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe `
+  D:\Projekte\Godot\Graviton\src\tools\rendering\scripts\derive_planet_reference_map.py `
+  --input D:\Downloads\Lava1.png `
+  --output D:\Projekte\Godot\Graviton\src\tools\rendering\assets\hot_scorched_reference.png `
+  --size 512
+```
+
+The derivation intentionally:
+
+- reuses the same alpha-centered crop/flatten/detail pipeline as the moon pilot
+- keeps the usable alpha mask inside the original beauty rim
+- leaves the final lighting, terminator and rotational motion to the runtime shader

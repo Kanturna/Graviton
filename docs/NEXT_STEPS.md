@@ -628,23 +628,26 @@ Zielbild fuer diesen Strang:
 
 - spaeter `DESERT` erst dann einfuehren, wenn die Sim eine bessere
   Ariditaets-/Wassergrundlage liefert
-- den neuen Moon-Hybridpilot visuell im Editor gegenpruefen:
-  liest `moon_reference.png` im Fokus wirklich staerker nach
-  "reichhaltiger Mondoberflaeche", ohne dass gebackenes Licht oder
-  ein Beauty-Rim wieder durch den Shaderpfad leaket
-- dabei jetzt speziell pruefen, ob das neue `center-led / edge-lit`-
-  Tuning die Referenz sichtbar genug fuehrt oder ob der Mondpfad noch
-  weniger Vollflaechen-Schattierung und ggf. noch mehr Referenzgewicht
-  braucht
-- falls der Mondpilot im Playtest funktioniert, als naechsten kleinen
-  Folgeblock pruefen, ob ein analoger Hybridpfad fuer genau einen
-  planetaren Archetypen (`BARREN` oder spaeter `FROZEN`) sinnvoll ist,
-  ohne den bisherigen shader-first Planetpfad vorschnell global zu
-  ersetzen
+- die neuen Archetypen-Referenzen im Editor gezielt gegenpruefen:
+  lesen `temperate_reference.png`, `frozen_reference.png` und
+  `hot_scorched_reference.png` im Nahzoom wirklich als "Bild fuehrt,
+  Shader veredelt", ohne dass gebackene Rims oder alte Pattern wieder
+  zu dominant werden
+- dabei speziell pruefen, ob die neue rotationsgekoppelte
+  Planet-Referenz fuer `TEMPERATE_OCEAN`, `FROZEN` und
+  `HOT_SCORCHED` in Bewegung natuerlich genug liest oder ob der
+  jeweilige Archetyp noch eigene Rotation-/Blend-Tunings braucht
+- als naechsten moeglichen Quality-Folgeblock die reicheren
+  Referenzbilder weiter aufspalten:
+  z. B. spaeter getrennte Surface-/Cloud-/Night-Lights-Masks fuer
+  `TEMPERATE_OCEAN` statt einer einzigen zusammengefalteten Referenz
+- danach entscheiden, ob auch `BARREN` einen eigenen planetaren
+  Hybridpfad bekommen soll oder bewusst als letzter klar
+  shader-first-Archetyp stehenbleibt
 - spaeter Moon-spezifische Verfeinerungen, wenn die gemeinsamen
   Klima-Archetypen allein noch nicht genug Charakter tragen
-- spaeter optional Theme-Caching im Renderer, falls die Body-Zahl
-  deutlich waechst
+- spaeter optional noch feineres Texture-/Theme-Caching im Renderer,
+  falls die Body-Zahl deutlich waechst
 - spaeter optional kleine reine Feel-Tuning-Paesse fuer
   Scope-Radius-/Margin-Werte, falls der neue Kamera-Slice im Playtest
   noch Body-Kind-spezifisch Feinschliff braucht

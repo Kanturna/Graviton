@@ -167,7 +167,14 @@ void fragment() {
 	);
 
 	float reference_gate = mix(0.35, 1.0, smoothstep(0.04, 0.34, df_t));
-	vec2 reference_uv = n_flat * surface_reference_radius + vec2(0.5);
+	vec2 reference_uv_flat = n_flat * surface_reference_radius + vec2(0.5);
+	vec3 n_reference = vec3(
+		cr * n.x - sr * n.z,
+		n.y,
+		sr * n.x + cr * n.z
+	);
+	vec2 reference_uv_spherical = n_reference.xy * surface_reference_radius + vec2(0.5);
+	vec2 reference_uv = mix(reference_uv_flat, reference_uv_spherical, spherical_mix);
 	vec4 reference_sample = texture(surface_reference_tex, reference_uv);
 	float reference_mask = surface_reference_strength * reference_sample.a * reference_gate;
 	if (reference_mask > 0.001) {

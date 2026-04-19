@@ -58,6 +58,32 @@ waren. P16.1 korrigiert das bewusst nur im Kameraanker:
 - die P16-Scope-Scale-Semantik bleibt unangetastet; nur der
   Blickanker wird wieder weich stabilisiert
 
+## 2026-04-19 - Der bestaetigte Moon-Pilot wird selektiv auf drei Planet-Archetypen erweitert; Sterne bleiben auf dem Hybrid-Detailpfad
+
+Der Moon-Hybrid wurde im Playtest sichtbar bestaetigt: die Referenz
+liest dort jetzt wie gewuenscht im Zentrum, waehrend Licht und Rand
+weiter shaderseitig kontrolliert bleiben. Statt nach dieser Bestaetigung
+direkt auf direkte Planetensprites umzuschwenken, erweitert P14.7 den
+Hybridpfad gezielt nur auf die Archetypen, die bereits von den neuen
+Bildreferenzen klar profitieren.
+
+Konsequenz:
+
+- `TEMPERATE_OCEAN`, `FROZEN` und `HOT_SCORCHED` bekommen eigene aus
+  `Terran1.png`, `Ice1.png` und `Lava1.png` abgeleitete
+  Referenz-Maps innerhalb des bestehenden `body_sphere.gdshader`
+- `BARREN` bleibt vorerst bewusst shader-first; der Mond bleibt ein
+  eigener Sonderpfad mit `moon_reference.png`
+- die planetaren Referenzen werden nicht nur geblendet, sondern an die
+  bestehende Body-Rotation gekoppelt; sie bleiben also Teil derselben
+  Projektion statt statischer Disc-Aufkleber
+- die neuen Planet-Referenzen sampeln enger als der Mondpilot, damit
+  gebackene Beauty-Raender weniger in die Runtime leaken
+- der Stern bleibt ebenfalls hybrid: `sun.png` wird weiter nur ueber die
+  abgeleitete `star_detailmap.png` eingebracht; im Follow-up wird deren
+  Einfluss aber etwas staerker gewichtet statt einen direkten
+  Solar-Fotoskin einzuziehen
+
 ## 2026-04-19 - Der erste Planet-Asset-Pilot startet bewusst moon-only als Hybrid statt als direkter Sprite-Ersatz
 
 Die neuen hochaufgeloesten Planeten-/Mondbilder legen einen moeglichen

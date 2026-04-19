@@ -251,6 +251,26 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die shaderseitige Lichtarbeit sitzt fuer diesen Mondpfad jetzt
   sichtbar staerker an Seiten, Terminator und Rim statt weiter als
   flaechige Vollabdunklung ueber der ganzen Mondscheibe zu lesen.
+- Nach visueller Bestaetigung des Mondpiloten traegt derselbe
+  Variant-2-Hybridpfad jetzt auch drei planetare Klima-Archetypen:
+  `TEMPERATE_OCEAN`, `FROZEN` und `HOT_SCORCHED` nutzen zusaetzlich aus
+  `Terran1.png`, `Ice1.png` und `Lava1.png` abgeleitete
+  Referenz-Maps (`temperate_reference.png`, `frozen_reference.png`,
+  `hot_scorched_reference.png`) innerhalb des bestehenden
+  `body_sphere.gdshader`.
+- Diese planetaren Referenzen ersetzen weiter keine Planetensprites:
+  Licht, Terminator, Rim und die bestehende Rotationssemantik bleiben
+  shaderseitig autoritativ; neu ist aber, dass der Referenz-Layer fuer
+  Planeten jetzt an dieselbe Rotationslogik gekoppelt wird, statt nur
+  statisch auf der sichtbaren Disc zu kleben.
+- Die planetaren Archetypen sampeln ihre Referenz ausserdem etwas enger
+  als der Mondpilot, damit weniger vom gebackenen Beauty-Rand und mehr
+  von der inneren Oberflaechenlesbarkeit in den Runtime-Pfad gelangt.
+- Der Sternpfad wurde im selben Follow-up mit dem bereitgestellten
+  `sun.png` erneut durch den bestehenden Detailmap-Ableitungspfad
+  gezogen; die resultierende `star_detailmap.png` bleibt statisch und
+  zentriert, liest im fokussierten Stern-Closeup jetzt aber etwas
+  staerker mit.
 
 ## Ziel dieser Praesentationsschicht
 
@@ -311,6 +331,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tools/rendering/assets/README.md`
 - `src/tools/rendering/assets/star_detailmap.png`
 - `src/tools/rendering/assets/moon_reference.png`
+- `src/tools/rendering/assets/temperate_reference.png`
+- `src/tools/rendering/assets/frozen_reference.png`
+- `src/tools/rendering/assets/hot_scorched_reference.png`
 - `src/tools/rendering/scripts/derive_star_detailmap.py`
 - `src/tools/rendering/scripts/derive_planet_reference_map.py`
 - `src/tests/rendering/test_orbit_body_visual.gd`
@@ -353,13 +376,17 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die zugrunde liegende zonale Umweltlogik blieb in P13.1 unveraendert;
   nur die HUD-Sprache trennt jetzt klarer zwischen Habitability-Urteil
   (`Environment`), Welttyp (`Climate`) und Rohdaten (`Bands`).
-- Der neue Klima-Archetypen-Pass bleibt bewusst shader-first und
-  texturfrei; `DESERT` wurde in diesem ersten Slice ausdruecklich nicht
-  eingefuehrt, weil dafuer noch keine staerkere Sim-Basis fuer Ariditaet
-  oder Wasserverteilung existiert.
-- Der neue Mond-Hybridpfad ist bewusst nur ein lokaler View-Pilot fuer
-  `MOON`-Bodies und noch keine generelle Umstellung aller Planeten auf
-  Asset-Surfaces oder Beauty-Sprites.
+- Der Klima-Archetypen-Pass bleibt weiter bewusst shader-first in seiner
+  Autoritaet, ist aber jetzt nicht mehr voll texturfrei: `MOON`,
+  `TEMPERATE_OCEAN`, `FROZEN` und `HOT_SCORCHED` duerfen selektive
+  Hybrid-Referenzen nutzen; `DESERT` wurde weiterhin ausdruecklich
+  nicht eingefuehrt, weil dafuer noch keine staerkere Sim-Basis fuer
+  Ariditaet oder Wasserverteilung existiert.
+- Der neue Hybrid-Reference-Pfad deckt jetzt bewusst `MOON` plus die
+  drei Klima-Archetypen `TEMPERATE_OCEAN`, `FROZEN` und
+  `HOT_SCORCHED` ab, bleibt aber weiterhin ein selektiver View-Pfad und
+  keine generelle Umstellung aller Planeten auf direkte
+  Beauty-Sprites; `BARREN` bleibt vorerst shader-first.
 - Der Zoom ist jetzt bewusst per Fokus-Scope statt globalem Weltanker
   definiert; gleiche Zoomzahlen sind damit nicht mehr
   fokusuebergreifend als gleicher Welt-Massstab interpretierbar.
