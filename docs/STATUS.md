@@ -113,6 +113,15 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   wieder entfernt: `fit/detail` halten den Fokus auch bei hoher
   Sim-Speed exakt, und der sichtbarkeitsbasierte Root-Lock stabilisiert
   den Root-/BH-Anker ohne sichtbares Kamera-Nachziehen.
+- Der sichtbare Fokus-Closeup folgt jetzt dem geglaetteten aktuellen
+  Kamera-Scale statt direkt dem rohen Zielzoom; dadurch springen
+  Nahdetail und Body-Footprint beim Wheel-Zoom nicht mehr sofort auf den
+  Endwert.
+- Der lokale Detail-Zoom saettigt ausserdem nicht mehr schon grob bei
+  `~1500%`: die Closeup-Kurve traegt jetzt einen weichen High-Zoom-Tail,
+  damit `1500% -> 10000%` weiter sichtbar mehr Naehe bringt; der
+  Wheel-Zoom nutzt dafuer zusaetzlich feinere `1.12x`-Schritte statt
+  `1.20x`.
 - Das HUD macht die Zoom-Semantik jetzt explizit sichtbar:
   `Zoom ... wide`, `Zoom 100% fit` und `Zoom ... detail`.
 - Das HUD trennt jetzt explizit zwischen expliziter Root-Uebersicht und

@@ -3,6 +3,7 @@ extends RefCounted
 
 const OrbitCameraControllerScript = preload("res://src/tools/rendering/orbit_camera_controller.gd")
 const OrbitCameraFramingScript = preload("res://src/tools/rendering/orbit_camera_framing.gd")
+const OrbitZoomModelScript = preload("res://src/tools/rendering/orbit_zoom_model.gd")
 
 const DEFAULT_PLANET_WORLD_POS: Vector2 = Vector2(100.0, 50.0)
 const CLOSE_PLANET_WORLD_POS: Vector2 = Vector2(10.0, 5.0)
@@ -78,6 +79,7 @@ static func run(ctx) -> void:
 	_test_visible_root_locks_even_in_fit_mode(ctx)
 	_test_zoom_multiplier_clamps_to_bounds(ctx)
 	_test_detail_zoom_keeps_focus_centered_when_root_is_not_visible(ctx)
+	_test_detail_zoom_closeup_ratio_follows_smoothed_view_scale(ctx)
 	_test_focus_change_resets_zoom_to_fit(ctx)
 	_test_explicit_root_focus_uses_root_overview_label(ctx)
 	_test_non_finite_root_falls_back_to_focus_lock(ctx)
@@ -232,6 +234,33 @@ static func _test_detail_zoom_keeps_focus_centered_when_root_is_not_visible(ctx)
 	)
 	ctx.assert_almost(planet_screen.x, 200.0, 1.0e-6, "Detail-Zoom behaelt den Fokuskoerper im Zentrum (x)")
 	ctx.assert_almost(planet_screen.y, 100.0, 1.0e-6, "Detail-Zoom behaelt den Fokuskoerper im Zentrum (y)")
+	_teardown_controller_setup(setup)
+
+
+static func _test_detail_zoom_closeup_ratio_follows_smoothed_view_scale(ctx) -> void:
+	var setup := _make_controller()
+	var controller = setup["controller"]
+	var renderer: RendererStub = setup["renderer"]
+	var viewport: Vector2 = Vector2(400.0, 200.0)
+	controller.set_focus(&"planet", false, true)
+	controller.step(0.0, viewport)
+	controller.handle_zoom_multiplier(4.0)
+	controller.step(0.05, viewport)
+	var focus_fit_scale: float = (minf(viewport.x, viewport.y) * OrbitCameraFramingScript.VIEWPORT_RADIUS_FACTOR) / PLANET_SCOPE_RADIUS_RU
+	var expected_ratio: float = OrbitZoomModelScript.focus_closeup_ratio(
+		controller.get_current_view_scale(),
+		focus_fit_scale
+	)
+	ctx.assert_almost(
+		renderer.last_focus_closeup_ratio,
+		expected_ratio,
+		1.0e-6,
+		"Closeup-Ratio folgt jetzt dem geglaetteten aktuellen View-Scale statt sofort hart auf den Zielzoom zu springen"
+	)
+	ctx.assert_true(
+		renderer.last_focus_closeup_ratio > 1.0 and renderer.last_focus_closeup_ratio < 4.0,
+		"Bei laufender Zoom-Interpolation liegt das Closeup-Ratio sichtbar zwischen Fit und Zielzoom"
+	)
 	_teardown_controller_setup(setup)
 
 

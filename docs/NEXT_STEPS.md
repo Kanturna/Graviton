@@ -570,6 +570,14 @@ Erledigt:
   `OrbitCameraController` ist wieder entfernt; der Kameraanker folgt
   jetzt direkt dem berechneten Fokus-/Wide-Anker statt zeitlich
   hinterherzulaufen
+- der sichtbare Fokus-Closeup folgt jetzt dem geglaetteten aktuellen
+  View-Scale statt direkt dem rohen Zielzoom; Nahdetail und
+  Fokus-Footprint wachsen dadurch waehrend der Zoom-Interpolation
+  weicher mit
+- der High-Zoom-Detailpfad traegt jetzt einen verlaengerten Tail ueber
+  das fruehere `~1500%`-Plateau hinaus, damit `10000%` wieder sichtbar
+  naeher an Planeten, Monde und Sterne heranrueckt; Wheel-Zoom nutzt
+  dafuer feinere `1.12x`-Schritte
 - Fokuswechsel resetten bewusst auf `fit` (`zoom_factor = 1.0`) und
   loeschen manuelles Pan
 - Root-/BH-Overview ist jetzt nur noch explizit ueber Root-Fokus bzw.

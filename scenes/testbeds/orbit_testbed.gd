@@ -5,7 +5,7 @@ const OrbitHudFormatterScript = preload("res://src/tools/rendering/orbit_hud_for
 const OrbitTimeScaleControllerScript = preload("res://src/tools/rendering/orbit_time_scale_controller.gd")
 const UniverseTopologyScript = preload("res://src/sim/topology/universe_topology.gd")
 
-const ZOOM_FACTOR_STEP: float = 1.20
+const ZOOM_FACTOR_STEP: float = 1.12
 
 @export_enum("starter_world", "sample_system") var initial_world_id: String = "starter_world"
 

@@ -143,7 +143,10 @@ func _apply_view_transform(immediate: bool, delta: float, viewport_size: Vector2
 	_renderer.scale = Vector2.ONE * _current_view_scale
 	_renderer.position = world_offset
 	_renderer.set_world_scale(_current_view_scale)
-	_renderer.set_focus_closeup_ratio(maxf(_absolute_zoom_factor, 1.0))
+	var focus_fit_scale: float = _focus_fit_scale(viewport_size)
+	_renderer.set_focus_closeup_ratio(
+		OrbitZoomModelScript.focus_closeup_ratio(_current_view_scale, focus_fit_scale)
+	)
 
 
 func _refresh_scope_radius(body_id: StringName) -> void:
@@ -179,3 +182,9 @@ func _remember_non_overview_frame_label(label: StringName) -> StringName:
 
 static func _is_finite_vec2(value: Vector2) -> bool:
 	return is_finite(value.x) and is_finite(value.y)
+
+
+func _focus_fit_scale(viewport_size: Vector2) -> float:
+	var safe_viewport: Vector2 = Vector2(maxf(viewport_size.x, 1.0), maxf(viewport_size.y, 1.0))
+	var min_viewport_dim: float = minf(safe_viewport.x, safe_viewport.y)
+	return (min_viewport_dim * OrbitCameraFramingScript.VIEWPORT_RADIUS_FACTOR) / maxf(_current_scope_radius_ru, 1.0)

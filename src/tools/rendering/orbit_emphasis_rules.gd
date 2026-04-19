@@ -1,5 +1,10 @@
 extends RefCounted
 
+const OrbitZoomModelScript = preload("res://src/tools/rendering/orbit_zoom_model.gd")
+
+const DETAIL_TAIL_START_RATIO: float = 15.0
+const DETAIL_TAIL_MAX_CLOSEUP: float = 20.0
+
 
 static func focus_emphasis_for(
 	id: StringName,
@@ -44,10 +49,24 @@ static func body_detail_factor(
 	topology,
 	focus_closeup_ratio: float
 ) -> float:
-	var closeup: float = clampf(pow(focus_closeup_ratio, 0.90), 1.0, 12.0)
+	var closeup: float = detail_closeup_for_ratio(focus_closeup_ratio)
 	var weight: float = _body_closeup_weight(id, def, focus_id, topology)
 	var factor: float = 1.0 + (closeup - 1.0) * weight
 	return clampf(factor, 1.0, _max_body_detail_factor(def.kind))
+
+
+static func detail_closeup_for_ratio(focus_closeup_ratio: float) -> float:
+	var safe_ratio: float = maxf(focus_closeup_ratio, 1.0)
+	if safe_ratio <= DETAIL_TAIL_START_RATIO:
+		return pow(safe_ratio, 0.90)
+
+	var tail_start_closeup: float = pow(DETAIL_TAIL_START_RATIO, 0.90)
+	var tail_t: float = clampf(
+		log(safe_ratio / DETAIL_TAIL_START_RATIO) / log(OrbitZoomModelScript.MAX_ZOOM_FACTOR / DETAIL_TAIL_START_RATIO),
+		0.0,
+		1.0
+	)
+	return lerpf(tail_start_closeup, DETAIL_TAIL_MAX_CLOSEUP, smoothstep(0.0, 1.0, tail_t))
 
 
 static func star_closeup_phase(
@@ -96,10 +115,10 @@ static func _shares_root_with_focus(id: StringName, focus_id: StringName, topolo
 static func _max_body_detail_factor(kind: int) -> float:
 	match kind:
 		BodyType.Kind.BLACK_HOLE:
-			return 4.0
+			return 9.0
 		BodyType.Kind.STAR:
-			return 8.5
+			return 15.0
 		BodyType.Kind.MOON:
-			return 12.0
+			return 22.0
 		_:
-			return 10.0
+			return 20.0
