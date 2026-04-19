@@ -3,7 +3,6 @@ extends Node2D
 const OrbitCameraControllerScript = preload("res://src/tools/rendering/orbit_camera_controller.gd")
 const OrbitHudFormatterScript = preload("res://src/tools/rendering/orbit_hud_formatter.gd")
 const OrbitTimeScaleControllerScript = preload("res://src/tools/rendering/orbit_time_scale_controller.gd")
-const OrbitZoomModelScript = preload("res://src/tools/rendering/orbit_zoom_model.gd")
 const UniverseTopologyScript = preload("res://src/sim/topology/universe_topology.gd")
 
 const ZOOM_FACTOR_STEP: float = 1.20
@@ -177,7 +176,8 @@ func _update_hud() -> void:
 		TimeService.time_scale,
 		speed_step_label,
 		_camera_controller.get_zoom_factor(),
-		OrbitZoomModelScript.zoom_mode_label(_camera_controller.get_zoom_factor())
+		String(_camera_controller.get_zoom_mode()),
+		String(_camera_controller.get_frame_label())
 	)
 	_mode_value.text = OrbitHudFormatterScript.format_mode(UniverseRegistry.body_count(), TimeService.paused)
 	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Home root overview   Q/E or PgUp/PgDn speed   HUD slider speed   WASD pan   Wheel zoom (0.5%-10000%)   Backspace fit focus   Space pause   F3 debug"

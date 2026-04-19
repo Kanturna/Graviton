@@ -45,12 +45,15 @@ static func format_time(sim_time_s: float, tick_count: int, fps: int) -> String:
 	return "T+ %.2f d   steps %d   FPS %d" % [sim_time_s / UnitSystem.DAY_S, tick_count, fps]
 
 
-static func format_scale(time_scale: float, preset_label: String, zoom_factor: float, zoom_mode: String) -> String:
+static func format_scale(time_scale: float, preset_label: String, zoom_factor: float, zoom_mode: String, frame_label: String = "") -> String:
+	var mode_segment: String = zoom_mode
+	if frame_label != "":
+		mode_segment = "%s (%s)" % [zoom_mode, frame_label]
 	return "Speed x%s   Preset %s   Zoom %s %s" % [
 		_stripped_float(time_scale),
 		preset_label,
 		_zoom_percent_text(zoom_factor),
-		zoom_mode,
+		mode_segment,
 	]
 
 
