@@ -562,6 +562,9 @@ Erledigt:
 - die P16.1-Korrektur fuehrt fuer verschachtelte `wide`-Views wieder
   einen weichen Focus->Root-Anchor-Blend ein, ohne die scope-relative
   Scale-Semantik selbst anzutasten
+- P16.2 entfernt das bisherige Offset-Smoothing der Kamera wieder;
+  nur die Scale bleibt weich, damit hohe `time_scale` keinen
+  Schweif-/Nachzieheffekt mehr auf dem Root-/BH-Anker erzeugt
 - `fit/detail` bleiben strikt fokuszentriert; nur `wide` darf den
   Kameraanker progressiv Richtung Root/BH ziehen
 - Fokuswechsel resetten bewusst auf `fit` (`zoom_factor = 1.0`) und
@@ -579,6 +582,9 @@ Offen / spaeter:
 
 - kurze manuelle Editor-Pruefung der neuen Scope-Zoom-Haptik in
   `starter_world` und `sample_system`
+- falls moderates `wide` trotz P16.2 noch zu viel Root-/BH-Mitbewegung
+  zeigt, separater P16.3-Mini-Pass nur fuer eine fruehere/staerkere
+  Saettigung von `wide_anchor_blend(...)`
 - spaeter optional feineres Scope-Tuning pro Body-Kind, falls Sterne,
   Planeten oder Monde im Playtest noch zu eng oder zu weit geframet
   wirken

@@ -100,6 +100,12 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Fokus bestimmt, und nur `wide` auf verschachtelten Stern-/Planeten-/
   Mondfoki blendet den Kameraanker wieder weich Richtung Root-/BH-
   Mittelpunkt.
+- P16.2 entfernt zusaetzlich das fruehere zeitliche Offset-Smoothing:
+  der Kameraanker wird jetzt pro Frame instant aus den aktuellen
+  Body-Positionen berechnet, waehrend nur die View-Scale weiter weich
+  rampen darf. Dadurch verschwindet der bei hoher `time_scale`
+  sichtbare BH-Schweif, ohne die `wide`-Blend-Semantik selbst zu
+  veraendern.
 - `100%` bedeutet im Testbed jetzt explizit `fit current focus scope`;
   `Backspace` springt auf genau diesen Scope-Fit zurueck.
 - Der Zoombereich bleibt bei `0.5%` bis `10000%`; unter `100%` wird nur
@@ -319,6 +325,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `Home`; `wide` auf verschachtelten Foki stabilisiert aber den
   Root-/BH-Mittelpunkt wieder weich im Fernblick, ohne die P16-
   Scope-Scale-Semantik aufzugeben.
+- Vollstaendig stationaer wird der Root-/BH-Anker in diesem Modell
+  weiterhin nur bei vollem `wide` (`MIN_ZOOM_FACTOR`); moderates `wide`
+  darf aufgrund des partiellen Blends bewusst noch glatten Restdrift
+  zeigen.
 - Renderer-Nahdetail bleibt weiterhin getrennt fokus-relativ, damit die
   P14-Archetypen bei gleicher lokaler Naehe dieselben Detail-Schwellen
   behalten.
