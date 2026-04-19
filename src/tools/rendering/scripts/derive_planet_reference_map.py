@@ -90,7 +90,7 @@ def _build_radial_luma_profile(luma: Image.Image, alpha: Image.Image, radius_px:
     return _smooth_profile(profile)
 
 
-def _flatten_radial_shading(image: Image.Image) -> Image.Image:
+def _flatten_radial_shading(image: Image.Image, strength: float) -> Image.Image:
     rgba = image.copy().convert("RGBA")
     alpha = rgba.getchannel("A")
     rgb = rgba.convert("RGB")
@@ -120,7 +120,7 @@ def _flatten_radial_shading(image: Image.Image) -> Image.Image:
             idx = min(len(profile) - 1, int(t * len(profile)))
             radial_luma = max(profile[idx], 1.0)
             flatten = target / radial_luma
-            flatten = 1.0 + (flatten - 1.0) * 0.82
+            flatten = 1.0 + (flatten - 1.0) * strength
             flatten = min(1.85, max(0.75, flatten))
 
             r, g, b, _ = pixels_rgba[x, y]
@@ -134,7 +134,14 @@ def _flatten_radial_shading(image: Image.Image) -> Image.Image:
     return rgba
 
 
-def _apply_detail_and_mask(image: Image.Image) -> Image.Image:
+def _apply_detail_and_mask(
+    image: Image.Image,
+    color_preserve: float,
+    saturation_boost: float,
+    contrast: float,
+    sharpness: float,
+    detail_gain_strength: float,
+) -> Image.Image:
     rgba = image.copy().convert("RGBA")
     alpha = rgba.getchannel("A")
     rgb = rgba.convert("RGB")
@@ -195,7 +202,10 @@ def _apply_detail_and_mask(image: Image.Image) -> Image.Image:
             local_r = avg_color[0] + (r - br) * 0.42
             local_g = avg_color[1] + (g - bg) * 0.42
             local_b = avg_color[2] + (b - bb) * 0.42
-            detail_gain = 1.0 + detail * 1.45
+            local_r = local_r * (1.0 - color_preserve) + r * color_preserve
+            local_g = local_g * (1.0 - color_preserve) + g * color_preserve
+            local_b = local_b * (1.0 - color_preserve) + b * color_preserve
+            detail_gain = 1.0 + detail * 1.45 * detail_gain_strength
             r = min(255, max(0, int(local_r * detail_gain)))
             g = min(255, max(0, int(local_g * detail_gain)))
             b = min(255, max(0, int(local_b * detail_gain)))
@@ -210,18 +220,36 @@ def _apply_detail_and_mask(image: Image.Image) -> Image.Image:
             mask *= a / 255.0
             pixels_rgba[x, y] = (r, g, b, min(255, max(0, int(mask * 255.0))))
 
-    out = ImageEnhance.Contrast(rgba).enhance(1.10)
-    out = ImageEnhance.Sharpness(out).enhance(1.18)
+    out = ImageEnhance.Contrast(rgba).enhance(contrast)
+    out = ImageEnhance.Color(out).enhance(saturation_boost)
+    out = ImageEnhance.Sharpness(out).enhance(sharpness)
     return out
 
 
-def _build_reference_map(source_path: Path, output_path: Path, size: int) -> None:
+def _build_reference_map(
+    source_path: Path,
+    output_path: Path,
+    size: int,
+    flatten_strength: float,
+    color_preserve: float,
+    saturation_boost: float,
+    contrast: float,
+    sharpness: float,
+    detail_gain_strength: float,
+) -> None:
     src = Image.open(source_path).convert("RGBA")
     center_x, center_y, radius = _find_disc_geometry(src.getchannel("A"))
     src = _crop_square_centered(src, center_x, center_y, radius)
     src = src.resize((size, size), Image.Resampling.LANCZOS)
-    src = _flatten_radial_shading(src)
-    src = _apply_detail_and_mask(src)
+    src = _flatten_radial_shading(src, flatten_strength)
+    src = _apply_detail_and_mask(
+        src,
+        color_preserve,
+        saturation_boost,
+        contrast,
+        sharpness,
+        detail_gain_strength,
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     src.save(output_path)
 
@@ -233,9 +261,25 @@ def main() -> None:
     parser.add_argument("--input", required=True, help="Input planet or moon PNG path")
     parser.add_argument("--output", required=True, help="Output PNG path")
     parser.add_argument("--size", type=int, default=512, help="Output square size in pixels")
+    parser.add_argument("--flatten-strength", type=float, default=0.82, help="How strongly radial baked lighting is flattened")
+    parser.add_argument("--color-preserve", type=float, default=0.0, help="How much of the original source color is preserved")
+    parser.add_argument("--saturation-boost", type=float, default=1.0, help="Post-process saturation multiplier")
+    parser.add_argument("--contrast", type=float, default=1.10, help="Post-process contrast multiplier")
+    parser.add_argument("--sharpness", type=float, default=1.18, help="Post-process sharpness multiplier")
+    parser.add_argument("--detail-gain-strength", type=float, default=1.0, help="How strongly local detail contrast is amplified")
     args = parser.parse_args()
 
-    _build_reference_map(Path(args.input), Path(args.output), args.size)
+    _build_reference_map(
+        Path(args.input),
+        Path(args.output),
+        args.size,
+        args.flatten_strength,
+        args.color_preserve,
+        args.saturation_boost,
+        args.contrast,
+        args.sharpness,
+        args.detail_gain_strength,
+    )
 
 
 if __name__ == "__main__":

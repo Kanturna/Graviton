@@ -1,8 +1,14 @@
 shader_type canvas_item;
 
 uniform float df_t = 0.0;
+uniform sampler2D star_reference_tex;
 uniform sampler2D star_detail_tex;
 uniform float star_closeup_phase = 0.0;
+uniform float star_reference_strength = 0.0;
+uniform float star_reference_native_color_strength = 1.0;
+uniform float star_reference_detail_strength = 0.12;
+uniform float star_reference_center_preserve = 0.88;
+uniform float star_reference_procedural_damp = 0.58;
 uniform vec3 star_core_color = vec3(1.0, 0.95, 0.80);
 uniform vec3 star_mid_color = vec3(1.0, 0.62, 0.18);
 uniform vec3 star_channel_color = vec3(0.62, 0.18, 0.08);
@@ -81,11 +87,29 @@ void fragment() {
 
 	// Radial color temperature: center near-white, edge warmer/more saturated
 	vec3 col = mix(star_core_color, star_mid_color, pow(t_w, 1.8)) * limb;
+	vec2 reference_uv = n_xy * 0.5 + vec2(0.5);
+	vec4 reference_sample = texture(star_reference_tex, reference_uv);
+	float reference_mask = reference_sample.a * smoothstep(1.02, 0.82, t);
+	float reference_mix = clamp(reference_mask * star_reference_strength, 0.0, 1.0);
+	float reference_edge_shade = mix(
+		1.0 - star_reference_center_preserve,
+		1.0,
+		smoothstep(0.24, 0.92, t)
+	);
+	vec3 reference_col = reference_sample.rgb;
+	vec3 reference_shaded = reference_col * mix(1.0, limb, reference_edge_shade);
+	reference_col = mix(reference_shaded, reference_col, star_reference_native_color_strength);
+	float reference_signal = (dot(reference_sample.rgb, vec3(0.2126, 0.7152, 0.0722)) - 0.5) * 2.0;
+	reference_col += mix(star_mid_color, star_core_color, 0.70)
+		* max(0.0, reference_signal) * star_reference_detail_strength * reference_mix;
+	col = mix(col, reference_col, reference_mix);
+
 	float closeup_gate = smoothstep(0.35, 1.0, star_closeup_phase);
-	float granulation_amp = mix(1.0, 0.35, closeup_gate);
-	float meso_amp = mix(1.0, 0.60, closeup_gate);
-	float activity_amp = mix(1.0, 0.45, closeup_gate);
-	float filament_amp = mix(1.0, 0.50, closeup_gate);
+	float reference_damp = mix(1.0, 1.0 - star_reference_procedural_damp, reference_mix);
+	float granulation_amp = mix(1.0, 0.35, closeup_gate) * reference_damp;
+	float meso_amp = mix(1.0, 0.60, closeup_gate) * reference_damp;
+	float activity_amp = mix(1.0, 0.45, closeup_gate) * reference_damp;
+	float filament_amp = mix(1.0, 0.50, closeup_gate) * reference_damp;
 
 	// Macro surface field stays static: it organizes the star into broad
 	// basins / convection regions without making the whole surface drift.
@@ -183,8 +207,9 @@ void fragment() {
 	float detail_sample = texture(star_detail_tex, detail_uv).r;
 	float detail_signal = (detail_sample - 0.5) * 2.0;
 	float detail_mask = detail_phase * smoothstep(1.02, 0.82, t);
-	float detail_faculae_add = max(0.0, detail_signal) * detailmap_strength * detail_mask;
-	float detail_sunspots = max(0.0, -detail_signal) * sunspot_strength * detail_mask;
+	float detail_layer_damp = mix(1.0, 0.76, reference_mix);
+	float detail_faculae_add = max(0.0, detail_signal) * detailmap_strength * detail_mask * detail_layer_damp;
+	float detail_sunspots = max(0.0, -detail_signal) * sunspot_strength * detail_mask * detail_layer_damp;
 	col += mix(star_mid_color, star_core_color, 0.82) * detail_faculae_add;
 	col = mix(col, mix(col, star_channel_color * 0.82, 0.86), clamp(detail_sunspots, 0.0, 0.68));
 

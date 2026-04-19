@@ -4,6 +4,7 @@ extends Node2D
 const _SHADER_SPHERE := preload("res://src/tools/rendering/shaders/body_sphere.gdshader")
 const _SHADER_STAR := preload("res://src/tools/rendering/shaders/body_star.gdshader")
 const _STAR_DETAIL_TEXTURE_PATH := "res://src/tools/rendering/assets/star_detailmap.png"
+const _STAR_REFERENCE_TEXTURE_PATH := "res://src/tools/rendering/assets/star_reference.png"
 const _MOON_REFERENCE_TEXTURE_PATH := "res://src/tools/rendering/assets/moon_reference.png"
 const _TEMPERATE_REFERENCE_TEXTURE_PATH := "res://src/tools/rendering/assets/temperate_reference.png"
 const _FROZEN_REFERENCE_TEXTURE_PATH := "res://src/tools/rendering/assets/frozen_reference.png"
@@ -166,7 +167,16 @@ func _draw_black_hole() -> void:
 
 
 func _draw_planet_glow() -> void:
-	draw_circle(Vector2.ZERO, 10.5, _glow_color)
+	var glow_color: Color = _glow_color
+	if _surface_reference_is_active() and _theme != null:
+		match int(_theme.archetype):
+			PlanetVisualThemeScript.Archetype.TEMPERATE_OCEAN:
+				glow_color.a *= 0.06
+			PlanetVisualThemeScript.Archetype.FROZEN:
+				glow_color.a *= 0.05
+			_:
+				glow_color.a *= 0.82
+	draw_circle(Vector2.ZERO, 10.5, glow_color)
 
 
 func _draw_moon_glow() -> void:
@@ -232,7 +242,11 @@ func _draw_star_glow() -> void:
 
 
 func _draw_planet_overlay() -> void:
-	var reference_overlay_damp: float = 0.42 if _surface_reference_is_active() else 1.0
+	if _surface_reference_is_active() and _theme != null:
+		match int(_theme.archetype):
+			PlanetVisualThemeScript.Archetype.TEMPERATE_OCEAN, PlanetVisualThemeScript.Archetype.FROZEN:
+				return
+	var reference_overlay_damp: float = 0.18 if _surface_reference_is_active() else 1.0
 	if _detail_factor > 1.20:
 		var atmo_alpha: float = (0.10 + 0.18 * maxf(_overlay_cloud_strength, 0.22)) \
 			* minf(_detail_factor / 2.0, 1.0) * reference_overlay_damp
@@ -346,17 +360,27 @@ func _apply_theme_to_material(theme) -> void:
 	var is_moon: bool = _kind == BodyType.Kind.MOON
 	match theme.archetype:
 		PlanetVisualThemeScript.Archetype.TEMPERATE_OCEAN:
+			mat.set_shader_parameter("land_ocean_strength", 0.0 if not is_moon else theme.land_ocean_strength)
+			mat.set_shader_parameter("cloud_strength", 0.0 if not is_moon else theme.cloud_strength)
+			mat.set_shader_parameter("ice_strength", 0.0 if not is_moon else theme.ice_strength)
+			mat.set_shader_parameter("dryness_strength", 0.0 if not is_moon else theme.dryness_strength)
+			mat.set_shader_parameter("rim_strength", 0.09 if not is_moon else 0.06)
 			mat.set_shader_parameter("surface_freq", 11.0 if is_moon else 8.2)
-			mat.set_shader_parameter("surface_var_strength", 0.08 if is_moon else 0.04)
-			mat.set_shader_parameter("polar_tint_strength", 0.10 if is_moon else 0.11)
-			mat.set_shader_parameter("band_strength", 0.05 if is_moon else 0.05)
-			mat.set_shader_parameter("patch_strength", 0.18 if is_moon else 0.02)
+			mat.set_shader_parameter("surface_var_strength", 0.08 if is_moon else 0.0)
+			mat.set_shader_parameter("polar_tint_strength", 0.10 if is_moon else 0.0)
+			mat.set_shader_parameter("band_strength", 0.05 if is_moon else 0.0)
+			mat.set_shader_parameter("patch_strength", 0.18 if is_moon else 0.0)
 		PlanetVisualThemeScript.Archetype.FROZEN:
+			mat.set_shader_parameter("land_ocean_strength", 0.0 if not is_moon else theme.land_ocean_strength)
+			mat.set_shader_parameter("cloud_strength", 0.0 if not is_moon else theme.cloud_strength)
+			mat.set_shader_parameter("ice_strength", 0.0 if not is_moon else theme.ice_strength)
+			mat.set_shader_parameter("dryness_strength", 0.0 if not is_moon else theme.dryness_strength)
+			mat.set_shader_parameter("rim_strength", 0.08 if not is_moon else 0.06)
 			mat.set_shader_parameter("surface_freq", 13.0 if is_moon else 8.9)
-			mat.set_shader_parameter("surface_var_strength", 0.05 if is_moon else 0.04)
-			mat.set_shader_parameter("polar_tint_strength", 0.14 if is_moon else 0.20)
-			mat.set_shader_parameter("band_strength", 0.02 if is_moon else 0.04)
-			mat.set_shader_parameter("patch_strength", 0.22 if is_moon else 0.04)
+			mat.set_shader_parameter("surface_var_strength", 0.05 if is_moon else 0.0)
+			mat.set_shader_parameter("polar_tint_strength", 0.14 if is_moon else 0.0)
+			mat.set_shader_parameter("band_strength", 0.02 if is_moon else 0.0)
+			mat.set_shader_parameter("patch_strength", 0.22 if is_moon else 0.0)
 		PlanetVisualThemeScript.Archetype.HOT_SCORCHED:
 			mat.set_shader_parameter("surface_freq", 12.5 if is_moon else 9.8)
 			mat.set_shader_parameter("surface_var_strength", 0.07 if is_moon else 0.05)
@@ -416,6 +440,12 @@ static func _make_white_1px() -> ImageTexture:
 	return ImageTexture.create_from_image(img)
 
 
+static func _make_transparent_1px() -> ImageTexture:
+	var img := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.0, 0.0, 0.0, 0.0))
+	return ImageTexture.create_from_image(img)
+
+
 static func _sphere_local_scale(kind: int) -> Vector2:
 	match kind:
 		BodyType.Kind.MOON:
@@ -447,16 +477,21 @@ static func _load_png_texture_cached(path: String) -> Texture2D:
 
 static func _surface_reference_setup_for(kind: int, archetype: int) -> Dictionary:
 	if kind == BodyType.Kind.MOON:
-		return {
-			"path": _MOON_REFERENCE_TEXTURE_PATH,
-			"strength": 0.78,
-			"detail_strength": 0.26,
-			"radius": 0.46,
-			"center_preserve": 0.82,
-			"side_shade_strength": 0.92,
-			"procedural_damp": 0.84,
-			"rim_boost": 0.22,
-		}
+			return {
+				"path": _MOON_REFERENCE_TEXTURE_PATH,
+				"strength": 0.78,
+				"detail_strength": 0.26,
+				"radius": 0.46,
+				"center_preserve": 0.82,
+				"side_shade_strength": 0.92,
+				"procedural_damp": 0.84,
+				"rim_boost": 0.22,
+				"native_color_strength": 0.58,
+				"cloud_damp": 0.0,
+				"min_gate": 0.35,
+				"rotation_domain": 0.0,
+				"portrait_strength": 0.0,
+			}
 	if kind != BodyType.Kind.PLANET:
 		return {}
 
@@ -464,24 +499,34 @@ static func _surface_reference_setup_for(kind: int, archetype: int) -> Dictionar
 		PlanetVisualThemeScript.Archetype.TEMPERATE_OCEAN:
 			return {
 				"path": _TEMPERATE_REFERENCE_TEXTURE_PATH,
-				"strength": 0.84,
-				"detail_strength": 0.24,
-				"radius": 0.408,
-				"center_preserve": 0.90,
-				"side_shade_strength": 0.68,
-				"procedural_damp": 0.74,
-				"rim_boost": 0.10,
+				"strength": 0.98,
+				"detail_strength": 0.28,
+				"radius": 0.404,
+				"center_preserve": 0.97,
+				"side_shade_strength": 0.48,
+				"procedural_damp": 0.96,
+				"rim_boost": 0.0,
+				"native_color_strength": 1.0,
+				"cloud_damp": 1.0,
+				"min_gate": 1.0,
+				"rotation_domain": 0.0,
+				"portrait_strength": 0.0,
 			}
 		PlanetVisualThemeScript.Archetype.FROZEN:
 			return {
 				"path": _FROZEN_REFERENCE_TEXTURE_PATH,
-				"strength": 0.82,
-				"detail_strength": 0.20,
-				"radius": 0.408,
-				"center_preserve": 0.88,
-				"side_shade_strength": 0.74,
-				"procedural_damp": 0.72,
-				"rim_boost": 0.16,
+				"strength": 0.97,
+				"detail_strength": 0.24,
+				"radius": 0.404,
+				"center_preserve": 0.96,
+				"side_shade_strength": 0.50,
+				"procedural_damp": 0.95,
+				"rim_boost": 0.0,
+				"native_color_strength": 1.0,
+				"cloud_damp": 1.0,
+				"min_gate": 1.0,
+				"rotation_domain": 0.0,
+				"portrait_strength": 0.0,
 			}
 		PlanetVisualThemeScript.Archetype.HOT_SCORCHED:
 			return {
@@ -493,6 +538,11 @@ static func _surface_reference_setup_for(kind: int, archetype: int) -> Dictionar
 				"side_shade_strength": 0.80,
 				"procedural_damp": 0.80,
 				"rim_boost": 0.24,
+				"native_color_strength": 0.58,
+				"cloud_damp": 0.0,
+				"min_gate": 0.35,
+				"rotation_domain": 1.0,
+				"portrait_strength": 0.0,
 			}
 		_:
 			return {}
@@ -507,6 +557,11 @@ static func _reset_surface_reference_material(mat: ShaderMaterial) -> void:
 	mat.set_shader_parameter("surface_reference_side_shade_strength", 0.0)
 	mat.set_shader_parameter("surface_reference_procedural_damp", 0.0)
 	mat.set_shader_parameter("surface_reference_rim_boost", 0.0)
+	mat.set_shader_parameter("surface_reference_native_color_strength", 0.58)
+	mat.set_shader_parameter("surface_reference_cloud_damp", 0.0)
+	mat.set_shader_parameter("surface_reference_min_gate", 0.35)
+	mat.set_shader_parameter("surface_reference_rotation_domain", 1.0)
+	mat.set_shader_parameter("surface_reference_portrait_strength", 0.0)
 
 
 static func _apply_surface_reference_to_material(mat: ShaderMaterial, setup: Dictionary) -> void:
@@ -526,37 +581,54 @@ static func _apply_surface_reference_to_material(mat: ShaderMaterial, setup: Dic
 	mat.set_shader_parameter("surface_reference_side_shade_strength", float(setup.get("side_shade_strength", 0.0)))
 	mat.set_shader_parameter("surface_reference_procedural_damp", float(setup.get("procedural_damp", 0.0)))
 	mat.set_shader_parameter("surface_reference_rim_boost", float(setup.get("rim_boost", 0.0)))
+	mat.set_shader_parameter("surface_reference_native_color_strength", float(setup.get("native_color_strength", 0.58)))
+	mat.set_shader_parameter("surface_reference_cloud_damp", float(setup.get("cloud_damp", 0.0)))
+	mat.set_shader_parameter("surface_reference_min_gate", float(setup.get("min_gate", 0.35)))
+	mat.set_shader_parameter("surface_reference_rotation_domain", float(setup.get("rotation_domain", 1.0)))
+	mat.set_shader_parameter("surface_reference_portrait_strength", float(setup.get("portrait_strength", 0.0)))
 
 
 static func _make_sphere_material(kind: int) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	if kind == BodyType.Kind.STAR:
 		mat.shader = _SHADER_STAR
+		var star_reference_texture: Texture2D = _load_png_texture_cached(_STAR_REFERENCE_TEXTURE_PATH)
 		var star_detail_texture: Texture2D = _load_png_texture_cached(_STAR_DETAIL_TEXTURE_PATH)
+		if star_reference_texture != null:
+			mat.set_shader_parameter("star_reference_tex", star_reference_texture)
+		else:
+			mat.set_shader_parameter("star_reference_tex", _make_transparent_1px())
 		if star_detail_texture != null:
 			mat.set_shader_parameter("star_detail_tex", star_detail_texture)
+		else:
+			mat.set_shader_parameter("star_detail_tex", _make_white_1px())
 		mat.set_shader_parameter("star_closeup_phase", 0.0)
 		mat.set_shader_parameter("star_core_color", Color(1.0, 0.95, 0.80))
 		mat.set_shader_parameter("star_mid_color", Color(1.0, 0.62, 0.18))
 		mat.set_shader_parameter("star_channel_color", Color(0.62, 0.18, 0.08))
-		mat.set_shader_parameter("activity_strength", 0.34)
+		mat.set_shader_parameter("star_reference_strength", 0.92 if star_reference_texture != null else 0.0)
+		mat.set_shader_parameter("star_reference_native_color_strength", 1.0)
+		mat.set_shader_parameter("star_reference_detail_strength", 0.12)
+		mat.set_shader_parameter("star_reference_center_preserve", 0.88)
+		mat.set_shader_parameter("star_reference_procedural_damp", 0.58)
+		mat.set_shader_parameter("activity_strength", 0.26)
 		mat.set_shader_parameter("activity_scale", 4.2)
-		mat.set_shader_parameter("filament_strength", 0.30)
+		mat.set_shader_parameter("filament_strength", 0.22)
 		mat.set_shader_parameter("filament_scale", 3.1)
 		mat.set_shader_parameter("rim_hotness", 0.78)
-		mat.set_shader_parameter("edge_activity_strength", 0.22)
+		mat.set_shader_parameter("edge_activity_strength", 0.18)
 		mat.set_shader_parameter("edge_activity_scale", 5.0)
-		mat.set_shader_parameter("macro_surface_strength", 0.26)
+		mat.set_shader_parameter("macro_surface_strength", 0.22)
 		mat.set_shader_parameter("macro_surface_scale", 1.35)
-		mat.set_shader_parameter("meso_breakup_strength", 0.22)
+		mat.set_shader_parameter("meso_breakup_strength", 0.18)
 		mat.set_shader_parameter("meso_breakup_scale", 2.40)
-		mat.set_shader_parameter("granulation_contrast", 1.12)
-		mat.set_shader_parameter("channel_contrast", 1.18)
-		mat.set_shader_parameter("hotspot_contrast", 1.16)
-		mat.set_shader_parameter("detailmap_strength", 0.62)
+		mat.set_shader_parameter("granulation_contrast", 1.08)
+		mat.set_shader_parameter("channel_contrast", 1.12)
+		mat.set_shader_parameter("hotspot_contrast", 1.10)
+		mat.set_shader_parameter("detailmap_strength", 0.46)
 		mat.set_shader_parameter("detailmap_scale", 1.10)
-		mat.set_shader_parameter("prominence_strength", 0.32)
-		mat.set_shader_parameter("sunspot_strength", 0.24)
+		mat.set_shader_parameter("prominence_strength", 0.28)
+		mat.set_shader_parameter("sunspot_strength", 0.18)
 	else:
 		mat.shader = _SHADER_SPHERE
 		var is_moon: bool = kind == BodyType.Kind.MOON

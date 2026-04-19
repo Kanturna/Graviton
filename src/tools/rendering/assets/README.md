@@ -1,11 +1,37 @@
 # Rendering Assets
 
-## `star_detailmap.png`
+## `star_reference.png`
 
-Derived reusable structure map for the P14.6/P14.6b focused-star closeup shader.
+Derived reusable color reference map for the current solar hybrid path.
 
 - Source basis: user-provided solar reference image at `D:/Downloads/sun.png`
-- Usage: centered structure/luminance source for focused-star closeups
+- Usage: visible solar surface/color source inside the existing `body_star.gdshader`
+- Not used as a full direct photo sprite; the shader still owns glow, activity modulation and focused-star closeup behavior
+
+Regeneration:
+
+```powershell
+C:\Users\Sh4man\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe `
+  D:\Projekte\Godot\Graviton\src\tools\rendering\scripts\derive_star_reference_map.py `
+  --input D:\Downloads\sun.png `
+  --output D:\Projekte\Godot\Graviton\src\tools\rendering\assets\star_reference.png `
+  --size 512
+```
+
+The derivation intentionally:
+
+- detects and centers the solar disc from the original image
+- crops the source to a disc-friendly square reference frame
+- keeps the rich source colors instead of flattening them to grayscale
+- clips the strongest outer corona/protuberance area out of the runtime map
+- preserves a soft inner alpha edge so the shader can keep the solar disc clean
+
+## `star_detailmap.png`
+
+Derived reusable grayscale structure map for the focused-star closeup follow-up.
+
+- Source basis: user-provided solar reference image at `D:/Downloads/sun.png`
+- Usage: centered secondary structure/luminance source layered on top of `star_reference.png`
 - Not used as a direct photo skin for stars
 
 Regeneration:
@@ -31,7 +57,7 @@ The shader intentionally samples the map statically:
 - no `TIME`-based translation
 - no rotation
 - centered disc-aligned UV sampling only
-- refreshed in the current hybrid-follow-up with slightly stronger closeup weighting
+- refreshed in the current hybrid-follow-up with slightly stronger closeup weighting while the new color-led `star_reference.png` remains the primary visible surface
 
 ## `moon_reference.png`
 
@@ -77,13 +103,25 @@ C:\Users\Sh4man\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\
   D:\Projekte\Godot\Graviton\src\tools\rendering\scripts\derive_planet_reference_map.py `
   --input D:\Downloads\Terran1.png `
   --output D:\Projekte\Godot\Graviton\src\tools\rendering\assets\temperate_reference.png `
-  --size 512
+  --size 512 `
+  --flatten-strength 0.28 `
+  --color-preserve 0.92 `
+  --saturation-boost 1.06 `
+  --contrast 1.02 `
+  --sharpness 1.04 `
+  --detail-gain-strength 0.22
 
 C:\Users\Sh4man\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe `
   D:\Projekte\Godot\Graviton\src\tools\rendering\scripts\derive_planet_reference_map.py `
   --input D:\Downloads\Ice1.png `
   --output D:\Projekte\Godot\Graviton\src\tools\rendering\assets\frozen_reference.png `
-  --size 512
+  --size 512 `
+  --flatten-strength 0.26 `
+  --color-preserve 0.94 `
+  --saturation-boost 1.04 `
+  --contrast 1.02 `
+  --sharpness 1.03 `
+  --detail-gain-strength 0.18
 
 C:\Users\Sh4man\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe `
   D:\Projekte\Godot\Graviton\src\tools\rendering\scripts\derive_planet_reference_map.py `
@@ -95,5 +133,8 @@ C:\Users\Sh4man\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\
 The derivation intentionally:
 
 - reuses the same alpha-centered crop/flatten/detail pipeline as the moon pilot
+- now supports per-asset tuning for baked-light flattening and color retention
+- now also supports a lighter local-detail gain so closeup planet references can stay closer to the original artwork
+- keeps `temperate_reference.png` and `frozen_reference.png` intentionally more color-faithful to their source art than the moon pilot
 - keeps the usable alpha mask inside the original beauty rim
 - leaves the final lighting, terminator and rotational motion to the runtime shader

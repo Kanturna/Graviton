@@ -1,5 +1,27 @@
 # Graviton - Decisions
 
+## 2026-04-19 - Die Sonne wird im Hybridpfad jetzt explizit color-led statt weiter nur detailmap-getrieben
+
+Der bisherige Stern-Hybrid nutzte `sun.png` nur indirekt ueber die
+abgeleitete Graustufen-`star_detailmap.png`. Das war fuer die
+Closeup-Struktur brauchbar, liess die sichtbare Sonnenoberflaeche aber
+weiter staerker wie einen prozeduralen Stern mit etwas Bildsignal lesen
+statt wie dieselbe solar referenzierte Sonne ueber alle Zoomstufen.
+
+Konsequenz:
+
+- zusaetzlich zur bestehenden `star_detailmap.png` wird jetzt eine
+  farbige `star_reference.png` aus `sun.png` abgeleitet
+- diese `star_reference.png` fuehrt im `body_star.gdshader` ab jetzt die
+  sichtbare Solaroberflaeche
+- die prozeduralen Sternlayer bleiben erhalten, werden unter aktiver
+  Referenz aber amplitude-seitig bewusst etwas gedimmt
+- die alte `star_detailmap.png` bleibt ebenfalls erhalten, liest jetzt
+  aber nur noch als sekundere Strukturquelle statt als alleinige
+  Bildbruecke
+- die Sonne bekommt damit denselben Grundsatz wie die planetaren
+  Hybride: Bild fuehrt, Shader veredelt
+
 ## 2026-04-19 - Root-Stabilitaet ist sichtbarkeitsbasiert, nicht mehr `wide`- oder lag-basiert
 
 Der erste P16.1-Fix hat den Root-/BH-Anker nur fuer verschachtelte
@@ -83,6 +105,40 @@ Konsequenz:
   abgeleitete `star_detailmap.png` eingebracht; im Follow-up wird deren
   Einfluss aber etwas staerker gewichtet statt einen direkten
   Solar-Fotoskin einzuziehen
+
+## 2026-04-19 - `TEMPERATE_OCEAN` und `FROZEN` werden im Hybridpfad bewusst reference-led statt weiter mit generischen Wolken-/Glow-Layern verziert
+
+Der erste planetare Hybrid-Expand war technisch korrekt, las fuer
+`TEMPERATE_OCEAN` und `FROZEN` aber noch zu sehr wie "starkes Bild plus
+alter Planeten-Look darueber": die Bildfarben waren zu weit in Richtung
+Theme-Tint zusammengedrueckt, die generischen Shader-Wolken lagen
+zusaetzlich ueber einer ohnehin wolkigen Referenz, und der grosse blaue
+Planet-Glow wirkte vor allem bei `Terran`/`Ice` staerker als das
+eigentliche Bild.
+
+Konsequenz:
+
+- fuer `TEMPERATE_OCEAN` und `FROZEN` werden die Referenz-Maps jetzt
+  farbtreuer aus den Quellbildern abgeleitet
+- im Shader wird fuer diese Archetypen die native Referenzfarbe
+  deutlich staerker bevorzugt als im Moon-/Hot-Pfad
+- zusaetzliche generische Shader-Wolken werden fuer diese beiden
+  Archetypen unterdrueckt
+- der grosse atmosphaerische Overlay-/Glow-Pfad wird fuer diese beiden
+  Archetypen stark reduziert; `HOT_SCORCHED` bleibt hiervon bewusst
+  ausgenommen
+- der kurz getestete portrait-stabile Closeup-Sonderpfad wurde im
+  naechsten Follow-up wieder verworfen, weil er zwar die Nahansicht
+  schoen hielt, aber Fern- und Nahansicht als verschiedene Sprites lesen
+  liess und die sichtbare Rotation praktisch entfernte
+- ein weiterer kurzer Versuch, `TEMPERATE_OCEAN` und `FROZEN` dann auf
+  denselben HOT-artigen rotationsgekoppelten Pfad zu ziehen, hat die
+  sichtbare Verzerrungszone des Einzelbild-Mappings nicht geloest
+- stattdessen nutzen `TEMPERATE_OCEAN` und `FROZEN` jetzt denselben
+  voll aktiven, zoomstabilen disc-preserving Referenz-Layer ueber alle
+  Zoomstufen: damit bleibt die Bildtreue hoch, der Zoom-Bruch
+  verschwindet, die sichtbare Verzerrung geht weg und Rotation bleibt
+  trotzdem vorhanden
 
 ## 2026-04-19 - Der erste Planet-Asset-Pilot startet bewusst moon-only als Hybrid statt als direkter Sprite-Ersatz
 

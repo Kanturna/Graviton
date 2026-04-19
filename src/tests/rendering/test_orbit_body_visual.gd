@@ -18,12 +18,20 @@ static func _test_star_material_keeps_detailmap_active(ctx) -> void:
 	var mat: ShaderMaterial = OrbitBodyVisualScript._make_sphere_material(BodyType.Kind.STAR)
 	ctx.assert_true(mat != null, "star material kann erzeugt werden")
 	ctx.assert_true(
+		mat.get_shader_parameter("star_reference_tex") != null,
+		"star material bindet jetzt zusaetzlich eine solar reference texture"
+	)
+	ctx.assert_true(
+		float(mat.get_shader_parameter("star_reference_strength")) > 0.0,
+		"star material aktiviert jetzt einen bildgefuehrten solar hybrid blend"
+	)
+	ctx.assert_true(
 		mat.get_shader_parameter("star_detail_tex") != null,
 		"star material bindet weiter eine solar detailmap"
 	)
 	ctx.assert_true(
-		float(mat.get_shader_parameter("detailmap_strength")) >= 0.60,
-		"star material liest die solar detailmap im aktuellen Follow-up etwas staerker"
+		float(mat.get_shader_parameter("detailmap_strength")) >= 0.42,
+		"star material behaelt die solar detailmap weiter als sekundere Strukturquelle aktiv"
 	)
 
 
@@ -73,6 +81,26 @@ static func _test_temperate_theme_enables_hybrid_reference(ctx) -> void:
 		mat.get_shader_parameter("surface_reference_tex") != null,
 		"TEMPERATE_OCEAN bindet eine Referenz-Texture"
 	)
+	ctx.assert_true(
+		float(mat.get_shader_parameter("surface_reference_native_color_strength")) >= 0.90,
+		"TEMPERATE_OCEAN bevorzugt jetzt die nativen Farben der Referenz deutlich staerker"
+	)
+	ctx.assert_true(
+		is_equal_approx(float(mat.get_shader_parameter("surface_reference_rotation_domain")), 0.0),
+		"TEMPERATE_OCEAN nutzt jetzt den verzerrungsfreien disc-preserving Rotationspfad"
+	)
+	ctx.assert_true(
+		float(mat.get_shader_parameter("surface_reference_min_gate")) >= 1.0,
+		"TEMPERATE_OCEAN haelt die Referenz jetzt auch in der Fernansicht voll aktiv"
+	)
+	ctx.assert_true(
+		is_zero_approx(float(mat.get_shader_parameter("surface_reference_portrait_strength"))),
+		"TEMPERATE_OCEAN nutzt keinen separaten portrait-stabilen Closeup-Sprite mehr"
+	)
+	ctx.assert_true(
+		is_zero_approx(float(mat.get_shader_parameter("cloud_strength"))),
+		"TEMPERATE_OCEAN legt keine zusaetzlichen Shader-Wolken mehr ueber die Referenz"
+	)
 
 
 static func _test_frozen_theme_enables_hybrid_reference(ctx) -> void:
@@ -87,6 +115,26 @@ static func _test_frozen_theme_enables_hybrid_reference(ctx) -> void:
 		float(mat.get_shader_parameter("surface_reference_center_preserve")) > 0.0,
 		"FROZEN schuetzt die icy reference im Zentrum vor zu starker Vollflaechen-Schattierung"
 	)
+	ctx.assert_true(
+		float(mat.get_shader_parameter("surface_reference_native_color_strength")) >= 0.90,
+		"FROZEN bevorzugt jetzt die nativen Farben der Referenz deutlich staerker"
+	)
+	ctx.assert_true(
+		is_equal_approx(float(mat.get_shader_parameter("surface_reference_rotation_domain")), 0.0),
+		"FROZEN nutzt jetzt den verzerrungsfreien disc-preserving Rotationspfad"
+	)
+	ctx.assert_true(
+		float(mat.get_shader_parameter("surface_reference_min_gate")) >= 1.0,
+		"FROZEN haelt die Referenz jetzt auch in der Fernansicht voll aktiv"
+	)
+	ctx.assert_true(
+		is_zero_approx(float(mat.get_shader_parameter("surface_reference_portrait_strength"))),
+		"FROZEN nutzt keinen separaten portrait-stabilen Closeup-Sprite mehr"
+	)
+	ctx.assert_true(
+		is_zero_approx(float(mat.get_shader_parameter("cloud_strength"))),
+		"FROZEN legt keine zusaetzlichen Shader-Wolken mehr ueber die Referenz"
+	)
 
 
 static func _test_hot_theme_enables_hybrid_reference(ctx) -> void:
@@ -100,6 +148,14 @@ static func _test_hot_theme_enables_hybrid_reference(ctx) -> void:
 	ctx.assert_true(
 		float(mat.get_shader_parameter("surface_reference_rim_boost")) > 0.0,
 		"HOT_SCORCHED behaelt zusaetzlich einen shaderseitig verstaerkten heissen Rand"
+	)
+	ctx.assert_true(
+		is_equal_approx(float(mat.get_shader_parameter("surface_reference_rotation_domain")), 1.0),
+		"HOT_SCORCHED bleibt beim bestehenden rotationsgekoppelten Hybridpfad"
+	)
+	ctx.assert_true(
+		is_zero_approx(float(mat.get_shader_parameter("surface_reference_portrait_strength"))),
+		"HOT_SCORCHED bleibt ohne separaten portrait-stabilen Closeup-Sprite"
 	)
 
 

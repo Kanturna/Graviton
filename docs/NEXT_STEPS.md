@@ -633,6 +633,20 @@ Zielbild fuer diesen Strang:
   `hot_scorched_reference.png` im Nahzoom wirklich als "Bild fuehrt,
   Shader veredelt", ohne dass gebackene Rims oder alte Pattern wieder
   zu dominant werden
+- den neuen Stern-Hybrid im Editor gegenpruefen:
+  liest `star_reference.png` in Fern- und Nahansicht wirklich als
+  dieselbe Sonne, waehrend Halo, Randaktivitaet und die alte
+  `star_detailmap.png` nur noch veredeln statt die sichtbare
+  Solaroberflaeche wieder zu uebermalen
+- bei `TEMPERATE_OCEAN` und `FROZEN` jetzt speziell gegenpruefen, ob der
+  reduzierte Glow-/Overlay-Pfad und die entfernten Shader-Wolken den
+  gewuenschten Schritt "mehr Originalbild, weniger Kunst-Layer"
+  tatsaechlich sauber treffen
+- im selben Playtest jetzt gezielt schauen, ob der neue einheitliche
+  Referenz-Layer fuer `TEMPERATE_OCEAN` und `FROZEN` Fern- und
+  Nahansicht wirklich als denselben Planeten lesen laesst und die
+  Rotation dabei im neuen verzerrungsfreien disc-preserving Pfad klar
+  genug sichtbar bleibt
 - dabei speziell pruefen, ob die neue rotationsgekoppelte
   Planet-Referenz fuer `TEMPERATE_OCEAN`, `FROZEN` und
   `HOT_SCORCHED` in Bewegung natuerlich genug liest oder ob der

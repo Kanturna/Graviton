@@ -266,11 +266,39 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die planetaren Archetypen sampeln ihre Referenz ausserdem etwas enger
   als der Mondpilot, damit weniger vom gebackenen Beauty-Rand und mehr
   von der inneren Oberflaechenlesbarkeit in den Runtime-Pfad gelangt.
-- Der Sternpfad wurde im selben Follow-up mit dem bereitgestellten
-  `sun.png` erneut durch den bestehenden Detailmap-Ableitungspfad
-  gezogen; die resultierende `star_detailmap.png` bleibt statisch und
-  zentriert, liest im fokussierten Stern-Closeup jetzt aber etwas
-  staerker mit.
+- Ein weiteres Follow-up zieht `TEMPERATE_OCEAN` und `FROZEN` jetzt
+  sichtbar naeher an ihre Originalbilder: die zugehoerigen
+  Referenz-Maps werden farbtreuer aus `Terran1.png` und `Ice1.png`
+  abgeleitet, die nativen Referenzfarben werden im Shader deutlich
+  staerker bevorzugt, zusaetzliche Shader-Wolken werden fuer diese
+  beiden Archetypen unterdrueckt, und der fruehere grosse blaue
+  Planet-Glow wird stark reduziert.
+- Ein weiteres Korrektur-Follow-up vereinheitlicht `TEMPERATE_OCEAN`
+  und `FROZEN` jetzt wieder ueber alle Zoomstufen auf denselben
+  Referenz-Layer: Fern- und Nahansicht lesen damit nicht mehr als zwei
+  unterschiedliche Sprites, und die sichtbare Rotation bleibt fuer diese
+  beiden Archetypen erhalten.
+- Technisch nutzt dieser Korrekturpfad fuer `TEMPERATE_OCEAN` und
+  `FROZEN` jetzt einen voll aktiven, zoomstabilen disc-preserving
+  Referenz-Layer statt des kurz getesteten HOT-artigen
+  rotationsgekoppelten Pfads und statt des portrait-stabilen
+  Closeup-Sondermappings; damit verschwinden der alte Zoom-Bruch und die
+  sichtbare Verzerrungszone, ohne die neue Bildtreue wieder aufzugeben.
+- `HOT_SCORCHED` bleibt in diesem Follow-up bewusst praktisch
+  unveraendert, weil dieser Archetyp visuell bereits die gewuenschte
+  Lesbarkeit erreicht hatte.
+- Der Sternpfad nutzt jetzt zusaetzlich eine aus `sun.png` abgeleitete
+  farbige `star_reference.png` als sichtbare Solaroberflaeche innerhalb
+  des bestehenden `body_star.gdshader`.
+- Diese neue Stern-Referenz ersetzt bewusst keinen Runtime-Sprite:
+  Halo, Randaktivitaet, Closeup-Verhalten und die restliche
+  Oberflaechenbewegung bleiben weiter shaderseitig kontrolliert; neu ist
+  nur, dass die Sonnenoberflaeche jetzt sichtbar bildgefuehrt ist statt
+  nur ueber die alte Graustufen-Detailmap zu lesen.
+- Die bestehende `star_detailmap.png` bleibt erhalten, liest jetzt aber
+  nur noch als zweite Strukturquelle ueber der farbigen
+  `star_reference.png`, waehrend die prozeduralen Sternlayer etwas
+  gedimmt unter diesem Bild-Layer weiterlaufen.
 
 ## Ziel dieser Praesentationsschicht
 
@@ -330,11 +358,13 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tools/rendering/shaders/body_star.gdshader`
 - `src/tools/rendering/assets/README.md`
 - `src/tools/rendering/assets/star_detailmap.png`
+- `src/tools/rendering/assets/star_reference.png`
 - `src/tools/rendering/assets/moon_reference.png`
 - `src/tools/rendering/assets/temperate_reference.png`
 - `src/tools/rendering/assets/frozen_reference.png`
 - `src/tools/rendering/assets/hot_scorched_reference.png`
 - `src/tools/rendering/scripts/derive_star_detailmap.py`
+- `src/tools/rendering/scripts/derive_star_reference_map.py`
 - `src/tools/rendering/scripts/derive_planet_reference_map.py`
 - `src/tests/rendering/test_orbit_body_visual.gd`
 - `src/tests/rendering/test_orbit_emphasis_rules.gd`

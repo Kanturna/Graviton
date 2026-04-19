@@ -27,6 +27,11 @@ uniform float surface_reference_center_preserve = 0.0;
 uniform float surface_reference_side_shade_strength = 0.0;
 uniform float surface_reference_procedural_damp = 0.0;
 uniform float surface_reference_rim_boost = 0.0;
+uniform float surface_reference_native_color_strength = 0.58;
+uniform float surface_reference_cloud_damp = 0.0;
+uniform float surface_reference_min_gate = 0.35;
+uniform float surface_reference_rotation_domain = 1.0;
+uniform float surface_reference_portrait_strength = 0.0;
 // Rotation domain: 0.0 = screen-plane (features orbit disk center; moon legacy)
 //                  1.0 = spherical Y-axis (features traverse limb to limb; planet)
 uniform float spherical_mix = 0.0;
@@ -166,7 +171,7 @@ void fragment() {
 		crater_mask * crater_strength * high_detail * procedural_damp
 	);
 
-	float reference_gate = mix(0.35, 1.0, smoothstep(0.04, 0.34, df_t));
+	float reference_gate = mix(surface_reference_min_gate, 1.0, smoothstep(0.04, 0.34, df_t));
 	vec2 reference_uv_flat = n_flat * surface_reference_radius + vec2(0.5);
 	vec3 n_reference = vec3(
 		cr * n.x - sr * n.z,
@@ -174,7 +179,10 @@ void fragment() {
 		sr * n.x + cr * n.z
 	);
 	vec2 reference_uv_spherical = n_reference.xy * surface_reference_radius + vec2(0.5);
-	vec2 reference_uv = mix(reference_uv_flat, reference_uv_spherical, spherical_mix);
+	vec2 reference_uv_portrait = n_xy * surface_reference_radius + vec2(0.5);
+	vec2 reference_uv_rotating = mix(reference_uv_flat, reference_uv_spherical, surface_reference_rotation_domain);
+	float portrait_phase = smoothstep(0.52, 0.94, df_t) * surface_reference_portrait_strength;
+	vec2 reference_uv = mix(reference_uv_rotating, reference_uv_portrait, portrait_phase);
 	vec4 reference_sample = texture(surface_reference_tex, reference_uv);
 	float reference_mask = surface_reference_strength * reference_sample.a * reference_gate;
 	if (reference_mask > 0.001) {
@@ -183,7 +191,7 @@ void fragment() {
 		vec3 reference_tinted = mix(
 			mix(base_color, secondary_color, clamp(reference_luma * 0.92, 0.0, 1.0)),
 			reference_sample.rgb,
-			0.58
+			surface_reference_native_color_strength
 		);
 		surface_col = mix(surface_col, reference_tinted, clamp(reference_mask, 0.0, 0.92));
 		surface_col *= 1.0 + reference_detail * surface_reference_detail_strength
@@ -218,7 +226,8 @@ void fragment() {
 		pow(abs(n_rot.y), 3.0) * polar_tint_strength * procedural_damp
 	);
 
-	float cloud_mix = cloud_mask * cloud_strength * high_detail;
+	float cloud_mix = cloud_mask * cloud_strength * high_detail
+		* (1.0 - surface_reference_cloud_damp * reference_mode);
 	col = mix(col, vec3(1.0), cloud_mix * 0.65);
 	col += accent_color * lava_mask * lava_strength * high_detail * 0.28 * (0.35 + 0.65 * lit) * procedural_damp;
 	col += atmo_color * rim * (1.0 + surface_reference_rim_boost * reference_mode);
