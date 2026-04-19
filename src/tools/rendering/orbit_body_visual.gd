@@ -25,11 +25,15 @@ const _STAR_HALO_OUTER_COLOR: Color = Color(1.0, 0.42, 0.16, 0.018)
 const _STAR_HALO_BREATH_FREQ_RAD_PER_S: float = 0.28
 const _STAR_HALO_BREATH_AMPLITUDE: float = 0.10
 static var _TEXTURE_CACHE: Dictionary = {}
+static var _WHITE_PIXEL_TEXTURE: Texture2D = null
+static var _TRANSPARENT_PIXEL_TEXTURE: Texture2D = null
 
 var _kind: int = BodyType.Kind.PLANET
 var _is_focused: bool = false
 var _detail_factor: float = 1.0
 var _star_closeup_phase: float = 0.0
+var _theme_signature: String = ""
+var _theme_apply_count: int = 0
 
 var _sphere: Sprite2D = null
 var _overlay: Node2D = null
@@ -111,11 +115,20 @@ func _process(_delta: float) -> void:
 func apply_planet_theme(theme) -> void:
 	if _kind != BodyType.Kind.PLANET and _kind != BodyType.Kind.MOON:
 		return
+	var theme_signature: String = _theme_signature_for(theme)
+	if theme_signature == _theme_signature:
+		return
 	_theme = theme
+	_theme_signature = theme_signature
+	_theme_apply_count += 1
 	_apply_theme_to_material(theme)
 	queue_redraw()
 	if _overlay != null:
 		_overlay.queue_redraw()
+
+
+func get_theme_apply_count() -> int:
+	return _theme_apply_count
 
 
 func _draw() -> void:
@@ -435,15 +448,21 @@ func _moon_reference_is_active() -> bool:
 
 
 static func _make_white_1px() -> ImageTexture:
+	if _WHITE_PIXEL_TEXTURE != null:
+		return _WHITE_PIXEL_TEXTURE
 	var img := Image.create(1, 1, false, Image.FORMAT_RGBA8)
 	img.fill(Color.WHITE)
-	return ImageTexture.create_from_image(img)
+	_WHITE_PIXEL_TEXTURE = ImageTexture.create_from_image(img)
+	return _WHITE_PIXEL_TEXTURE
 
 
 static func _make_transparent_1px() -> ImageTexture:
+	if _TRANSPARENT_PIXEL_TEXTURE != null:
+		return _TRANSPARENT_PIXEL_TEXTURE
 	var img := Image.create(1, 1, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0.0, 0.0, 0.0, 0.0))
-	return ImageTexture.create_from_image(img)
+	_TRANSPARENT_PIXEL_TEXTURE = ImageTexture.create_from_image(img)
+	return _TRANSPARENT_PIXEL_TEXTURE
 
 
 static func _sphere_local_scale(kind: int) -> Vector2:
@@ -662,3 +681,26 @@ static func _make_sphere_material(kind: int) -> ShaderMaterial:
 				_surface_reference_setup_for(kind, PlanetVisualThemeScript.Archetype.BARREN)
 			)
 	return mat
+
+
+static func _theme_signature_for(theme) -> String:
+	if theme == null:
+		return "<null>"
+	return "|".join([
+		str(int(theme.archetype)),
+		"1" if bool(theme.is_stylized_interpretation) else "0",
+		theme.base_color.to_html(true),
+		theme.secondary_color.to_html(true),
+		theme.accent_color.to_html(true),
+		theme.atmo_color.to_html(true),
+		_float_signature(theme.land_ocean_strength),
+		_float_signature(theme.cloud_strength),
+		_float_signature(theme.ice_strength),
+		_float_signature(theme.lava_strength),
+		_float_signature(theme.dryness_strength),
+		_float_signature(theme.crater_strength),
+	])
+
+
+static func _float_signature(value: float) -> String:
+	return "%.6f" % value

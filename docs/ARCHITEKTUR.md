@@ -19,6 +19,7 @@ scenes/     (duenn, nur Projektion + Composition Root)
    |
    v
 src/runtime/       LocalBubbleManager, BubbleActivationSet
+                   DerivedSnapshotCache
    |
    v
 src/sim/           UniverseRegistry, WorldLoader, OrbitService, LocalOrbitIntegrator,
@@ -50,8 +51,9 @@ Visuals im Testbed, Debug-Overlay-Anzeigen.
 
 ## Autoloads - ADR
 
-**Entscheidung:** Genau zwei Autoloads - `TimeService` und
-`UniverseRegistry`. Alles andere ist regulaerer Szenengraph.
+**Entscheidung:** Genau zwei projekt-eigene Autoloads -
+`TimeService` und `UniverseRegistry`. Alles andere ist regulaerer
+Szenengraph.
 
 **Gruende:**
 - `TimeService` treibt den gesamten Tick; ohne Zeit keine Simulation.
@@ -64,6 +66,11 @@ Visuals im Testbed, Debug-Overlay-Anzeigen.
   Testbed-Szene als Kind-Nodes instanziiert und per `configure()` oder
   explizitem Methodenaufruf verdrahtet.
 - Vorteil: explizite Abhaengigkeiten, testbar, lokal auswechselbar.
+
+**Explizite Ausnahme:** `project.godot` kann plugin-provided
+Addon-Autoloads enthalten (aktuell `AntialiasedLine2DTexture` und
+`PhantomCameraManager`). Diese zaehlen nicht als Projekt-/Sim-Autoloads
+und fuehren keine neue Simulationswahrheit ein.
 
 Eine Erweiterung der Autoload-Liste braucht einen neuen ADR-Abschnitt
 hier.
@@ -97,11 +104,11 @@ Wenn du ueberlegst, der Registry Funktionalitaet hinzuzufuegen, pruefe:
 
 Hinweis:
 Das folgende Snippet beschreibt den aktuellen Composition-Root-Stand
-nach Schritt 9. Der aktuelle Code in
+nach dem Snapshot-/Generator-Cleanup. Der aktuelle Code in
 `scenes/testbeds/orbit_testbed.gd` nutzt bereits einen expliziten
-`WorldLoader`, ein verdrahtetes `BubbleActivationSet` und den gelebten
-`request_numeric_local_candidates(...)`-Pfad sowie die aktuelle
-Thermal-/Atmosphaeren-/Environment-Kette im Runtime-Flow.
+`WorldLoader`, ein verdrahtetes `BubbleActivationSet`, den gelebten
+`request_numeric_local_candidates(...)`-Pfad sowie einen kleinen
+read-only `DerivedSnapshotCache` fuer HUD und planetaren Render-Input.
 
 Die Verdrahtung passiert pro Szene in deren Root-Script:
 
@@ -121,12 +128,22 @@ _ready():
     ThermalService.configure(UniverseRegistry)
     AtmosphereService.configure(UniverseRegistry, ThermalService)
     EnvironmentService.configure(UniverseRegistry, AtmosphereService)
+    DerivedSnapshotCache.configure(
+        UniverseRegistry,
+        TimeService,
+        LocalBubbleManager,
+        WorldLoader,
+        ThermalService,
+        EnvironmentService
+    )
+    OrbitViewRenderer.set_derived_snapshot_cache(DerivedSnapshotCache)
     DebugOverlay.configure(
         UniverseRegistry,
         TimeService,
         LocalBubbleManager,
         BubbleActivationSet,
-        ThermalService
+        ThermalService,
+        DerivedSnapshotCache
     )
 
 _process():
@@ -140,6 +157,11 @@ _process():
 `recompute_all_at_time` ist kein Tick - es emittiert kein Signal und
 treibt keine Zeit vorwaerts. Es stellt nur sicher, dass alle
 `BodyState`s vor dem ersten `_process`-Frame konsistent befuellt sind.
+
+`DerivedSnapshotCache` ist ausdruecklich read-only Glue zwischen
+`sim/` und View. Er rebuilt nur bei `TimeService.sim_tick`,
+`LocalBubbleManager.focus_changed` und `WorldLoader.world_loaded`; im
+Frame-Loop werden nur bereits berechnete Snapshots konsumiert.
 
 Kein impliziter `get_node("/root/...")`-Griff aus tiefen Skripten.
 
@@ -188,8 +210,9 @@ liefern bewusst `Vector3.INF`. Die root-lokale Debug-Hilfe heisst
 `compose_root_local_position_m()` und ist nicht fuer den Render-Pfad
 gedacht.
 
-**Fehlerpfad kein LCA:** `Vector3.INF` plus `push_error`. Kein stilles
-`ZERO` - semantisch falsch lokalisierte Objekte sollen sichtbar sein.
+**Kein-LCA-Pfad:** `Vector3.INF` plus Warning-/Debug-Logging. Kein
+stilles `ZERO` - semantisch falsch lokalisierte Objekte sollen sichtbar
+sein, aber legitime Cross-Root-Faelle sind kein Fehler.
 
 **Render-Skalierung:** Ausschliesslich in `to_render_units(view_m)`.
 Kein anderer Code ruft `RENDER_SCALE_M_PER_UNIT` direkt an.
@@ -241,7 +264,9 @@ Gleichgewichtstemperatur sowie saisonale Geometrie
 (`subsolar_latitude_rad`, tagesgemittelte TOA-Insolation fuer
 ausgewaehlte Breiten). Das `/4`-Redistribution-Modell ist bewusst als
 Fast-Rotator-Annahme dokumentiert; Atmosphaeren-, Greenhouse- und
-Mehrquellen-Modelle leben bewusst ausserhalb dieses Services.
+Mehrquellen-Modelle leben bewusst ausserhalb dieses Services. Bis ein
+spaeterer Mehrquellen-Block existiert, muessen HUD/Debug diese
+Vereinfachung explizit als `Primary source: ...` sichtbar machen.
 
 ## AtmosphereService - ADR
 
@@ -282,6 +307,24 @@ keine `BodyState`-Mutation.
 bewusst von `configure(registry, thermal_service)` auf
 `configure(registry, atmosphere_service)`. Der P8-Pfad auf Basis von
 `T_eq` bleibt nicht parallel erhalten.
+
+## DerivedSnapshotCache - ADR
+
+**Entscheidung:** `DerivedSnapshotCache` ist ein kleiner read-only
+Runtime-Helfer zwischen `sim/`-Services und View-Code.
+
+**Grund:** HUD und Renderer brauchen dieselben Derived-Daten, aber diese
+Schnittstelle soll nicht wieder still in `_process()` rekursiv
+`ThermalService.describe_body(...)` und
+`EnvironmentService.describe_body(...)` fuer jeden Frame aufrollen.
+
+**Verantwortung:** Speichert nur den letzten Snapshot pro Body und fuer
+den aktuellen Fokus. Kein eigener Sim-Zustand, keine neue Wahrheit,
+keine `BodyState`-Mutation.
+
+**Invalidierung:** Ausschliesslich bei `TimeService.sim_tick`,
+`LocalBubbleManager.focus_changed` und `WorldLoader.world_loaded`.
+Keine stillen Rebuilds im Frame-Loop.
 
 ## Regime-Wechsel-Modell - ADR
 

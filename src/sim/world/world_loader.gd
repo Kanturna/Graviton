@@ -1,12 +1,19 @@
 class_name WorldLoader
 extends Node
 
+const StarterWorldScript = preload("res://data/starter_world.gd")
+const SampleSystemScript = preload("res://data/sample_system.gd")
+const DeterministicWorldGeneratorScript = preload("res://src/sim/world/deterministic_world_generator.gd")
+
 const STARTER_WORLD_ID: StringName = &"starter_world"
 const SAMPLE_SYSTEM_ID: StringName = &"sample_system"
+const GENERATED_SYSTEM_ID: StringName = &"generated_system"
+
+signal world_loaded(world_id: StringName)
 
 
 func available_world_ids() -> Array[StringName]:
-	return [STARTER_WORLD_ID, SAMPLE_SYSTEM_ID]
+	return [STARTER_WORLD_ID, SAMPLE_SYSTEM_ID, GENERATED_SYSTEM_ID]
 
 
 # Laedt eine benannte Welt nur dann in die Registry, wenn die Welt-ID bekannt ist
@@ -16,19 +23,21 @@ func load_named_world(world_id: StringName, registry: Node) -> bool:
 	var defs: Array[BodyDef] = []
 	match world_id:
 		STARTER_WORLD_ID:
-			defs = StarterWorld.build()
+			defs = StarterWorldScript.build()
 		SAMPLE_SYSTEM_ID:
-			defs = SampleSystem.build()
+			defs = SampleSystemScript.build()
+		GENERATED_SYSTEM_ID:
+			defs = DeterministicWorldGeneratorScript.build(DeterministicWorldGeneratorScript.DEFAULT_SEED)
 		_:
 			push_error("WorldLoader.load_named_world: unknown world_id '%s'" % world_id)
 			return false
-	return load_defs_into_registry(defs, registry)
+	return load_defs_into_registry(defs, registry, world_id)
 
 
 # Mutiert die Registry nur nach vollstaendiger Vorvalidierung.
 # Bei Fehlern bleibt der bestehende Registry-Zustand unveraendert.
 # Bei Erfolg: registry.clear() + deterministische Registrierung in Array-Reihenfolge.
-func load_defs_into_registry(defs: Array[BodyDef], registry: Node) -> bool:
+func load_defs_into_registry(defs: Array[BodyDef], registry: Node, loaded_world_id: StringName = StringName("")) -> bool:
 	if registry == null:
 		push_error("WorldLoader.load_defs_into_registry: registry is null")
 		return false
@@ -70,4 +79,5 @@ func load_defs_into_registry(defs: Array[BodyDef], registry: Node) -> bool:
 	registry.clear()
 	for def in defs:
 		registry.register_body(def)
+	world_loaded.emit(loaded_world_id)
 	return true

@@ -26,6 +26,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Fokus-Subtraktion.
 - `WorldLoader` laedt benannte Welten jetzt explizit im `sim/`-Layer;
   `orbit_testbed.gd` laedt nicht mehr direkt `StarterWorld`.
+- `WorldLoader` exponiert jetzt `starter_world`, `sample_system` und
+  `generated_system`; die Generator-Welt laeuft bewusst ueber dieselbe
+  Vorvalidierung und Registry-Transaktion wie die handgebauten Welten.
 - `BodyDef` enthaelt jetzt erste statische Weltmodell-Felder fuer
   Rotation, Achsneigung, deren saisonale Orbit-Frame-Orientierung,
   Leuchtkraft und Albedo.
@@ -59,6 +62,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `HABITABLE`, `MARGINAL` oder `HOSTILE` und leitet zusaetzlich erste
   planetare Oekosystem-Typen (`FROZEN`, `TEMPERATE`, `SEASONAL`,
   `HOT`) ab.
+- `DerivedSnapshotCache` verteilt jetzt read-only den letzten
+  Thermal-/Environment-Snapshot an HUD und Renderer und invalidiert
+  bewusst nur bei `TimeService.sim_tick`,
+  `LocalBubbleManager.focus_changed` und `WorldLoader.world_loaded`.
 - Topologie-Helfer sind jetzt in einem read-only
   `UniverseTopology`-Helper ueber `UniverseRegistry` gebuendelt statt
   parallel in Bubble-, Renderer- und Testbed-Code verteilt.
@@ -67,10 +74,19 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   ueber kopierte Boilerplate in mehreren Suites.
 - Bodies aus einem anderen Root als der aktuelle Fokus liefern bewusst
   `Vector3.INF` und werden im Renderer nicht lokalisiert.
-- `TimeService` und `UniverseRegistry` sind die zentralen Autoloads.
+- `INACTIVE_NO_LCA` bleibt fuer legitime Cross-Root-Faelle sichtbar,
+  loggt aber jetzt als Warning statt als Fehler.
+- `TimeService` und `UniverseRegistry` bleiben die einzigen
+  projekt-eigenen Sim-Autoloads; die in `project.godot` sichtbaren
+  Addon-Autoloads `AntialiasedLine2DTexture` und
+  `PhantomCameraManager` sind plugin-provided und nicht Teil dieser
+  Simulations-ADR.
 - `OrbitService` schreibt autoritativ die `BodyState`-Positionsdaten.
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
+- Die Headless-Testbasis ist wieder reproduzierbar: direkter
+  `godot_console.exe --headless ...`-Aufruf und `run_tests.bat` laufen
+  beide mit `914` erfolgreichen Assertions.
 
 ### Aktuelle Praesentation
 
@@ -90,6 +106,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   sichtbar umverteilen.
 - Bodies werden jetzt als 2D-Visuals mit Glow, Orbit-Linien und Trails
   dargestellt.
+- Planet-/Mond-Themes werden nicht mehr blind pro Frame komplett neu
+  angewendet: der Renderer konsumiert jetzt den letzten Derived-
+  Snapshot, und identische Theme-Applies sind materialseitig
+  idempotent.
 - Es gibt ein HUD fuer Fokus, Sim-Zeit, Zeitskala und Status.
 - Die normale Environment-Zeile zeigt fuer unterstuetzte Fokus-Bodies
   jetzt die Habitability-Aussage plus `Climate: ...` als Welttyp.
@@ -98,6 +118,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Temperaturen fuer `-60deg`, `Eq` und `+60deg`.
 - Das normale HUD zeigt fuer Bodies mit saisonaler Basis jetzt
   zusaetzlich eine kleine `Season: subsolar ...`-Zeile.
+- Dieselbe HUD-Zeile weist jetzt zusaetzlich die aktuelle
+  Thermal-Vereinfachung explizit als `Primary source: <star_id>` aus,
+  statt Mehrstern-Faelle still wie Einquellenfaelle aussehen zu lassen.
 - Das HUD zeigt zusaetzlich FPS und die aktuelle Speed-Preset-Stufe.
 - Die Sim-Speed kann ueber einen logarithmischen HUD-Slider geregelt
   werden.
@@ -325,6 +348,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tests/orbit/test_orbit.gd`
 - `src/sim/world/world_loader.gd`
 - `src/tests/sim/test_world_loader.gd`
+- `src/sim/world/deterministic_world_generator.gd`
+- `src/tests/sim/test_deterministic_world_generator.gd`
 - `src/sim/bodies/body_def.gd`
 - `data/sample_system.gd`
 - `src/tests/sim/test_body_def_world_model.gd`
@@ -386,6 +411,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tools/rendering/space_backdrop.gd`
 - `src/tools/rendering/shaders/space_backdrop.gdshader`
 - `src/tools/debug/debug_overlay.gd`
+- `src/runtime/derived/derived_snapshot_cache.gd`
+- `src/tests/runtime/test_derived_snapshot_cache.gd`
+- `src/tests/rendering/test_debug_overlay.gd`
+- `src/tests/rendering/test_orbit_hud_formatter.gd`
+- `run_tests.bat`
 
 ## Bekannte offene Punkte
 
@@ -412,11 +442,16 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   **momentan**: sie mittelt nicht ueber Jahreszyklen und kann bei Tilt
   oder exzentrischen Bahnen sichtbar ueber das Orbitaljahr
   oszillieren.
+- Die Thermal-/Environment-Kette bleibt vorerst bewusst
+  `primary-source only`; additive Mehrquellenstrahlung fuer
+  Mehrstern-Faelle ist noch nicht implementiert.
 - `sample_system` ist jetzt der explizite habitable Showcase fuer die
   neue zonale Umweltkette; `starter_world` bleibt weitgehend der
   thermisch extreme Mehrstern-Sandkasten, traegt jetzt aber bewusst
   genau einen sichtbaren habitablen Kandidaten in einem kompakt
   neu skalierten `gamma`-System.
+- `generated_system` ist aktuell ein fixer deterministischer
+  Showcase-Seed ohne Seed-Auswahl, Survey-Notebook oder Scanner-UX.
 - Die zugrunde liegende zonale Umweltlogik blieb in P13.1 unveraendert;
   nur die HUD-Sprache trennt jetzt klarer zwischen Habitability-Urteil
   (`Environment`), Welttyp (`Climate`) und Rohdaten (`Bands`).
@@ -454,6 +489,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Runtime-/View-Architektur ist jetzt deutlich besser getrennt,
   aber `orbit_testbed.gd` bleibt trotz Controller-/HUD-Split noch
   ein relativ dichter Composition-Root fuer Input und Zeitskala.
+- Der neue Snapshot-/Theme-Cache reduziert den offensichtlichen
+  per-frame-Derived-Workload, ist aber noch nicht durch einen laengeren
+  visuellen Idle-/Playtest profiliert.
 - Der neue galaktische Backdrop ist bewusst screen-fixed und
   dekorativ; ein spaeterer root-aware oder BH-zentrierter Spezialeffekt
   waere ein eigener View-Pass und kein stilles Follow-up dieses
@@ -476,9 +514,15 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - als naechsten grossen Simulationsschritt weitere planetare
   Umweltfaktoren jenseits des additiven Greenhouse-Toy-Modells und der
   momentanen Drei-Band-Klassifikation betrachten
+- dabei zuerst die additive Mehrquellenstrahlung fuer Mehrstern-Faelle
+  als echten `ThermalService`-Block angehen
 - dabei bewusst in Richtung globaler planetarer Oekosystem-Typen mit
   Wasser-/Volatile-Logik und spaeterer Jahresmittel-/Stabilitaetslogik
   weitergehen
+- parallel den deterministischen Generator von einem festen
+  Showcase-Seed auf mehrere Vergleichswelten ausbauen
+- erst auf dieser Basis eine read-only Survey-/Notebook-/Scanner-
+  Schicht ueber bestehender Sim-Wahrheit planen
 - parallel die Referenzwelt unter `obsidian` spaeter in Richtung eines
   noch reicheren Mehrstern-Roots weiterdenken: elliptischere
   BH-Sternbahnen, noch mehr Sterne und ggf. weitere Referenzwelten

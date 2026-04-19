@@ -4,10 +4,11 @@ const OrbitCameraControllerScript = preload("res://src/tools/rendering/orbit_cam
 const OrbitHudFormatterScript = preload("res://src/tools/rendering/orbit_hud_formatter.gd")
 const OrbitTimeScaleControllerScript = preload("res://src/tools/rendering/orbit_time_scale_controller.gd")
 const UniverseTopologyScript = preload("res://src/sim/topology/universe_topology.gd")
+const DerivedSnapshotCacheScript = preload("res://src/runtime/derived/derived_snapshot_cache.gd")
 
 const ZOOM_FACTOR_STEP: float = 1.12
 
-@export_enum("starter_world", "sample_system") var initial_world_id: String = "starter_world"
+@export_enum("starter_world", "sample_system", "generated_system") var initial_world_id: String = "starter_world"
 
 @onready var _world_loader = $WorldLoader
 @onready var _orbit_service: OrbitService = $OrbitService
@@ -31,6 +32,7 @@ const ZOOM_FACTOR_STEP: float = 1.12
 
 var _camera_controller = OrbitCameraControllerScript.new()
 var _time_scale_controller = OrbitTimeScaleControllerScript.new()
+var _derived_snapshot_cache = DerivedSnapshotCacheScript.new()
 var _focus_order: Array[StringName] = []
 var _topology = null
 var _focus_index: int = 0
@@ -71,18 +73,29 @@ func _ready() -> void:
 	_environment_service.configure(UniverseRegistry, _atmosphere_service)
 	_renderer.configure(UniverseRegistry, _bubble, _topology)
 	_renderer.set_environment_service(_environment_service)
+	_derived_snapshot_cache.configure(
+		UniverseRegistry,
+		TimeService,
+		_bubble,
+		_world_loader,
+		_thermal_service,
+		_environment_service
+	)
+	_renderer.set_derived_snapshot_cache(_derived_snapshot_cache)
 	_camera_controller.configure(_renderer, _bubble, UniverseRegistry, _topology)
-	_debug_overlay.configure(UniverseRegistry, TimeService, _bubble, _activation_set, _thermal_service)
+	_debug_overlay.configure(UniverseRegistry, TimeService, _bubble, _activation_set, _thermal_service, _derived_snapshot_cache)
 	_debug_overlay.visible = false
 
 	_time_scale_controller.configure(_speed_slider)
 	_set_focus(_focus_order[_focus_index], false, true)
+	_derived_snapshot_cache.refresh(DerivedSnapshotCacheScript.REASON_MANUAL)
 	_camera_controller.step(0.0, get_viewport_rect().size)
 	_update_hud()
 
 
 func _exit_tree() -> void:
 	_time_scale_controller.dispose()
+	_derived_snapshot_cache.dispose()
 
 
 func _process(delta: float) -> void:
@@ -158,19 +171,18 @@ func _update_hud() -> void:
 	if focus_def != null and focus_def.display_name != "":
 		focus_name = focus_def.display_name
 
-	var environment_desc: Dictionary = {}
-	if _environment_service != null:
-		environment_desc = _environment_service.describe_body(focus_id)
-	var thermal_desc: Dictionary = {}
-	if _thermal_service != null:
-		thermal_desc = _thermal_service.describe_body(focus_id)
+	var environment_desc: Dictionary = _derived_snapshot_cache.get_focus_environment_desc()
+	var thermal_desc: Dictionary = _derived_snapshot_cache.get_focus_thermal_desc()
 
 	var fps: int = Engine.get_frames_per_second()
 	var speed_step_label: String = _time_scale_controller.get_step_label()
 	_focus_value.text = OrbitHudFormatterScript.format_focus(focus_name)
 	_environment_value.text = OrbitHudFormatterScript.format_environment(environment_desc)
 	_climate_value.text = OrbitHudFormatterScript.format_bands(environment_desc)
-	_season_value.text = OrbitHudFormatterScript.format_season(thermal_desc)
+	_season_value.text = "%s   %s" % [
+		OrbitHudFormatterScript.format_season(thermal_desc),
+		OrbitHudFormatterScript.format_primary_source(thermal_desc)
+	]
 	_time_value.text = OrbitHudFormatterScript.format_time(TimeService.sim_time_s, TimeService.tick_count, fps)
 	_scale_value.text = OrbitHudFormatterScript.format_scale(
 		TimeService.time_scale,

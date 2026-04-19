@@ -101,8 +101,7 @@ func compose_view_position_m(id: StringName) -> Vector3:
 		_warn_once(
 			"bubble_no_lca:%s->%s" % [String(_focus_id), String(id)],
 			"compose_view_position_m: kein gemeinsamer Root/LCA fuer Fokus '%s' und Target '%s'"
-				% [String(_focus_id), String(id)],
-			true
+				% [String(_focus_id), String(id)]
 		)
 		return Vector3.INF
 

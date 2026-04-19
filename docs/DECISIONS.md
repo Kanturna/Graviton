@@ -1,5 +1,64 @@
 # Graviton - Decisions
 
+## 2026-04-19 - Projekt-Autoload-ADR bleibt bei genau zwei projekt-eigenen Autoloads; Addon-Autoloads werden separat dokumentiert
+
+`project.godot` listet aktuell zusaetzlich
+`AntialiasedLine2DTexture` und `PhantomCameraManager` als Autoloads.
+Diese Eintraege stammen aus Addons und duerfen die bestehende ADR
+"genau zwei Sim-Autoloads" nicht still verwischen.
+
+Konsequenz:
+
+- `TimeService` und `UniverseRegistry` bleiben die einzigen
+  projekt-eigenen Sim-Autoloads
+- Addon-Autoloads werden explizit als plugin-provided Ausnahme
+  dokumentiert statt heimlich als neue globale Wahrheit mitzulesen
+- weder `AntialiasedLine2DTexture` noch `PhantomCameraManager` zaehlen
+  als Erweiterung der Simulationsarchitektur
+
+## 2026-04-19 - Thermal-/Environment-Snapshots invalidieren nur explizit, nie still pro Frame
+
+Der Renderer und das HUD brauchen dieselben Derived-Daten fuer
+Environment-/Thermal-Anzeige und planetare Themes. Diese Glue-Schicht
+wird bewusst nicht als neuer per-frame-Recompute versteckt.
+
+Konsequenz:
+
+- `DerivedSnapshotCache` rebuilt nur bei `TimeService.sim_tick`,
+  `LocalBubbleManager.focus_changed` und `WorldLoader.world_loaded`
+- `_process()` konsumiert nur den letzten Snapshot
+- `ThermalService` und `EnvironmentService` bleiben on-demand/read-only;
+  der Cache fuehrt keine neue Simulationswahrheit ein
+
+## 2026-04-19 - `INACTIVE_NO_LCA` ist in Multi-Root-Faellen kein Fehler
+
+Cross-Root-Nichtlokalisierbarkeit ist im Bubble-/Activation-Modell ein
+vorgesehener Zustand und kein Architekturbruch.
+
+Konsequenz:
+
+- Bodies ohne gemeinsamen Root mit dem Fokus bleiben sichtbar als
+  `Vector3.INF` / `INACTIVE_NO_LCA`
+- Logging fuer diesen Pfad laeuft auf Warning-/Debug-Niveau statt als
+  `push_error`
+- Multi-Root-Testwelten duerfen diesen Pfad regelmaessig ausloesen,
+  ohne die Fehlerdiagnose zu verwischen
+
+## 2026-04-19 - Der deterministische Generator kommt vor einer Survey-UX
+
+Bevor eine Survey-/Discovery-Schicht ueber Weltvergleiche gebaut wird,
+braucht das Projekt mehr als nur die handgebauten Referenzwelten.
+
+Konsequenz:
+
+- `generated_system` haengt jetzt als deterministische Welt am
+  bestehenden `WorldLoader`-Pfad
+- Generator-Output nutzt dieselbe `BodyDef`-/`OrbitProfile`-/
+  Registry-Topologie wie die Handwelten
+- eine spaetere Survey-/Notebook-/Scanner-Schicht bleibt read-only
+  Viewer ueber bestehender Sim-Wahrheit und fuehrt keine neue
+  autoritative Gameplay-Schicht ein
+
 ## 2026-04-19 - Der neue galaktische Backdrop bleibt bewusst screen-fixed und dekorativ
 
 Die neuen Referenzbilder legen einen reicheren, lebendigeren

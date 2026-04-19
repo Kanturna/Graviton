@@ -605,11 +605,45 @@ Offen / spaeter:
   Planeten oder Monde im Playtest noch zu eng oder zu weit geframet
   wirken
 
+## Prioritaet 17 - Baseline / Snapshot / Generator sauberziehen - erledigt
+
+Ziel:
+Die rote Test-Baseline, der offensichtliche planetare Render-Hot-Path
+und die naechste kleine Content-Basis sollten vor weiterem Survey- oder
+Content-Ausbau wieder sauber und reproduzierbar sein.
+
+Erledigt:
+
+- `run_tests.bat` funktioniert jetzt wieder direkt aus PowerShell/CMD;
+  der direkte Headless-Aufruf und der Batch-Entry laufen beide gruen
+- der Kamera-Uebergang nahe `root_lock_phase ~= 0.5` wurde fuer den
+  Anker-Blend geglaettet; die bestehende
+  `test_visibility_transition_is_continuous`-Regression bleibt gruen
+- `OrbitBodyVisual` cached jetzt die 1x1-Fallback-Texturen modulweit und
+  dedupliziert identische Theme-Applies ueber eine stabile Signatur
+- der Renderer liest planetare Themes jetzt bevorzugt aus einem
+  read-only `DerivedSnapshotCache` statt pro Frame blind
+  `EnvironmentService.describe_body(...)` fuer jeden Body neu
+  aufzufalten
+- der Snapshot invalidiert bewusst nur auf `TimeService.sim_tick`,
+  `LocalBubbleManager.focus_changed` und `WorldLoader.world_loaded`
+- HUD und Debug-Overlay weisen die aktuelle Thermal-Vereinfachung jetzt
+  explizit ueber `Primary source: ...` aus
+- legitime Cross-Root-Pfade (`INACTIVE_NO_LCA`) loggen nicht mehr als
+  Fehler
+- `generated_system` haengt jetzt als deterministische Welt am
+  bestehenden `WorldLoader`-Pfad; keine Sonder-Registry, keine neue
+  Simulationswahrheit
+- die Doku trennt jetzt wieder sauber zwischen genau zwei
+  projekt-eigenen Sim-Autoloads und plugin-provided Addon-Autoloads
+
 ## Danach - Weitere planetare Umweltableitung
 
 Nach dem ersten Guardrail-Block ist der naechste groessere Simulations-
 Schritt wieder die planetare Ableitung:
 
+- additive Mehrquellenstrahlung fuer Mehrstern-Faelle als naechster
+  echter `ThermalService`-Block
 - Wasser-/Volatile-Logik als naechster Fundamentblock fuer globale
   planetare Oekosystem-Typen
 - weitere Atmosphaerenfaktoren jenseits des additiven `greenhouse_delta_k`
@@ -689,11 +723,17 @@ Zielbild fuer diesen Strang:
   eher in weiteren Derived-/Planeten-Systemen als in erneutem
   Architektur-Grundaufriss
 
-## Spaeter - Prozedurale Systeme
+## Danach - Generator ausbauen und Survey vorbereiten
 
-- Generator-Konzept fuer Root-Systeme, Sterne, Planeten und Monde
-- Zufallsbereiche fuer Orbitachsen, Exzentrizitaeten und Orientierungen
-- deterministische Seeds / reproduzierbare Welten
+- `generated_system` ist jetzt als erster deterministischer
+  Showcase-Seed im Loader vorhanden
+- als naechster Generator-Block: mehr Seeds, mehr Stern-/Root-Varianten
+  und mehr Vergleichswelten statt nur eines festen Beispiels
+- erst auf dieser Basis eine read-only Survey-/Notebook-/Scanner-UX
+  planen
+- auch diese spaetere Survey-Schicht bleibt reiner Viewer ueber
+  bestehender Sim-Wahrheit und fuehrt keine neue autoritative
+  Gameplay-Schicht ein
 
 ## Spaeter - BH-Star-Ellipsen und weitere Root-Welt-Politur
 
@@ -720,5 +760,7 @@ Zielbild fuer diesen Strang:
 - auch P9 zeigt Greenhouse-/Surface-Werte nur als Text, keine
   renderer-seitige Visualisierung
 - keine neue Gameplay-/Schiffs-/Fraktionsschicht
+- keine Survey-/Scanner-Schicht, die neue Simulationswahrheit einfuehrt
 - keine ueberhastete Generator-Spielerei ohne sauberes Weltmodell
+- kein `DESERT`-Archetyp ohne staerkere Wasser-/Ariditaetsbasis
 - keine Ausweitung der Autoload-Liste

@@ -20,12 +20,14 @@ var _registry: Node = null
 var _bubble: Node = null
 var _topology = null
 var _environment_service: Node = null
+var _derived_snapshot_cache = null
 
 var _body_visuals: Dictionary = {}
 var _orbit_visuals: Dictionary = {}
 var _trail_visuals: Dictionary = {}
 var _trail_histories: Dictionary = {}
 var _body_view_is_finite: Dictionary = {}
+var _applied_environment_snapshot_revision: int = -1
 
 var _world_scale: float = 1.0
 var _focus_id: StringName = &""
@@ -46,6 +48,13 @@ func set_environment_service(environment_service: Node) -> void:
 	_environment_service = environment_service
 	if _registry != null and _bubble != null:
 		_sync_visual_positions()
+
+
+func set_derived_snapshot_cache(snapshot_cache) -> void:
+	_derived_snapshot_cache = snapshot_cache
+	_applied_environment_snapshot_revision = -1
+	if _registry != null and _bubble != null:
+		_apply_environment_visuals()
 
 
 func set_focus(body_id: StringName) -> void:
@@ -142,6 +151,7 @@ func _rebuild_visuals() -> void:
 	_trail_visuals.clear()
 	_trail_histories.clear()
 	_body_view_is_finite.clear()
+	_applied_environment_snapshot_revision = -1
 
 	if _registry == null:
 		return
@@ -188,6 +198,7 @@ func _rebuild_visuals() -> void:
 func _sync_visual_positions(reset_trails: bool = false) -> void:
 	if _registry == null or _bubble == null:
 		return
+	_apply_environment_visuals()
 
 	for id in _registry.get_update_order():
 		var def: BodyDef = _registry.get_def(id)
@@ -235,9 +246,6 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 			visual.scale = Vector2.ONE * ((detail_factor / _world_scale) * star_scale)
 			visual.set_detail_factor(detail_factor)
 			visual.set_star_closeup_phase(star_phase)
-			if _environment_service != null and (def.kind == BodyType.Kind.PLANET or def.kind == BodyType.Kind.MOON):
-				var environment_desc: Dictionary = _environment_service.describe_body(id)
-				visual.apply_planet_theme(PlanetVisualProfileScript.resolve(def, environment_desc))
 
 		if not orbit_entry.is_empty():
 			var parent_id: StringName = orbit_entry.get("parent_id", &"")
@@ -248,6 +256,39 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 		if trail_line != null:
 			trail_line.visible = true
 		_update_trail(id, pos, reset_trails)
+
+
+func _apply_environment_visuals() -> void:
+	if _registry == null:
+		return
+
+	if _derived_snapshot_cache != null:
+		var revision: int = _derived_snapshot_cache.get_revision()
+		if revision == _applied_environment_snapshot_revision:
+			return
+		for id in _registry.get_update_order():
+			var def: BodyDef = _registry.get_def(id)
+			var visual: OrbitBodyVisual = _body_visuals.get(id, null)
+			if visual == null or def == null:
+				continue
+			if def.kind != BodyType.Kind.PLANET and def.kind != BodyType.Kind.MOON:
+				continue
+			var environment_desc: Dictionary = _derived_snapshot_cache.get_environment_desc(id)
+			visual.apply_planet_theme(PlanetVisualProfileScript.resolve(def, environment_desc))
+		_applied_environment_snapshot_revision = revision
+		return
+
+	if _environment_service == null:
+		return
+	for id in _registry.get_update_order():
+		var def: BodyDef = _registry.get_def(id)
+		var visual: OrbitBodyVisual = _body_visuals.get(id, null)
+		if visual == null or def == null:
+			continue
+		if def.kind != BodyType.Kind.PLANET and def.kind != BodyType.Kind.MOON:
+			continue
+		var environment_desc: Dictionary = _environment_service.describe_body(id)
+		visual.apply_planet_theme(PlanetVisualProfileScript.resolve(def, environment_desc))
 
 
 func _apply_focus_emphasis() -> void:

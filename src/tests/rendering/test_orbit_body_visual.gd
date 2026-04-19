@@ -9,9 +9,11 @@ static func run(ctx) -> void:
 	_test_star_material_keeps_detailmap_active(ctx)
 	_test_moon_material_enables_hybrid_reference(ctx)
 	_test_planet_material_keeps_reference_disabled(ctx)
+	_test_singleton_fallback_textures_are_reused(ctx)
 	_test_temperate_theme_enables_hybrid_reference(ctx)
 	_test_frozen_theme_enables_hybrid_reference(ctx)
 	_test_hot_theme_enables_hybrid_reference(ctx)
+	_test_identical_theme_apply_is_idempotent(ctx)
 
 
 static func _test_star_material_keeps_detailmap_active(ctx) -> void:
@@ -63,6 +65,15 @@ static func _test_planet_material_keeps_reference_disabled(ctx) -> void:
 		is_zero_approx(float(mat.get_shader_parameter("surface_reference_strength"))),
 		"planet material bleibt im ersten Pilot ohne reference blend"
 	)
+
+
+static func _test_singleton_fallback_textures_are_reused(ctx) -> void:
+	var white_a: Texture2D = OrbitBodyVisualScript._make_white_1px()
+	var white_b: Texture2D = OrbitBodyVisualScript._make_white_1px()
+	var transparent_a: Texture2D = OrbitBodyVisualScript._make_transparent_1px()
+	var transparent_b: Texture2D = OrbitBodyVisualScript._make_transparent_1px()
+	ctx.assert_true(white_a == white_b, "white fallback texture wird als Singleton wiederverwendet")
+	ctx.assert_true(transparent_a == transparent_b, "transparent fallback texture wird als Singleton wiederverwendet")
 
 
 static func _test_temperate_theme_enables_hybrid_reference(ctx) -> void:
@@ -156,6 +167,18 @@ static func _test_hot_theme_enables_hybrid_reference(ctx) -> void:
 	ctx.assert_true(
 		is_zero_approx(float(mat.get_shader_parameter("surface_reference_portrait_strength"))),
 		"HOT_SCORCHED bleibt ohne separaten portrait-stabilen Closeup-Sprite"
+	)
+
+
+static func _test_identical_theme_apply_is_idempotent(ctx) -> void:
+	var visual = _make_visual(BodyType.Kind.PLANET)
+	visual.apply_planet_theme(PlanetVisualProfileScript._make_temperate_ocean_theme())
+	var apply_count_after_first_theme: int = visual.get_theme_apply_count()
+	visual.apply_planet_theme(PlanetVisualProfileScript._make_temperate_ocean_theme())
+	ctx.assert_true(apply_count_after_first_theme == 1, "erstes Theme-Apply wird einmal gezaehlt")
+	ctx.assert_true(
+		visual.get_theme_apply_count() == apply_count_after_first_theme,
+		"identische Theme-Werte loesen kein zweites Material-Apply aus"
 	)
 
 

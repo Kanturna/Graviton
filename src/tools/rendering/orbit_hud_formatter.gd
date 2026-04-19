@@ -41,6 +41,13 @@ static func format_season(thermal_desc: Dictionary) -> String:
 	return "Season: subsolar %+.0f deg" % rad_to_deg(subsolar_latitude_rad)
 
 
+static func format_primary_source(thermal_desc: Dictionary) -> String:
+	if not bool(thermal_desc.get(ThermalServiceScript.KEY_HAS_LUMINOUS_ANCESTOR, false)):
+		return "Primary source: none"
+	var source_id: StringName = thermal_desc.get(ThermalServiceScript.KEY_SOURCE_ID, StringName(""))
+	return "Primary source: %s" % [String(source_id)]
+
+
 static func format_time(sim_time_s: float, tick_count: int, fps: int) -> String:
 	return "T+ %.2f d   steps %d   FPS %d" % [sim_time_s / UnitSystem.DAY_S, tick_count, fps]
 

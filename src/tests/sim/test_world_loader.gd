@@ -1,11 +1,24 @@
 extends RefCounted
 
+const WorldGeneratorScript = preload("res://src/sim/world/deterministic_world_generator.gd")
+
+
+class LoadProbe:
+	extends RefCounted
+
+	var loaded_world_ids: Array[StringName] = []
+
+	func record(world_id: StringName) -> void:
+		loaded_world_ids.append(world_id)
+
 
 static func run(ctx) -> void:
 	ctx.current_suite = "test_world_loader"
 	_test_available_world_ids(ctx)
 	_test_load_named_starter_world(ctx)
 	_test_load_named_sample_system(ctx)
+	_test_load_named_generated_system(ctx)
+	_test_world_loaded_signal_emits_named_world_id(ctx)
 	_test_unknown_world_id_keeps_registry_unchanged(ctx)
 	_test_load_defs_accepts_two_root_world(ctx)
 	_test_load_defs_rejects_dangling_parent(ctx)
@@ -53,9 +66,10 @@ static func _child_def(id: StringName, parent: StringName) -> BodyDef:
 static func _test_available_world_ids(ctx) -> void:
 	var loader := _make_loader()
 	var ids: Array[StringName] = loader.available_world_ids()
-	ctx.assert_true(ids.size() == 2, "available_world_ids liefert genau zwei Eintraege")
+	ctx.assert_true(ids.size() == 3, "available_world_ids liefert genau drei Eintraege")
 	ctx.assert_true(ids[0] == &"starter_world", "starter_world steht an erster Stelle")
 	ctx.assert_true(ids[1] == &"sample_system", "sample_system steht an zweiter Stelle")
+	ctx.assert_true(ids[2] == &"generated_system", "generated_system steht an dritter Stelle")
 	loader.free()
 
 
@@ -101,6 +115,31 @@ static func _test_load_named_sample_system(ctx) -> void:
 	ctx.assert_almost(sol.luminosity_w, UnitSystem.SOLAR_LUMINOSITY_W, 1.0e12, "sample_system setzt Sol-Luminositaet")
 	ctx.assert_almost(planet_a.axial_tilt_rad, 0.4091, 1.0e-9, "sample_system setzt Planet-A-Tilt")
 	ctx.assert_almost(planet_a.albedo, 0.30, 1.0e-9, "sample_system setzt Planet-A-Albedo")
+	loader.free()
+	reg.free()
+
+
+static func _test_load_named_generated_system(ctx) -> void:
+	var loader := _make_loader()
+	var reg := _make_registry()
+	var expected_defs: Array[BodyDef] = WorldGeneratorScript.build(WorldGeneratorScript.DEFAULT_SEED)
+	ctx.assert_true(loader.load_named_world(&"generated_system", reg), "generated_system laedt erfolgreich")
+	ctx.assert_true(reg.body_count() == expected_defs.size(), "generated_system registriert genau die deterministische Def-Anzahl")
+	ctx.assert_true(reg.has_body(&"genesis"), "generated_system enthaelt den Root genesis")
+	var root: BodyDef = reg.get_def(&"genesis")
+	ctx.assert_true(root != null and root.is_root(), "generated_system Root bleibt topologisch gueltig")
+	loader.free()
+	reg.free()
+
+
+static func _test_world_loaded_signal_emits_named_world_id(ctx) -> void:
+	var loader := _make_loader()
+	var reg := _make_registry()
+	var probe := LoadProbe.new()
+	loader.world_loaded.connect(probe.record)
+	ctx.assert_true(loader.load_named_world(&"sample_system", reg), "sample_system laedt fuer Signaltest erfolgreich")
+	ctx.assert_true(probe.loaded_world_ids.size() == 1, "world_loaded signal emittiert genau einmal")
+	ctx.assert_true(probe.loaded_world_ids[0] == &"sample_system", "world_loaded signal meldet die geladene Welt-ID")
 	loader.free()
 	reg.free()
 

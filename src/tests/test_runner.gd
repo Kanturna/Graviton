@@ -40,8 +40,8 @@ class TestContext:
 			passed += 1
 		else:
 			failed += 1
-			messages.append("  [FAIL] %s :: %s (delta=%e tol=%e)"
-				% [current_suite, label, delta, tol])
+			messages.append("  [FAIL] %s :: %s (delta=%s tol=%s)"
+				% [current_suite, label, str(delta), str(tol)])
 
 
 func _initialize() -> void:

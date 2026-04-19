@@ -7,6 +7,7 @@ const OrbitZoomModelScript = preload("res://src/tools/rendering/orbit_zoom_model
 const VIEWPORT_RADIUS_FACTOR: float = 0.38
 const ROOT_LOCK_IN_VIEWPORT_FRACTION: float = 0.35
 const ROOT_LOCK_OUT_VIEWPORT_FRACTION: float = 0.55
+const ROOT_LOCK_ANCHOR_BLEND_EXPONENT: float = 1.10
 
 const FIT_PLATEAU_LOW: float = 0.92
 const FIT_PLATEAU_HIGH: float = 1.08
@@ -50,8 +51,9 @@ static func compute_layout(
 	if has_valid_root:
 		var root_distance_screen_px: float = focus_center_ru.distance_to(root_center_ru) * target_view_scale
 		root_lock_phase = root_lock_phase_for_distance(root_distance_screen_px, min_viewport_dim)
-		if root_lock_phase > 0.0:
-			base_anchor_ru = focus_center_ru.lerp(root_center_ru, root_lock_phase)
+		var anchor_blend_phase: float = _anchor_blend_phase(root_lock_phase)
+		if anchor_blend_phase > 0.0:
+			base_anchor_ru = focus_center_ru.lerp(root_center_ru, anchor_blend_phase)
 
 	return {
 		"target_view_scale": target_view_scale,
@@ -74,6 +76,16 @@ static func root_lock_phase_for_distance(root_distance_screen_px: float, min_vie
 	var lock_in_px: float = min_viewport_dim * ROOT_LOCK_IN_VIEWPORT_FRACTION
 	var lock_out_px: float = min_viewport_dim * ROOT_LOCK_OUT_VIEWPORT_FRACTION
 	return 1.0 - smoothstep(lock_in_px, lock_out_px, root_distance_screen_px)
+
+
+static func _anchor_blend_phase(root_lock_phase: float) -> float:
+	var clamped_phase: float = clampf(root_lock_phase, 0.0, 1.0)
+	var centered_phase: float = clamped_phase * 2.0 - 1.0
+	if is_zero_approx(centered_phase):
+		return 0.5
+	var direction: float = -1.0 if centered_phase < 0.0 else 1.0
+	var magnitude: float = pow(absf(centered_phase), ROOT_LOCK_ANCHOR_BLEND_EXPONENT)
+	return clampf(0.5 + 0.5 * direction * magnitude, 0.0, 1.0)
 
 
 static func _is_finite_vec2(value: Vector2) -> bool:

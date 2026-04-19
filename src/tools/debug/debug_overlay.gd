@@ -15,14 +15,16 @@ var _time: Node = null
 var _bubble: Node = null
 var _activation_set: Node = null
 var _thermal_service: Node = null
+var _snapshot_cache = null
 
 
-func configure(registry: Node, time_service: Node, bubble: Node, activation_set: Node = null, thermal_service: Node = null) -> void:
+func configure(registry: Node, time_service: Node, bubble: Node, activation_set: Node = null, thermal_service: Node = null, snapshot_cache = null) -> void:
 	_registry = registry
 	_time = time_service
 	_bubble = bubble
 	_activation_set = activation_set
 	_thermal_service = thermal_service
+	_snapshot_cache = snapshot_cache
 
 
 func _process(_delta: float) -> void:
@@ -71,11 +73,11 @@ func _format_body_line(id: StringName) -> String:
 	if _activation_set != null:
 		activation_txt = "  activation=%s" % _activation_set.to_string_state(_activation_set.classify(id))
 	var thermal_txt: String = ""
-	if _thermal_service != null:
-		var thermal_desc: Dictionary = _thermal_service.describe_body(id)
+	if _snapshot_cache != null or _thermal_service != null:
+		var thermal_desc: Dictionary = _snapshot_cache.get_thermal_desc(id) if _snapshot_cache != null else _thermal_service.describe_body(id)
 		var source_id: StringName = thermal_desc.get(ThermalServiceScript.KEY_SOURCE_ID, StringName(""))
 		var source_txt: String = "none" if source_id == StringName("") else String(source_id)
-		thermal_txt = "  source=%s  insolation=%s W/m^2  absorbed=%s W/m^2  teq=%s K" % [
+		thermal_txt = "  primary_source=%s  insolation=%s W/m^2  absorbed=%s W/m^2  teq=%s K" % [
 			source_txt,
 			_format_metric(float(thermal_desc.get(ThermalServiceScript.KEY_INSOLATION_WPM2, 0.0))),
 			_format_metric(float(thermal_desc.get(ThermalServiceScript.KEY_ABSORBED_FLUX_WPM2, 0.0))),
