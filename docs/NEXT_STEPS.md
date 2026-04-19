@@ -450,21 +450,25 @@ Erledigt:
   (`thermal`, `atmosphere`, `environment`, `planet_visual_profile`)
 - neuer `OrbitCameraController` fuer Zoom/Pan/Anker/View-State
 - neuer `OrbitHudFormatter` fuer player-facing HUD-Strings
+- neuer `OrbitTimeScaleController` fuer HUD-Slider, Preset-Schritte und
+  logaritmisches Time-Scale-Mapping
 - `OrbitViewRenderer` in Node-/Canvas-Arbeit plus reine Helper fuer
   Focus-Frame, Emphasis und Orbit-Geometrie getrennt
 - service-lokale `KEY_*`-Konstanten fuer `ThermalService`,
   `AtmosphereService`, `EnvironmentService` und `BubbleActivationSet`
-  eingefuehrt; die wichtigsten Runtime-/HUD-Konsumenten haengen jetzt
-  daran
+  eingefuehrt; Produzenten und die wichtigsten Runtime-/HUD-Konsumenten
+  haengen jetzt daran
 - neue Tests fuer `UniverseTopology`, `SimTestHarness` und
   `OrbitCameraController`
+- neuer Test fuer `OrbitTimeScaleController`
 
 Offen / spaeter:
 
-- kleiner Follow-up fuer verbleibende test-only String-Key-Zugriffe,
-  falls weitere Vereinheitlichung den Testcode lesbarer macht
 - manuelle Editor-/Playtest-Pruefung der neuen Camera-/Renderer-
   Aufteilung als kurze visuelle Regression-Sanity
+- optionaler weiterer Trim-Pass fuer `orbit_testbed.gd`, falls die
+  verbleibende Input-/Hint-Verdrahtung noch aus dem Scene-Script
+  herausgezogen werden soll
 
 ## Danach - Weitere planetare Umweltableitung
 

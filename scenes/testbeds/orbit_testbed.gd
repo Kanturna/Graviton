@@ -2,10 +2,10 @@ extends Node2D
 
 const OrbitCameraControllerScript = preload("res://src/tools/rendering/orbit_camera_controller.gd")
 const OrbitHudFormatterScript = preload("res://src/tools/rendering/orbit_hud_formatter.gd")
+const OrbitTimeScaleControllerScript = preload("res://src/tools/rendering/orbit_time_scale_controller.gd")
 const OrbitZoomModelScript = preload("res://src/tools/rendering/orbit_zoom_model.gd")
 const UniverseTopologyScript = preload("res://src/sim/topology/universe_topology.gd")
 
-const TIME_SCALE_PRESETS: Array[float] = [0.25, 1.0, 10.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0]
 const ZOOM_FACTOR_STEP: float = 1.20
 
 @export_enum("starter_world", "sample_system") var initial_world_id: String = "starter_world"
@@ -31,10 +31,10 @@ const ZOOM_FACTOR_STEP: float = 1.20
 @onready var _hint_label: Label = $HudLayer/BottomPanel/Margin/Hints
 
 var _camera_controller = OrbitCameraControllerScript.new()
+var _time_scale_controller = OrbitTimeScaleControllerScript.new()
 var _focus_order: Array[StringName] = []
 var _topology = null
 var _focus_index: int = 0
-var _time_scale_index: int = 5
 
 
 func _ready() -> void:
@@ -76,13 +76,14 @@ func _ready() -> void:
 	_debug_overlay.configure(UniverseRegistry, TimeService, _bubble, _activation_set, _thermal_service)
 	_debug_overlay.visible = false
 
-	_configure_speed_slider()
-	if not TimeService.time_scale_changed.is_connected(_on_time_scale_changed):
-		TimeService.time_scale_changed.connect(_on_time_scale_changed)
-	_set_time_scale_from_preset_index(_time_scale_index)
+	_time_scale_controller.configure(_speed_slider)
 	_set_focus(_focus_order[_focus_index], false, true)
 	_camera_controller.step(0.0, get_viewport_rect().size)
 	_update_hud()
+
+
+func _exit_tree() -> void:
+	_time_scale_controller.dispose()
 
 
 func _process(delta: float) -> void:
@@ -105,10 +106,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_set_focus(_focus_order[_focus_index])
 				get_viewport().set_input_as_handled()
 			KEY_Q, KEY_BRACKETLEFT, KEY_PAGEDOWN:
-				_set_time_scale_from_preset_index(maxi(_time_scale_index - 1, 0))
+				_time_scale_controller.apply_previous_preset()
 				get_viewport().set_input_as_handled()
 			KEY_E, KEY_BRACKETRIGHT, KEY_PAGEUP:
-				_set_time_scale_from_preset_index(mini(_time_scale_index + 1, TIME_SCALE_PRESETS.size() - 1))
+				_time_scale_controller.apply_next_preset()
 				get_viewport().set_input_as_handled()
 			KEY_SPACE:
 				TimeService.set_paused(not TimeService.paused)
@@ -166,7 +167,7 @@ func _update_hud() -> void:
 		thermal_desc = _thermal_service.describe_body(focus_id)
 
 	var fps: int = Engine.get_frames_per_second()
-	var speed_step_label: String = _time_scale_step_label(TimeService.time_scale)
+	var speed_step_label: String = _time_scale_controller.get_step_label()
 	_focus_value.text = OrbitHudFormatterScript.format_focus(focus_name)
 	_environment_value.text = OrbitHudFormatterScript.format_environment(environment_desc)
 	_climate_value.text = OrbitHudFormatterScript.format_bands(environment_desc)
@@ -199,73 +200,3 @@ func _root_focus_id() -> StringName:
 	if _topology != null and not _focus_order.is_empty():
 		return _topology.root_id_of(_focus_order[0])
 	return StringName("")
-
-
-func _configure_speed_slider() -> void:
-	if _speed_slider == null:
-		return
-	_speed_slider.min_value = 0.0
-	_speed_slider.max_value = 1.0
-	_speed_slider.step = 0.001
-	if not _speed_slider.value_changed.is_connected(_on_speed_slider_changed):
-		_speed_slider.value_changed.connect(_on_speed_slider_changed)
-	_speed_slider.set_value_no_signal(_time_scale_to_slider_value(TIME_SCALE_PRESETS[_time_scale_index]))
-
-
-func _on_speed_slider_changed(value: float) -> void:
-	TimeService.set_time_scale(_slider_value_to_time_scale(value))
-
-
-func _on_time_scale_changed(new_scale: float) -> void:
-	_time_scale_index = _nearest_time_scale_preset_index(new_scale)
-	if _speed_slider != null:
-		_speed_slider.set_value_no_signal(_time_scale_to_slider_value(new_scale))
-
-
-func _set_time_scale_from_preset_index(index: int) -> void:
-	_time_scale_index = clampi(index, 0, TIME_SCALE_PRESETS.size() - 1)
-	TimeService.set_time_scale(TIME_SCALE_PRESETS[_time_scale_index])
-
-
-func _time_scale_to_slider_value(scale: float) -> float:
-	var min_scale: float = _minimum_time_scale()
-	var max_scale: float = _maximum_time_scale()
-	var clamped: float = clampf(scale, min_scale, max_scale)
-	var log_span: float = maxf(log(max_scale) - log(min_scale), 0.0001)
-	return clampf((log(clamped) - log(min_scale)) / log_span, 0.0, 1.0)
-
-
-func _slider_value_to_time_scale(value: float) -> float:
-	var min_scale: float = _minimum_time_scale()
-	var max_scale: float = _maximum_time_scale()
-	var t: float = clampf(value, 0.0, 1.0)
-	return exp(lerpf(log(min_scale), log(max_scale), t))
-
-
-func _nearest_time_scale_preset_index(value: float) -> int:
-	var best_index: int = 0
-	var best_score: float = INF
-	var safe_value: float = maxf(value, _minimum_time_scale())
-	for i in range(TIME_SCALE_PRESETS.size()):
-		var preset: float = TIME_SCALE_PRESETS[i]
-		var score: float = absf(log(maxf(preset, 0.0001)) - log(safe_value))
-		if score < best_score:
-			best_score = score
-			best_index = i
-	return best_index
-
-
-func _time_scale_step_label(value: float) -> String:
-	var preset_index: int = _nearest_time_scale_preset_index(value)
-	var preset_value: float = TIME_SCALE_PRESETS[preset_index]
-	if is_equal_approx(value, preset_value):
-		return "%d/%d" % [preset_index + 1, TIME_SCALE_PRESETS.size()]
-	return "Custom"
-
-
-static func _minimum_time_scale() -> float:
-	return maxf(TIME_SCALE_PRESETS.front(), 0.001)
-
-
-static func _maximum_time_scale() -> float:
-	return maxf(TIME_SCALE_PRESETS.back(), _minimum_time_scale())

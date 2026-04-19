@@ -26,6 +26,10 @@ const KEY_SUBSOLAR_LATITUDE_RAD: StringName = &"subsolar_latitude_rad"
 const KEY_EQUATOR_DAILY_MEAN_INSOLATION_WPM2: StringName = &"equator_daily_mean_insolation_wpm2"
 const KEY_NORTH_POLE_DAILY_MEAN_INSOLATION_WPM2: StringName = &"north_pole_daily_mean_insolation_wpm2"
 const KEY_SOUTH_POLE_DAILY_MEAN_INSOLATION_WPM2: StringName = &"south_pole_daily_mean_insolation_wpm2"
+const CTX_OK: StringName = &"ok"
+const CTX_BODY_DEF: StringName = &"body_def"
+const CTX_BODY_TO_SOURCE_M: StringName = &"body_to_source_m"
+const CTX_BODY_TO_ANCESTOR_M: StringName = &"body_to_ancestor_m"
 
 var _registry: Node = null
 
@@ -55,14 +59,14 @@ func compute_daily_mean_insolation_wpm2(id: StringName, latitude_rad: float) -> 
 	if not is_finite(latitude_rad):
 		return 0.0
 	var radiative_context: Dictionary = _evaluate_radiative_context(id)
-	if not bool(radiative_context.get("ok", false)):
+	if not bool(radiative_context.get(CTX_OK, false)):
 		return 0.0
 	var seasonal_context: Dictionary = _evaluate_seasonal_context(radiative_context)
-	if not bool(seasonal_context.get("ok", false)):
+	if not bool(seasonal_context.get(CTX_OK, false)):
 		return 0.0
 	return _compute_daily_mean_insolation_from(
-		float(radiative_context.get("insolation_wpm2", 0.0)),
-		float(seasonal_context.get("subsolar_latitude_rad", 0.0)),
+		float(radiative_context.get(KEY_INSOLATION_WPM2, 0.0)),
+		float(seasonal_context.get(KEY_SUBSOLAR_LATITUDE_RAD, 0.0)),
 		latitude_rad
 	)
 
@@ -70,39 +74,39 @@ func compute_daily_mean_insolation_wpm2(id: StringName, latitude_rad: float) -> 
 func describe_body(id: StringName) -> Dictionary:
 	var description: Dictionary = _default_description(id)
 	var radiative_context: Dictionary = _evaluate_radiative_context(id)
-	if not bool(radiative_context.get("ok", false)):
+	if not bool(radiative_context.get(CTX_OK, false)):
 		return description
 
-	description["source_id"] = radiative_context.get("source_id", StringName(""))
-	description["distance_to_source_m"] = float(radiative_context.get("distance_to_source_m", 0.0))
-	description["insolation_wpm2"] = float(radiative_context.get("insolation_wpm2", 0.0))
-	description["albedo"] = float(radiative_context.get("albedo", 0.0))
-	description["absorbed_flux_wpm2"] = float(radiative_context.get("absorbed_flux_wpm2", 0.0))
-	description["equilibrium_temperature_k"] = float(radiative_context.get("equilibrium_temperature_k", 0.0))
-	description["has_luminous_ancestor"] = true
+	description[KEY_SOURCE_ID] = radiative_context.get(KEY_SOURCE_ID, StringName(""))
+	description[KEY_DISTANCE_TO_SOURCE_M] = float(radiative_context.get(KEY_DISTANCE_TO_SOURCE_M, 0.0))
+	description[KEY_INSOLATION_WPM2] = float(radiative_context.get(KEY_INSOLATION_WPM2, 0.0))
+	description[KEY_ALBEDO] = float(radiative_context.get(KEY_ALBEDO, 0.0))
+	description[KEY_ABSORBED_FLUX_WPM2] = float(radiative_context.get(KEY_ABSORBED_FLUX_WPM2, 0.0))
+	description[KEY_EQUILIBRIUM_TEMPERATURE_K] = float(radiative_context.get(KEY_EQUILIBRIUM_TEMPERATURE_K, 0.0))
+	description[KEY_HAS_LUMINOUS_ANCESTOR] = true
 
 	var seasonal_context: Dictionary = _evaluate_seasonal_context(radiative_context)
-	if not bool(seasonal_context.get("ok", false)):
+	if not bool(seasonal_context.get(CTX_OK, false)):
 		return description
 
-	var subsolar_latitude_rad: float = float(seasonal_context.get("subsolar_latitude_rad", 0.0))
-	description["subsolar_latitude_rad"] = subsolar_latitude_rad
-	description["equator_daily_mean_insolation_wpm2"] = _compute_daily_mean_insolation_from(
-		float(radiative_context.get("insolation_wpm2", 0.0)),
+	var subsolar_latitude_rad: float = float(seasonal_context.get(KEY_SUBSOLAR_LATITUDE_RAD, 0.0))
+	description[KEY_SUBSOLAR_LATITUDE_RAD] = subsolar_latitude_rad
+	description[KEY_EQUATOR_DAILY_MEAN_INSOLATION_WPM2] = _compute_daily_mean_insolation_from(
+		float(radiative_context.get(KEY_INSOLATION_WPM2, 0.0)),
 		subsolar_latitude_rad,
 		0.0
 	)
-	description["north_pole_daily_mean_insolation_wpm2"] = _compute_daily_mean_insolation_from(
-		float(radiative_context.get("insolation_wpm2", 0.0)),
+	description[KEY_NORTH_POLE_DAILY_MEAN_INSOLATION_WPM2] = _compute_daily_mean_insolation_from(
+		float(radiative_context.get(KEY_INSOLATION_WPM2, 0.0)),
 		subsolar_latitude_rad,
 		HALF_PI
 	)
-	description["south_pole_daily_mean_insolation_wpm2"] = _compute_daily_mean_insolation_from(
-		float(radiative_context.get("insolation_wpm2", 0.0)),
+	description[KEY_SOUTH_POLE_DAILY_MEAN_INSOLATION_WPM2] = _compute_daily_mean_insolation_from(
+		float(radiative_context.get(KEY_INSOLATION_WPM2, 0.0)),
 		subsolar_latitude_rad,
 		-HALF_PI
 	)
-	description["has_seasonal_basis"] = true
+	description[KEY_HAS_SEASONAL_BASIS] = true
 	return description
 
 
@@ -123,54 +127,54 @@ func _find_luminous_ancestor_id(start_id: StringName) -> StringName:
 
 func _evaluate_radiative_context(id: StringName) -> Dictionary:
 	if _registry == null:
-		return {"ok": false}
+		return {CTX_OK: false}
 
 	var def: BodyDef = _registry.get_def(id)
 	if def == null:
-		return {"ok": false}
+		return {CTX_OK: false}
 	var albedo: float = def.albedo
 	if not is_finite(albedo) or albedo < 0.0:
-		return {"ok": false}
+		return {CTX_OK: false}
 
 	var source_id: StringName = _find_luminous_ancestor_id(def.parent_id)
 	if source_id == StringName(""):
-		return {"ok": false}
+		return {CTX_OK: false}
 
 	var source_def: BodyDef = _registry.get_def(source_id)
 	if source_def == null or source_def.luminosity_w <= 0.0 or not is_finite(source_def.luminosity_w):
-		return {"ok": false}
+		return {CTX_OK: false}
 
 	var source_vector_info: Dictionary = _body_to_ancestor_vector(id, source_id)
-	if not bool(source_vector_info.get("ok", false)):
-		return {"ok": false}
+	if not bool(source_vector_info.get(CTX_OK, false)):
+		return {CTX_OK: false}
 
-	var body_to_source_m: Vector3 = source_vector_info.get("body_to_ancestor_m", Vector3.ZERO)
+	var body_to_source_m: Vector3 = source_vector_info.get(CTX_BODY_TO_ANCESTOR_M, Vector3.ZERO)
 	var distance_to_source_m: float = body_to_source_m.length()
 	if distance_to_source_m <= 0.0 or not is_finite(distance_to_source_m):
-		return {"ok": false}
+		return {CTX_OK: false}
 
 	var insolation_wpm2: float = source_def.luminosity_w / (4.0 * PI * distance_to_source_m * distance_to_source_m)
 	if not is_finite(insolation_wpm2) or insolation_wpm2 < 0.0:
-		return {"ok": false}
+		return {CTX_OK: false}
 
 	var absorbed_flux_wpm2: float = _compute_absorbed_flux_wpm2_from(insolation_wpm2, albedo)
 	var equilibrium_temperature_k: float = _compute_equilibrium_temperature_k_from(absorbed_flux_wpm2)
 	return {
-		"ok": true,
-		"body_def": def,
-		"source_id": source_id,
-		"distance_to_source_m": distance_to_source_m,
-		"body_to_source_m": body_to_source_m,
-		"albedo": albedo,
-		"insolation_wpm2": insolation_wpm2,
-		"absorbed_flux_wpm2": absorbed_flux_wpm2,
-		"equilibrium_temperature_k": equilibrium_temperature_k,
+		CTX_OK: true,
+		CTX_BODY_DEF: def,
+		KEY_SOURCE_ID: source_id,
+		KEY_DISTANCE_TO_SOURCE_M: distance_to_source_m,
+		CTX_BODY_TO_SOURCE_M: body_to_source_m,
+		KEY_ALBEDO: albedo,
+		KEY_INSOLATION_WPM2: insolation_wpm2,
+		KEY_ABSORBED_FLUX_WPM2: absorbed_flux_wpm2,
+		KEY_EQUILIBRIUM_TEMPERATURE_K: equilibrium_temperature_k,
 	}
 
 
 func _body_to_ancestor_vector(body_id: StringName, ancestor_id: StringName) -> Dictionary:
 	if _registry == null:
-		return {"ok": false, "body_to_ancestor_m": Vector3.ZERO}
+		return {CTX_OK: false, CTX_BODY_TO_ANCESTOR_M: Vector3.ZERO}
 
 	var current_id: StringName = body_id
 	var x_m: float = 0.0
@@ -179,56 +183,56 @@ func _body_to_ancestor_vector(body_id: StringName, ancestor_id: StringName) -> D
 
 	while current_id != ancestor_id:
 		if current_id == StringName(""):
-			return {"ok": false, "body_to_ancestor_m": Vector3.ZERO}
+			return {CTX_OK: false, CTX_BODY_TO_ANCESTOR_M: Vector3.ZERO}
 		var current_def: BodyDef = _registry.get_def(current_id)
 		var current_state: BodyState = _registry.get_state(current_id)
 		if current_def == null or current_state == null:
-			return {"ok": false, "body_to_ancestor_m": Vector3.ZERO}
+			return {CTX_OK: false, CTX_BODY_TO_ANCESTOR_M: Vector3.ZERO}
 		var offset_m: Vector3 = current_state.position_parent_frame_m
 		if not _is_finite_vec3(offset_m):
-			return {"ok": false, "body_to_ancestor_m": Vector3.ZERO}
+			return {CTX_OK: false, CTX_BODY_TO_ANCESTOR_M: Vector3.ZERO}
 		x_m -= offset_m.x
 		y_m -= offset_m.y
 		z_m -= offset_m.z
 		current_id = current_def.parent_id
 
 	return {
-		"ok": true,
-		"body_to_ancestor_m": Vector3(x_m, y_m, z_m),
+		CTX_OK: true,
+		CTX_BODY_TO_ANCESTOR_M: Vector3(x_m, y_m, z_m),
 	}
 
 
 func _default_description(id: StringName) -> Dictionary:
 	return {
-		"body_id": id,
-		"source_id": StringName(""),
-		"distance_to_source_m": 0.0,
-		"insolation_wpm2": 0.0,
-		"albedo": 0.0,
-		"absorbed_flux_wpm2": 0.0,
-		"equilibrium_temperature_k": 0.0,
-		"has_luminous_ancestor": false,
-		"has_seasonal_basis": false,
-		"subsolar_latitude_rad": 0.0,
-		"equator_daily_mean_insolation_wpm2": 0.0,
-		"north_pole_daily_mean_insolation_wpm2": 0.0,
-		"south_pole_daily_mean_insolation_wpm2": 0.0,
+		KEY_BODY_ID: id,
+		KEY_SOURCE_ID: StringName(""),
+		KEY_DISTANCE_TO_SOURCE_M: 0.0,
+		KEY_INSOLATION_WPM2: 0.0,
+		KEY_ALBEDO: 0.0,
+		KEY_ABSORBED_FLUX_WPM2: 0.0,
+		KEY_EQUILIBRIUM_TEMPERATURE_K: 0.0,
+		KEY_HAS_LUMINOUS_ANCESTOR: false,
+		KEY_HAS_SEASONAL_BASIS: false,
+		KEY_SUBSOLAR_LATITUDE_RAD: 0.0,
+		KEY_EQUATOR_DAILY_MEAN_INSOLATION_WPM2: 0.0,
+		KEY_NORTH_POLE_DAILY_MEAN_INSOLATION_WPM2: 0.0,
+		KEY_SOUTH_POLE_DAILY_MEAN_INSOLATION_WPM2: 0.0,
 	}
 
 
 func _evaluate_seasonal_context(radiative_context: Dictionary) -> Dictionary:
-	var def: BodyDef = radiative_context.get("body_def", null) as BodyDef
+	var def: BodyDef = radiative_context.get(CTX_BODY_DEF, null) as BodyDef
 	if def == null or def.is_root():
-		return {"ok": false}
+		return {CTX_OK: false}
 	var profile: OrbitProfile = def.orbit_profile
 	if profile == null:
-		return {"ok": false}
+		return {CTX_OK: false}
 	if not is_finite(def.axial_tilt_rad) or not is_finite(def.north_pole_orbit_frame_azimuth_rad):
-		return {"ok": false}
+		return {CTX_OK: false}
 
-	var body_to_source_m: Vector3 = radiative_context.get("body_to_source_m", Vector3.ZERO)
+	var body_to_source_m: Vector3 = radiative_context.get(CTX_BODY_TO_SOURCE_M, Vector3.ZERO)
 	if not _is_finite_vec3(body_to_source_m) or body_to_source_m.length_squared() <= 0.0:
-		return {"ok": false}
+		return {CTX_OK: false}
 
 	var sin_tilt: float = sin(def.axial_tilt_rad)
 	var cos_tilt: float = cos(def.axial_tilt_rad)
@@ -240,20 +244,20 @@ func _evaluate_seasonal_context(radiative_context: Dictionary) -> Dictionary:
 		cos_tilt
 	)
 	if not _is_finite_vec3(spin_axis_orbit_frame) or spin_axis_orbit_frame.length_squared() <= 0.0:
-		return {"ok": false}
+		return {CTX_OK: false}
 
 	var spin_axis_parent_frame: Vector3 = _rotate_orbit_frame_vector_to_parent(spin_axis_orbit_frame, profile)
 	if not _is_finite_vec3(spin_axis_parent_frame) or spin_axis_parent_frame.length_squared() <= 0.0:
-		return {"ok": false}
+		return {CTX_OK: false}
 
 	var spin_axis_hat: Vector3 = spin_axis_parent_frame.normalized()
 	var source_dir_hat: Vector3 = body_to_source_m.normalized()
 	var dot_value: float = clampf(spin_axis_hat.dot(source_dir_hat), -1.0, 1.0)
 	if not is_finite(dot_value):
-		return {"ok": false}
+		return {CTX_OK: false}
 	return {
-		"ok": true,
-		"subsolar_latitude_rad": asin(dot_value),
+		CTX_OK: true,
+		KEY_SUBSOLAR_LATITUDE_RAD: asin(dot_value),
 	}
 
 

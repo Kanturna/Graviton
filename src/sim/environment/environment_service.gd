@@ -10,6 +10,8 @@ extends Node
 # ebenfalls nur fuer unterstuetzte Bodies mit latitudinaler Basis als
 # echte Umwelt-Aussage zu lesen.
 
+const AtmosphereServiceScript = preload("res://src/sim/atmosphere/atmosphere_service.gd")
+
 enum Class {
 	HABITABLE,
 	MARGINAL,
@@ -70,31 +72,41 @@ func describe_body(id: StringName) -> Dictionary:
 		return description
 
 	var atmosphere_desc: Dictionary = _atmosphere_service.describe_body(id)
-	description["source_id"] = atmosphere_desc.get("source_id", StringName(""))
-	description["equilibrium_temperature_k"] = float(atmosphere_desc.get("equilibrium_temperature_k", 0.0))
-	description["greenhouse_delta_k"] = float(atmosphere_desc.get("greenhouse_delta_k", 0.0))
-	description["surface_temperature_k"] = float(atmosphere_desc.get("surface_temperature_k", 0.0))
-	description["has_latitudinal_surface_basis"] = bool(atmosphere_desc.get("has_latitudinal_surface_basis", false))
-	description["south_midlatitude_surface_temperature_k"] = float(
-		atmosphere_desc.get("south_midlatitude_surface_temperature_k", 0.0)
+	description[KEY_SOURCE_ID] = atmosphere_desc.get(AtmosphereServiceScript.KEY_SOURCE_ID, StringName(""))
+	description[KEY_EQUILIBRIUM_TEMPERATURE_K] = float(
+		atmosphere_desc.get(AtmosphereServiceScript.KEY_EQUILIBRIUM_TEMPERATURE_K, 0.0)
 	)
-	description["equator_surface_temperature_k"] = float(
-		atmosphere_desc.get("equator_surface_temperature_k", 0.0)
+	description[KEY_GREENHOUSE_DELTA_K] = float(
+		atmosphere_desc.get(AtmosphereServiceScript.KEY_GREENHOUSE_DELTA_K, 0.0)
 	)
-	description["north_midlatitude_surface_temperature_k"] = float(
-		atmosphere_desc.get("north_midlatitude_surface_temperature_k", 0.0)
+	description[KEY_SURFACE_TEMPERATURE_K] = float(
+		atmosphere_desc.get(AtmosphereServiceScript.KEY_SURFACE_TEMPERATURE_K, 0.0)
 	)
-	description["has_luminous_ancestor"] = bool(atmosphere_desc.get("has_luminous_ancestor", false))
+	description[KEY_HAS_LATITUDINAL_SURFACE_BASIS] = bool(
+		atmosphere_desc.get(AtmosphereServiceScript.KEY_HAS_LATITUDINAL_SURFACE_BASIS, false)
+	)
+	description[KEY_SOUTH_MIDLATITUDE_SURFACE_TEMPERATURE_K] = float(
+		atmosphere_desc.get(AtmosphereServiceScript.KEY_SOUTH_MIDLATITUDE_SURFACE_TEMPERATURE_K, 0.0)
+	)
+	description[KEY_EQUATOR_SURFACE_TEMPERATURE_K] = float(
+		atmosphere_desc.get(AtmosphereServiceScript.KEY_EQUATOR_SURFACE_TEMPERATURE_K, 0.0)
+	)
+	description[KEY_NORTH_MIDLATITUDE_SURFACE_TEMPERATURE_K] = float(
+		atmosphere_desc.get(AtmosphereServiceScript.KEY_NORTH_MIDLATITUDE_SURFACE_TEMPERATURE_K, 0.0)
+	)
+	description[KEY_HAS_LUMINOUS_ANCESTOR] = bool(
+		atmosphere_desc.get(AtmosphereServiceScript.KEY_HAS_LUMINOUS_ANCESTOR, false)
+	)
 
 	if not _is_supported_body_kind(def.kind):
 		return description
 
-	description["is_supported_body_kind"] = true
+	description[KEY_IS_SUPPORTED_BODY_KIND] = true
 	var band_temperatures_k: Array[float] = _band_temperatures_from_description(description)
-	description["has_habitable_band"] = _has_habitable_band(band_temperatures_k)
-	description["has_liquid_water_band"] = _has_liquid_water_band(band_temperatures_k)
-	description["environment_class"] = _classify_band_temperatures_k(band_temperatures_k)
-	description["ecosystem_type"] = _classify_ecosystem_type(band_temperatures_k)
+	description[KEY_HAS_HABITABLE_BAND] = _has_habitable_band(band_temperatures_k)
+	description[KEY_HAS_LIQUID_WATER_BAND] = _has_liquid_water_band(band_temperatures_k)
+	description[KEY_ENVIRONMENT_CLASS] = _classify_band_temperatures_k(band_temperatures_k)
+	description[KEY_ECOSYSTEM_TYPE] = _classify_ecosystem_type(band_temperatures_k)
 	return description
 
 
@@ -128,21 +140,21 @@ static func to_string_ecosystem(value: int) -> String:
 
 static func _default_description(id: StringName) -> Dictionary:
 	return {
-		"body_id": id,
-		"source_id": StringName(""),
-		"equilibrium_temperature_k": 0.0,
-		"greenhouse_delta_k": 0.0,
-		"surface_temperature_k": 0.0,
-		"has_latitudinal_surface_basis": false,
-		"south_midlatitude_surface_temperature_k": 0.0,
-		"equator_surface_temperature_k": 0.0,
-		"north_midlatitude_surface_temperature_k": 0.0,
-		"environment_class": Class.HOSTILE,
-		"ecosystem_type": EcosystemType.FROZEN_WORLD,
-		"is_supported_body_kind": false,
-		"has_habitable_band": false,
-		"has_liquid_water_band": false,
-		"has_luminous_ancestor": false,
+		KEY_BODY_ID: id,
+		KEY_SOURCE_ID: StringName(""),
+		KEY_EQUILIBRIUM_TEMPERATURE_K: 0.0,
+		KEY_GREENHOUSE_DELTA_K: 0.0,
+		KEY_SURFACE_TEMPERATURE_K: 0.0,
+		KEY_HAS_LATITUDINAL_SURFACE_BASIS: false,
+		KEY_SOUTH_MIDLATITUDE_SURFACE_TEMPERATURE_K: 0.0,
+		KEY_EQUATOR_SURFACE_TEMPERATURE_K: 0.0,
+		KEY_NORTH_MIDLATITUDE_SURFACE_TEMPERATURE_K: 0.0,
+		KEY_ENVIRONMENT_CLASS: Class.HOSTILE,
+		KEY_ECOSYSTEM_TYPE: EcosystemType.FROZEN_WORLD,
+		KEY_IS_SUPPORTED_BODY_KIND: false,
+		KEY_HAS_HABITABLE_BAND: false,
+		KEY_HAS_LIQUID_WATER_BAND: false,
+		KEY_HAS_LUMINOUS_ANCESTOR: false,
 	}
 
 
@@ -152,9 +164,9 @@ static func _is_supported_body_kind(kind: int) -> bool:
 
 static func _band_temperatures_from_description(description: Dictionary) -> Array[float]:
 	return [
-		float(description.get("south_midlatitude_surface_temperature_k", 0.0)),
-		float(description.get("equator_surface_temperature_k", 0.0)),
-		float(description.get("north_midlatitude_surface_temperature_k", 0.0)),
+		float(description.get(KEY_SOUTH_MIDLATITUDE_SURFACE_TEMPERATURE_K, 0.0)),
+		float(description.get(KEY_EQUATOR_SURFACE_TEMPERATURE_K, 0.0)),
+		float(description.get(KEY_NORTH_MIDLATITUDE_SURFACE_TEMPERATURE_K, 0.0)),
 	]
 
 

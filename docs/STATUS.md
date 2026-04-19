@@ -89,6 +89,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Das HUD zeigt zusaetzlich FPS und die aktuelle Speed-Preset-Stufe.
 - Die Sim-Speed kann ueber einen logarithmischen HUD-Slider geregelt
   werden.
+- Die HUD-Speed-/Preset-/Slider-Logik lebt jetzt in einem eigenen
+  `OrbitTimeScaleController` statt weiter direkt im Testbed-Script.
 - Hohe Speedstufen erzeugen keinen Tick-Sturm pro Frame mehr;
   `time_scale` skaliert das simulierte `dt` pro Physics-Frame.
 - Die Fokusansicht bewegt und zoomt weich auf den relevanten Ausschnitt.
@@ -115,6 +117,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   sondern in einem eigenen `OrbitCameraController`; HUD-Strings sind in
   `OrbitHudFormatter` gebuendelt, und `OrbitViewRenderer` nutzt jetzt
   reine Helper fuer Focus-Frame-, Orbit-Geometrie- und Emphasis-Regeln.
+- Die service-lokalen `KEY_*`-Konstanten fuer Thermal-/Atmosphaeren-/
+  Environment-Dictionaries werden jetzt auch producer-seitig intern
+  durchgezogen statt nur in den wichtigsten Runtime-Konsumenten.
 - Das Testbed kann jetzt explizit zwischen `starter_world` und
   `sample_system` als Referenzwelten umgeschaltet werden.
 - `starter_world` ist jetzt als groessere asymmetrische BH-

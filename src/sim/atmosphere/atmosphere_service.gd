@@ -8,6 +8,8 @@ extends Node
 # Caller-Contract wie bei ThermalService: Die States muessen nach dem
 # letzten OrbitService-Tick oder recompute_all_at_time() aktuell sein.
 
+const ThermalServiceScript = preload("res://src/sim/thermal/thermal_service.gd")
+
 const MAX_GREENHOUSE_DELTA_K: float = 2000.0
 const SOUTH_MIDLATITUDE_RAD: float = -PI / 3.0
 const EQUATOR_RAD: float = 0.0
@@ -61,9 +63,9 @@ func compute_surface_temperature_at_latitude_k(id: StringName, latitude_rad: flo
 		return 0.0
 
 	var thermal_desc: Dictionary = _thermal_service.describe_body(id)
-	if not bool(thermal_desc.get("has_luminous_ancestor", false)):
+	if not bool(thermal_desc.get(ThermalServiceScript.KEY_HAS_LUMINOUS_ANCESTOR, false)):
 		return 0.0
-	if not bool(thermal_desc.get("has_seasonal_basis", false)):
+	if not bool(thermal_desc.get(ThermalServiceScript.KEY_HAS_SEASONAL_BASIS, false)):
 		return 0.0
 
 	var clamped_latitude_rad: float = clampf(latitude_rad, -PI * 0.5, PI * 0.5)
@@ -103,14 +105,18 @@ func describe_body(id: StringName) -> Dictionary:
 	var greenhouse_delta_k: float = def.greenhouse_delta_k
 	if not is_finite(greenhouse_delta_k) or greenhouse_delta_k < 0.0 or greenhouse_delta_k > MAX_GREENHOUSE_DELTA_K:
 		return description
-	description["greenhouse_delta_k"] = greenhouse_delta_k
+	description[KEY_GREENHOUSE_DELTA_K] = greenhouse_delta_k
 
 	var thermal_desc: Dictionary = _thermal_service.describe_body(id)
-	description["source_id"] = thermal_desc.get("source_id", StringName(""))
-	description["equilibrium_temperature_k"] = float(thermal_desc.get("equilibrium_temperature_k", 0.0))
-	description["has_luminous_ancestor"] = bool(thermal_desc.get("has_luminous_ancestor", false))
+	description[KEY_SOURCE_ID] = thermal_desc.get(ThermalServiceScript.KEY_SOURCE_ID, StringName(""))
+	description[KEY_EQUILIBRIUM_TEMPERATURE_K] = float(
+		thermal_desc.get(ThermalServiceScript.KEY_EQUILIBRIUM_TEMPERATURE_K, 0.0)
+	)
+	description[KEY_HAS_LUMINOUS_ANCESTOR] = bool(
+		thermal_desc.get(ThermalServiceScript.KEY_HAS_LUMINOUS_ANCESTOR, false)
+	)
 
-	var equilibrium_temperature_k: float = float(description.get("equilibrium_temperature_k", 0.0))
+	var equilibrium_temperature_k: float = float(description.get(KEY_EQUILIBRIUM_TEMPERATURE_K, 0.0))
 	if not is_finite(equilibrium_temperature_k) or equilibrium_temperature_k <= 0.0:
 		return description
 
@@ -118,7 +124,7 @@ func describe_body(id: StringName) -> Dictionary:
 	if not is_finite(surface_temperature_k) or surface_temperature_k < 0.0:
 		return description
 
-	description["surface_temperature_k"] = surface_temperature_k
+	description[KEY_SURFACE_TEMPERATURE_K] = surface_temperature_k
 	var south_midlatitude_surface_temperature_k: float = compute_surface_temperature_at_latitude_k(
 		id,
 		SOUTH_MIDLATITUDE_RAD
@@ -136,23 +142,23 @@ func describe_body(id: StringName) -> Dictionary:
 			or north_midlatitude_surface_temperature_k <= 0.0:
 		return description
 
-	description["south_midlatitude_surface_temperature_k"] = south_midlatitude_surface_temperature_k
-	description["equator_surface_temperature_k"] = equator_surface_temperature_k
-	description["north_midlatitude_surface_temperature_k"] = north_midlatitude_surface_temperature_k
-	description["has_latitudinal_surface_basis"] = true
+	description[KEY_SOUTH_MIDLATITUDE_SURFACE_TEMPERATURE_K] = south_midlatitude_surface_temperature_k
+	description[KEY_EQUATOR_SURFACE_TEMPERATURE_K] = equator_surface_temperature_k
+	description[KEY_NORTH_MIDLATITUDE_SURFACE_TEMPERATURE_K] = north_midlatitude_surface_temperature_k
+	description[KEY_HAS_LATITUDINAL_SURFACE_BASIS] = true
 	return description
 
 
 func _default_description(id: StringName) -> Dictionary:
 	return {
-		"body_id": id,
-		"source_id": StringName(""),
-		"equilibrium_temperature_k": 0.0,
-		"greenhouse_delta_k": 0.0,
-		"surface_temperature_k": 0.0,
-		"has_latitudinal_surface_basis": false,
-		"south_midlatitude_surface_temperature_k": 0.0,
-		"equator_surface_temperature_k": 0.0,
-		"north_midlatitude_surface_temperature_k": 0.0,
-		"has_luminous_ancestor": false,
+		KEY_BODY_ID: id,
+		KEY_SOURCE_ID: StringName(""),
+		KEY_EQUILIBRIUM_TEMPERATURE_K: 0.0,
+		KEY_GREENHOUSE_DELTA_K: 0.0,
+		KEY_SURFACE_TEMPERATURE_K: 0.0,
+		KEY_HAS_LATITUDINAL_SURFACE_BASIS: false,
+		KEY_SOUTH_MIDLATITUDE_SURFACE_TEMPERATURE_K: 0.0,
+		KEY_EQUATOR_SURFACE_TEMPERATURE_K: 0.0,
+		KEY_NORTH_MIDLATITUDE_SURFACE_TEMPERATURE_K: 0.0,
+		KEY_HAS_LUMINOUS_ANCESTOR: false,
 	}
