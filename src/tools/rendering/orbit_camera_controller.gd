@@ -24,7 +24,7 @@ var _current_auto_offset_ru: Vector2 = Vector2.ZERO
 var _manual_pan_ru: Vector2 = Vector2.ZERO
 var _current_scope_radius_ru: float = 1.0
 var _current_zoom_mode: StringName = OrbitCameraFramingScript.ZOOM_MODE_FIT
-var _current_frame_label: StringName = OrbitCameraFramingScript.FRAME_LABEL_SMART_FIT
+var _current_frame_label: StringName = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_ANCHOR
 var _last_viewport_size: Vector2 = Vector2.ZERO
 
 
@@ -41,6 +41,7 @@ func set_focus(body_id: StringName, immediate := false, force_fit := false) -> v
 	_renderer.set_focus(body_id)
 	_renderer.clear_trails()
 	_manual_pan_ru = Vector2.ZERO
+	_absolute_zoom_factor = OrbitZoomModelScript.FIT_ZOOM_FACTOR
 	_refresh_scope_radius(body_id)
 	if force_fit:
 		fit_current_focus()
@@ -121,7 +122,7 @@ func _refresh_target_view(viewport_size: Vector2) -> void:
 	_target_base_anchor_ru = layout.get("base_anchor_ru", focus_center)
 	_target_auto_offset_ru = layout.get("auto_composition_offset_ru", Vector2.ZERO)
 	_current_zoom_mode = layout.get("zoom_mode", OrbitCameraFramingScript.ZOOM_MODE_FIT)
-	_current_frame_label = layout.get("frame_label", OrbitCameraFramingScript.FRAME_LABEL_SMART_FIT)
+	_current_frame_label = layout.get("frame_label", OrbitCameraFramingScript.FRAME_LABEL_FOCUS_ANCHOR)
 
 
 func _apply_view_transform(immediate: bool, delta: float, viewport_size: Vector2) -> void:

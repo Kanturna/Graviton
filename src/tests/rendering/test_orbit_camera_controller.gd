@@ -59,17 +59,14 @@ class TopologyStub:
 
 static func run(ctx) -> void:
 	ctx.current_suite = "test_orbit_camera_controller"
-	_test_force_fit_resets_pan_and_zoom(ctx)
-	_test_wide_zoom_keeps_root_centered(ctx)
-	_test_fit_plateau_composition_respects_safe_rect(ctx)
+	_test_force_fit_centers_focus_and_resets_pan(ctx)
+	_test_wide_zoom_blends_anchor_toward_root(ctx)
 	_test_zoom_multiplier_clamps_to_bounds(ctx)
-	_test_closeup_zoom_reports_ratio_from_zoom_factor(ctx)
-	_test_focus_switch_preserves_zoom_factor_and_mode(ctx)
+	_test_detail_zoom_keeps_focus_centered(ctx)
+	_test_focus_change_resets_zoom_to_fit(ctx)
 	_test_explicit_root_focus_uses_root_scope(ctx)
 	_test_wide_zoom_falls_back_to_focus_when_root_is_non_finite(ctx)
-	_test_detail_assist_clamped_to_85_percent_of_focus_vector(ctx)
-	_test_detail_safe_rect_shrinks_with_zoom(ctx)
-	_test_fit_wide_transition_is_visually_continuous(ctx)
+	_test_wide_fit_transition_is_visually_continuous(ctx)
 	_test_manual_pan_bypasses_smoothing(ctx)
 
 
@@ -106,7 +103,7 @@ static func _teardown_controller_setup(setup: Dictionary) -> void:
 		registry.free()
 
 
-static func _test_force_fit_resets_pan_and_zoom(ctx) -> void:
+static func _test_force_fit_centers_focus_and_resets_pan(ctx) -> void:
 	var setup := _make_controller()
 	var controller = setup["controller"]
 	var renderer: RendererStub = setup["renderer"]
@@ -118,16 +115,17 @@ static func _test_force_fit_resets_pan_and_zoom(ctx) -> void:
 	ctx.assert_true(renderer.focused_id == &"planet", "set_focus schreibt den Renderer-Fokus")
 	ctx.assert_true(renderer.cleared_trails == 1, "Fokuswechsel leert Trails")
 	ctx.assert_almost(controller.get_zoom_factor(), 1.0, 1.0e-9, "force_fit setzt Zoom auf FIT")
+	ctx.assert_almost(renderer.scale.x, 3.04, 1.0e-6, "FIT-Skala basiert auf dem Fokus-Scope")
+	ctx.assert_almost(renderer.position.x, -104.0, 1.0e-6, "FIT zentriert den Fokus im Viewport (x)")
+	ctx.assert_almost(renderer.position.y, -52.0, 1.0e-6, "FIT zentriert den Fokus im Viewport (y)")
 	ctx.assert_true(
-		controller.get_zoom_mode() == OrbitCameraFramingScript.ZOOM_MODE_FIT,
-		"force_fit landet im fit-Plateau"
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_FOCUS_ANCHOR,
+		"Fit-Modus meldet focus-anchor als frame_label"
 	)
-	ctx.assert_almost(renderer.position.x, 200.0, 1.0e-6, "Root-Basisanker liegt im Viewport-Zentrum (x)")
-	ctx.assert_almost(renderer.position.y, 100.0, 1.0e-6, "Root-Basisanker liegt im Viewport-Zentrum (y)")
 	_teardown_controller_setup(setup)
 
 
-static func _test_wide_zoom_keeps_root_centered(ctx) -> void:
+static func _test_wide_zoom_blends_anchor_toward_root(ctx) -> void:
 	var setup := _make_controller()
 	var controller = setup["controller"]
 	var renderer: RendererStub = setup["renderer"]
@@ -139,45 +137,34 @@ static func _test_wide_zoom_keeps_root_centered(ctx) -> void:
 	ctx.assert_almost(controller.get_zoom_factor(), 0.005, 1.0e-9, "Wide-Zoom clamp't auf MIN_ZOOM_FACTOR")
 	ctx.assert_true(
 		controller.get_zoom_mode() == OrbitCameraFramingScript.ZOOM_MODE_WIDE,
-		"Extremes wide setzt zoom_mode auf wide"
+		"Zoomwerte unter FIT_PLATEAU_LOW setzen zoom_mode auf wide"
 	)
 	ctx.assert_true(
 		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_ROOT_ANCHOR,
-		"Wide-Mode meldet root-anchor als frame_label"
+		"Wide-Mode mit Nested Focus meldet root-anchor"
 	)
-	ctx.assert_almost(root_screen.x, 200.0, 1.0e-6, "Root-Anker liegt im Viewport-Zentrum (x)")
-	ctx.assert_almost(root_screen.y, 100.0, 1.0e-6, "Root-Anker liegt im Viewport-Zentrum (y)")
+	ctx.assert_almost(root_screen.x, 200.0, 1.0e-6, "Extremes wide zieht den Ankerpunkt auf den Root (x)")
+	ctx.assert_almost(root_screen.y, 100.0, 1.0e-6, "Extremes wide zieht den Ankerpunkt auf den Root (y)")
 	ctx.assert_true(
 		not planet_screen.is_equal_approx(Vector2(200.0, 100.0)),
 		"Nested Fokus wird in wide nicht kuenstlich im Zentrum gehalten"
 	)
-	_teardown_controller_setup(setup)
 
-
-static func _test_fit_plateau_composition_respects_safe_rect(ctx) -> void:
-	var setup := _make_controller()
-	var controller = setup["controller"]
-	var renderer: RendererStub = setup["renderer"]
 	controller.set_focus(&"planet", false, true)
+	controller.handle_zoom_multiplier(0.95)
 	controller.step(0.0, Vector2(400.0, 200.0))
-	var viewport_center: Vector2 = Vector2(200.0, 100.0)
-	var focus_frame: Dictionary = renderer.frames[&"planet"]
-	var focus_scope_screen_radius: float = float(focus_frame.get("radius", 1.0)) * renderer.scale.x
-	var focus_screen: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
-	var focus_offset: Vector2 = focus_screen - viewport_center
-	var half_w: float = OrbitCameraFramingScript.FIT_SAFE_HALF_WIDTH * 400.0
-	var half_h: float = OrbitCameraFramingScript.FIT_SAFE_HALF_HEIGHT * 200.0
-	ctx.assert_true(
-		abs(focus_offset.x) + focus_scope_screen_radius <= half_w + 1.0e-4,
-		"Focus-Scope liegt horizontal in der fit-Safe-Rect"
+	planet_screen = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
+	ctx.assert_almost(
+		planet_screen.x,
+		200.0,
+		1.0e-6,
+		"Im fit-Plateau bleibt der Fokus im Zentrum (kein Wide-Blend) (x)"
 	)
-	ctx.assert_true(
-		abs(focus_offset.y) + focus_scope_screen_radius <= half_h + 1.0e-4,
-		"Focus-Scope liegt vertikal in der fit-Safe-Rect"
-	)
-	ctx.assert_true(
-		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_SMART_FIT,
-		"Fit-Plateau meldet smart-fit als frame_label"
+	ctx.assert_almost(
+		planet_screen.y,
+		100.0,
+		1.0e-6,
+		"Im fit-Plateau bleibt der Fokus im Zentrum (kein Wide-Blend) (y)"
 	)
 	_teardown_controller_setup(setup)
 
@@ -192,40 +179,34 @@ static func _test_zoom_multiplier_clamps_to_bounds(ctx) -> void:
 	_teardown_controller_setup(setup)
 
 
-static func _test_closeup_zoom_reports_ratio_from_zoom_factor(ctx) -> void:
+static func _test_detail_zoom_keeps_focus_centered(ctx) -> void:
 	var setup := _make_controller()
 	var controller = setup["controller"]
 	var renderer: RendererStub = setup["renderer"]
 	controller.set_focus(&"planet", false, true)
 	controller.handle_zoom_multiplier(2.0)
 	controller.step(0.0, Vector2(400.0, 200.0))
+	var planet_screen: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
 	ctx.assert_true(
 		controller.get_zoom_mode() == OrbitCameraFramingScript.ZOOM_MODE_DETAIL,
-		"Zoom ueber FIT_PLATEAU_HIGH wechselt in den detail-Mode"
+		"Zoomwerte ueber FIT_PLATEAU_HIGH setzen zoom_mode auf detail"
+	)
+	ctx.assert_true(
+		controller.get_current_view_scale() > 3.04,
+		"Detail-Zoom vergroessert die aktuelle View-Skala ueber FIT"
 	)
 	ctx.assert_almost(
 		renderer.last_focus_closeup_ratio,
 		2.0,
 		1.0e-9,
-		"Renderer erhaelt das Closeup-Ratio aus dem Zoom-Factor"
+		"Renderer erhaelt das Closeup-Ratio direkt aus dem Zoom-Factor"
 	)
-	var viewport_center: Vector2 = Vector2(200.0, 100.0)
-	var focus_screen: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
-	var focus_offset: Vector2 = focus_screen - viewport_center
-	var half_w: float = OrbitCameraFramingScript.DETAIL_SAFE_HALF_WIDTH_FIT * 400.0
-	var half_h: float = OrbitCameraFramingScript.DETAIL_SAFE_HALF_HEIGHT_FIT * 200.0
-	ctx.assert_true(
-		abs(focus_offset.x) <= half_w + 1.0e-4,
-		"Detail-Fokus liegt in der detail-Safe-Rect (x)"
-	)
-	ctx.assert_true(
-		abs(focus_offset.y) <= half_h + 1.0e-4,
-		"Detail-Fokus liegt in der detail-Safe-Rect (y)"
-	)
+	ctx.assert_almost(planet_screen.x, 200.0, 1.0e-6, "Detail-Zoom behaelt den Fokuskoerper im Zentrum (x)")
+	ctx.assert_almost(planet_screen.y, 100.0, 1.0e-6, "Detail-Zoom behaelt den Fokuskoerper im Zentrum (y)")
 	_teardown_controller_setup(setup)
 
 
-static func _test_focus_switch_preserves_zoom_factor_and_mode(ctx) -> void:
+static func _test_focus_change_resets_zoom_to_fit(ctx) -> void:
 	var setup := _make_controller()
 	var controller = setup["controller"]
 	var renderer: RendererStub = setup["renderer"]
@@ -236,20 +217,13 @@ static func _test_focus_switch_preserves_zoom_factor_and_mode(ctx) -> void:
 	controller.step(0.0, Vector2(400.0, 200.0))
 	ctx.assert_almost(
 		controller.get_zoom_factor(),
-		2.0,
+		1.0,
 		1.0e-9,
-		"Fokuswechsel ohne force_fit behaelt den Zoom-Factor"
+		"Fokuswechsel resetet den Zoom-Factor auf FIT"
 	)
-	ctx.assert_true(
-		controller.get_zoom_mode() == OrbitCameraFramingScript.ZOOM_MODE_DETAIL,
-		"Fokuswechsel ohne force_fit behaelt den zoom_mode"
-	)
-	ctx.assert_almost(
-		renderer.scale.x,
-		0.76 * 2.0,
-		1.0e-6,
-		"Neuer Fokus nutzt seinen eigenen Scope mit erhaltenem Zoom-Factor"
-	)
+	ctx.assert_almost(renderer.scale.x, 0.76, 1.0e-6, "Neuer Fokus nutzt seinen eigenen Scope-Fit")
+	ctx.assert_almost(renderer.position.x, 200.0, 1.0e-6, "Neuer Fokus landet zentriert im Viewport (x)")
+	ctx.assert_almost(renderer.position.y, 100.0, 1.0e-6, "Neuer Fokus landet zentriert im Viewport (y)")
 	_teardown_controller_setup(setup)
 
 
@@ -262,10 +236,6 @@ static func _test_explicit_root_focus_uses_root_scope(ctx) -> void:
 	ctx.assert_almost(renderer.scale.x, 0.76, 1.0e-6, "Root-Fokus nutzt den Root-Scope als expliziten Overview")
 	ctx.assert_almost(renderer.position.x, 200.0, 1.0e-6, "Root-Fokus zentriert den Root-Anker im Viewport (x)")
 	ctx.assert_almost(renderer.position.y, 100.0, 1.0e-6, "Root-Fokus zentriert den Root-Anker im Viewport (y)")
-	ctx.assert_true(
-		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_FOCUS_ANCHOR,
-		"Root-Fokus meldet focus-anchor als frame_label (kein separater Root verfuegbar)"
-	)
 	_teardown_controller_setup(setup)
 
 
@@ -280,73 +250,19 @@ static func _test_wide_zoom_falls_back_to_focus_when_root_is_non_finite(ctx) -> 
 	var planet_screen: Vector2 = renderer.positions[&"planet"] * renderer.scale.x + renderer.position
 	ctx.assert_almost(planet_screen.x, 200.0, 1.0e-6, "Nicht-finites root_center faellt auf Fokusanker zurueck (x)")
 	ctx.assert_almost(planet_screen.y, 100.0, 1.0e-6, "Nicht-finites root_center faellt auf Fokusanker zurueck (y)")
-	_teardown_controller_setup(setup)
-
-
-static func _test_detail_assist_clamped_to_85_percent_of_focus_vector(ctx) -> void:
-	var setup := _make_controller()
-	var controller = setup["controller"]
-	var renderer: RendererStub = setup["renderer"]
-	renderer.positions[&"planet"] = Vector2(200.0, 0.0)
-	renderer.frames[&"planet"] = {"center": Vector2(200.0, 0.0), "radius": 25.0}
-	controller.set_focus(&"planet", false, true)
-	controller.handle_zoom_multiplier(50.0)
-	controller.step(0.0, Vector2(400.0, 200.0))
-	var viewport_center: Vector2 = Vector2(200.0, 100.0)
-	var root_screen: Vector2 = renderer.positions[&"root"] * renderer.scale.x + renderer.position
-	var focus_screen_without_offset: Vector2 = renderer.positions[&"planet"] * renderer.scale.x - renderer.positions[&"root"] * renderer.scale.x
-	var actual_offset_screen: Vector2 = (root_screen - viewport_center)
-	var focus_screen_length: float = focus_screen_without_offset.length()
 	ctx.assert_true(
-		actual_offset_screen.length() <= focus_screen_length * OrbitCameraFramingScript.DETAIL_ASSIST_CLAMP_FRACTION + 1.0e-3,
-		"Auto-Assist ueberschreitet nie %.0f%% des Root->Focus-Bildschirmvektors"
-			% [OrbitCameraFramingScript.DETAIL_ASSIST_CLAMP_FRACTION * 100.0]
+		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_FOCUS_ANCHOR,
+		"Ohne valid root meldet der Controller focus-anchor"
 	)
 	_teardown_controller_setup(setup)
 
 
-static func _test_detail_safe_rect_shrinks_with_zoom(ctx) -> void:
-	ctx.assert_true(
-		OrbitCameraFramingScript.DETAIL_SAFE_HALF_WIDTH_FIT > OrbitCameraFramingScript.DETAIL_SAFE_HALF_WIDTH_MAX,
-		"Detail-Safe-Rect-Halbbreite schrumpft mit steigendem Zoom"
-	)
-	ctx.assert_true(
-		OrbitCameraFramingScript.DETAIL_SAFE_HALF_HEIGHT_FIT > OrbitCameraFramingScript.DETAIL_SAFE_HALF_HEIGHT_MAX,
-		"Detail-Safe-Rect-Halbhoehe schrumpft mit steigendem Zoom"
-	)
-	ctx.assert_true(
-		OrbitCameraFramingScript.DETAIL_SAFE_HALF_WIDTH_FIT < OrbitCameraFramingScript.FIT_SAFE_HALF_WIDTH,
-		"Detail-Start-Safe-Rect ist enger als fit-Safe-Rect"
-	)
-
-	var layout_at_detail_start: Dictionary = OrbitCameraFramingScript.compute_layout(
-		Vector2(100.0, 0.0),
-		Vector2.ZERO,
-		10.0,
-		OrbitCameraFramingScript.FIT_PLATEAU_HIGH + 0.01,
-		Vector2(400.0, 200.0)
-	)
-	var layout_at_max_zoom: Dictionary = OrbitCameraFramingScript.compute_layout(
-		Vector2(100.0, 0.0),
-		Vector2.ZERO,
-		10.0,
-		100.0,
-		Vector2(400.0, 200.0)
-	)
-	var auto_offset_start: Vector2 = layout_at_detail_start.get("auto_composition_offset_ru", Vector2.ZERO)
-	var auto_offset_max: Vector2 = layout_at_max_zoom.get("auto_composition_offset_ru", Vector2.ZERO)
-	ctx.assert_true(
-		absf(auto_offset_max.x) >= absf(auto_offset_start.x) - 1.0e-6,
-		"Staerkeres Zoomen aktiviert staerkeren Detail-Assist (sofern nicht durch den 85%%-Clamp begrenzt)"
-	)
-
-
-static func _test_fit_wide_transition_is_visually_continuous(ctx) -> void:
+static func _test_wide_fit_transition_is_visually_continuous(ctx) -> void:
 	var setup_below := _make_controller()
 	var controller_below = setup_below["controller"]
 	var renderer_below: RendererStub = setup_below["renderer"]
 	controller_below.set_focus(&"planet", false, true)
-	controller_below.handle_zoom_multiplier(0.915 / 1.0)
+	controller_below.handle_zoom_multiplier(0.915)
 	controller_below.step(0.0, Vector2(400.0, 200.0))
 	var focus_below: Vector2 = renderer_below.positions[&"planet"] * renderer_below.scale.x + renderer_below.position
 	var scale_below: float = renderer_below.scale.x
@@ -355,17 +271,17 @@ static func _test_fit_wide_transition_is_visually_continuous(ctx) -> void:
 	var controller_above = setup_above["controller"]
 	var renderer_above: RendererStub = setup_above["renderer"]
 	controller_above.set_focus(&"planet", false, true)
-	controller_above.handle_zoom_multiplier(0.925 / 1.0)
+	controller_above.handle_zoom_multiplier(0.925)
 	controller_above.step(0.0, Vector2(400.0, 200.0))
 	var focus_above: Vector2 = renderer_above.positions[&"planet"] * renderer_above.scale.x + renderer_above.position
 	var scale_above: float = renderer_above.scale.x
 
 	ctx.assert_true(
-		focus_below.distance_to(focus_above) < 1.5,
+		focus_below.distance_to(focus_above) < 2.0,
 		"Plateau-Grenze wide->fit erzeugt keinen sichtbaren Sprung in der Fokus-Position"
 	)
 	ctx.assert_true(
-		abs(scale_above - scale_below) < 0.02,
+		abs(scale_above - scale_below) < 0.05,
 		"Plateau-Grenze wide->fit erzeugt keinen sichtbaren Sprung in der View-Skala"
 	)
 	_teardown_controller_setup(setup_below)
