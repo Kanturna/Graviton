@@ -229,6 +229,28 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Granulation, Activity, Filament- und Meso-Layer nur amplitude-seitig
   gedimmt als animierter Unterbau erhalten bleiben; das statische
   Macro-Feld sowie Rim/Edge bleiben unveraendert voll aktiv.
+- Ein neuer erster Variant-2-Pilot fuehrt jetzt fuer `MOON`-Bodies einen
+  hybriden Surface-Pfad ein: der Mond bleibt weiter im
+  `body_sphere.gdshader`, nutzt dort aber zusaetzlich eine aus
+  `planet25.png` abgeleitete `moon_reference.png` als kontrollierte
+  Oberflaechen-Referenz fuer Farbe und Kraterdetail.
+- Dieser Mond-Pilot ersetzt bewusst nicht den Shader durch ein direktes
+  Beauty-Sprite: Licht, Terminator, Rim und Rotation bleiben weiter
+  shaderseitig; die Referenzmap wird nur innerhalb der bestehenden
+  Projektion mitbenutzt.
+- Die neue Mond-Referenz wird ueber ein eigenes kleines
+  Ableitungsskript reproduzierbar aus der Nutzerreferenz in eine
+  hybridfreundliche innere Surface-Map ueberfuehrt: alpha-zentriert,
+  radial leicht entlichtet, im Rand nach innen kontrahiert und fuer
+  innere Kraterdetails nachgeschaerft.
+- Der Moon-Hybrid wurde im Follow-up jetzt klarer auf
+  `center-led / edge-lit` gezogen: die Referenz fuehrt staerker im
+  Scheibenzentrum, der alte prozedurale Mond-Look wird unter aktiver
+  Referenz deutlicher gedimmt, und die frueheren Moon-Overlay-Krater
+  werden dann bewusst ganz unterdrueckt.
+- Die shaderseitige Lichtarbeit sitzt fuer diesen Mondpfad jetzt
+  sichtbar staerker an Seiten, Terminator und Rim statt weiter als
+  flaechige Vollabdunklung ueber der ganzen Mondscheibe zu lesen.
 
 ## Ziel dieser Praesentationsschicht
 
@@ -288,7 +310,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tools/rendering/shaders/body_star.gdshader`
 - `src/tools/rendering/assets/README.md`
 - `src/tools/rendering/assets/star_detailmap.png`
+- `src/tools/rendering/assets/moon_reference.png`
 - `src/tools/rendering/scripts/derive_star_detailmap.py`
+- `src/tools/rendering/scripts/derive_planet_reference_map.py`
+- `src/tests/rendering/test_orbit_body_visual.gd`
 - `src/tests/rendering/test_orbit_emphasis_rules.gd`
 - `src/tests/rendering/test_planet_visual_profile.gd`
 - `src/tests/rendering/test_orbit_zoom_model.gd`
@@ -332,6 +357,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   texturfrei; `DESERT` wurde in diesem ersten Slice ausdruecklich nicht
   eingefuehrt, weil dafuer noch keine staerkere Sim-Basis fuer Ariditaet
   oder Wasserverteilung existiert.
+- Der neue Mond-Hybridpfad ist bewusst nur ein lokaler View-Pilot fuer
+  `MOON`-Bodies und noch keine generelle Umstellung aller Planeten auf
+  Asset-Surfaces oder Beauty-Sprites.
 - Der Zoom ist jetzt bewusst per Fokus-Scope statt globalem Weltanker
   definiert; gleiche Zoomzahlen sind damit nicht mehr
   fokusuebergreifend als gleicher Welt-Massstab interpretierbar.

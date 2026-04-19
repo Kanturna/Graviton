@@ -628,6 +628,19 @@ Zielbild fuer diesen Strang:
 
 - spaeter `DESERT` erst dann einfuehren, wenn die Sim eine bessere
   Ariditaets-/Wassergrundlage liefert
+- den neuen Moon-Hybridpilot visuell im Editor gegenpruefen:
+  liest `moon_reference.png` im Fokus wirklich staerker nach
+  "reichhaltiger Mondoberflaeche", ohne dass gebackenes Licht oder
+  ein Beauty-Rim wieder durch den Shaderpfad leaket
+- dabei jetzt speziell pruefen, ob das neue `center-led / edge-lit`-
+  Tuning die Referenz sichtbar genug fuehrt oder ob der Mondpfad noch
+  weniger Vollflaechen-Schattierung und ggf. noch mehr Referenzgewicht
+  braucht
+- falls der Mondpilot im Playtest funktioniert, als naechsten kleinen
+  Folgeblock pruefen, ob ein analoger Hybridpfad fuer genau einen
+  planetaren Archetypen (`BARREN` oder spaeter `FROZEN`) sinnvoll ist,
+  ohne den bisherigen shader-first Planetpfad vorschnell global zu
+  ersetzen
 - spaeter Moon-spezifische Verfeinerungen, wenn die gemeinsamen
   Klima-Archetypen allein noch nicht genug Charakter tragen
 - spaeter optional Theme-Caching im Renderer, falls die Body-Zahl

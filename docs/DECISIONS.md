@@ -58,6 +58,56 @@ waren. P16.1 korrigiert das bewusst nur im Kameraanker:
 - die P16-Scope-Scale-Semantik bleibt unangetastet; nur der
   Blickanker wird wieder weich stabilisiert
 
+## 2026-04-19 - Der erste Planet-Asset-Pilot startet bewusst moon-only als Hybrid statt als direkter Sprite-Ersatz
+
+Die neuen hochaufgeloesten Planeten-/Mondbilder legen einen moeglichen
+Asset-getriebenen Quality-Sprung nahe. Fuer den ersten konkreten
+Variant-2-Test wird aber bewusst **kein** direkter Beauty-Sprite-Pfad
+fuer alle Bodies eingefuehrt. Stattdessen bekommt nur der `MOON`-Pfad
+einen ersten hybriden Surface-Pilot:
+
+- der Mond bleibt im bestehenden `body_sphere.gdshader`
+- Licht, Terminator, Rim und die bestehende Rotationssemantik bleiben
+  shaderseitig autoritativ
+- eine aus `planet25.png` abgeleitete `moon_reference.png` wird nur als
+  zusaetzliche innere Surface-/Krater-Referenz in denselben Shader
+  eingeblendet
+- die Referenzmap wird vorab radial entlichtet und am Rand nach innen
+  kontrahiert, damit nicht der komplette Beauty-Render mit seinem
+  gebackenen Halo direkt in die Runtime wandert
+
+Konsequenz:
+
+- der erste Asset-Pilot bleibt klar Projektion und kein neuer
+  planetarer Wahrheitscontainer
+- Planeten allgemein bleiben zunaechst weiter shader-first
+- ob spaeter weitere Archetypen einen analogen Hybridpfad bekommen,
+  wird erst nach visueller Pilotbewertung entschieden
+
+## 2026-04-19 - Der Moon-Hybrid fuehrt die Referenz im Zentrum; Shaderarbeit sitzt an Rand und Terminator
+
+Der erste Moon-Hybridpilot hat die Referenzmap technisch korrekt
+gebunden, visuell aber noch zu sehr wie "alter Mondshader plus etwas
+Texture darueber" gelesen. Das Follow-up zieht die Rollen deshalb
+bewusst klarer auseinander:
+
+- die Referenzmap fuehrt jetzt die sichtbare Mondoberflaeche deutlich
+  staerker im Scheibenzentrum
+- der alte prozedurale Mond-Look wird unter aktiver Referenz staerker
+  amplitude-seitig gedimmt
+- die zusaetzlichen Moon-Overlay-Krater werden bei aktiver Referenz
+  ganz unterdrueckt
+- die shaderseitige Lichtlogik konzentriert sich fuer diesen Pfad jetzt
+  staerker auf Seiten, Terminator und Rim statt die Referenz flach ueber
+  die ganze Disc zu uebermalen
+
+Konsequenz:
+
+- der Moon-Hybrid ist jetzt bewusst `center-led / edge-lit`
+- der Sprite-/Reference-Anteil bleibt in der Mitte lesbar
+- die Schattierungslogik bleibt trotzdem shaderseitig kontrolliert und
+  kompatibel mit Rotation, Glow und der bestehenden Projektion
+
 ## 2026-04-19 - P14.6b macht die Stern-Detailmap statisch, zentriert und dominant im Closeup
 
 P14.6 hat bewusst einen Hybridpfad aus prozeduralem Sternshader und

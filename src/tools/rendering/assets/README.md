@@ -31,3 +31,29 @@ The shader intentionally samples the map statically:
 - no `TIME`-based translation
 - no rotation
 - centered disc-aligned UV sampling only
+
+## `moon_reference.png`
+
+Derived hybrid reference map for the first moon-specific Variant-2 pilot.
+
+- Source basis: user-provided moon reference image at `C:/Users/Sh4man/AppData/Local/Temp/planet25.png`
+- Usage: moon surface color/detail source inside the existing `body_sphere.gdshader`
+- Not used as a direct beauty-render sprite; the shader still owns lighting, rim and rotation semantics
+
+Regeneration:
+
+```powershell
+C:\Users\Sh4man\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe `
+  D:\Projekte\Godot\Graviton\src\tools\rendering\scripts\derive_planet_reference_map.py `
+  --input C:\Users\Sh4man\AppData\Local\Temp\planet25.png `
+  --output D:\Projekte\Godot\Graviton\src\tools\rendering\assets\moon_reference.png `
+  --size 512
+```
+
+The derivation intentionally:
+
+- centers the opaque moon disc via the source alpha channel
+- crops to a square reference frame
+- flattens the strongest radial baked-light bias toward a more albedo-like map
+- sharpens inner crater/detail signal
+- contracts the usable alpha mask inward so the shader does not re-import the original beauty rim

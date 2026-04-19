@@ -19,6 +19,14 @@ uniform float ice_strength = 0.0;
 uniform float lava_strength = 0.0;
 uniform float dryness_strength = 0.0;
 uniform float crater_strength = 0.0;
+uniform sampler2D surface_reference_tex;
+uniform float surface_reference_strength = 0.0;
+uniform float surface_reference_detail_strength = 0.0;
+uniform float surface_reference_radius = 0.46;
+uniform float surface_reference_center_preserve = 0.0;
+uniform float surface_reference_side_shade_strength = 0.0;
+uniform float surface_reference_procedural_damp = 0.0;
+uniform float surface_reference_rim_boost = 0.0;
 // Rotation domain: 0.0 = screen-plane (features orbit disk center; moon legacy)
 //                  1.0 = spherical Y-axis (features traverse limb to limb; planet)
 uniform float spherical_mix = 0.0;
@@ -73,6 +81,8 @@ void fragment() {
 	float limb = pow(max(0.0, n.z), 0.38);
 	float ambient = 0.07;
 	float diffuse = (ambient + (1.0 - ambient) * lit) * limb;
+	float reference_mode = clamp(surface_reference_strength, 0.0, 1.0);
+	float procedural_damp = 1.0 - surface_reference_procedural_damp * reference_mode;
 	float rim = pow(1.0 - max(0.0, n.z), 3.5) * rim_strength;
 	rim *= smoothstep(0.0, 0.4, lit + 0.3);
 
@@ -99,11 +109,11 @@ void fragment() {
 	vec3 band_dark = base_color * vec3(0.80, 0.83, 0.76);
 	vec3 band_light = mix(base_color, secondary_color, 0.35) * vec3(1.08, 1.06, 1.12);
 	vec3 band_col = mix(band_dark, band_light, band);
-	surface_col = mix(surface_col, band_col, band_strength);
+	surface_col = mix(surface_col, band_col, band_strength * procedural_damp);
 
 	vec2 p = n_rot * 1.8;
 	float albedo_noise = _noise(p);
-	surface_col *= 1.0 + (albedo_noise - 0.5) * patch_strength;
+	surface_col *= 1.0 + (albedo_noise - 0.5) * patch_strength * procedural_damp;
 
 	float mid_detail = smoothstep(0.10, 0.22, df_t);
 	float high_detail = smoothstep(0.60, 0.78, df_t);
@@ -132,29 +142,46 @@ void fragment() {
 	surface_col = mix(
 		surface_col,
 		mix(base_color, secondary_color, 0.72),
-		land_mask * land_ocean_strength * mid_detail
+		land_mask * land_ocean_strength * mid_detail * procedural_damp
 	);
-	surface_col += accent_color * coast_mask * land_ocean_strength * high_detail * 0.08;
+	surface_col += accent_color * coast_mask * land_ocean_strength * high_detail * 0.08 * procedural_damp;
 	surface_col = mix(
 		surface_col,
 		mix(secondary_color, accent_color, 0.28),
-		dust_mask * dryness_strength * mid_detail * 0.60
+		dust_mask * dryness_strength * mid_detail * 0.60 * procedural_damp
 	);
 	surface_col = mix(
 		surface_col,
 		mix(secondary_color, vec3(1.0), 0.45),
-		ice_mask * ice_strength * (0.35 + 0.65 * mid_detail)
+		ice_mask * ice_strength * (0.35 + 0.65 * mid_detail) * procedural_damp
 	);
 	surface_col = mix(
 		surface_col,
 		accent_color,
-		lava_mask * lava_strength * high_detail * 0.65
+		lava_mask * lava_strength * high_detail * 0.65 * procedural_damp
 	);
 	surface_col = mix(
 		surface_col,
 		surface_col * 0.72 + accent_color * 0.10,
-		crater_mask * crater_strength * high_detail
+		crater_mask * crater_strength * high_detail * procedural_damp
 	);
+
+	float reference_gate = mix(0.35, 1.0, smoothstep(0.04, 0.34, df_t));
+	vec2 reference_uv = n_flat * surface_reference_radius + vec2(0.5);
+	vec4 reference_sample = texture(surface_reference_tex, reference_uv);
+	float reference_mask = surface_reference_strength * reference_sample.a * reference_gate;
+	if (reference_mask > 0.001) {
+		float reference_luma = dot(reference_sample.rgb, vec3(0.299, 0.587, 0.114));
+		float reference_detail = (reference_luma - 0.5) * 2.0;
+		vec3 reference_tinted = mix(
+			mix(base_color, secondary_color, clamp(reference_luma * 0.92, 0.0, 1.0)),
+			reference_sample.rgb,
+			0.58
+		);
+		surface_col = mix(surface_col, reference_tinted, clamp(reference_mask, 0.0, 0.92));
+		surface_col *= 1.0 + reference_detail * surface_reference_detail_strength
+			* reference_mask * (0.42 + 0.58 * high_detail);
+	}
 
 	float f = surface_freq;
 	float sv = sin(n_rot.x * f + n_rot.y * (f * 0.81))
@@ -163,14 +190,31 @@ void fragment() {
 	float surface_var = sv * surface_var_strength * 0.50;
 
 	vec3 polar_tint = vec3(0.92, 0.95, 1.0);
-	vec3 col = surface_col * diffuse;
-	col += col * surface_var;
-	col = mix(col, col * polar_tint, pow(abs(n_rot.y), 3.0) * polar_tint_strength);
+	float side_mask = smoothstep(0.18, 0.88, 1.0 - max(0.0, n.z));
+	float shadow_side = smoothstep(0.22, -0.58, ndotl);
+	float reference_shade_mask = clamp(
+		side_mask * surface_reference_side_shade_strength
+		+ shadow_side * (0.44 + 0.40 * surface_reference_side_shade_strength),
+		0.0,
+		1.0
+	);
+	float reference_diffuse = mix(1.0, diffuse, reference_shade_mask);
+	float center_preserve_mask = smoothstep(0.18, 0.86, max(0.0, n.z)) * surface_reference_center_preserve;
+	reference_diffuse = mix(reference_diffuse, 1.0, center_preserve_mask);
+	float lighting = mix(diffuse, reference_diffuse, reference_mode);
+
+	vec3 col = surface_col * lighting;
+	col += col * surface_var * procedural_damp;
+	col = mix(
+		col,
+		col * polar_tint,
+		pow(abs(n_rot.y), 3.0) * polar_tint_strength * procedural_damp
+	);
 
 	float cloud_mix = cloud_mask * cloud_strength * high_detail;
 	col = mix(col, vec3(1.0), cloud_mix * 0.65);
-	col += accent_color * lava_mask * lava_strength * high_detail * 0.28 * (0.35 + 0.65 * lit);
-	col += atmo_color * rim;
+	col += accent_color * lava_mask * lava_strength * high_detail * 0.28 * (0.35 + 0.65 * lit) * procedural_damp;
+	col += atmo_color * rim * (1.0 + surface_reference_rim_boost * reference_mode);
 
 	COLOR = vec4(col, alpha);
 }

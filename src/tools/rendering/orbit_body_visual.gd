@@ -4,6 +4,7 @@ extends Node2D
 const _SHADER_SPHERE := preload("res://src/tools/rendering/shaders/body_sphere.gdshader")
 const _SHADER_STAR := preload("res://src/tools/rendering/shaders/body_star.gdshader")
 const _STAR_DETAIL_TEXTURE_PATH := "res://src/tools/rendering/assets/star_detailmap.png"
+const _MOON_REFERENCE_TEXTURE_PATH := "res://src/tools/rendering/assets/moon_reference.png"
 const PlanetVisualThemeScript := preload("res://src/tools/rendering/planet_visual_theme.gd")
 
 # Star halo: 5 concentric discs, outermost first in draw order so inner rings
@@ -254,6 +255,8 @@ func _draw_planet_overlay() -> void:
 
 
 func _draw_moon_overlay() -> void:
+	if _moon_reference_is_active():
+		return
 	var crater_alpha_scale: float = clampf(_overlay_crater_strength, 0.18, 1.0)
 	if _detail_factor > 1.25:
 		_overlay.draw_circle(
@@ -334,6 +337,13 @@ func _apply_theme_to_material(theme) -> void:
 	mat.set_shader_parameter("crater_strength", theme.crater_strength)
 
 	var is_moon: bool = _kind == BodyType.Kind.MOON
+	if is_moon:
+		mat.set_shader_parameter("surface_reference_strength", 0.72 + theme.crater_strength * 0.22)
+		mat.set_shader_parameter("surface_reference_detail_strength", 0.20 + theme.crater_strength * 0.18)
+		mat.set_shader_parameter("surface_reference_center_preserve", 0.82)
+		mat.set_shader_parameter("surface_reference_side_shade_strength", 0.92)
+		mat.set_shader_parameter("surface_reference_procedural_damp", 0.84)
+		mat.set_shader_parameter("surface_reference_rim_boost", 0.22)
 	match theme.archetype:
 		PlanetVisualThemeScript.Archetype.TEMPERATE_OCEAN:
 			mat.set_shader_parameter("surface_freq", 11.0 if is_moon else 8.2)
@@ -377,6 +387,15 @@ func _glow_color_for_theme(theme) -> Color:
 			return Color(theme.atmo_color.r * 0.78, theme.atmo_color.g * 0.80, theme.atmo_color.b * 0.86, alpha * 0.72)
 
 
+func _moon_reference_is_active() -> bool:
+	if _kind != BodyType.Kind.MOON or _sphere == null or _sphere.material == null:
+		return false
+	var mat: ShaderMaterial = _sphere.material as ShaderMaterial
+	if mat == null:
+		return false
+	return float(mat.get_shader_parameter("surface_reference_strength")) > 0.05
+
+
 static func _make_white_1px() -> ImageTexture:
 	var img := Image.create(1, 1, false, Image.FORMAT_RGBA8)
 	img.fill(Color.WHITE)
@@ -391,8 +410,8 @@ static func _sphere_local_scale(kind: int) -> Vector2:
 			return Vector2(14.0, 14.0)
 
 
-static func _load_star_detail_texture() -> Texture2D:
-	var png_bytes: PackedByteArray = FileAccess.get_file_as_bytes(_STAR_DETAIL_TEXTURE_PATH)
+static func _load_png_texture(path: String) -> Texture2D:
+	var png_bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
 	if png_bytes.is_empty():
 		return null
 	var image := Image.new()
@@ -405,7 +424,7 @@ static func _make_sphere_material(kind: int) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	if kind == BodyType.Kind.STAR:
 		mat.shader = _SHADER_STAR
-		var star_detail_texture: Texture2D = _load_star_detail_texture()
+		var star_detail_texture: Texture2D = _load_png_texture(_STAR_DETAIL_TEXTURE_PATH)
 		if star_detail_texture != null:
 			mat.set_shader_parameter("star_detail_tex", star_detail_texture)
 		mat.set_shader_parameter("star_closeup_phase", 0.0)
@@ -433,6 +452,14 @@ static func _make_sphere_material(kind: int) -> ShaderMaterial:
 	else:
 		mat.shader = _SHADER_SPHERE
 		var is_moon: bool = kind == BodyType.Kind.MOON
+		mat.set_shader_parameter("surface_reference_tex", _make_white_1px())
+		mat.set_shader_parameter("surface_reference_strength", 0.0)
+		mat.set_shader_parameter("surface_reference_detail_strength", 0.0)
+		mat.set_shader_parameter("surface_reference_radius", 0.46)
+		mat.set_shader_parameter("surface_reference_center_preserve", 0.0)
+		mat.set_shader_parameter("surface_reference_side_shade_strength", 0.0)
+		mat.set_shader_parameter("surface_reference_procedural_damp", 0.0)
+		mat.set_shader_parameter("surface_reference_rim_boost", 0.0)
 		mat.set_shader_parameter("terminator_softness", 0.12 if is_moon else 0.28)
 		mat.set_shader_parameter("rim_strength", 0.06 if is_moon else 0.32)
 		mat.set_shader_parameter("base_color",
@@ -456,4 +483,14 @@ static func _make_sphere_material(kind: int) -> ShaderMaterial:
 		mat.set_shader_parameter("dryness_strength", 0.0)
 		mat.set_shader_parameter("crater_strength", 0.30 if is_moon else 0.0)
 		mat.set_shader_parameter("spherical_mix", 0.0 if is_moon else 1.0)
+		if is_moon:
+			var moon_reference_texture: Texture2D = _load_png_texture(_MOON_REFERENCE_TEXTURE_PATH)
+			if moon_reference_texture != null:
+				mat.set_shader_parameter("surface_reference_tex", moon_reference_texture)
+				mat.set_shader_parameter("surface_reference_strength", 0.78)
+				mat.set_shader_parameter("surface_reference_detail_strength", 0.26)
+				mat.set_shader_parameter("surface_reference_center_preserve", 0.82)
+				mat.set_shader_parameter("surface_reference_side_shade_strength", 0.92)
+				mat.set_shader_parameter("surface_reference_procedural_damp", 0.84)
+				mat.set_shader_parameter("surface_reference_rim_boost", 0.22)
 	return mat
