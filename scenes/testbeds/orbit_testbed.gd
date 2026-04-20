@@ -132,7 +132,8 @@ func _ready() -> void:
 		_activation_set,
 		_thermal_service,
 		_derived_snapshot_cache,
-		_backdrop
+		_backdrop,
+		_streaming_controller if _is_large_world else null
 	)
 	_debug_overlay.visible = false
 

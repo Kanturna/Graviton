@@ -704,7 +704,34 @@ Erledigt:
   Delta-Materialisierung, Cache-Bereinigung und einen test-only
   30-Root-Stresspfad ab
 
-## Prioritaet 20 - Pilot im Editor validieren
+## Prioritaet 20 - Playtest-Diagnostik / Boundary-Hardening - erledigt
+
+Ziel:
+Bevor der 3-Root-Pilot gefuehlt im Editor beurteilt wird, sollten die
+letzten kleinen Boundary-/Stress-Luecken headless geschlossen und der
+Runtime-Pfad mit einer brauchbaren Streaming-Diagnose ausgeruestet
+werden.
+
+Erledigt:
+
+- `GalaxyStreamingController` liefert jetzt einen read-only
+  Debug-Snapshot mit Fokus-/Resident-/Neighbor-/Prewarm-Zustand,
+  Keepalive-Restzeit und letztem Zoom-Faktor
+- derselbe Controller fuehrt jetzt einen kleinen Ringbuffer der letzten
+  Streaming-Ereignisse (`focus_changed`, `neighbor_enter`,
+  `keepalive_started`, `keepalive_expired`, `neighbor_exit`,
+  `prewarm_enter`, `prewarm_exit`)
+- das `F3`-Debug-Overlay zeigt diesen Streaming-Snapshot im
+  Large-World-Modus direkt mit an
+- neue Tests pinnen den `prewarm`-Boundary-Contract fuer
+  `0.89 / 0.90 / 0.91 / 1.00`
+- ein neuer Paritaetstest sichert, dass uebernommene Pilot-Manifeste im
+  Stress-Helper ueber dieselbe `WorldLoader.build_defs_for_root_manifest(...)`-
+  Pipeline dieselbe Def-Signatur liefern
+- der 30-Root-Stresstest leitet seinen Fokus-/Interest-Root jetzt voll
+  aus Manifest-/Registry-Daten ab statt aus Magic-Strings
+
+## Prioritaet 21 - Pilot im Editor validieren
 
 Ziel:
 Den headless-gruenen 3-Root-Pilot jetzt als echte Runtime-/UX-
@@ -717,6 +744,9 @@ Konkreter Arbeitsblock:
   lesen
 - bestaetigen, dass Hysterese + Keepalive ruhig lesen und immer nur der
   Fokus-Root plus hoechstens ein Nachbar resident sind
+- dabei das neue `F3`-Streaming-Overlay mit
+  `desired_neighbor_root_id`, `resident_neighbor_root_id`,
+  `prewarm_root_id`, Keepalive-Restzeit und Ringbuffer mitlaufen lassen
 - Kamera-/HUD-/Fokus-Haptik im grossen Weltmodus gegenpruefen
 - kurzen Profil-/Playtest fuer einen Detail-Root plus Proxies machen
 

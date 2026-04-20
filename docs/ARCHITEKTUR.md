@@ -50,7 +50,8 @@ noch `runtime/` noch `scenes/`. `sim/` haengt nur von `core/` ab.
 
 Niemals autoritativ:
 `Node.position`, `Node3D.transform`, Welt- oder View-Koordinaten,
-Visuals im Testbed, Debug-Overlay-Anzeigen.
+Visuals im Testbed, Debug-Overlay-Anzeigen,
+`GalaxyStreamingController.get_debug_snapshot()`.
 
 ## Autoloads - ADR
 
@@ -150,7 +151,9 @@ _ready():
         LocalBubbleManager,
         BubbleActivationSet,
         ThermalService,
-        DerivedSnapshotCache
+        DerivedSnapshotCache,
+        Backdrop,
+        GalaxyStreamingController
     )
 
 _process():
@@ -181,6 +184,9 @@ Fuer grosse Multi-Root-Welten bleibt dieselbe Schichtung erhalten:
 - `GalaxyStreamingController.update(delta_s, zoom_factor)` entscheidet
   focus-/zoomgetrieben ueber Resident-/Prewarm-Shells, Hysterese und
   Keepalive
+- `GalaxyStreamingController.get_debug_snapshot()` bleibt ausdruecklich
+  read-only Diagnoseflaeche fuer `F3`/Playtest und fuehrt keine neue
+  Runtime-Autoritaet ein
 - `GalaxyProxyRenderer` zeigt nichtresidente Roots als reine
   View-Proxies im Galaxy-Space
 - `LocalBubbleManager` und `BubbleActivationSet` bleiben bewusst

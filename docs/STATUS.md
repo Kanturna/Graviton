@@ -105,6 +105,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   ein Nachbar-Root kommt erst unter `0.55` hinein, faellt erst ab
   `0.65` wieder heraus und bleibt dazwischen ueber `1.5 s` Keepalive
   resident; `prewarm` arbeitet separat mit `0.90 -> 1.00`.
+- `GalaxyStreamingController` exponiert jetzt zusaetzlich einen
+  read-only Debug-Snapshot fuer den Playtest:
+  Fokus-Root, Resident-/Neighbor-/Prewarm-IDs, Keepalive-Restzeit,
+  letzter Zoom-Faktor und ein kleiner Ringbuffer der juengsten
+  Streaming-Ereignisse werden rein diagnostisch mitgefuehrt.
 - Topologie-Helfer sind jetzt in einem read-only
   `UniverseTopology`-Helper ueber `UniverseRegistry` gebuendelt statt
   parallel in Bubble-, Renderer- und Testbed-Code verteilt.
@@ -125,7 +130,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist wieder reproduzierbar: direkter
   `godot_console.exe --headless ...`-Aufruf und `run_tests.bat` laufen
-  jetzt mit `1056` erfolgreichen Assertions.
+  jetzt mit `1078` erfolgreichen Assertions.
 
 ### Aktuelle Praesentation
 
@@ -156,6 +161,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `control`, `viewport`, `render`, `bake`, `composition` sowie
   Resize-/Sync-Zaehler an, damit kuenftige Viewport-/Sampling-
   Regressionen schnell eingegrenzt werden koennen.
+- Im Large-World-Modus zeigt dasselbe `F3`-Overlay jetzt zusaetzlich
+  einen kompakten Streaming-Block:
+  aktueller Fokus-/Resident-/Prewarm-Zustand plus die letzten
+  Streaming-Ereignisse aus dem Controller-Ringbuffer.
 - Bodies werden jetzt als 2D-Visuals mit Glow, Orbit-Linien und Trails
   dargestellt.
 - Planet-/Mond-Themes werden nicht mehr blind pro Frame komplett neu
@@ -574,9 +583,12 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Playtest vertagt.
 - Der neue Streaming-Pfad ist jetzt headless-seitig auch auf
   Hysterese, Keepalive, Delta-Materialisierung, Proxy-/Detail-Handoff
-  und einen test-only 30-Root-Stress abgesichert; offene Restarbeit
-  liegt damit klarer im echten Editor-/Playtest als in weiterer
-  Grundarchitektur.
+  und einen test-only 30-Root-Stress abgesichert; zusaetzlich pinnen
+  neue Tests jetzt den `prewarm`-Boundary-Contract
+  (`0.89 / 0.90 / 0.91 / 1.00`), die Produktiv-/Stress-Paritaet eines
+  uebernommenen Pilot-Manifests und den Debug-Ringbuffer.
+- Offene Restarbeit liegt damit noch klarer im echten Editor-/Playtest
+  als in weiterer Grundarchitektur.
 - Der neue galaktische Backdrop ist bewusst screen-fixed und
   dekorativ; ein spaeterer root-aware oder BH-zentrierter Spezialeffekt
   waere ein eigener View-Pass und kein stilles Follow-up dieses
@@ -604,7 +616,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `pilot_galaxy`-Slice im Editor und unter Bewegung/Zoom validieren
 - dabei besonders Proxy-/Detail-Handoffs, Hysterese-/Keepalive-Haptik,
   Fokuswechsel zwischen Roots, Kamera-Haptik und den neuen
-  steady-state-Frame-Workload beobachten
+  F3-Streaming-Diagnoseblock beobachten
 - danach den Large-World-Pilot kontrolliert von 3 Roots auf 10 und
   spaeter 30 skalieren, statt die erste Implementierung sofort breit zu
   ziehen

@@ -1,6 +1,7 @@
 class_name GalaxyStreamingController
 extends RefCounted
 
+const DEBUG_EVENT_LIMIT: int = 16
 
 signal residency_changed(resident_root_ids: Array[StringName], focus_root_id: StringName)
 
@@ -23,6 +24,7 @@ var _neighbor_unload_remaining_s: float = 0.0
 var _prewarm_root_id: StringName = &""
 var _prewarmed_defs_by_root: Dictionary = {}
 var _last_zoom_factor: float = 1.0
+var _debug_events: Array[Dictionary] = []
 
 
 func configure(
@@ -46,6 +48,9 @@ func configure(
 	_last_zoom_factor = 1.0
 	_resident_neighbor_root_id = StringName("")
 	_neighbor_unload_remaining_s = 0.0
+	_prewarm_root_id = StringName("")
+	_prewarmed_defs_by_root.clear()
+	_debug_events.clear()
 	_update_residency_state(0.0, _last_zoom_factor)
 	_update_prewarm_state(_focus_root_id, _last_zoom_factor)
 
@@ -65,6 +70,7 @@ func set_focus_root(root_id: StringName) -> void:
 		return
 	var previous_focus_root_id: StringName = _focus_root_id
 	_focus_root_id = root_id
+	_push_debug_event("focus_changed", root_id)
 	_resident_neighbor_root_id = previous_focus_root_id if previous_focus_root_id != StringName("") and previous_focus_root_id != _focus_root_id else StringName("")
 	_neighbor_unload_remaining_s = 0.0
 	_update_residency_state(0.0, _last_zoom_factor)
@@ -93,6 +99,22 @@ func get_focus_manifest():
 	return null if _galaxy == null else _galaxy.get_manifest(_focus_root_id)
 
 
+func get_debug_snapshot() -> Dictionary:
+	var recent_events: Array[Dictionary] = []
+	for event in _debug_events:
+		recent_events.append(event.duplicate(true))
+	return {
+		"focus_root_id": _focus_root_id,
+		"resident_root_ids": get_resident_root_ids(),
+		"desired_neighbor_root_id": _desired_neighbor_root_id(_focus_root_id),
+		"resident_neighbor_root_id": _resident_neighbor_root_id,
+		"prewarm_root_id": _prewarm_root_id,
+		"neighbor_keepalive_remaining_s": _neighbor_unload_remaining_s,
+		"last_zoom_factor": _last_zoom_factor,
+		"recent_events": recent_events,
+	}
+
+
 func _update_residency_state(delta_s: float, zoom_factor: float) -> void:
 	var desired_neighbor_id: StringName = _desired_neighbor_root_id(_focus_root_id)
 	var clamped_delta_s: float = maxf(delta_s, 0.0)
@@ -105,13 +127,18 @@ func _update_residency_state(delta_s: float, zoom_factor: float) -> void:
 		else:
 			if _neighbor_unload_remaining_s <= 0.0:
 				_neighbor_unload_remaining_s = neighbor_unload_keepalive_s
+				_push_debug_event("keepalive_started", _resident_neighbor_root_id)
 			_neighbor_unload_remaining_s = maxf(_neighbor_unload_remaining_s - clamped_delta_s, 0.0)
 			if _neighbor_unload_remaining_s <= 0.0:
+				var exited_neighbor_id: StringName = _resident_neighbor_root_id
+				_push_debug_event("keepalive_expired", exited_neighbor_id)
 				_resident_neighbor_root_id = StringName("")
+				_push_debug_event("neighbor_exit", exited_neighbor_id)
 
 	if _resident_neighbor_root_id == StringName("") and zoom_factor <= neighbor_enter_zoom and desired_neighbor_id != StringName(""):
 		_resident_neighbor_root_id = desired_neighbor_id
 		_neighbor_unload_remaining_s = 0.0
+		_push_debug_event("neighbor_enter", desired_neighbor_id)
 
 	_apply_residency(_target_resident_roots_from_state())
 
@@ -131,20 +158,20 @@ func _apply_residency(target_root_ids: Array[StringName]) -> void:
 
 func _update_prewarm_state(focus_root_id: StringName, zoom_factor: float) -> void:
 	if _galaxy == null:
-		_prewarm_root_id = StringName("")
+		_set_prewarm_root_id(StringName(""))
 		return
 	var candidate_id: StringName = _next_prewarm_candidate_id(focus_root_id)
 	if _prewarm_root_id != StringName(""):
 		if zoom_factor >= prewarm_exit_zoom or candidate_id == StringName(""):
-			_prewarm_root_id = StringName("")
+			_set_prewarm_root_id(StringName(""))
 			return
-		_prewarm_root_id = candidate_id
+		_set_prewarm_root_id(candidate_id)
 		_ensure_prewarmed(candidate_id)
 		return
-	_prewarm_root_id = StringName("")
+	_set_prewarm_root_id(StringName(""))
 	if zoom_factor > prewarm_enter_zoom or candidate_id == StringName(""):
 		return
-	_prewarm_root_id = candidate_id
+	_set_prewarm_root_id(candidate_id)
 	_ensure_prewarmed(candidate_id)
 
 
@@ -154,6 +181,17 @@ func _ensure_prewarmed(root_id: StringName) -> void:
 	var manifest = _galaxy.get_manifest(root_id)
 	if manifest != null:
 		_prewarmed_defs_by_root[root_id] = _world_loader.build_defs_for_root_manifest(manifest)
+
+
+func _set_prewarm_root_id(root_id: StringName) -> void:
+	if root_id == _prewarm_root_id:
+		return
+	var previous_root_id: StringName = _prewarm_root_id
+	if previous_root_id != StringName(""):
+		_push_debug_event("prewarm_exit", previous_root_id)
+	_prewarm_root_id = root_id
+	if _prewarm_root_id != StringName(""):
+		_push_debug_event("prewarm_enter", _prewarm_root_id)
 
 
 func _target_resident_roots_from_state() -> Array[StringName]:
@@ -215,3 +253,19 @@ static func _same_root_id_lists(a: Array[StringName], b: Array[StringName]) -> b
 		if a[index] != b[index]:
 			return false
 	return true
+
+
+func _push_debug_event(event_name: String, root_id: StringName) -> void:
+	_debug_events.append({
+		"sim_time_s": _current_sim_time_s(),
+		"event": event_name,
+		"focus_root_id": _focus_root_id,
+		"root_id": root_id,
+		"zoom_factor": _last_zoom_factor,
+	})
+	while _debug_events.size() > DEBUG_EVENT_LIMIT:
+		_debug_events.remove_at(0)
+
+
+func _current_sim_time_s() -> float:
+	return 0.0 if _time_service == null else float(_time_service.sim_time_s)

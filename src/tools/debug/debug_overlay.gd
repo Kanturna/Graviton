@@ -17,9 +17,19 @@ var _activation_set: Node = null
 var _thermal_service: Node = null
 var _snapshot_cache = null
 var _backdrop = null
+var _streaming_controller = null
 
 
-func configure(registry: Node, time_service: Node, bubble: Node, activation_set: Node = null, thermal_service: Node = null, snapshot_cache = null, backdrop = null) -> void:
+func configure(
+		registry: Node,
+		time_service: Node,
+		bubble: Node,
+		activation_set: Node = null,
+		thermal_service: Node = null,
+		snapshot_cache = null,
+		backdrop = null,
+		streaming_controller = null
+	) -> void:
 	_registry = registry
 	_time = time_service
 	_bubble = bubble
@@ -27,6 +37,7 @@ func configure(registry: Node, time_service: Node, bubble: Node, activation_set:
 	_thermal_service = thermal_service
 	_snapshot_cache = snapshot_cache
 	_backdrop = backdrop
+	_streaming_controller = streaming_controller
 
 
 func _process(_delta: float) -> void:
@@ -75,6 +86,49 @@ func _build_text() -> String:
 				int(backdrop_desc.get("viewport_resize_count", 0)),
 			]
 		)
+	if _streaming_controller != null and _streaming_controller.has_method("get_debug_snapshot"):
+		var streaming_desc: Dictionary = _streaming_controller.get_debug_snapshot()
+		lines.append("")
+		lines.append("[b]Galaxy Streaming[/b]")
+		lines.append(
+			"focus_root = %s   resident_roots = %s"
+			% [
+				_format_optional_id(streaming_desc.get("focus_root_id", StringName(""))),
+				_format_id_list(streaming_desc.get("resident_root_ids", [])),
+			]
+		)
+		lines.append(
+			"desired_neighbor = %s   resident_neighbor = %s   prewarm = %s"
+			% [
+				_format_optional_id(streaming_desc.get("desired_neighbor_root_id", StringName(""))),
+				_format_optional_id(streaming_desc.get("resident_neighbor_root_id", StringName(""))),
+				_format_optional_id(streaming_desc.get("prewarm_root_id", StringName(""))),
+			]
+		)
+		lines.append(
+			"keepalive_remaining_s = %s   zoom_factor = %s"
+			% [
+				_format_metric(float(streaming_desc.get("neighbor_keepalive_remaining_s", 0.0))),
+				_format_metric(float(streaming_desc.get("last_zoom_factor", 1.0))),
+			]
+		)
+		var recent_events: Array = streaming_desc.get("recent_events", [])
+		if recent_events.is_empty():
+			lines.append("events = -")
+		else:
+			lines.append("recent_events:")
+			for event_variant in recent_events:
+				var event: Dictionary = event_variant
+				lines.append(
+					"  t=%s  %s  root=%s  focus=%s  zoom=%s"
+					% [
+						_format_metric(float(event.get("sim_time_s", 0.0))),
+						String(event.get("event", "")),
+						_format_optional_id(event.get("root_id", StringName(""))),
+						_format_optional_id(event.get("focus_root_id", StringName(""))),
+						_format_metric(float(event.get("zoom_factor", 1.0))),
+					]
+				)
 	lines.append("")
 	lines.append("[b]Bodies (truth: parent-frame)[/b]")
 	for id in _registry.get_update_order():
@@ -129,3 +183,17 @@ static func _format_optional_metric(value: Vector3) -> String:
 	if not is_finite(value.x) or not is_finite(value.y) or not is_finite(value.z):
 		return "n/a"
 	return _format_metric(value.length())
+
+
+static func _format_optional_id(value) -> String:
+	var id: String = String(value)
+	return "-" if id == "" else id
+
+
+static func _format_id_list(values: Array) -> String:
+	if values.is_empty():
+		return "-"
+	var formatted: Array[String] = []
+	for value in values:
+		formatted.append(_format_optional_id(value))
+	return ", ".join(formatted)
