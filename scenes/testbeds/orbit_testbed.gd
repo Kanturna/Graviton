@@ -9,7 +9,7 @@ const GalaxyStreamingControllerScript = preload("res://src/runtime/streaming/gal
 
 const ZOOM_FACTOR_STEP: float = 1.12
 
-@export_enum("starter_world", "sample_system", "generated_system", "pilot_galaxy") var initial_world_id: String = "starter_world"
+@export_enum("starter_world", "sample_system", "generated_system", "pilot_galaxy", "scaleup_galaxy_10") var initial_world_id: String = "starter_world"
 
 @onready var _world_loader = $WorldLoader
 @onready var _orbit_service: OrbitService = $OrbitService
@@ -324,4 +324,4 @@ func _on_orbit_service_bodies_updated(ids: Array[StringName], _reason: StringNam
 
 
 static func _is_large_world_id(world_id: StringName) -> bool:
-	return world_id == WorldLoader.PILOT_GALAXY_ID
+	return world_id == WorldLoader.PILOT_GALAXY_ID or world_id == WorldLoader.SCALEUP_GALAXY_10_ID

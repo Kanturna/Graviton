@@ -113,6 +113,8 @@ func pick_body_at_screen(screen_pos: Vector2) -> StringName:
 func get_body_view_position_ru(id: StringName) -> Vector2:
 	if _bubble == null:
 		return Vector2.ZERO
+	if not _body_shares_focus_root(id):
+		return Vector2(INF, INF)
 	var view_m: Vector3 = _bubble.compose_view_position_m(id)
 	if not _is_finite_vec3(view_m):
 		return Vector2(INF, INF)
@@ -479,3 +481,15 @@ static func _is_finite_vec2(value: Vector2) -> bool:
 
 static func _is_finite_vec3(value: Vector3) -> bool:
 	return is_finite(value.x) and is_finite(value.y) and is_finite(value.z)
+
+
+func _body_shares_focus_root(id: StringName) -> bool:
+	if _topology == null or _focus_id == StringName(""):
+		return true
+	var focus_root_id: StringName = _topology.root_id_of(_focus_id)
+	if focus_root_id == StringName(""):
+		return true
+	var body_root_id: StringName = _topology.root_id_of(id)
+	if body_root_id == StringName(""):
+		return true
+	return body_root_id == focus_root_id

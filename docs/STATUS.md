@@ -8,9 +8,10 @@ Stand: 2026-04-20
 Weltraum-/Systemsimulation und eine erste stilisierte 2D-
 Praesentationsschicht.
 
-Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pilot:
-eine kleine Multi-Root-Galaxie mit Proxy-Layer, Streaming und
-inkrementellen Runtime-Hotpath-Fixes fuer Bubble- und Derived-Daten.
+Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
+ein validierter 3-Root-Pilot plus eine separate produktive 10-Root-
+Galaxy mit Proxy-Layer, Streaming und inkrementellen Runtime-Hotpath-
+Fixes fuer Bubble- und Derived-Daten.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -100,6 +101,15 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   3-Root-Pilotgalaxie:
   `obsidian` als Hero-Root plus zwei deterministisch generierte
   Nachbar-Roots `onyx` und `umbra`.
+- Darauf baut jetzt zusaetzlich eine zweite produktive Large-World-
+  Galaxy `scaleup_galaxy_10` auf:
+  `pilot_galaxy` bleibt unveraendert als 3-Root-Referenzslice erhalten,
+  waehrend `scaleup_galaxy_10` denselben Hero-Root plus sieben weitere
+  deterministisch generierte Zusatz-Roots traegt.
+- Die sieben Zusatz-Roots laufen jetzt ueber einen produktiven Shared-
+  Helper in `src/sim/world/`; der bisherige `StressGalaxyFactory`
+  ist dadurch nur noch duennes Test-Wrapper-Stueck ueber derselben
+  produktiven Zusatz-Root-Logik.
 - `GalaxyStreamingController` nutzt jetzt ein zeitbasiertes
   `update(delta_s, zoom_factor)` mit Hysterese:
   ein Nachbar-Root kommt erst unter `0.55` hinein, faellt erst ab
@@ -118,6 +128,14 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   ueber kopierte Boilerplate in mehreren Suites.
 - Bodies aus einem anderen Root als der aktuelle Fokus liefern bewusst
   `Vector3.INF` und werden im Renderer nicht lokalisiert.
+- `GalaxyStreamingController` faellt jetzt auch produktiv sauber ueber
+  `focus_root_id -> default_resident_root_ids[0] -> root_ids()[0]`
+  auf einen primaeren Fokus-Root zurueck, falls ein Galaxy-Catalog
+  keine expliziten Defaults setzt.
+- `OrbitViewRenderer` schneidet Cross-Root-Detailvisuals jetzt bereits
+  vor `compose_view_position_m()` root-aware ab; dadurch bleiben
+  Detail-Layer und Logs auch mit residentem Neighbor-Root ruhig, ohne
+  die same-root Bubble-Semantik anzufassen.
 - `INACTIVE_NO_LCA` bleibt fuer legitime Cross-Root-Faelle sichtbar,
   loggt aber jetzt als Warning statt als Fehler.
 - `TimeService` und `UniverseRegistry` bleiben die einzigen
@@ -130,7 +148,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist wieder reproduzierbar: direkter
   `godot_console.exe --headless ...`-Aufruf und `run_tests.bat` laufen
-  jetzt mit `1078` erfolgreichen Assertions.
+  jetzt mit `1135` erfolgreichen Assertions.
 
 ### Aktuelle Praesentation
 
@@ -249,6 +267,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Roots erscheinen als eigene BH-/Stern-Proxies im Galaxy-Space, und
   beim Herauszoomen darf genau ein Nachbar-Root zusaetzlich resident
   werden.
+- Das Testbed unterstuetzt jetzt zusaetzlich auch
+  `scaleup_galaxy_10` als zweite produktive Large-World-Welt; der
+  Default bleibt bewusst `starter_world`.
 - Dieser Large-World-Pfad entlaedt den bestehenden Fokus-Root dabei
   nicht mehr bei jedem Neighbor-Wechsel: Delta-Materialisierung und
   Streaming-Keepalive halten unveraenderte Root-Slices stabil resident,
@@ -495,6 +516,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/sim/world/root_star_manifest.gd`
 - `src/sim/world/root_system_generator.gd`
 - `src/sim/world/pilot_galaxy_world.gd`
+- `src/sim/world/generated_scaleup_root_factory.gd`
+- `src/sim/world/scaleup_galaxy_world.gd`
 - `src/tools/rendering/galaxy_proxy_renderer.gd`
 - `src/tests/rendering/test_debug_overlay.gd`
 - `src/tests/rendering/test_orbit_hud_formatter.gd`
@@ -576,11 +599,12 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Der neue Snapshot-/Theme-Cache reduziert den offensichtlichen
   per-frame-Derived-Workload jetzt deutlich staerker ueber
   Interest-/Dirty-Tracking, ist aber noch nicht durch einen laengeren
-  visuellen Idle-/Playtest im neuen `pilot_galaxy`-Modus profiliert.
-- Der neue Large-World-Pilot ist bewusst erst ein 3-Root-Slice.
-  Mehr Root-Anzahl, reichere Galaxy-Layout-Regeln und laengerer
-  Resident-Root-Lebenszyklus sind ausdruecklich nach dem Pilot-
-  Playtest vertagt.
+  visuellen Idle-/Playtest im neuen 10-Root-Produktpfad profiliert.
+- `pilot_galaxy` bleibt bewusst exakt der kleine 3-Root-Referenzslice;
+  `scaleup_galaxy_10` ist jetzt der produktive 10-Root-Folgepfad.
+  Noch offen sind damit primaer der echte Editor-/Feel-Playtest dieser
+  10-Root-Welt und erst danach ein kontrollierter Schritt Richtung
+  30 produktive Roots.
 - Der neue Streaming-Pfad ist jetzt headless-seitig auch auf
   Hysterese, Keepalive, Delta-Materialisierung, Proxy-/Detail-Handoff
   und einen test-only 30-Root-Stress abgesichert; zusaetzlich pinnen
@@ -612,14 +636,16 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- als naechsten grossen Architektur-/Playtest-Block den neuen
-  `pilot_galaxy`-Slice im Editor und unter Bewegung/Zoom validieren
-- dabei besonders Proxy-/Detail-Handoffs, Hysterese-/Keepalive-Haptik,
-  Fokuswechsel zwischen Roots, Kamera-Haptik und den neuen
-  F3-Streaming-Diagnoseblock beobachten
-- danach den Large-World-Pilot kontrolliert von 3 Roots auf 10 und
-  spaeter 30 skalieren, statt die erste Implementierung sofort breit zu
-  ziehen
+- als naechsten grossen Architektur-/Playtest-Block jetzt
+  `scaleup_galaxy_10` im Editor und unter Bewegung/Zoom validieren
+- dabei besonders bestaetigen, dass sich die 10-Root-Welt genauso ruhig
+  liest wie der validierte 3-Root-Pilot:
+  Proxy-/Detail-Handoffs, Hysterese-/Keepalive-Haptik, Fokuswechsel
+  zwischen mehreren Roots, Kamera-Haptik und der neue F3-
+  Streaming-Diagnoseblock
+- danach den produktiven Large-World-Pfad kontrolliert weiter Richtung
+  30 Roots skalieren, statt die erste 10-Root-Implementierung sofort
+  ueberzustrapazieren
 - parallel die additive Mehrquellenstrahlung fuer Mehrstern-Faelle als
   naechsten grossen `ThermalService`-Block vorbereiten
 - danach weiter bewusst in Richtung globaler planetarer Oekosystem-

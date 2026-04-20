@@ -44,7 +44,7 @@ func configure(
 	_registry = registry
 	_time_service = time_service
 	_orbit_service = orbit_service
-	_focus_root_id = galaxy.focus_root_id
+	_focus_root_id = _primary_focus_root_id()
 	_last_zoom_factor = 1.0
 	_resident_neighbor_root_id = StringName("")
 	_neighbor_unload_remaining_s = 0.0
@@ -207,6 +207,17 @@ func _target_resident_roots_from_state() -> Array[StringName]:
 func _desired_neighbor_root_id(focus_root_id: StringName) -> StringName:
 	var neighbors: Array[StringName] = _sorted_neighbor_root_ids(focus_root_id)
 	return StringName("") if neighbors.is_empty() else neighbors[0]
+
+
+func _primary_focus_root_id() -> StringName:
+	if _galaxy == null:
+		return StringName("")
+	if _galaxy.focus_root_id != StringName(""):
+		return _galaxy.focus_root_id
+	if not _galaxy.default_resident_root_ids.is_empty():
+		return _galaxy.default_resident_root_ids[0]
+	var root_ids: Array[StringName] = _galaxy.root_ids()
+	return StringName("") if root_ids.is_empty() else root_ids[0]
 
 
 func _next_prewarm_candidate_id(focus_root_id: StringName) -> StringName:

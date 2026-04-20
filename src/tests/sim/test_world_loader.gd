@@ -19,7 +19,9 @@ static func run(ctx) -> void:
 	_test_load_named_sample_system(ctx)
 	_test_load_named_generated_system(ctx)
 	_test_load_named_pilot_galaxy(ctx)
+	_test_load_named_scaleup_galaxy(ctx)
 	_test_load_named_galaxy_returns_catalog(ctx)
+	_test_load_named_scaleup_galaxy_returns_catalog(ctx)
 	_test_materialize_galaxy_roots_preserves_unchanged_resident_states(ctx)
 	_test_world_loaded_signal_emits_named_world_id(ctx)
 	_test_unknown_world_id_keeps_registry_unchanged(ctx)
@@ -69,11 +71,12 @@ static func _child_def(id: StringName, parent: StringName) -> BodyDef:
 static func _test_available_world_ids(ctx) -> void:
 	var loader := _make_loader()
 	var ids: Array[StringName] = loader.available_world_ids()
-	ctx.assert_true(ids.size() == 4, "available_world_ids liefert genau vier Eintraege")
+	ctx.assert_true(ids.size() == 5, "available_world_ids liefert genau fuenf Eintraege")
 	ctx.assert_true(ids[0] == &"starter_world", "starter_world steht an erster Stelle")
 	ctx.assert_true(ids[1] == &"sample_system", "sample_system steht an zweiter Stelle")
 	ctx.assert_true(ids[2] == &"generated_system", "generated_system steht an dritter Stelle")
 	ctx.assert_true(ids[3] == &"pilot_galaxy", "pilot_galaxy steht an vierter Stelle")
+	ctx.assert_true(ids[4] == &"scaleup_galaxy_10", "scaleup_galaxy_10 steht an fuenfter Stelle")
 	loader.free()
 
 
@@ -148,6 +151,18 @@ static func _test_load_named_pilot_galaxy(ctx) -> void:
 	reg.free()
 
 
+static func _test_load_named_scaleup_galaxy(ctx) -> void:
+	var loader := _make_loader()
+	var reg := _make_registry()
+	ctx.assert_true(loader.load_named_world(&"scaleup_galaxy_10", reg), "scaleup_galaxy_10 laedt erfolgreich")
+	ctx.assert_true(reg.body_count() == 18, "scaleup_galaxy_10 startet weiterhin mit genau einem residenten Detail-Root")
+	ctx.assert_true(reg.has_body(&"obsidian"), "scaleup_galaxy_10 enthaelt den Fokus-Root obsidian")
+	ctx.assert_true(not reg.has_body(&"onyx"), "scaleup_galaxy_10 laedt standardmaessig keinen zweiten Pilot-Root")
+	ctx.assert_true(not reg.has_body(&"shade_01"), "scaleup_galaxy_10 laedt standardmaessig keinen Zusatz-Root")
+	loader.free()
+	reg.free()
+
+
 static func _test_load_named_galaxy_returns_catalog(ctx) -> void:
 	var loader := _make_loader()
 	var galaxy = loader.load_named_galaxy(&"pilot_galaxy")
@@ -160,6 +175,23 @@ static func _test_load_named_galaxy_returns_catalog(ctx) -> void:
 	ctx.assert_true(galaxy.get_manifest(&"umbra") != null, "Catalog enthaelt den zweiten generierten Root")
 	ctx.assert_true(galaxy.default_resident_root_ids.size() == 1 and galaxy.default_resident_root_ids[0] == &"obsidian",
 		"Catalog startet bewusst mit genau einem Detail-Root")
+	loader.free()
+
+
+static func _test_load_named_scaleup_galaxy_returns_catalog(ctx) -> void:
+	var loader := _make_loader()
+	var galaxy = loader.load_named_galaxy(&"scaleup_galaxy_10")
+	ctx.assert_true(galaxy != null, "scaleup_galaxy_10 Catalog laedt erfolgreich")
+	ctx.assert_true(galaxy.galaxy_id == &"scaleup_galaxy_10", "scaleup-Catalog meldet die korrekte Galaxy-ID")
+	ctx.assert_true(galaxy.focus_root_id == &"obsidian", "scaleup-Catalog setzt obsidian als Fokus-Root")
+	ctx.assert_true(galaxy.root_ids().size() == 10, "scaleup-Catalog enthaelt genau zehn Roots")
+	ctx.assert_true(galaxy.get_manifest(&"obsidian") != null, "scaleup-Catalog enthaelt den Hero-Root")
+	ctx.assert_true(galaxy.get_manifest(&"onyx") != null, "scaleup-Catalog behaelt den ersten Pilot-Nachbarn")
+	ctx.assert_true(galaxy.get_manifest(&"umbra") != null, "scaleup-Catalog behaelt den zweiten Pilot-Nachbarn")
+	ctx.assert_true(galaxy.get_manifest(&"shade_01") != null, "scaleup-Catalog enthaelt den ersten Zusatz-Root")
+	ctx.assert_true(galaxy.get_manifest(&"shade_07") != null, "scaleup-Catalog enthaelt den siebten Zusatz-Root")
+	ctx.assert_true(galaxy.default_resident_root_ids.size() == 1 and galaxy.default_resident_root_ids[0] == &"obsidian",
+		"scaleup-Catalog startet bewusst mit genau einem Detail-Root")
 	loader.free()
 
 

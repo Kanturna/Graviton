@@ -731,30 +731,75 @@ Erledigt:
 - der 30-Root-Stresstest leitet seinen Fokus-/Interest-Root jetzt voll
   aus Manifest-/Registry-Daten ab statt aus Magic-Strings
 
-## Prioritaet 21 - Pilot im Editor validieren
+## Prioritaet 21 - Pilot-Playtest-Gate - erledigt
 
 Ziel:
-Den headless-gruenen 3-Root-Pilot jetzt als echte Runtime-/UX-
-Integration pruefen, bevor die Root-Anzahl hochgezogen wird.
+Den headless-gruenen 3-Root-Pilot als echte Runtime-/UX-Integration
+gegen die neuen Streaming-Diagnosepfade pruefen, bevor die Root-Anzahl
+hochgezogen wird.
+
+Erledigt:
+
+- der 3-Root-Pfad wurde gegen Startup, Hysterese, Prewarm, Keepalive,
+  Proxy-/Detail-Handoff, Fokus-Ping-Pong und `NUMERIC_LOCAL`-Stabilitaet
+  als Gate durchgespielt
+- der Ringbuffer-/Overlay-Pfad war dafuer die explizite
+  Diagnosegrundlage
+- Ergebnis: `pilot_galaxy` liest ruhig genug, um kontrolliert auf einen
+  produktiven 10-Root-Slice hochzuziehen
+
+## Prioritaet 22 - Produktiver 10-Root-Scale-up - erledigt
+
+Ziel:
+Den validierten 3-Root-Pilot nicht aufzuweiten, sondern als Referenz
+stehenzulassen und die naechste Root-Stufe als eigene produktive Welt zu
+shippen.
+
+Erledigt:
+
+- neue produktive Galaxy `scaleup_galaxy_10` als separater Named-World-
+  Pfad
+- `pilot_galaxy` bleibt unveraendert der 3-Root-Referenzslice
+- sieben Zusatz-Roots laufen jetzt ueber einen produktiven Shared-
+  Helper in `src/sim/world/`; `StressGalaxyFactory` ist nur noch Wrapper
+- `WorldLoader` und `orbit_testbed.gd` kennen jetzt
+  `scaleup_galaxy_10`, ohne den Default von `starter_world` zu aendern
+- `OrbitViewRenderer` schneidet Cross-Root-Detailvisuals schon vor
+  `compose_view_position_m()` ab, damit residenter Neighbor-Churn kein
+  Warning-Spam mehr im Detail-Layer erzeugt
+- `GalaxyStreamingController` faellt jetzt bei fehlenden Galaxy-
+  Defaults robust auf `root_ids()[0]` als primaeren Fokus zurueck
+- neue Tests pinnen die 10-Root-Welt, Produkt-/Stress-Paritaet der
+  sieben Zusatz-Roots, den Renderer-Kurzschluss fuer `pilot_galaxy` und
+  `scaleup_galaxy_10` sowie den Fokus-Fallback
+
+## Prioritaet 23 - `scaleup_galaxy_10` im Editor validieren
+
+Ziel:
+Den neuen produktiven 10-Root-Pfad als echte Runtime-/Feel-Integration
+pruefen, bevor 30 produktive Roots oder weitere Proxy-Arten angegangen
+werden.
 
 Konkreter Arbeitsblock:
 
-- `pilot_galaxy` im Editor / Testbed manuell durchzoomen
-- bestaetigen, dass Proxy->Detail und Detail->Proxy ohne sichtbares Pop
-  lesen
-- bestaetigen, dass Hysterese + Keepalive ruhig lesen und immer nur der
-  Fokus-Root plus hoechstens ein Nachbar resident sind
-- dabei das neue `F3`-Streaming-Overlay mit
+- `scaleup_galaxy_10` im Editor / Testbed manuell durchzoomen
+- bestaetigen, dass die ruhige 3-Root-Haptik bei 10 Roots erhalten
+  bleibt:
+  Neighbor-/Prewarm-Wechsel, Keepalive, Fokus-Ping-Pong und
+  Root-Wechsel ueber mehrere Kandidaten
+- dabei das bestehende `F3`-Streaming-Overlay mit
   `desired_neighbor_root_id`, `resident_neighbor_root_id`,
   `prewarm_root_id`, Keepalive-Restzeit und Ringbuffer mitlaufen lassen
-- Kamera-/HUD-/Fokus-Haptik im grossen Weltmodus gegenpruefen
-- kurzen Profil-/Playtest fuer einen Detail-Root plus Proxies machen
+- bestaetigen, dass der neue root-aware Renderer-Kurzschluss keine
+  sichtbaren Cross-Root-Detailleichen hinterlaesst
+- kurzen Profil-/Playtest fuer einen Detail-Root plus Proxies in der
+  10-Root-Welt machen
 
 Erfolgskriterium:
 
-- der 3-Root-Pilot fuehlt sich als kontinuierlicher Fokus-/Scale-Pfad
-  an und nicht wie "Sektoren 2.0"
-- danach erst auf 10 Roots skalieren
+- `scaleup_galaxy_10` liest sich weiterhin als kontinuierlicher Fokus-/
+  Scale-Pfad und nicht wie Root-Chunks oder versteckte Sektoren
+- danach erst den produktiven Pfad Richtung 30 Roots weiterziehen
 
 ## Danach - Weitere planetare Umweltableitung
 

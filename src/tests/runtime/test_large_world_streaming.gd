@@ -4,18 +4,35 @@ const WorldLoaderScript = preload("res://src/sim/world/world_loader.gd")
 const GalaxyStreamingControllerScript = preload("res://src/runtime/streaming/galaxy_streaming_controller.gd")
 const GalaxyProxyMathScript = preload("res://src/runtime/streaming/galaxy_proxy_math.gd")
 const DerivedSnapshotCacheScript = preload("res://src/runtime/derived/derived_snapshot_cache.gd")
+const OrbitViewRendererScript = preload("res://src/tools/rendering/orbit_view_renderer.gd")
+const UniverseTopologyScript = preload("res://src/sim/topology/universe_topology.gd")
 const StressGalaxyFactoryScript = preload("res://src/tests/helpers/stress_galaxy_factory.gd")
+
+
+class BubbleProbe:
+	extends Node
+
+	var compose_call_ids: Array[StringName] = []
+	var return_value_m: Vector3 = Vector3(1000.0, 500.0, 0.0)
+
+	func compose_view_position_m(id: StringName) -> Vector3:
+		compose_call_ids.append(id)
+		return return_value_m
 
 
 static func run(ctx) -> void:
 	ctx.current_suite = "test_large_world_streaming"
 	_test_pilot_galaxy_catalog_and_generated_roots_are_deterministic(ctx)
+	_test_streaming_controller_primary_focus_falls_back_to_first_root(ctx)
 	_test_streaming_controller_applies_hysteresis_keepalive_and_prewarm(ctx)
 	_test_streaming_controller_pins_prewarm_boundaries(ctx)
 	_test_focus_ping_pong_keeps_old_focus_resident_when_qualified(ctx)
 	_test_proxy_detail_handoff_matches_position_and_velocity(ctx)
 	_test_stress_and_pilot_share_manifest_defs_signature(ctx)
+	_test_scaleup_galaxy_extra_roots_share_stress_prefix(ctx)
 	_test_streaming_controller_debug_snapshot_tracks_recent_events(ctx)
+	_test_scaleup_galaxy_streaming_stays_bounded(ctx)
+	_test_renderer_shortcuts_cross_root_detail_localization_for_pilot_and_scaleup(ctx)
 	_test_30_root_stress_keeps_resident_count_and_snapshot_refreshes_bounded(ctx)
 
 
@@ -30,6 +47,23 @@ static func _test_pilot_galaxy_catalog_and_generated_roots_are_deterministic(ctx
 	var second_defs: Array[BodyDef] = loader.build_defs_for_root_manifest(onyx_manifest)
 	ctx.assert_true(first_defs.size() >= 5, "generierter Root baut einen nichttrivialen Detail-Slice")
 	ctx.assert_true(_defs_signature(first_defs) == _defs_signature(second_defs), "gleicher Root-Seed erzeugt identische Detail-Defs")
+	loader.free()
+
+
+static func _test_streaming_controller_primary_focus_falls_back_to_first_root(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var galaxy = loader.load_named_galaxy(&"pilot_galaxy")
+	var empty_root_ids: Array[StringName] = []
+	galaxy.focus_root_id = StringName("")
+	galaxy.default_resident_root_ids = empty_root_ids
+
+	var setup: Dictionary = _make_streaming_setup(galaxy)
+	var controller = setup.get("controller")
+	ctx.assert_true(controller.get_focus_root_id() == &"obsidian", "leerer Fokus-/Resident-Default faellt auf den ersten Root zurueck")
+	var resident_root_ids: Array[StringName] = controller.get_resident_root_ids()
+	ctx.assert_true(resident_root_ids.size() == 1 and resident_root_ids[0] == &"obsidian", "Fallback-Fokus materialisiert genau einen Start-Root")
+
+	_cleanup_streaming_setup(setup)
 	loader.free()
 
 
@@ -204,6 +238,27 @@ static func _test_stress_and_pilot_share_manifest_defs_signature(ctx) -> void:
 	loader.free()
 
 
+static func _test_scaleup_galaxy_extra_roots_share_stress_prefix(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var scaleup_galaxy = loader.load_named_galaxy(&"scaleup_galaxy_10")
+	var stress_galaxy = StressGalaxyFactoryScript.build(30)
+	var extra_root_ids: Array[StringName] = []
+	for root_id in scaleup_galaxy.root_ids():
+		if String(root_id).begins_with("shade_"):
+			extra_root_ids.append(root_id)
+
+	ctx.assert_true(extra_root_ids.size() == 7, "scaleup_galaxy_10 traegt genau sieben Shared-Helper-Zusatz-Roots")
+	for root_id in extra_root_ids:
+		var scaleup_manifest = scaleup_galaxy.get_manifest(root_id)
+		var stress_manifest = stress_galaxy.get_manifest(root_id)
+		ctx.assert_true(scaleup_manifest != null and stress_manifest != null, "Zusatz-Root %s existiert in Produkt- und Stresspfad" % String(root_id))
+		var scaleup_defs: Array[BodyDef] = loader.build_defs_for_root_manifest(scaleup_manifest)
+		var stress_defs: Array[BodyDef] = loader.build_defs_for_root_manifest(stress_manifest)
+		ctx.assert_true(_defs_signature(scaleup_defs) == _defs_signature(stress_defs), "Zusatz-Root %s bleibt ueber Produkt- und Stresspfad identisch" % String(root_id))
+
+	loader.free()
+
+
 static func _test_streaming_controller_debug_snapshot_tracks_recent_events(ctx) -> void:
 	var setup: Dictionary = _make_streaming_setup()
 	var controller = setup.get("controller")
@@ -258,6 +313,79 @@ static func _test_streaming_controller_debug_snapshot_tracks_recent_events(ctx) 
 	ctx.assert_true(_debug_event_names(snapshot).has("focus_changed"), "Ringbuffer behaelt juengere Fokuswechsel-Events sichtbar")
 
 	_cleanup_streaming_setup(setup)
+
+
+static func _test_scaleup_galaxy_streaming_stays_bounded(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var galaxy = loader.load_named_galaxy(&"scaleup_galaxy_10")
+	ctx.assert_true(galaxy.root_ids().size() == 10, "scaleup_galaxy_10 meldet zehn Roots")
+
+	var setup: Dictionary = _make_streaming_setup(galaxy)
+	var controller = setup.get("controller")
+	var focus_candidates: Array[StringName] = [&"obsidian", &"umbra", &"shade_01", &"shade_04"]
+
+	ctx.assert_true(controller.get_resident_root_ids().size() == 1, "scaleup_galaxy_10 startet mit genau einem residenten Fokus-Root")
+	for root_id in focus_candidates:
+		controller.set_focus_root(root_id)
+		controller.update(0.0, 0.50)
+		var wide_roots: Array[StringName] = controller.get_resident_root_ids()
+		ctx.assert_true(wide_roots.size() >= 1 and wide_roots.size() <= 2, "scaleup-Fokus %s bleibt im Wide-Zoom auf maximal zwei residenten Roots begrenzt" % String(root_id))
+		ctx.assert_true(wide_roots[0] == root_id, "scaleup-Fokus %s bleibt als erster residenter Root erhalten" % String(root_id))
+		controller.update(0.0, 1.00)
+		controller.update(1.6, 1.00)
+		var collapsed_roots: Array[StringName] = controller.get_resident_root_ids()
+		ctx.assert_true(collapsed_roots.size() == 1 and collapsed_roots[0] == root_id, "scaleup-Fokus %s faellt nach Keepalive wieder auf einen Detail-Root zurueck" % String(root_id))
+
+	_cleanup_streaming_setup(setup)
+	loader.free()
+
+
+static func _test_renderer_shortcuts_cross_root_detail_localization_for_pilot_and_scaleup(ctx) -> void:
+	var cases: Array[Dictionary] = [
+		{
+			"world_id": &"pilot_galaxy",
+			"resident_root_ids": [&"obsidian", &"onyx"],
+			"cross_root_id": &"onyx",
+			"same_root_id": &"gamma",
+		},
+		{
+			"world_id": &"scaleup_galaxy_10",
+			"resident_root_ids": [&"obsidian", &"shade_01"],
+			"cross_root_id": &"shade_01",
+			"same_root_id": &"gamma",
+		},
+	]
+	for case_data in cases:
+		var loader = WorldLoaderScript.new()
+		var registry: Node = load("res://src/sim/universe/universe_registry.gd").new()
+		var galaxy = loader.load_named_galaxy(case_data.get("world_id", StringName("")))
+		var resident_root_ids: Array[StringName] = []
+		resident_root_ids.append_array(case_data.get("resident_root_ids", []))
+		ctx.assert_true(loader.materialize_galaxy_roots(galaxy, resident_root_ids, registry), "Testwelt %s laesst sich fuer den Renderer-Kurzschluss materialisieren" % String(case_data.get("world_id", "")))
+
+		var renderer = OrbitViewRendererScript.new()
+		var bubble_probe := BubbleProbe.new()
+		var topology = UniverseTopologyScript.new()
+		topology.configure(registry)
+		renderer._registry = registry
+		renderer._bubble = bubble_probe
+		renderer._topology = topology
+		renderer._focus_id = &"obsidian"
+
+		var cross_root_pos: Vector2 = renderer.get_body_view_position_ru(case_data.get("cross_root_id", StringName("")))
+		ctx.assert_true(not is_finite(cross_root_pos.x) and not is_finite(cross_root_pos.y), "Renderer lokalisiert %s cross-root nicht mehr ueber die Bubble" % String(case_data.get("world_id", "")))
+		ctx.assert_true(bubble_probe.compose_call_ids.is_empty(), "Renderer ruft fuer %s cross-root keine Bubble-Lokalisierung mehr auf" % String(case_data.get("world_id", "")))
+
+		var same_root_id: StringName = case_data.get("same_root_id", StringName(""))
+		var same_root_pos: Vector2 = renderer.get_body_view_position_ru(same_root_id)
+		ctx.assert_true(is_finite(same_root_pos.x) and is_finite(same_root_pos.y), "Renderer behaelt same-root Lokalisierung fuer %s bei" % String(case_data.get("world_id", "")))
+		ctx.assert_true(bubble_probe.compose_call_ids.size() == 1 and bubble_probe.compose_call_ids[0] == same_root_id,
+			"Renderer ruft fuer %s weiterhin genau die same-root Bubble-Lokalisierung auf" % String(case_data.get("world_id", "")))
+
+		bubble_probe.free()
+		renderer.free()
+		registry.free()
+		loader.free()
 
 
 static func _test_30_root_stress_keeps_resident_count_and_snapshot_refreshes_bounded(ctx) -> void:

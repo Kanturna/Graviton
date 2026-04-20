@@ -1,5 +1,25 @@
 # Graviton - Decisions
 
+## 2026-04-20 - Der 3-Root-Pilot bleibt Referenzslice; der 10-Root-Scale-up kommt als eigene Named-Galaxy
+
+Der validierte 3-Root-Pilot wird nicht still auf 10 Roots erweitert.
+Stattdessen bleibt `pilot_galaxy` exakt der kleine Referenzslice, und
+der erste produktive Scale-up kommt als separate Named-Galaxy
+`scaleup_galaxy_10`.
+
+Konsequenz:
+
+- `pilot_galaxy` bleibt genau `obsidian + onyx + umbra`
+- `scaleup_galaxy_10` startet bewusst als `1 Hero + 9 generierte Roots`
+- die sieben Zusatz-Roots kommen aus einem produktiven Helper unter
+  `src/sim/world/`; Testcode darf diesen Pfad konsumieren, aber der
+  Produktpfad zeigt nie in `src/tests/`
+- `StressGalaxyFactory` ist damit nur noch Wrapper ueber dieselbe
+  produktive Zusatz-Root-Logik
+- Cross-Root-Detailvisuals werden fuer residente Neighbor-Roots im
+  Renderer vor der Bubble-Lokalisierung abgeschnitten, statt die
+  same-root Bubble-Semantik selbst zu verbiegen
+
 ## 2026-04-20 - Large-World-Streaming bleibt ein hysteretischer Shell-Pfad mit Delta-Materialisierung
 
 Der 3-Root-Pilot bleibt bewusst ein kontinuierlicher Fokus-/Scale-Pfad
