@@ -1,5 +1,24 @@
 # Graviton - Decisions
 
+## 2026-04-20 - Large-World-Streaming bleibt ein hysteretischer Shell-Pfad mit Delta-Materialisierung
+
+Der 3-Root-Pilot bleibt bewusst ein kontinuierlicher Fokus-/Scale-Pfad
+und wird nicht ueber harte Root-Swaps oder sektorartige Besitzlogik
+weitergezogen.
+
+Konsequenz:
+
+- `GalaxyStreamingController` arbeitet jetzt zeitbasiert ueber
+  `update(delta_s, zoom_factor)`
+- Neighbor-Residency nutzt getrennte Enter-/Exit-Schwellen plus
+  `1.5 s` Keepalive statt sofortigem Load/Unload an einer harten Kante
+- `prewarm` bleibt billig und nutzt eine eigene Shell ohne Keepalive
+- `WorldLoader.materialize_galaxy_roots(...)` behaelt unveraenderte
+  residente Roots in der Registry und vergleicht sie ueber eine
+  kanonische `defs_signature`
+- `BubbleActivationSet` behandelt Registry-Churn nur noch als
+  `topology_dirty`; Fokuswechsel bleiben der Full-Rebuild-Fall
+
 ## 2026-04-19 - Grosse Multi-Root-Welten bleiben ein Proxy-/Streaming-Pfad statt Bubble- oder Sektor-Rewrite
 
 Der neue Large-World-Slice wird bewusst nicht als Erweiterung des

@@ -1,6 +1,6 @@
 # Graviton - Next Steps
 
-Stand: 2026-04-19
+Stand: 2026-04-20
 
 ## Akut - Backdrop-Flicker im Editor beseitigen - erledigt
 
@@ -680,7 +680,31 @@ Erledigt:
   Root-Materialisierung und Proxy<->Detail-Handoff fuer Position und
   Velocity ab
 
-## Prioritaet 19 - Pilot im Editor validieren
+## Prioritaet 19 - Streaming-Stabilitaet / Delta-Materialisierung - erledigt
+
+Ziel:
+Den 3-Root-Pilot aus dem ersten Architektur-Slice von einem harten
+Root-Swap auf einen ruhigeren kontinuierlichen Streaming-Pfad ziehen,
+ohne das Projekt in Sektor-/Chunk-Logik umzubauen.
+
+Erledigt:
+
+- `GalaxyStreamingController.update(delta_s, zoom_factor)` arbeitet
+  jetzt zeitbasiert statt framebasiert
+- Neighbor-Streaming nutzt jetzt Hysterese
+  (`enter <= 0.55`, `exit >= 0.65`) plus `1.5 s` Keepalive
+- `prewarm` nutzt eine eigene billige Shell
+  (`enter <= 0.90`, `exit >= 1.00`)
+- `WorldLoader.materialize_galaxy_roots(...)` materialisiert jetzt
+  delta-basiert und behaelt unveraenderte residente Root-Slices samt
+  `BodyState` / `current_mode`
+- `BubbleActivationSet` behandelt Registry-Churn jetzt ueber
+  `topology_dirty` statt ueber pauschalen Full-Rebuild
+- neue Tests decken Hysterese, Keepalive, Fokus-Ping-Pong,
+  Delta-Materialisierung, Cache-Bereinigung und einen test-only
+  30-Root-Stresspfad ab
+
+## Prioritaet 20 - Pilot im Editor validieren
 
 Ziel:
 Den headless-gruenen 3-Root-Pilot jetzt als echte Runtime-/UX-
@@ -691,8 +715,8 @@ Konkreter Arbeitsblock:
 - `pilot_galaxy` im Editor / Testbed manuell durchzoomen
 - bestaetigen, dass Proxy->Detail und Detail->Proxy ohne sichtbares Pop
   lesen
-- bestaetigen, dass immer nur der Fokus-Root plus hoechstens ein
-  Nachbar resident sind
+- bestaetigen, dass Hysterese + Keepalive ruhig lesen und immer nur der
+  Fokus-Root plus hoechstens ein Nachbar resident sind
 - Kamera-/HUD-/Fokus-Haptik im grossen Weltmodus gegenpruefen
 - kurzen Profil-/Playtest fuer einen Detail-Root plus Proxies machen
 

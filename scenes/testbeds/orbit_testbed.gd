@@ -154,7 +154,7 @@ func _process(delta: float) -> void:
 	_camera_controller.handle_pan_input(_pan_input_dir(), delta)
 	_camera_controller.step(delta, get_viewport_rect().size)
 	if _is_large_world:
-		_streaming_controller.update(_camera_controller.get_zoom_factor())
+		_streaming_controller.update(delta, _camera_controller.get_zoom_factor())
 	_sync_galaxy_proxy_transform()
 	_refresh_snapshot_interest_ids()
 	_update_hud()

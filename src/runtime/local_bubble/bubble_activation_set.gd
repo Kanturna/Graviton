@@ -37,6 +37,7 @@ var _focus_root_id: StringName = &""
 var _same_root_ids: Array[StringName] = []
 var _dirty_ids: Dictionary = {}
 var _needs_full_rebuild: bool = true
+var _topology_dirty: bool = true
 
 var _last_rebuild_eval_count: int = 0
 var _last_rebuild_was_incremental: bool = false
@@ -53,10 +54,10 @@ func configure(registry: Node, bubble: LocalBubbleManager) -> void:
 	_topology.configure(registry)
 	if not _bubble.focus_changed.is_connected(_on_bubble_focus_changed):
 		_bubble.focus_changed.connect(_on_bubble_focus_changed)
-	if not _registry.body_registered.is_connected(_on_registry_changed):
-		_registry.body_registered.connect(_on_registry_changed)
-	if not _registry.body_unregistered.is_connected(_on_registry_changed):
-		_registry.body_unregistered.connect(_on_registry_changed)
+	if not _registry.body_registered.is_connected(_on_registry_body_registered):
+		_registry.body_registered.connect(_on_registry_body_registered)
+	if not _registry.body_unregistered.is_connected(_on_registry_body_unregistered):
+		_registry.body_unregistered.connect(_on_registry_body_unregistered)
 	_mark_full_rebuild()
 
 
@@ -70,6 +71,11 @@ func rebuild() -> void:
 	if _needs_full_rebuild:
 		_rebuild_topology_cache()
 		_rebuild_all()
+		return
+
+	if _topology_dirty:
+		_last_rebuild_was_incremental = true
+		_rebuild_after_topology_change()
 		return
 
 	if _dirty_ids.is_empty():
@@ -150,8 +156,13 @@ func _on_bubble_focus_changed(_new_id: StringName) -> void:
 	rebuild()
 
 
-func _on_registry_changed(_id: StringName) -> void:
-	_mark_full_rebuild()
+func _on_registry_body_registered(_id: StringName) -> void:
+	_mark_topology_dirty()
+
+
+func _on_registry_body_unregistered(id: StringName) -> void:
+	_dirty_ids.erase(id)
+	_mark_topology_dirty()
 
 
 func _disconnect_bubble() -> void:
@@ -164,17 +175,31 @@ func _disconnect_bubble() -> void:
 func _disconnect_registry() -> void:
 	if _registry == null:
 		return
-	if _registry.body_registered.is_connected(_on_registry_changed):
-		_registry.body_registered.disconnect(_on_registry_changed)
-	if _registry.body_unregistered.is_connected(_on_registry_changed):
-		_registry.body_unregistered.disconnect(_on_registry_changed)
+	if _registry.body_registered.is_connected(_on_registry_body_registered):
+		_registry.body_registered.disconnect(_on_registry_body_registered)
+	if _registry.body_unregistered.is_connected(_on_registry_body_unregistered):
+		_registry.body_unregistered.disconnect(_on_registry_body_unregistered)
 
 
 func _mark_full_rebuild() -> void:
 	_needs_full_rebuild = true
+	_topology_dirty = true
 	_dirty_ids.clear()
 	_focus_root_id = StringName("")
 	_same_root_ids.clear()
+
+
+func _mark_topology_dirty() -> void:
+	if _needs_full_rebuild:
+		return
+	_topology_dirty = true
+
+
+func _rebuild_after_topology_change() -> void:
+	_topology_dirty = false
+	_rebuild_topology_cache()
+	_prune_removed_cached_ids()
+	_rebuild_all()
 
 
 func _rebuild_topology_cache() -> void:
@@ -204,6 +229,7 @@ func _rebuild_topology_cache() -> void:
 
 func _rebuild_all() -> void:
 	_needs_full_rebuild = false
+	_topology_dirty = false
 	_state_by_id.clear()
 	_active_ids.clear()
 	_active_count = 0
@@ -233,6 +259,37 @@ func _rebuild_all() -> void:
 		_recompute_state_for_id(id)
 	_sync_active_ids_from_same_root()
 	_dirty_ids.clear()
+
+
+func _prune_removed_cached_ids() -> void:
+	if _registry == null:
+		return
+	var valid_ids: Dictionary = {}
+	for id in _registry.get_update_order():
+		valid_ids[id] = true
+
+	for id_variant in _state_by_id.keys():
+		var id: StringName = id_variant
+		if valid_ids.has(id):
+			continue
+		_adjust_count_for_state(int(_state_by_id.get(id, State.INACTIVE_NO_LCA)), -1)
+		_state_by_id.erase(id)
+
+	for id_variant in _dirty_ids.keys():
+		if not valid_ids.has(id_variant):
+			_dirty_ids.erase(id_variant)
+
+	var filtered_active_ids: Array[StringName] = []
+	for id in _active_ids:
+		if valid_ids.has(id):
+			filtered_active_ids.append(id)
+	_active_ids = filtered_active_ids
+
+	var filtered_same_root_ids: Array[StringName] = []
+	for id in _same_root_ids:
+		if valid_ids.has(id):
+			filtered_same_root_ids.append(id)
+	_same_root_ids = filtered_same_root_ids
 
 
 func _collect_impacted_ids() -> Array[StringName]:

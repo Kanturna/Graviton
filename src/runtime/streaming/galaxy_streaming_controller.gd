@@ -4,8 +4,11 @@ extends RefCounted
 
 signal residency_changed(resident_root_ids: Array[StringName], focus_root_id: StringName)
 
-const NEIGHBOR_RESIDENT_ZOOM_THRESHOLD: float = 0.60
-const PREWARM_ZOOM_THRESHOLD: float = 0.90
+var neighbor_enter_zoom: float = 0.55
+var neighbor_exit_zoom: float = 0.65
+var prewarm_enter_zoom: float = 0.90
+var prewarm_exit_zoom: float = 1.00
+var neighbor_unload_keepalive_s: float = 1.5
 
 var _galaxy = null
 var _world_loader = null
@@ -15,6 +18,8 @@ var _orbit_service = null
 
 var _focus_root_id: StringName = &""
 var _resident_root_ids: Array[StringName] = []
+var _resident_neighbor_root_id: StringName = &""
+var _neighbor_unload_remaining_s: float = 0.0
 var _prewarm_root_id: StringName = &""
 var _prewarmed_defs_by_root: Dictionary = {}
 var _last_zoom_factor: float = 1.0
@@ -39,15 +44,17 @@ func configure(
 	_orbit_service = orbit_service
 	_focus_root_id = galaxy.focus_root_id
 	_last_zoom_factor = 1.0
-	_apply_residency(_target_resident_roots_for(_focus_root_id, _last_zoom_factor))
+	_resident_neighbor_root_id = StringName("")
+	_neighbor_unload_remaining_s = 0.0
+	_update_residency_state(0.0, _last_zoom_factor)
 	_update_prewarm_state(_focus_root_id, _last_zoom_factor)
 
 
-func update(zoom_factor: float) -> void:
+func update(delta_s: float, zoom_factor: float) -> void:
 	if _galaxy == null:
 		return
 	_last_zoom_factor = zoom_factor
-	_apply_residency(_target_resident_roots_for(_focus_root_id, zoom_factor))
+	_update_residency_state(delta_s, zoom_factor)
 	_update_prewarm_state(_focus_root_id, zoom_factor)
 
 
@@ -56,8 +63,11 @@ func set_focus_root(root_id: StringName) -> void:
 		return
 	if _galaxy.get_manifest(root_id) == null:
 		return
+	var previous_focus_root_id: StringName = _focus_root_id
 	_focus_root_id = root_id
-	_apply_residency(_target_resident_roots_for(_focus_root_id, _last_zoom_factor))
+	_resident_neighbor_root_id = previous_focus_root_id if previous_focus_root_id != StringName("") and previous_focus_root_id != _focus_root_id else StringName("")
+	_neighbor_unload_remaining_s = 0.0
+	_update_residency_state(0.0, _last_zoom_factor)
 	_update_prewarm_state(_focus_root_id, _last_zoom_factor)
 
 
@@ -83,6 +93,29 @@ func get_focus_manifest():
 	return null if _galaxy == null else _galaxy.get_manifest(_focus_root_id)
 
 
+func _update_residency_state(delta_s: float, zoom_factor: float) -> void:
+	var desired_neighbor_id: StringName = _desired_neighbor_root_id(_focus_root_id)
+	var clamped_delta_s: float = maxf(delta_s, 0.0)
+	if _resident_neighbor_root_id != StringName(""):
+		if _resident_neighbor_root_id == _focus_root_id:
+			_resident_neighbor_root_id = StringName("")
+			_neighbor_unload_remaining_s = 0.0
+		elif _neighbor_still_qualified(_resident_neighbor_root_id, desired_neighbor_id, zoom_factor):
+			_neighbor_unload_remaining_s = 0.0
+		else:
+			if _neighbor_unload_remaining_s <= 0.0:
+				_neighbor_unload_remaining_s = neighbor_unload_keepalive_s
+			_neighbor_unload_remaining_s = maxf(_neighbor_unload_remaining_s - clamped_delta_s, 0.0)
+			if _neighbor_unload_remaining_s <= 0.0:
+				_resident_neighbor_root_id = StringName("")
+
+	if _resident_neighbor_root_id == StringName("") and zoom_factor <= neighbor_enter_zoom and desired_neighbor_id != StringName(""):
+		_resident_neighbor_root_id = desired_neighbor_id
+		_neighbor_unload_remaining_s = 0.0
+
+	_apply_residency(_target_resident_roots_from_state())
+
+
 func _apply_residency(target_root_ids: Array[StringName]) -> void:
 	if _same_root_id_lists(_resident_root_ids, target_root_ids):
 		return
@@ -97,30 +130,61 @@ func _apply_residency(target_root_ids: Array[StringName]) -> void:
 
 
 func _update_prewarm_state(focus_root_id: StringName, zoom_factor: float) -> void:
-	_prewarm_root_id = StringName("")
-	if _galaxy == null or zoom_factor > PREWARM_ZOOM_THRESHOLD:
+	if _galaxy == null:
+		_prewarm_root_id = StringName("")
 		return
+	var candidate_id: StringName = _next_prewarm_candidate_id(focus_root_id)
+	if _prewarm_root_id != StringName(""):
+		if zoom_factor >= prewarm_exit_zoom or candidate_id == StringName(""):
+			_prewarm_root_id = StringName("")
+			return
+		_prewarm_root_id = candidate_id
+		_ensure_prewarmed(candidate_id)
+		return
+	_prewarm_root_id = StringName("")
+	if zoom_factor > prewarm_enter_zoom or candidate_id == StringName(""):
+		return
+	_prewarm_root_id = candidate_id
+	_ensure_prewarmed(candidate_id)
+
+
+func _ensure_prewarmed(root_id: StringName) -> void:
+	if root_id == StringName("") or _prewarmed_defs_by_root.has(root_id):
+		return
+	var manifest = _galaxy.get_manifest(root_id)
+	if manifest != null:
+		_prewarmed_defs_by_root[root_id] = _world_loader.build_defs_for_root_manifest(manifest)
+
+
+func _target_resident_roots_from_state() -> Array[StringName]:
+	var out: Array[StringName] = []
+	if _focus_root_id == StringName(""):
+		return out
+	out.append(_focus_root_id)
+	if _resident_neighbor_root_id != StringName("") and _resident_neighbor_root_id != _focus_root_id:
+		out.append(_resident_neighbor_root_id)
+	return out
+
+
+func _desired_neighbor_root_id(focus_root_id: StringName) -> StringName:
+	var neighbors: Array[StringName] = _sorted_neighbor_root_ids(focus_root_id)
+	return StringName("") if neighbors.is_empty() else neighbors[0]
+
+
+func _next_prewarm_candidate_id(focus_root_id: StringName) -> StringName:
 	for candidate_id in _sorted_neighbor_root_ids(focus_root_id):
 		if _resident_root_ids.has(candidate_id):
 			continue
-		_prewarm_root_id = candidate_id
-		if not _prewarmed_defs_by_root.has(candidate_id):
-			var manifest = _galaxy.get_manifest(candidate_id)
-			if manifest != null:
-				_prewarmed_defs_by_root[candidate_id] = _world_loader.build_defs_for_root_manifest(manifest)
-		return
+		return candidate_id
+	return StringName("")
 
 
-func _target_resident_roots_for(focus_root_id: StringName, zoom_factor: float) -> Array[StringName]:
-	var out: Array[StringName] = []
-	if focus_root_id == StringName(""):
-		return out
-	out.append(focus_root_id)
-	if zoom_factor <= NEIGHBOR_RESIDENT_ZOOM_THRESHOLD:
-		var neighbors: Array[StringName] = _sorted_neighbor_root_ids(focus_root_id)
-		if not neighbors.is_empty():
-			out.append(neighbors[0])
-	return out
+func _neighbor_still_qualified(current_neighbor_id: StringName, desired_neighbor_id: StringName, zoom_factor: float) -> bool:
+	if current_neighbor_id == StringName("") or desired_neighbor_id == StringName(""):
+		return false
+	if current_neighbor_id != desired_neighbor_id:
+		return false
+	return zoom_factor < neighbor_exit_zoom
 
 
 func _sorted_neighbor_root_ids(root_id: StringName) -> Array[StringName]:

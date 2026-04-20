@@ -44,6 +44,7 @@ noch `runtime/` noch `scenes/`. `sim/` haengt nur von `core/` ab.
 | Bekannte Bodies & Topologie | `UniverseRegistry` (Autoload) | nur Registry-API   |
 | Parent-Frame-Position/-Velo | `BodyState`                   | nur `OrbitService` |
 | Orbit-Modus pro Body        | `BodyState.current_mode`      | nur `OrbitService` |
+| Residenter Galaxy-Slice     | `GalaxyStreamingController`   | nur Streaming-API  |
 | Fokus / View                | `LocalBubbleManager` (Node)   | nur Bubble-API     |
 | Aktiv-Set                   | `BubbleActivationSet` (Node)  | nur Activation-API |
 
@@ -175,8 +176,11 @@ Fuer grosse Multi-Root-Welten bleibt dieselbe Schichtung erhalten:
 
 - `WorldLoader` laedt zunaechst nur einen leichten `GalaxyDef`-Katalog
   plus den aktuell residenten Detail-Slice in die Registry
-- `GalaxyStreamingController` entscheidet focus-/zoomgetrieben, welche
-  Root-Defs materialisiert bleiben
+- `WorldLoader` materialisiert Galaxy-Slices delta-basiert:
+  unveraenderte residente Roots bleiben samt `BodyState` erhalten
+- `GalaxyStreamingController.update(delta_s, zoom_factor)` entscheidet
+  focus-/zoomgetrieben ueber Resident-/Prewarm-Shells, Hysterese und
+  Keepalive
 - `GalaxyProxyRenderer` zeigt nichtresidente Roots als reine
   View-Proxies im Galaxy-Space
 - `LocalBubbleManager` und `BubbleActivationSet` bleiben bewusst
@@ -209,8 +213,9 @@ IDs bzw. betroffene Teilbaeume.
 inaktiv".
 
 **Dirty-Quelle:** `OrbitService.bodies_updated(...)` markiert geaenderte
-Bodies ueber den Composition Root dirty; Registry-Materialisierung und
-`focus_changed` forcieren weiter den Full-Rebuild des lokalen Slices.
+Bodies ueber den Composition Root dirty; Registry-Churn setzt nur
+`topology_dirty` und rebuilt danach denselben Fokus-root-Slice neu;
+`focus_changed` bleibt der Full-Rebuild-Fall des lokalen Slices.
 
 **Aktueller Stand:** Implementiert als read-only Runtime-Service in
 `src/runtime/local_bubble/bubble_activation_set.gd`. `classify(id)`

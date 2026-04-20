@@ -20,7 +20,7 @@ static func run(ctx) -> void:
 	_test_load_named_generated_system(ctx)
 	_test_load_named_pilot_galaxy(ctx)
 	_test_load_named_galaxy_returns_catalog(ctx)
-	_test_materialize_galaxy_roots_swaps_resident_defs(ctx)
+	_test_materialize_galaxy_roots_preserves_unchanged_resident_states(ctx)
 	_test_world_loaded_signal_emits_named_world_id(ctx)
 	_test_unknown_world_id_keeps_registry_unchanged(ctx)
 	_test_load_defs_accepts_two_root_world(ctx)
@@ -163,21 +163,43 @@ static func _test_load_named_galaxy_returns_catalog(ctx) -> void:
 	loader.free()
 
 
-static func _test_materialize_galaxy_roots_swaps_resident_defs(ctx) -> void:
+static func _test_materialize_galaxy_roots_preserves_unchanged_resident_states(ctx) -> void:
 	var loader := _make_loader()
 	var reg := _make_registry()
+	var time_service: Node = load("res://src/core/time/time_service.gd").new()
+	var orbit_service = load("res://src/sim/orbit/orbit_service.gd").new()
+	orbit_service.configure(reg, time_service)
 	var galaxy = loader.load_named_galaxy(&"pilot_galaxy")
-	var resident_root_ids: Array[StringName] = [&"onyx"]
-	ctx.assert_true(loader.materialize_galaxy_roots(galaxy, resident_root_ids, reg), "onyx laesst sich als einzelner Detail-Root materialisieren")
-	ctx.assert_true(reg.has_body(&"onyx"), "materialize_galaxy_roots registriert den angeforderten Root")
-	ctx.assert_true(not reg.has_body(&"obsidian"), "materialize_galaxy_roots ersetzt den vorherigen Detail-Slice")
-	ctx.assert_true(not reg.has_body(&"umbra"), "materialize_galaxy_roots laedt weiterhin nur den angeforderten Root")
+	ctx.assert_true(loader.load_named_world(&"pilot_galaxy", reg), "pilot_galaxy laedt als Delta-Materialisierungsbasis")
+	orbit_service.recompute_all_at_time(1234.0)
+
+	var preserved_focus_state: BodyState = reg.get_state(&"gamma_iv")
+	ctx.assert_true(preserved_focus_state != null, "Hero-Root liefert einen persistenten Planet-BodyState")
+	preserved_focus_state.current_mode = OrbitMode.Kind.NUMERIC_LOCAL
+
+	var resident_root_ids: Array[StringName] = [&"obsidian", &"onyx"]
+	ctx.assert_true(loader.materialize_galaxy_roots(galaxy, resident_root_ids, reg), "onyx laesst sich additiv zum Hero-Root materialisieren")
+	ctx.assert_true(reg.has_body(&"obsidian"), "materialize_galaxy_roots behaelt den unveraenderten Fokus-Root")
+	ctx.assert_true(reg.has_body(&"onyx"), "materialize_galaxy_roots registriert den neuen Nachbar-Root")
+	ctx.assert_true(reg.get_state(&"gamma_iv") == preserved_focus_state, "unveraenderter Fokus-Root behaelt dieselbe BodyState-Instanz")
+	ctx.assert_true(reg.get_state(&"gamma_iv").current_mode == OrbitMode.Kind.NUMERIC_LOCAL, "NUMERIC_LOCAL-Zustand ueberlebt Neighbor-Load")
+
+	var preserved_neighbor_state: BodyState = reg.get_state(&"onyx")
+	ctx.assert_true(preserved_neighbor_state != null, "materialisierter Neighbor liefert einen BodyState")
+
+	resident_root_ids = [&"onyx"]
+	ctx.assert_true(loader.materialize_galaxy_roots(galaxy, resident_root_ids, reg), "Hero-Root laesst sich gezielt wieder entladen")
+	ctx.assert_true(not reg.has_body(&"obsidian"), "entfallener Hero-Root wird gezielt deregistriert")
+	ctx.assert_true(reg.has_body(&"onyx"), "verbleibender Neighbor-Root bleibt resident")
+	ctx.assert_true(reg.get_state(&"onyx") == preserved_neighbor_state, "unveraenderter Neighbor behaelt seine BodyState-Instanz ueber Delta-Unload")
 	var seen_ids: Dictionary = {}
 	for id in reg.get_update_order():
 		var def: BodyDef = reg.get_def(id)
 		if def.parent_id != StringName(""):
 			ctx.assert_true(seen_ids.has(def.parent_id), "materialisierter Root behaelt Parent-vor-Child-Order fuer %s" % String(id))
 		seen_ids[id] = true
+	orbit_service.free()
+	time_service.free()
 	loader.free()
 	reg.free()
 

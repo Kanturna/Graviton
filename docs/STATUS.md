@@ -1,6 +1,6 @@
 # Graviton - Status
 
-Stand: 2026-04-19
+Stand: 2026-04-20
 
 ## Kurzfassung
 
@@ -80,16 +80,31 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   markierte IDs / Teilbaeume inkrementell reklassifiziert; Fokus- und
   World-Wechsel forcieren weiter den Full-Rebuild des aktuellen
   Detail-Slices.
+- Registry-Churn in `BubbleActivationSet` laeuft jetzt separat ueber
+  `topology_dirty`: `body_registered` / `body_unregistered` bereinigen
+  entfernte Cache-IDs und reklassifizieren danach nur den aktuellen
+  Fokus-root-Slice statt denselben Full-Rebuild-Pfad wie Fokuswechsel zu
+  nutzen.
 - `src/sim/world/` traegt jetzt erste Large-World-Datenmodelle:
   `GalaxyDef`, `RootSystemManifest`, `RootStarManifest`,
   `RootSystemGenerator` und `PilotGalaxyWorld`.
 - `WorldLoader` kann jetzt neben flachen Named Worlds auch einen
   leichten `GalaxyDef`-Katalog fuer `pilot_galaxy` laden und gezielt
   einzelne Root-Slices materialisieren.
+- `WorldLoader.materialize_galaxy_roots(...)` arbeitet fuer
+  Galaxy-Welten jetzt delta-basiert statt ueber `clear()+reload`:
+  unveraenderte residente Roots bleiben in der Registry, behalten ihre
+  `BodyState`s und werden ueber eine kanonische `defs_signature`
+  verglichen.
 - Der erste Large-World-Content-Milestone ist jetzt eine kleine
   3-Root-Pilotgalaxie:
   `obsidian` als Hero-Root plus zwei deterministisch generierte
   Nachbar-Roots `onyx` und `umbra`.
+- `GalaxyStreamingController` nutzt jetzt ein zeitbasiertes
+  `update(delta_s, zoom_factor)` mit Hysterese:
+  ein Nachbar-Root kommt erst unter `0.55` hinein, faellt erst ab
+  `0.65` wieder heraus und bleibt dazwischen ueber `1.5 s` Keepalive
+  resident; `prewarm` arbeitet separat mit `0.90 -> 1.00`.
 - Topologie-Helfer sind jetzt in einem read-only
   `UniverseTopology`-Helper ueber `UniverseRegistry` gebuendelt statt
   parallel in Bubble-, Renderer- und Testbed-Code verteilt.
@@ -110,7 +125,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist wieder reproduzierbar: direkter
   `godot_console.exe --headless ...`-Aufruf und `run_tests.bat` laufen
-  beide mit `1013` erfolgreichen Assertions.
+  jetzt mit `1056` erfolgreichen Assertions.
 
 ### Aktuelle Praesentation
 
@@ -225,6 +240,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Roots erscheinen als eigene BH-/Stern-Proxies im Galaxy-Space, und
   beim Herauszoomen darf genau ein Nachbar-Root zusaetzlich resident
   werden.
+- Dieser Large-World-Pfad entlaedt den bestehenden Fokus-Root dabei
+  nicht mehr bei jedem Neighbor-Wechsel: Delta-Materialisierung und
+  Streaming-Keepalive halten unveraenderte Root-Slices stabil resident,
+  inklusive `NUMERIC_LOCAL`-/Trail-/Derived-Kontext des Fokus-Roots.
 - Der neue `GalaxyProxyRenderer` bleibt bewusst reine Projektion:
   Proxy-Sterne animieren mit denselben authored Orbit-Parametern wie
   der Detail-Slice, damit Proxy->Detail-Handoffs ohne sichtbaren
@@ -553,10 +572,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Mehr Root-Anzahl, reichere Galaxy-Layout-Regeln und laengerer
   Resident-Root-Lebenszyklus sind ausdruecklich nach dem Pilot-
   Playtest vertagt.
-- `GalaxyStreamingController` materialisiert aktuell hart um:
-  der Pilot ist headless-seitig abgesichert, aber sichtbare
-  Streaming-Haptik und Schwellwerte brauchen noch Editor-/Playtest-
-  Sanity.
+- Der neue Streaming-Pfad ist jetzt headless-seitig auch auf
+  Hysterese, Keepalive, Delta-Materialisierung, Proxy-/Detail-Handoff
+  und einen test-only 30-Root-Stress abgesichert; offene Restarbeit
+  liegt damit klarer im echten Editor-/Playtest als in weiterer
+  Grundarchitektur.
 - Der neue galaktische Backdrop ist bewusst screen-fixed und
   dekorativ; ein spaeterer root-aware oder BH-zentrierter Spezialeffekt
   waere ein eigener View-Pass und kein stilles Follow-up dieses
@@ -582,8 +602,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 - als naechsten grossen Architektur-/Playtest-Block den neuen
   `pilot_galaxy`-Slice im Editor und unter Bewegung/Zoom validieren
-- dabei besonders Proxy-/Detail-Handoffs, Nachbar-Root-Streaming,
-  Kamera-Haptik und den neuen steady-state-Frame-Workload beobachten
+- dabei besonders Proxy-/Detail-Handoffs, Hysterese-/Keepalive-Haptik,
+  Fokuswechsel zwischen Roots, Kamera-Haptik und den neuen
+  steady-state-Frame-Workload beobachten
 - danach den Large-World-Pilot kontrolliert von 3 Roots auf 10 und
   spaeter 30 skalieren, statt die erste Implementierung sofort breit zu
   ziehen

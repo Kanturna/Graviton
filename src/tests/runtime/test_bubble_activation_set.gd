@@ -13,6 +13,7 @@ static func run(ctx) -> void:
 	_test_steady_state_rebuild_skips_full_scan(ctx)
 	_test_dirty_leaf_rebuild_only_recomputes_impacted_subtree(ctx)
 	_test_dirty_focus_rebuild_recomputes_same_root(ctx)
+	_test_registry_churn_rebuilds_only_focus_root_slice(ctx)
 	_test_describe_reports_consistent_counts(ctx)
 
 
@@ -252,6 +253,39 @@ static func _test_dirty_focus_rebuild_recomputes_same_root(ctx) -> void:
 
 	ctx.assert_true(activation_set.was_last_rebuild_incremental(), "dirty focus nutzt weiter den inkrementellen Pfad")
 	ctx.assert_true(activation_set.get_last_rebuild_eval_count() == 4, "dirty focus recomputed bewusst den ganzen same-root Slice")
+
+	activation_set.free()
+	bubble.free()
+	reg.free()
+
+
+static func _test_registry_churn_rebuilds_only_focus_root_slice(ctx) -> void:
+	var reg := _make_registry()
+	var bubble := _make_bubble(reg)
+	bubble.set_focus(&"star_a")
+	var activation_set := _make_activation_set(reg, bubble)
+
+	activation_set.activation_radius_m = 5.0e8
+	activation_set.rebuild()
+
+	var far_b := _child_def(&"far_b", &"star_b", BodyType.Kind.PLANET)
+	reg.register_body(far_b)
+	reg.get_state(&"far_b").position_parent_frame_m = Vector3(9.0e8, 0.0, 0.0)
+	activation_set.rebuild()
+
+	ctx.assert_true(activation_set.was_last_rebuild_incremental(), "registry add nutzt den topology-dirty Pfad statt Full-Rebuild")
+	ctx.assert_true(activation_set.get_last_rebuild_eval_count() == 4, "cross-root Registry-Add evaluiert weiter nur den Fokus-root-Slice")
+	_assert_state(ctx, activation_set, &"far_b", "INACTIVE_NO_LCA", "neu registrierter cross-root Body bleibt ohne LCA direkt inaktiv")
+
+	reg.unregister_body(&"near_a")
+	activation_set.rebuild()
+
+	ctx.assert_true(activation_set.was_last_rebuild_incremental(), "registry remove nutzt weiter den topology-dirty Pfad")
+	ctx.assert_true(activation_set.get_last_rebuild_eval_count() == 3, "same-root Remove recomputed nur die verbleibenden Fokus-root-Bodies")
+	_assert_state(ctx, activation_set, &"near_a", "INACTIVE_NO_LCA", "entfernter Body bleibt nicht stale im Cache haengen")
+	var active_ids: Array[StringName] = activation_set.get_active_ids()
+	ctx.assert_true(active_ids.size() == 2 and active_ids[0] == &"root_a" and active_ids[1] == &"star_a",
+		"topology-dirty Remove bereinigt aktive IDs ohne Full-Scan-Leak")
 
 	activation_set.free()
 	bubble.free()
