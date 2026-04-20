@@ -9,9 +9,10 @@ Weltraum-/Systemsimulation und eine erste stilisierte 2D-
 Praesentationsschicht.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
-ein validierter 3-Root-Pilot plus eine separate produktive 10-Root-
-Galaxy mit Proxy-Layer, Streaming und inkrementellen Runtime-Hotpath-
-Fixes fuer Bubble- und Derived-Daten.
+ein validierter 3-Root-Pilot plus separate produktive 10- und 30-Root-
+Galaxien mit Proxy-Layer, Streaming, deterministischem Catalog-Builder
+und inkrementellen Runtime-Hotpath-Fixes fuer Bubble- und Derived-
+Daten.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -106,10 +107,27 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `pilot_galaxy` bleibt unveraendert als 3-Root-Referenzslice erhalten,
   waehrend `scaleup_galaxy_10` denselben Hero-Root plus sieben weitere
   deterministisch generierte Zusatz-Roots traegt.
-- Die sieben Zusatz-Roots laufen jetzt ueber einen produktiven Shared-
-  Helper in `src/sim/world/`; der bisherige `StressGalaxyFactory`
-  ist dadurch nur noch duennes Test-Wrapper-Stueck ueber derselben
-  produktiven Zusatz-Root-Logik.
+- Darauf baut jetzt zusaetzlich eine dritte produktive Large-World-
+  Galaxy `scaleup_galaxy_30` auf:
+  `obsidian`, `onyx` und `umbra` bleiben erhalten, dazu kommen
+  `shade_01 .. shade_27` als deterministische Zusatz-Roots.
+- `scaleup_galaxy_10`, `scaleup_galaxy_30` und der test-only
+  Stresspfad laufen jetzt ueber genau einen produktiven
+  `ScaleupGalaxyCatalogFactory`-Builder in `src/sim/world/`;
+  `StressGalaxyFactory` ist dadurch nur noch duennes Test-Wrapper-
+  Stueck ueber denselben Produktpfad.
+- Der produktive Catalog-Builder fuehrt jetzt zusaetzlich einen
+  deterministischen Spacing-Guard ein:
+  alle Root-Paare muessen mindestens
+  `3.0 * (extent_a + extent_b)` Abstand halten; nur generierte
+  Zusatz-Roots duerfen dafuer radial nach aussen relaxed werden.
+- Der Relax-Schritt ist dabei bewusst extentskaliert statt magisch:
+  `2.0 * max(candidate_extent, conflicting_extent)` entspricht grob
+  einem System-Durchmesser und behaelt Seed, Winkel und Detail-Content
+  des Zusatz-Roots bei.
+- Nach `MAX_RELAX_ATTEMPTS = 16` bricht der produktive Builder
+  explizit mit Fehler ab; es gibt keinen stillen Overlap und keinen
+  zufaelligen Fallback.
 - `GalaxyStreamingController` nutzt jetzt ein zeitbasiertes
   `update(delta_s, zoom_factor)` mit Hysterese:
   ein Nachbar-Root kommt erst unter `0.55` hinein, faellt erst ab
@@ -148,7 +166,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist wieder reproduzierbar: direkter
   `godot_console.exe --headless ...`-Aufruf und `run_tests.bat` laufen
-  jetzt mit `1135` erfolgreichen Assertions.
+  jetzt mit `1726` erfolgreichen Assertions.
 
 ### Aktuelle Praesentation
 
@@ -269,6 +287,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   werden.
 - Das Testbed unterstuetzt jetzt zusaetzlich auch
   `scaleup_galaxy_10` als zweite produktive Large-World-Welt; der
+  Default bleibt bewusst `starter_world`.
+- Das Testbed unterstuetzt jetzt zusaetzlich auch
+  `scaleup_galaxy_30` als dritte produktive Large-World-Welt; der
   Default bleibt bewusst `starter_world`.
 - Dieser Large-World-Pfad entlaedt den bestehenden Fokus-Root dabei
   nicht mehr bei jedem Neighbor-Wechsel: Delta-Materialisierung und
@@ -599,18 +620,19 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Der neue Snapshot-/Theme-Cache reduziert den offensichtlichen
   per-frame-Derived-Workload jetzt deutlich staerker ueber
   Interest-/Dirty-Tracking, ist aber noch nicht durch einen laengeren
-  visuellen Idle-/Playtest im neuen 10-Root-Produktpfad profiliert.
+  visuellen Idle-/Playtest im neuen 30-Root-Produktpfad profiliert.
 - `pilot_galaxy` bleibt bewusst exakt der kleine 3-Root-Referenzslice;
-  `scaleup_galaxy_10` ist jetzt der produktive 10-Root-Folgepfad.
-  Noch offen sind damit primaer der echte Editor-/Feel-Playtest dieser
-  10-Root-Welt und erst danach ein kontrollierter Schritt Richtung
-  30 produktive Roots.
+  `scaleup_galaxy_10` und `scaleup_galaxy_30` sind jetzt die
+  produktiven Folgepfade.
+  Noch offen ist damit primaer der echte Editor-/Feel-Playtest der
+  30-Root-Welt statt weiterer Loader-/Catalog-Grundlagenarbeit.
 - Der neue Streaming-Pfad ist jetzt headless-seitig auch auf
   Hysterese, Keepalive, Delta-Materialisierung, Proxy-/Detail-Handoff
   und einen test-only 30-Root-Stress abgesichert; zusaetzlich pinnen
   neue Tests jetzt den `prewarm`-Boundary-Contract
-  (`0.89 / 0.90 / 0.91 / 1.00`), die Produktiv-/Stress-Paritaet eines
-  uebernommenen Pilot-Manifests und den Debug-Ringbuffer.
+  (`0.89 / 0.90 / 0.91 / 1.00`), die 10-Root-Content-Signatur, die
+  30-Root-Produkt-/Stress-Paritaet, den Spacing-Guard inklusive
+  Forced-Collision-/Hard-Fail-Pfad und den Debug-Ringbuffer.
 - Offene Restarbeit liegt damit noch klarer im echten Editor-/Playtest
   als in weiterer Grundarchitektur.
 - Der neue galaktische Backdrop ist bewusst screen-fixed und
@@ -637,15 +659,15 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
 - als naechsten grossen Architektur-/Playtest-Block jetzt
-  `scaleup_galaxy_10` im Editor und unter Bewegung/Zoom validieren
-- dabei besonders bestaetigen, dass sich die 10-Root-Welt genauso ruhig
-  liest wie der validierte 3-Root-Pilot:
+  `scaleup_galaxy_30` im Editor und unter Bewegung/Zoom validieren
+- dabei besonders bestaetigen, dass sich die 30-Root-Welt genauso ruhig
+  liest wie `scaleup_galaxy_10` und der validierte 3-Root-Pilot:
   Proxy-/Detail-Handoffs, Hysterese-/Keepalive-Haptik, Fokuswechsel
   zwischen mehreren Roots, Kamera-Haptik und der neue F3-
   Streaming-Diagnoseblock
-- danach den produktiven Large-World-Pfad kontrolliert weiter Richtung
-  30 Roots skalieren, statt die erste 10-Root-Implementierung sofort
-  ueberzustrapazieren
+- danach den produktiven Large-World-Pfad eher ueber Layout-/Polish-
+  oder planetare Proxy-/Derived-Folgearbeit weiterziehen statt ueber
+  noch mehr Root-Anzahl ohne Playtest-Grundlage
 - parallel die additive Mehrquellenstrahlung fuer Mehrstern-Faelle als
   naechsten grossen `ThermalService`-Block vorbereiten
 - danach weiter bewusst in Richtung globaler planetarer Oekosystem-

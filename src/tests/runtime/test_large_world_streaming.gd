@@ -7,6 +7,10 @@ const DerivedSnapshotCacheScript = preload("res://src/runtime/derived/derived_sn
 const OrbitViewRendererScript = preload("res://src/tools/rendering/orbit_view_renderer.gd")
 const UniverseTopologyScript = preload("res://src/sim/topology/universe_topology.gd")
 const StressGalaxyFactoryScript = preload("res://src/tests/helpers/stress_galaxy_factory.gd")
+const ScaleupGalaxyCatalogFactoryScript = preload("res://src/sim/world/scaleup_galaxy_catalog_factory.gd")
+const GeneratedScaleupRootFactoryScript = preload("res://src/sim/world/generated_scaleup_root_factory.gd")
+
+const SCALEUP_GALAXY_10_CONTENT_SIGNATURE_SHA256: String = "e5ee3fb66d4766f9b7fe47df311a9476f0c4537f6276a5b14dacc3e50b1e4483"
 
 
 class BubbleProbe:
@@ -30,8 +34,14 @@ static func run(ctx) -> void:
 	_test_proxy_detail_handoff_matches_position_and_velocity(ctx)
 	_test_stress_and_pilot_share_manifest_defs_signature(ctx)
 	_test_scaleup_galaxy_extra_roots_share_stress_prefix(ctx)
+	_test_scaleup_galaxy_10_content_signature_is_pinned(ctx)
+	_test_scaleup_galaxy_30_matches_stress_catalog_for_all_roots(ctx)
+	_test_scaleup_galaxy_30_spacing_guard_covers_all_root_pairs(ctx)
+	_test_spacing_guard_relaxes_generated_root_radially_without_changing_content(ctx)
+	_test_spacing_guard_hard_fails_for_impossible_generated_root(ctx)
 	_test_streaming_controller_debug_snapshot_tracks_recent_events(ctx)
 	_test_scaleup_galaxy_streaming_stays_bounded(ctx)
+	_test_scaleup_galaxy_30_streaming_stays_bounded(ctx)
 	_test_renderer_shortcuts_cross_root_detail_localization_for_pilot_and_scaleup(ctx)
 	_test_30_root_stress_keeps_resident_count_and_snapshot_refreshes_bounded(ctx)
 
@@ -259,6 +269,110 @@ static func _test_scaleup_galaxy_extra_roots_share_stress_prefix(ctx) -> void:
 	loader.free()
 
 
+static func _test_scaleup_galaxy_10_content_signature_is_pinned(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var galaxy = loader.load_named_galaxy(&"scaleup_galaxy_10")
+	var content_signature: String = _catalog_content_signature(loader, galaxy)
+	ctx.assert_true(
+		_sha256_hex(content_signature) == SCALEUP_GALAXY_10_CONTENT_SIGNATURE_SHA256,
+		"scaleup_galaxy_10 bleibt ueber die Factory-Migration inhaltlich bit-identisch gepinnt"
+	)
+	loader.free()
+
+
+static func _test_scaleup_galaxy_30_matches_stress_catalog_for_all_roots(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var scaleup_galaxy = loader.load_named_galaxy(&"scaleup_galaxy_30")
+	var stress_galaxy = StressGalaxyFactoryScript.build(30)
+	ctx.assert_true(scaleup_galaxy.root_ids().size() == 30, "scaleup_galaxy_30 meldet genau dreissig Roots")
+
+	for root_id in scaleup_galaxy.root_ids():
+		var scaleup_manifest = scaleup_galaxy.get_manifest(root_id)
+		var stress_manifest = stress_galaxy.get_manifest(root_id)
+		ctx.assert_true(scaleup_manifest != null and stress_manifest != null, "Root %s existiert in Produkt- und Stress-Catalog" % String(root_id))
+		ctx.assert_true(_manifest_signature(scaleup_manifest) == _manifest_signature(stress_manifest), "Manifest %s bleibt zwischen Produkt- und Stresspfad identisch" % String(root_id))
+		var scaleup_defs: Array[BodyDef] = loader.build_defs_for_root_manifest(scaleup_manifest)
+		var stress_defs: Array[BodyDef] = loader.build_defs_for_root_manifest(stress_manifest)
+		ctx.assert_true(_canonical_defs_signature(scaleup_defs) == _canonical_defs_signature(stress_defs), "Defs fuer %s bleiben ueber Produkt- und Stresspfad identisch" % String(root_id))
+
+	loader.free()
+
+
+static func _test_scaleup_galaxy_30_spacing_guard_covers_all_root_pairs(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var galaxy = loader.load_named_galaxy(&"scaleup_galaxy_30")
+	var manifests: Array = []
+	manifests.append_array(galaxy.manifests)
+
+	for left_index in range(manifests.size()):
+		var left_manifest = manifests[left_index]
+		for right_index in range(left_index + 1, manifests.size()):
+			var right_manifest = manifests[right_index]
+			var distance_m: float = left_manifest.galaxy_position_m.distance_to(right_manifest.galaxy_position_m)
+			var min_spacing_m: float = ScaleupGalaxyCatalogFactoryScript.minimum_spacing_m(left_manifest, right_manifest)
+			ctx.assert_true(distance_m >= min_spacing_m, "Spacing-Guard haelt %s <-> %s im 30-Root-Catalog auseinander" % [
+				String(left_manifest.root_id),
+				String(right_manifest.root_id),
+			])
+
+	loader.free()
+
+
+static func _test_spacing_guard_relaxes_generated_root_radially_without_changing_content(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var pilot_galaxy = loader.load_named_galaxy(&"pilot_galaxy")
+	var fixed_manifests: Array = []
+	for manifest in pilot_galaxy.manifests:
+		fixed_manifests.append(manifest.duplicate_manifest())
+
+	var candidate = GeneratedScaleupRootFactoryScript.build_manifest_for_ordinal(1)
+	var original_direction: Vector3 = candidate.galaxy_position_m.normalized()
+	var original_manifest_signature: String = _manifest_signature_ignoring_position(candidate)
+	var original_defs_signature: String = _canonical_defs_signature(loader.build_defs_for_root_manifest(candidate))
+
+	candidate.galaxy_position_m = original_direction * 1.0e11
+	var result: Dictionary = ScaleupGalaxyCatalogFactoryScript.apply_spacing_guard(fixed_manifests, [candidate])
+	ctx.assert_true(bool(result.get("ok", false)), "Spacing-Guard kann einen zu nahen Zusatz-Root radial entspannen")
+
+	var relaxed_manifest = _find_manifest_by_root_id(result.get("manifests", []), candidate.root_id)
+	ctx.assert_true(relaxed_manifest != null, "entspannter Zusatz-Root bleibt im Ergebnis-Catalog erhalten")
+	ctx.assert_true(relaxed_manifest.galaxy_position_m.distance_to(candidate.galaxy_position_m) > 0.0, "Spacing-Guard verschiebt den Zusatz-Root sichtbar radial nach aussen")
+	ctx.assert_true(_same_direction(original_direction, relaxed_manifest.galaxy_position_m.normalized()), "Spacing-Guard behaelt den urspruenglichen Winkel des Zusatz-Roots bei")
+	ctx.assert_true(relaxed_manifest.seed == candidate.seed, "Spacing-Guard aendert den Root-Seed nicht")
+	ctx.assert_true(_manifest_signature_ignoring_position(relaxed_manifest) == original_manifest_signature, "Spacing-Guard aendert keine Manifest-Inhalte ausser der Galaxy-Position")
+	ctx.assert_true(_canonical_defs_signature(loader.build_defs_for_root_manifest(relaxed_manifest)) == original_defs_signature, "Spacing-Guard aendert den Detail-Slice des Zusatz-Roots nicht")
+
+	var obsidian_manifest = _find_manifest_by_root_id(result.get("manifests", []), &"obsidian")
+	var relaxed_distance_m: float = relaxed_manifest.galaxy_position_m.distance_to(obsidian_manifest.galaxy_position_m)
+	var min_spacing_m: float = ScaleupGalaxyCatalogFactoryScript.minimum_spacing_m(relaxed_manifest, obsidian_manifest)
+	ctx.assert_true(relaxed_distance_m >= min_spacing_m, "entspannter Zusatz-Root erfuellt danach die Mindestabstandsregel gegen den Hero-Root")
+
+	loader.free()
+
+
+static func _test_spacing_guard_hard_fails_for_impossible_generated_root(ctx) -> void:
+	var blocker_template = GeneratedScaleupRootFactoryScript.build_manifest_for_ordinal(27)
+	var blocker_extent_m: float = blocker_template.system_extent_m
+	var relax_step_m: float = 2.0 * blocker_extent_m
+	var fixed_manifests: Array = []
+	for index in range(18):
+		var blocker = blocker_template.duplicate_manifest()
+		blocker.root_id = StringName("blocker_%02d" % index)
+		blocker.display_name = "Blocker %02d" % index
+		blocker.galaxy_position_m = Vector3.RIGHT * (float(index) * relax_step_m)
+		fixed_manifests.append(blocker)
+
+	var candidate = blocker_template.duplicate_manifest()
+	candidate.root_id = &"shade_hard_fail"
+	candidate.display_name = "Shade Hard Fail"
+	candidate.galaxy_position_m = Vector3.RIGHT * (0.10 * blocker_extent_m)
+
+	var result: Dictionary = ScaleupGalaxyCatalogFactoryScript.apply_spacing_guard(fixed_manifests, [candidate])
+	ctx.assert_true(not bool(result.get("ok", true)), "unmoegliche Spacing-Konfiguration bricht nach dem Relax-Limit hart ab")
+	ctx.assert_true(String(result.get("error", "")).contains("failed spacing guard after 16 attempts"), "Hard-Fail meldet das feste Relax-Limit explizit")
+	ctx.assert_true(result.get("root_id", StringName("")) == candidate.root_id, "Hard-Fail meldet den betroffenen Zusatz-Root eindeutig zurueck")
+
+
 static func _test_streaming_controller_debug_snapshot_tracks_recent_events(ctx) -> void:
 	var setup: Dictionary = _make_streaming_setup()
 	var controller = setup.get("controller")
@@ -340,19 +454,50 @@ static func _test_scaleup_galaxy_streaming_stays_bounded(ctx) -> void:
 	loader.free()
 
 
+static func _test_scaleup_galaxy_30_streaming_stays_bounded(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var galaxy = loader.load_named_galaxy(&"scaleup_galaxy_30")
+	ctx.assert_true(galaxy.root_ids().size() == 30, "scaleup_galaxy_30 meldet dreissig Roots")
+
+	var setup: Dictionary = _make_streaming_setup(galaxy)
+	var controller = setup.get("controller")
+	var focus_candidates: Array[StringName] = [&"obsidian", &"umbra", &"shade_01", &"shade_09", &"shade_18", &"shade_27"]
+
+	ctx.assert_true(controller.get_resident_root_ids().size() == 1, "scaleup_galaxy_30 startet mit genau einem residenten Fokus-Root")
+	for root_id in focus_candidates:
+		controller.set_focus_root(root_id)
+		controller.update(0.0, 0.50)
+		var wide_roots: Array[StringName] = controller.get_resident_root_ids()
+		ctx.assert_true(wide_roots.size() >= 1 and wide_roots.size() <= 2, "30er-Fokus %s bleibt im Wide-Zoom auf maximal zwei residenten Roots begrenzt" % String(root_id))
+		ctx.assert_true(wide_roots[0] == root_id, "30er-Fokus %s bleibt als erster residenter Root erhalten" % String(root_id))
+		controller.update(0.0, 1.00)
+		controller.update(1.6, 1.00)
+		var collapsed_roots: Array[StringName] = controller.get_resident_root_ids()
+		ctx.assert_true(collapsed_roots.size() == 1 and collapsed_roots[0] == root_id, "30er-Fokus %s faellt nach Keepalive wieder auf einen Detail-Root zurueck" % String(root_id))
+
+	_cleanup_streaming_setup(setup)
+	loader.free()
+
+
 static func _test_renderer_shortcuts_cross_root_detail_localization_for_pilot_and_scaleup(ctx) -> void:
 	var cases: Array[Dictionary] = [
 		{
 			"world_id": &"pilot_galaxy",
 			"resident_root_ids": [&"obsidian", &"onyx"],
-			"cross_root_id": &"onyx",
-			"same_root_id": &"gamma",
+			"cross_root_id": &"onyx_a",
+			"same_root_id": &"alpha",
 		},
 		{
 			"world_id": &"scaleup_galaxy_10",
 			"resident_root_ids": [&"obsidian", &"shade_01"],
-			"cross_root_id": &"shade_01",
-			"same_root_id": &"gamma",
+			"cross_root_id": &"shade_01_a",
+			"same_root_id": &"alpha",
+		},
+		{
+			"world_id": &"scaleup_galaxy_30",
+			"resident_root_ids": [&"obsidian", &"shade_27"],
+			"cross_root_id": &"shade_27_a",
+			"same_root_id": &"alpha",
 		},
 	]
 	for case_data in cases:
@@ -363,20 +508,31 @@ static func _test_renderer_shortcuts_cross_root_detail_localization_for_pilot_an
 		resident_root_ids.append_array(case_data.get("resident_root_ids", []))
 		ctx.assert_true(loader.materialize_galaxy_roots(galaxy, resident_root_ids, registry), "Testwelt %s laesst sich fuer den Renderer-Kurzschluss materialisieren" % String(case_data.get("world_id", "")))
 
-		var renderer = OrbitViewRendererScript.new()
 		var bubble_probe := BubbleProbe.new()
 		var topology = UniverseTopologyScript.new()
 		topology.configure(registry)
-		renderer._registry = registry
-		renderer._bubble = bubble_probe
-		renderer._topology = topology
-		renderer._focus_id = &"obsidian"
+		var renderer = _make_renderer_probe(registry, bubble_probe, topology)
+		renderer.set_focus(&"obsidian")
+		renderer._sync_visual_positions(true)
 
-		var cross_root_pos: Vector2 = renderer.get_body_view_position_ru(case_data.get("cross_root_id", StringName("")))
+		var cross_root_id: StringName = case_data.get("cross_root_id", StringName(""))
+		var same_root_id: StringName = case_data.get("same_root_id", StringName(""))
+		var cross_root_orbit_entry: Dictionary = renderer._orbit_visuals.get(cross_root_id, {})
+		var same_root_orbit_entry: Dictionary = renderer._orbit_visuals.get(same_root_id, {})
+		var cross_root_orbit_line: CanvasItem = cross_root_orbit_entry.get("line", null)
+		var same_root_orbit_line: CanvasItem = same_root_orbit_entry.get("line", null)
+		var cross_root_trail: CanvasItem = renderer._trail_visuals.get(cross_root_id, null)
+		var same_root_trail: CanvasItem = renderer._trail_visuals.get(same_root_id, null)
+		ctx.assert_true(cross_root_orbit_line != null and not cross_root_orbit_line.visible, "Renderer versteckt fuer %s Cross-Root-Orbits explizit" % String(case_data.get("world_id", "")))
+		ctx.assert_true(cross_root_trail != null and not cross_root_trail.visible, "Renderer versteckt fuer %s Cross-Root-Trails explizit" % String(case_data.get("world_id", "")))
+		ctx.assert_true(same_root_orbit_line != null and same_root_orbit_line.visible, "Renderer behaelt fuer %s same-root Orbits sichtbar" % String(case_data.get("world_id", "")))
+		ctx.assert_true(same_root_trail != null and same_root_trail.visible, "Renderer behaelt fuer %s same-root Trails sichtbar" % String(case_data.get("world_id", "")))
+
+		bubble_probe.compose_call_ids.clear()
+		var cross_root_pos: Vector2 = renderer.get_body_view_position_ru(cross_root_id)
 		ctx.assert_true(not is_finite(cross_root_pos.x) and not is_finite(cross_root_pos.y), "Renderer lokalisiert %s cross-root nicht mehr ueber die Bubble" % String(case_data.get("world_id", "")))
 		ctx.assert_true(bubble_probe.compose_call_ids.is_empty(), "Renderer ruft fuer %s cross-root keine Bubble-Lokalisierung mehr auf" % String(case_data.get("world_id", "")))
 
-		var same_root_id: StringName = case_data.get("same_root_id", StringName(""))
 		var same_root_pos: Vector2 = renderer.get_body_view_position_ru(same_root_id)
 		ctx.assert_true(is_finite(same_root_pos.x) and is_finite(same_root_pos.y), "Renderer behaelt same-root Lokalisierung fuer %s bei" % String(case_data.get("world_id", "")))
 		ctx.assert_true(bubble_probe.compose_call_ids.size() == 1 and bubble_probe.compose_call_ids[0] == same_root_id,
@@ -617,6 +773,118 @@ static func _defs_signature(defs: Array[BodyDef]) -> String:
 			orbit_signature,
 		]))
 	return "\n".join(parts)
+
+
+static func _manifest_signature(manifest) -> String:
+	if manifest == null:
+		return "null"
+	var parts: Array[String] = [
+		String(manifest.root_id),
+		manifest.display_name,
+		str(manifest.seed),
+		str(manifest.galaxy_position_m),
+		str(manifest.system_extent_m),
+		String(manifest.hero_world_id),
+		str(manifest.root_mass_kg),
+		str(manifest.root_radius_m),
+	]
+	for star_manifest in manifest.star_manifests:
+		parts.append("|".join([
+			String(star_manifest.id),
+			star_manifest.display_name,
+			str(star_manifest.mass_kg),
+			str(star_manifest.radius_m),
+			str(star_manifest.rotation_period_s),
+			str(star_manifest.luminosity_w),
+			str(star_manifest.orbit_radius_m),
+			str(star_manifest.orbit_period_s),
+			str(star_manifest.orbit_phase_rad),
+			str(star_manifest.planet_count),
+		]))
+	return "\n".join(parts)
+
+
+static func _manifest_signature_ignoring_position(manifest) -> String:
+	if manifest == null:
+		return "null"
+	var parts: Array[String] = [
+		String(manifest.root_id),
+		manifest.display_name,
+		str(manifest.seed),
+		str(manifest.system_extent_m),
+		String(manifest.hero_world_id),
+		str(manifest.root_mass_kg),
+		str(manifest.root_radius_m),
+	]
+	for star_manifest in manifest.star_manifests:
+		parts.append("|".join([
+			String(star_manifest.id),
+			star_manifest.display_name,
+			str(star_manifest.mass_kg),
+			str(star_manifest.radius_m),
+			str(star_manifest.rotation_period_s),
+			str(star_manifest.luminosity_w),
+			str(star_manifest.orbit_radius_m),
+			str(star_manifest.orbit_period_s),
+			str(star_manifest.orbit_phase_rad),
+			str(star_manifest.planet_count),
+		]))
+	return "\n".join(parts)
+
+
+static func _catalog_content_signature(loader, galaxy) -> String:
+	var parts: Array[String] = []
+	for root_id in galaxy.root_ids():
+		var manifest = galaxy.get_manifest(root_id)
+		var defs: Array[BodyDef] = loader.build_defs_for_root_manifest(manifest)
+		parts.append(String(root_id))
+		parts.append(_canonical_defs_signature(defs))
+	return "\n---\n".join(parts)
+
+
+static func _canonical_defs_signature(defs: Array[BodyDef]) -> String:
+	return WorldLoaderScript._defs_signature(defs)
+
+
+static func _sha256_hex(text: String) -> String:
+	var context := HashingContext.new()
+	context.start(HashingContext.HASH_SHA256)
+	context.update(text.to_utf8_buffer())
+	return context.finish().hex_encode()
+
+
+static func _find_manifest_by_root_id(manifests: Array, root_id: StringName):
+	for manifest in manifests:
+		if manifest != null and manifest.root_id == root_id:
+			return manifest
+	return null
+
+
+static func _same_direction(left: Vector3, right: Vector3, tol: float = 1.0e-6) -> bool:
+	if left.length() <= 0.0 or right.length() <= 0.0:
+		return false
+	return left.normalized().distance_to(right.normalized()) <= tol
+
+
+static func _make_renderer_probe(registry: Node, bubble_probe: Node, topology) -> OrbitViewRenderer:
+	var renderer = OrbitViewRendererScript.new()
+	var orbit_layer := Node2D.new()
+	orbit_layer.name = "OrbitLayer"
+	renderer.add_child(orbit_layer)
+	renderer._orbit_layer = orbit_layer
+
+	var trail_layer := Node2D.new()
+	trail_layer.name = "TrailLayer"
+	renderer.add_child(trail_layer)
+	renderer._trail_layer = trail_layer
+
+	var body_layer := Node2D.new()
+	body_layer.name = "BodyLayer"
+	renderer.add_child(body_layer)
+	renderer._body_layer = body_layer
+
+	renderer.configure(registry, bubble_probe, topology)
+	return renderer
 
 
 static func _free_if_present(value) -> void:

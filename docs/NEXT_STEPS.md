@@ -773,33 +773,57 @@ Erledigt:
   sieben Zusatz-Roots, den Renderer-Kurzschluss fuer `pilot_galaxy` und
   `scaleup_galaxy_10` sowie den Fokus-Fallback
 
-## Prioritaet 23 - `scaleup_galaxy_10` im Editor validieren
+## Prioritaet 23 - Produktiver 30-Root-Scale-up - erledigt
 
 Ziel:
-Den neuen produktiven 10-Root-Pfad als echte Runtime-/Feel-Integration
-pruefen, bevor 30 produktive Roots oder weitere Proxy-Arten angegangen
-werden.
+Den produktiven Large-World-Pfad nach dem 10-Root-Slice kontrolliert auf
+30 Roots hochziehen, ohne neue Streaming-Regeln, neue Proxy-Typen oder
+eine zweite Produkt-/Stress-Logik einzufuehren.
+
+Erledigt:
+
+- neue produktive Galaxy `scaleup_galaxy_30` als separater Named-World-
+  Pfad
+- neuer produktiver `ScaleupGalaxyCatalogFactory` als einziger
+  Catalog-Builder fuer `scaleup_galaxy_10`, `scaleup_galaxy_30` und den
+  test-only Stresspfad
+- deterministischer Spacing-Guard mit radialem Auto-Relax nur fuer
+  generierte Zusatz-Roots und hartem Fehler nach `16` Versuchen
+- `WorldLoader` und `orbit_testbed.gd` kennen jetzt
+  `scaleup_galaxy_30`, ohne den Default von `starter_world` zu aendern
+- neue Tests pinnen die 10-Root-Content-Signatur, die 30-Root-
+  Produkt-/Stress-Paritaet, den Spacing-Guard inklusive Forced-
+  Collision- und Hard-Fail-Pfad sowie explizit versteckte Cross-Root-
+  Orbit-/Trail-Visuals
+
+## Prioritaet 24 - `scaleup_galaxy_30` im Editor validieren
+
+Ziel:
+Den neuen produktiven 30-Root-Pfad als echte Runtime-/Feel-Integration
+pruefen, bevor weitere Root-Anzahl, planetare Proxies oder Layout-
+Polish-Bloecke angegangen werden.
 
 Konkreter Arbeitsblock:
 
-- `scaleup_galaxy_10` im Editor / Testbed manuell durchzoomen
-- bestaetigen, dass die ruhige 3-Root-Haptik bei 10 Roots erhalten
+- `scaleup_galaxy_30` im Editor / Testbed manuell durchzoomen
+- bestaetigen, dass die ruhige 10-Root-Haptik bei 30 Roots erhalten
   bleibt:
   Neighbor-/Prewarm-Wechsel, Keepalive, Fokus-Ping-Pong und
-  Root-Wechsel ueber mehrere Kandidaten
+  Root-Wechsel ueber mehrere `shade_*`-Kandidaten
 - dabei das bestehende `F3`-Streaming-Overlay mit
   `desired_neighbor_root_id`, `resident_neighbor_root_id`,
   `prewarm_root_id`, Keepalive-Restzeit und Ringbuffer mitlaufen lassen
-- bestaetigen, dass der neue root-aware Renderer-Kurzschluss keine
-  sichtbaren Cross-Root-Detailleichen hinterlaesst
+- bestaetigen, dass der root-aware Renderer-Kurzschluss auch in der
+  30-Root-Welt keine sichtbaren Cross-Root-Detailleichen hinterlaesst
 - kurzen Profil-/Playtest fuer einen Detail-Root plus Proxies in der
-  10-Root-Welt machen
+  30-Root-Welt machen
 
 Erfolgskriterium:
 
-- `scaleup_galaxy_10` liest sich weiterhin als kontinuierlicher Fokus-/
+- `scaleup_galaxy_30` liest sich weiterhin als kontinuierlicher Fokus-/
   Scale-Pfad und nicht wie Root-Chunks oder versteckte Sektoren
-- danach erst den produktiven Pfad Richtung 30 Roots weiterziehen
+- danach entscheiden, ob der naechste Block eher Layout-/Polish fuer die
+  30-Root-Welt oder planetare Proxy-/Derived-Folgearbeit wird
 
 ## Danach - Weitere planetare Umweltableitung
 

@@ -1,5 +1,30 @@
 # Graviton - Decisions
 
+## 2026-04-20 - Produktive Scale-up-Galaxien laufen ueber genau einen Catalog-Builder mit Spacing-Guard
+
+Nach `pilot_galaxy` und `scaleup_galaxy_10` wird der 30-Root-Schritt
+nicht als dritter Sonderpfad gebaut. Stattdessen laufen alle
+produktiven Scale-up-Galaxien sowie der test-only Stresspfad jetzt ueber
+einen einzigen produktiven `ScaleupGalaxyCatalogFactory`.
+
+Konsequenz:
+
+- `scaleup_galaxy_10` und `scaleup_galaxy_30` sind duenne Wrapper ueber
+  denselben produktiven Catalog-Builder
+- `StressGalaxyFactory` ist nur noch Test-Wrapper ueber denselben
+  Produktpfad und darf keine eigene Zusatz-Root-Logik mehr tragen
+- produktive Large-World-Layouts koennen dadurch ueber feste
+  Content-Signaturen gegen Drift gepinnt werden
+- der Catalog-Builder fuehrt den ersten produktiven Spacing-Guard:
+  `distance >= 3.0 * (extent_a + extent_b)`
+- nur generierte Zusatz-Roots duerfen fuer diese Regel radial nach
+  aussen relaxed werden; Pilot-/Hero-Roots bleiben positionsstabil
+- Seed, Winkel und Detail-Content eines Zusatz-Roots bleiben dabei
+  erhalten; nur `galaxy_position_m` darf sich aendern
+- bei Nicht-Konvergenz nach `16` Relax-Versuchen bricht der Builder
+  explizit mit Fehler ab; es gibt keinen stillen Overlap und keinen
+  zufaelligen Fallback
+
 ## 2026-04-20 - Der 3-Root-Pilot bleibt Referenzslice; der 10-Root-Scale-up kommt als eigene Named-Galaxy
 
 Der validierte 3-Root-Pilot wird nicht still auf 10 Roots erweitert.
