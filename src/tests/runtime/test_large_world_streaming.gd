@@ -5,6 +5,7 @@ const GalaxyStreamingControllerScript = preload("res://src/runtime/streaming/gal
 const GalaxyProxyMathScript = preload("res://src/runtime/streaming/galaxy_proxy_math.gd")
 const DerivedSnapshotCacheScript = preload("res://src/runtime/derived/derived_snapshot_cache.gd")
 const OrbitViewRendererScript = preload("res://src/tools/rendering/orbit_view_renderer.gd")
+const OrbitCameraFramingScript = preload("res://src/tools/rendering/orbit_camera_framing.gd")
 const UniverseTopologyScript = preload("res://src/sim/topology/universe_topology.gd")
 const StressGalaxyFactoryScript = preload("res://src/tests/helpers/stress_galaxy_factory.gd")
 const ScaleupGalaxyCatalogFactoryScript = preload("res://src/sim/world/scaleup_galaxy_catalog_factory.gd")
@@ -24,6 +25,17 @@ class BubbleProbe:
 	func compose_view_position_m(id: StringName) -> Vector3:
 		compose_call_ids.append(id)
 		return return_value_m
+
+
+class StatefulBubbleProbe:
+	extends Node
+
+	var compose_call_ids: Array[StringName] = []
+	var positions_by_id: Dictionary = {}
+
+	func compose_view_position_m(id: StringName) -> Vector3:
+		compose_call_ids.append(id)
+		return positions_by_id.get(id, Vector3.ZERO)
 
 
 static func run(ctx) -> void:
@@ -48,6 +60,8 @@ static func run(ctx) -> void:
 	_test_scaleup_galaxy_streaming_stays_bounded(ctx)
 	_test_scaleup_galaxy_30_streaming_stays_bounded(ctx)
 	_test_renderer_shortcuts_cross_root_detail_localization_for_pilot_and_scaleup(ctx)
+	_test_root_overview_lod_hides_planetary_descendants_and_tracks_debug_counts(ctx)
+	_test_root_overview_trail_resume_avoids_bridge_and_rebuild_clears_pause_state(ctx)
 	_test_30_root_stress_keeps_resident_count_and_snapshot_refreshes_bounded(ctx)
 
 
@@ -631,6 +645,107 @@ static func _test_renderer_shortcuts_cross_root_detail_localization_for_pilot_an
 		renderer.free()
 		registry.free()
 		loader.free()
+
+
+static func _test_root_overview_lod_hides_planetary_descendants_and_tracks_debug_counts(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var registry: Node = load("res://src/sim/universe/universe_registry.gd").new()
+	var galaxy = loader.load_named_galaxy(&"pilot_galaxy")
+	ctx.assert_true(loader.materialize_galaxy_roots(galaxy, [&"obsidian"], registry), "Pilot-Root laesst sich fuer den Root-Overview-LOD-Test materialisieren")
+
+	var bubble_probe := StatefulBubbleProbe.new()
+	bubble_probe.positions_by_id = {
+		&"obsidian": Vector3.ZERO,
+		&"alpha": Vector3(1.0e3, 0.0, 0.0),
+		&"beta": Vector3(2.0e3, 0.0, 0.0),
+		&"gamma": Vector3(3.0e3, 0.0, 0.0),
+		&"delta": Vector3(4.0e3, 0.0, 0.0),
+	}
+	var topology = UniverseTopologyScript.new()
+	topology.configure(registry)
+	var renderer = _make_renderer_probe(registry, bubble_probe, topology)
+	renderer.set_focus(&"obsidian")
+	bubble_probe.compose_call_ids.clear()
+	renderer.set_frame_label(OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW)
+	renderer._sync_visual_positions(true)
+
+	var alpha_visual: CanvasItem = renderer._body_visuals.get(&"alpha", null)
+	var alpha_planet_visual: CanvasItem = renderer._body_visuals.get(&"alpha_i", null)
+	var alpha_orbit_entry: Dictionary = renderer._orbit_visuals.get(&"alpha", {})
+	var alpha_planet_orbit_entry: Dictionary = renderer._orbit_visuals.get(&"alpha_i", {})
+	var alpha_orbit_line: CanvasItem = alpha_orbit_entry.get("line", null)
+	var alpha_planet_orbit_line: CanvasItem = alpha_planet_orbit_entry.get("line", null)
+	var alpha_trail: CanvasItem = renderer._trail_visuals.get(&"alpha", null)
+	var alpha_planet_trail: CanvasItem = renderer._trail_visuals.get(&"alpha_i", null)
+	var snapshot: Dictionary = renderer.get_debug_snapshot()
+
+	ctx.assert_true(alpha_visual != null and alpha_visual.visible, "ROOT_OVERVIEW behaelt direkte Sterne sichtbar")
+	ctx.assert_true(alpha_orbit_line != null and alpha_orbit_line.visible, "ROOT_OVERVIEW behaelt direkte Stern-Orbits sichtbar")
+	ctx.assert_true(alpha_planet_visual != null and not alpha_planet_visual.visible, "ROOT_OVERVIEW blendet planetare Descendants aus")
+	ctx.assert_true(alpha_planet_orbit_line != null and not alpha_planet_orbit_line.visible, "ROOT_OVERVIEW blendet planetare Orbitlinien aus")
+	ctx.assert_true(alpha_trail != null and not alpha_trail.visible, "ROOT_OVERVIEW blendet Stern-Trails aus")
+	ctx.assert_true(alpha_planet_trail != null and not alpha_planet_trail.visible, "ROOT_OVERVIEW blendet planetare Trails aus")
+	ctx.assert_true(int(snapshot.get("compose_view_position_distinct_body_count", 0)) == 5, "ROOT_OVERVIEW lokalisiert nur BH plus vier direkte Sterne")
+	ctx.assert_true(int(snapshot.get("overview_visible_star_count", 0)) == 4, "ROOT_OVERVIEW meldet genau vier sichtbare direkte Sterne fuer obsidian")
+	ctx.assert_true(int(snapshot.get("overview_hidden_descendant_count", 0)) > 0, "ROOT_OVERVIEW zaehlt ausgeblendete Descendants explizit mit")
+	ctx.assert_true(not bubble_probe.compose_call_ids.has(&"alpha_i"), "ROOT_OVERVIEW ruft fuer ausgeblendete Planeten keine Bubble-Komposition auf")
+
+	bubble_probe.free()
+	renderer.free()
+	registry.free()
+	loader.free()
+
+
+static func _test_root_overview_trail_resume_avoids_bridge_and_rebuild_clears_pause_state(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var registry: Node = load("res://src/sim/universe/universe_registry.gd").new()
+	var galaxy = loader.load_named_galaxy(&"pilot_galaxy")
+	ctx.assert_true(loader.materialize_galaxy_roots(galaxy, [&"obsidian", &"onyx"], registry), "Pilot- und Neighbor-Root lassen sich fuer den Trail-Resume-Test materialisieren")
+
+	var bubble_probe := StatefulBubbleProbe.new()
+	bubble_probe.positions_by_id = {
+		&"obsidian": Vector3.ZERO,
+		&"alpha_i": Vector3(1.0e10, 0.0, 0.0),
+		&"onyx": Vector3.ZERO,
+		&"onyx_a": Vector3(1.0e11, 0.0, 0.0),
+	}
+	var topology = UniverseTopologyScript.new()
+	topology.configure(registry)
+	var renderer = _make_renderer_probe(registry, bubble_probe, topology)
+	renderer.set_focus(&"obsidian")
+	renderer.set_frame_label(OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK)
+	renderer._clear_trail(&"alpha_i")
+	renderer._sync_visual_positions(true)
+	bubble_probe.positions_by_id[&"alpha_i"] = Vector3(2.5e10, 0.0, 0.0)
+	renderer._sync_visual_positions(false)
+
+	var alpha_planet_trail: AntialiasedLine2D = renderer._trail_visuals.get(&"alpha_i", null)
+	ctx.assert_true(alpha_planet_trail != null and alpha_planet_trail.points.size() >= 2, "Detailmodus baut zunaechst eine planetare Trail-History auf")
+
+	renderer.set_frame_label(OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW)
+	renderer._sync_visual_positions(false)
+	ctx.assert_true(renderer._paused_trail_histories.has(&"alpha_i"), "ROOT_OVERVIEW pausiert planetare Trails body-scoped")
+
+	bubble_probe.positions_by_id[&"alpha_i"] = Vector3(4.5e10, 0.0, 0.0)
+	renderer.set_frame_label(OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK)
+	renderer._sync_visual_positions(false)
+	alpha_planet_trail = renderer._trail_visuals.get(&"alpha_i", null)
+	ctx.assert_true(alpha_planet_trail != null and alpha_planet_trail.points.size() == 1, "Trail-Resume kehrt ohne Brueckensegment mit einem resynchronisierten Endpunkt zurueck")
+	ctx.assert_true(not renderer._paused_trail_histories.has(&"alpha_i"), "Trail-Resume hebt den Pause-Zustand fuer den Body wieder auf")
+
+	renderer.set_frame_label(OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW)
+	renderer._sync_visual_positions(false)
+	ctx.assert_true(not renderer._paused_trail_histories.is_empty(), "ROOT_OVERVIEW hinterlaesst zunaechst pausierte Trail-Zustaende im Renderer-State")
+	renderer.rebuild_from_registry()
+	renderer.set_focus(&"onyx")
+	renderer.set_frame_label(OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK)
+	renderer._sync_visual_positions(true)
+	ctx.assert_true(renderer._paused_trail_histories.is_empty(), "Renderer-Rebuild loescht pausierte Trail-Zustaende vor einem Root-Wechsel")
+
+	bubble_probe.free()
+	renderer.free()
+	registry.free()
+	loader.free()
 
 
 static func _test_30_root_stress_keeps_resident_count_and_snapshot_refreshes_bounded(ctx) -> void:

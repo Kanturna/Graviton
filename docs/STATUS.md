@@ -179,6 +179,24 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   vor `compose_view_position_m()` root-aware ab; dadurch bleiben
   Detail-Layer und Logs auch mit residentem Neighbor-Root ruhig, ohne
   die same-root Bubble-Semantik anzufassen.
+- Derselbe `OrbitViewRenderer` behandelt `ROOT_OVERVIEW` jetzt als
+  expliziten View-LOD statt als "Detailszene in klein":
+  sichtbar bleiben nur BH plus direkte Sterne des Fokus-Roots; Planeten,
+  Monde, ihre Orbitlinien und ihre Trails werden vor der
+  View-Positionspipeline frueh ausgesiebt.
+- `orbit_testbed.gd` koppelt den View-LOD jetzt bewusst an das
+  `DerivedSnapshotCache`-Interest-Set:
+  im `ROOT_OVERVIEW` bleibt Derived-Interesse fokus-only, waehrend
+  Detailansichten weiter ihr root-lokales Planet-/Moon-Interest
+  behalten.
+- `GalaxyProxyRenderer` arbeitet jetzt auch view-seitig mit Tiering:
+  entfernte Roots sind erst BH-only-Proxies; Stern-Proxies kommen erst
+  oberhalb einer projizierten Root-Groesse mit eigener 96/80-px-
+  Hysterese dazu.
+- `OrbitViewRenderer`, `GalaxyProxyRenderer` und `DebugOverlay`
+  exponieren jetzt kleine read-only Debug-Snapshots/Counter, damit
+  Compose-/Trail-Arbeit, Proxy-Tiering und Overlay-Refreshes in Tests
+  strukturell statt nur ueber FPS-Gefuehl gepinnt werden koennen.
 - `INACTIVE_NO_LCA` bleibt fuer legitime Cross-Root-Faelle sichtbar,
   loggt aber jetzt als Warning statt als Fehler.
 - `TimeService` und `UniverseRegistry` bleiben die einzigen
@@ -191,7 +209,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist wieder reproduzierbar: direkter
   `godot_console.exe --headless ...`-Aufruf und `run_tests.bat` laufen
-  auf `main` jetzt mit `1745` erfolgreichen Assertions bei `0`
+  auf `main` jetzt mit `1896` erfolgreichen Assertions bei `0`
   Failures.
 
 ### Aktuelle Praesentation
@@ -227,11 +245,22 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   einen kompakten Streaming-Block:
   aktueller Fokus-/Resident-/Prewarm-Zustand plus die letzten
   Streaming-Ereignisse aus dem Controller-Ringbuffer.
+- Dasselbe `F3`-Overlay ist jetzt fuer Large-World-Playtests bewusst
+  billiger:
+  Text-Rebuilds laufen nur noch mit 5 Hz, Fast-Path-Invalidierungen bei
+  Fokus-/Residency-/Streaming-Wechseln bleiben sofort, und im
+  `ROOT_OVERVIEW` ersetzt eine kompakte Summary die fruehere
+  Volltabelle.
 - Dieselbe `F3`-Diagnose liest Thermal-/Environment-Werte dabei nicht
   mehr still live nach; bei Snapshot-Luecken zeigt sie bewusst `n/a`
   statt den Frame-Pfad mit verstecktem Derived-Workload zu verfremden.
 - Bodies werden jetzt als 2D-Visuals mit Glow, Orbit-Linien und Trails
   dargestellt.
+- In Large-World-`ROOT_OVERVIEW` ist dieser View-Pfad jetzt bewusst
+  lesbarer und leichter:
+  BH plus direkte Sterne bleiben sichtbar, planetare Detailwolken
+  verschwinden, und pausierte Trails werden beim Zurueckkehren ohne
+  sichtbares Brueckensegment wieder aufgenommen.
 - Planet-/Mond-Themes werden nicht mehr blind pro Frame komplett neu
   angewendet: der Renderer konsumiert jetzt den letzten Derived-
   Snapshot, und identische Theme-Applies sind materialseitig

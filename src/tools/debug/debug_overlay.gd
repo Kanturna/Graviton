@@ -3,6 +3,8 @@ extends CanvasLayer
 
 const BubbleActivationSetScript = preload("res://src/runtime/local_bubble/bubble_activation_set.gd")
 const ThermalServiceScript = preload("res://src/sim/thermal/thermal_service.gd")
+const OrbitCameraFramingScript = preload("res://src/tools/rendering/orbit_camera_framing.gd")
+const TEXT_REFRESH_INTERVAL_S: float = 0.2
 
 # Nur-lesendes Debug-Overlay. Schreibt NICHTS in den Sim-Zustand.
 # Zeigt autoritative (Zeit, Body-Daten) und abgeleitete (View-Distanzen)
@@ -18,6 +20,12 @@ var _thermal_service: Node = null
 var _snapshot_cache = null
 var _backdrop = null
 var _streaming_controller = null
+var _is_large_world: bool = false
+var _frame_label: StringName = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
+var _refresh_remaining_s: float = 0.0
+var _needs_refresh: bool = true
+var _refresh_count: int = 0
+var _last_streaming_signature: String = ""
 
 
 func configure(
@@ -38,15 +46,53 @@ func configure(
 	_snapshot_cache = snapshot_cache
 	_backdrop = backdrop
 	_streaming_controller = streaming_controller
+	_refresh_remaining_s = 0.0
+	_refresh_count = 0
+	_last_streaming_signature = ""
+	mark_dirty()
+
+
+func set_view_context(is_large_world: bool, frame_label: StringName) -> void:
+	if _is_large_world == is_large_world and _frame_label == frame_label:
+		return
+	_is_large_world = is_large_world
+	_frame_label = frame_label
+	mark_dirty(visible)
+
+
+func mark_dirty(immediate: bool = false) -> void:
+	_needs_refresh = true
+	if immediate:
+		_rebuild_text_if_possible()
+
+
+func get_debug_snapshot() -> Dictionary:
+	return {
+		"refresh_count": _refresh_count,
+		"needs_refresh": _needs_refresh,
+		"refresh_remaining_s": _refresh_remaining_s,
+		"is_large_world": _is_large_world,
+		"frame_label": _frame_label,
+	}
 
 
 func _process(_delta: float) -> void:
 	if _label == null:
 		return
+	if not visible:
+		return
 	if _registry == null or _time == null or _bubble == null:
 		_label.text = "[DebugOverlay] not configured"
 		return
-	_label.text = _build_text()
+	if _streaming_controller != null and _streaming_controller.has_method("get_debug_snapshot"):
+		var streaming_signature: String = _streaming_signature(_streaming_controller.get_debug_snapshot())
+		if streaming_signature != _last_streaming_signature:
+			_last_streaming_signature = streaming_signature
+			mark_dirty(true)
+			return
+	_refresh_remaining_s = maxf(_refresh_remaining_s - _delta, 0.0)
+	if _needs_refresh or _refresh_remaining_s <= 0.0:
+		_rebuild_text_if_possible()
 
 
 func _build_text() -> String:
@@ -129,11 +175,22 @@ func _build_text() -> String:
 						_format_metric(float(event.get("zoom_factor", 1.0))),
 					]
 				)
+	if _should_show_large_world_overview_summary():
+		lines.append("")
+		lines.append("[b]Overview Summary[/b]")
+		lines.append(_format_kind_counts_line())
+		lines.append(_format_focus_summary_line())
+		return "\n".join(lines)
 	lines.append("")
 	lines.append("[b]Bodies (truth: parent-frame)[/b]")
 	for id in _registry.get_update_order():
 		lines.append(_format_body_line(id))
 	return "\n".join(lines)
+
+
+func _notification(what: int) -> void:
+	if what == CanvasItem.NOTIFICATION_VISIBILITY_CHANGED and visible:
+		mark_dirty(true)
 
 
 func _format_body_line(id: StringName) -> String:
@@ -209,3 +266,69 @@ static func _format_id_list(values: Array) -> String:
 	for value in values:
 		formatted.append(_format_optional_id(value))
 	return ", ".join(formatted)
+
+
+func _should_show_large_world_overview_summary() -> bool:
+	return _is_large_world and _frame_label == OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW
+
+
+func _rebuild_text_if_possible() -> void:
+	if _label == null:
+		return
+	_label.text = _build_text()
+	_refresh_count += 1
+	_refresh_remaining_s = TEXT_REFRESH_INTERVAL_S
+	_needs_refresh = false
+
+
+func _format_kind_counts_line() -> String:
+	var black_hole_count: int = 0
+	var star_count: int = 0
+	var planet_count: int = 0
+	var moon_count: int = 0
+	for id in _registry.get_update_order():
+		var def: BodyDef = _registry.get_def(id)
+		if def == null:
+			continue
+		match def.kind:
+			BodyType.Kind.BLACK_HOLE:
+				black_hole_count += 1
+			BodyType.Kind.STAR:
+				star_count += 1
+			BodyType.Kind.PLANET:
+				planet_count += 1
+			BodyType.Kind.MOON:
+				moon_count += 1
+	return "body_counts = BH %d   STAR %d   PLANET %d   MOON %d" % [
+		black_hole_count,
+		star_count,
+		planet_count,
+		moon_count,
+	]
+
+
+func _format_focus_summary_line() -> String:
+	var focus_id: StringName = _bubble.get_focus()
+	var focus_state: BodyState = null if _registry == null else _registry.get_state(focus_id)
+	var focus_mode: String = "n/a" if focus_state == null else OrbitMode.to_string_kind(focus_state.current_mode)
+	var activation_text: String = "n/a"
+	if _activation_set != null:
+		activation_text = _activation_set.to_string_state(_activation_set.classify(focus_id))
+	return "focus_mode = %s   focus_activation = %s" % [focus_mode, activation_text]
+
+
+static func _streaming_signature(streaming_desc: Dictionary) -> String:
+	if streaming_desc.is_empty():
+		return ""
+	var recent_events: Array = streaming_desc.get("recent_events", [])
+	var last_event: Dictionary = {} if recent_events.is_empty() else recent_events[recent_events.size() - 1]
+	return "|".join([
+		String(streaming_desc.get("focus_root_id", StringName(""))),
+		str(streaming_desc.get("resident_root_ids", [])),
+		String(streaming_desc.get("desired_neighbor_root_id", StringName(""))),
+		String(streaming_desc.get("resident_neighbor_root_id", StringName(""))),
+		String(streaming_desc.get("prewarm_root_id", StringName(""))),
+		str(snappedf(float(streaming_desc.get("neighbor_keepalive_remaining_s", 0.0)), TEXT_REFRESH_INTERVAL_S)),
+		String(last_event.get("event", "")),
+		String(last_event.get("root_id", StringName(""))),
+	])

@@ -823,50 +823,64 @@ Erledigt:
   damit die Rendering-Suite keine offensichtlichen Node-Leaks mehr
   akkumuliert
 
-## Prioritaet 24 - `scaleup_galaxy_30` im Editor validieren
+## Prioritaet 24 - Root-Overview-LOD und Large-World-Performance im Editor validieren
 
 Ziel:
-Den neuen produktiven 30-Root-Pfad als echte Runtime-/Feel-Integration
-pruefen, bevor weitere Root-Anzahl, planetare Proxies oder Layout-
-Polish-Bloecke angegangen werden.
+Den neuen Performance-Block als echte Runtime-/Feel-Integration gegen
+`scaleup_galaxy_30` pruefen, bevor weitere Root-Anzahl, planetare
+Proxies oder neue Layout-/Polish-Bloecke angegangen werden.
 
 Konkreter Arbeitsblock:
 
 - `scaleup_galaxy_30` im Editor / Testbed manuell durchzoomen
-- bestaetigen, dass die ruhige 10-Root-Haptik bei 30 Roots erhalten
+- dieselbe Szene gezielt in drei Zustaenden vergleichen:
+  `F3 aus + ROOT_OVERVIEW`, `F3 an + ROOT_OVERVIEW`,
+  `Detailansicht`
+- bestaetigen, dass die ruhige 10-/30-Root-Streaming-Haptik erhalten
   bleibt:
   Neighbor-/Prewarm-Wechsel, Keepalive, Fokus-Ping-Pong und
   Root-Wechsel ueber mehrere `shade_*`-Kandidaten
-- dabei jetzt zusaetzlich gegenpruefen, dass generierte Root-Systeme
+- dabei jetzt explizit den neuen Overview-Contract pruefen:
+  im `ROOT_OVERVIEW` bleiben nur BH plus direkte Sterne sichtbar;
+  planetare Detailwolken, planetare Orbitlinien und planetare Trails
+  verschwinden
+- dabei zusaetzlich gegenpruefen, dass generierte Root-Systeme
   im Detailblick wirklich auf derselben `obsidian`-Baseline lesen:
   gleiche BH-Stern-Skalierung, vergleichbarer System-Footprint und kein
   sichtbarer Sprung zwischen `obsidian` und `shade_*`
 - dabei speziell bestaetigen, dass die jetzt normalisierte planetare
   Generator-Skala keine scheinbar BH-nahen Planetenausreisser oder
   rootweit kollidierenden Orbitbilder mehr erzeugt
-- dabei das bestehende `F3`-Streaming-Overlay mit
-  `desired_neighbor_root_id`, `resident_neighbor_root_id`,
-  `prewarm_root_id`, Keepalive-Restzeit und Ringbuffer mitlaufen lassen
-- dabei zusaetzlich bestaetigen, dass `F3` den Hotpath nicht mehr selbst
+- das bestehende `F3`-Overlay mit Streaming-Block mitlaufen lassen und
+  darauf achten, dass es im `ROOT_OVERVIEW` jetzt wirklich als
+  kompakte Summary statt als Volltabelle liest
+- dabei explizit pruefen, dass `F3` den Hotpath nicht mehr selbst
   verfremdet:
   Thermal-/Environment-Werte nur aus Snapshot, Cache-Miss sichtbar als
-  `n/a`
+  `n/a`, keine spuerbare Overlay-Chatterei
+- die neue Proxy-Tier-Hysterese gegenpruefen:
+  BH-only in weiter Fernsicht, Stern-Proxies erst in naehere Stufe,
+  kein Flackern beim Pendeln an der Sichtbarkeitsgrenze
 - bestaetigen, dass der root-aware Renderer-Kurzschluss auch in der
   30-Root-Welt keine sichtbaren Cross-Root-Detailleichen hinterlaesst
-- kurzen Blick darauf halten, dass der neue loader-scoped Prewarm-Pfad
-  bei Fokus-/Root-Wechseln ruhig bleibt und keine zweite Def-Haltung
-  neben dem Loader mehr braucht
 - kurzen Profil-/Playtest fuer einen Detail-Root plus Proxies in der
-  30-Root-Welt machen
+  30-Root-Welt machen und dabei besonders auf Vorher/Nachher-FPS bzw.
+  Frame-Zeit im `ROOT_OVERVIEW` achten
 
 Erfolgskriterium:
 
 - `scaleup_galaxy_30` liest sich weiterhin als kontinuierlicher Fokus-/
   Scale-Pfad und nicht wie Root-Chunks oder versteckte Sektoren
-- die neue screen-stabile Proxy-Groesse macht entfernte BH-/Sternsysteme
-  jetzt klar genug sichtbar, ohne den Root-Ueberblick zu ueberladen
-- danach entscheiden, ob der naechste Block eher Layout-/Polish fuer die
-  30-Root-Welt oder planetare Proxy-/Derived-Folgearbeit wird
+- der neue `ROOT_OVERVIEW` ist visuell klarer:
+  BH + direkte Sterne statt planetarer Chaoswolke
+- `F3` ist im Overview jetzt diagnostisch nuetzlich, ohne die Szene
+  selbst merklich schwer zu machen
+- die neue screen-stabile Proxy-Groesse und das Proxy-Tiering machen
+  entfernte BH-/Sternsysteme klar genug sichtbar, ohne den
+  Root-Ueberblick zu ueberladen
+- danach entscheiden, ob der naechste Block eher ein weiterer
+  View-/Performance-LOD-Pass (z. B. Orbitgeometrie/Trails weiter
+  trimmen) oder planetare Proxy-/Derived-Folgearbeit wird
 
 ## Danach - Weitere planetare Umweltableitung
 

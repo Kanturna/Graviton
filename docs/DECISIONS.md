@@ -1,5 +1,31 @@
 # Graviton - Decisions
 
+## 2026-04-22 - `ROOT_OVERVIEW` bleibt ein View-LOD fuer BH plus direkte Sterne
+
+Der Large-World-Root-Overview soll nicht mehr dieselbe komplette
+Detailszene nur kleiner darstellen. Stattdessen bleibt er bewusst ein
+eigener View-LOD mit klarer Lesbarkeit und deutlich geringerer
+per-frame-Arbeit.
+
+Konsequenz:
+
+- im `ROOT_OVERVIEW` bleiben nur das Fokus-BH und seine direkten
+  `STAR`-Kinder sichtbar
+- Planeten, Monde, ihre Orbitlinien und ihre Trails gehoeren erst in
+  naehere Ansichten; sie werden im Overview vor der
+  `compose_view_position_m()`-Pipeline frueh ausgesiebt
+- die rootweite Derived-Last wird dafuer nicht in
+  `DerivedSnapshotCache` selbst geloest, sondern im Caller
+  `orbit_testbed.gd` ueber ein view-abhaengiges Interest-Set
+- `ROOT_OVERVIEW` bleibt in diesem Block bewusst root-focus-only; ein
+  kuenftiger Leaf->Overview-UX-Pfad muss zuerst auf den Parent-Root
+  umschalten
+- der Proxy-Layer folgt derselben Lesbarkeitsidee:
+  entfernte Roots sind BH-only, Stern-Proxies kommen erst oberhalb
+  einer hysteretischen Sichtbarkeitsgrenze dazu
+- die Streaming-Semantik selbst bleibt dabei unberuehrt; der Block ist
+  bewusst View-LOD und keine Residency-/Bubble-Entscheidung
+
 ## 2026-04-22 - Generierte Root-Systeme nehmen `obsidian` als Skalenstandard
 
 Die ersten Large-World-Playtests haben gezeigt, dass nicht nur die

@@ -6,6 +6,7 @@ const TRAIL_LINE_WIDTH_PX: float = 2.0
 const MIN_TRAIL_STEP_PX: float = 1.2
 
 const UniverseTopologyScript := preload("res://src/sim/topology/universe_topology.gd")
+const OrbitCameraFramingScript := preload("res://src/tools/rendering/orbit_camera_framing.gd")
 const OrbitCameraScopeScript := preload("res://src/tools/rendering/orbit_camera_scope.gd")
 const OrbitEmphasisRulesScript := preload("res://src/tools/rendering/orbit_emphasis_rules.gd")
 const OrbitOrbitGeometryScript := preload("res://src/tools/rendering/orbit_orbit_geometry.gd")
@@ -26,12 +27,25 @@ var _body_visuals: Dictionary = {}
 var _orbit_visuals: Dictionary = {}
 var _trail_visuals: Dictionary = {}
 var _trail_histories: Dictionary = {}
+var _paused_trail_histories: Dictionary = {}
 var _body_view_is_finite: Dictionary = {}
 var _applied_environment_snapshot_revision: int = -1
 
 var _world_scale: float = 1.0
 var _focus_id: StringName = &""
 var _focus_closeup_ratio: float = 1.0
+var _frame_label: StringName = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
+
+var _compose_view_position_body_ids: Dictionary = {}
+var _trail_update_body_ids: Dictionary = {}
+var _last_debug_snapshot: Dictionary = {
+	"frame_label": OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK,
+	"root_overview_active": false,
+	"compose_view_position_distinct_body_count": 0,
+	"trail_update_distinct_body_count": 0,
+	"overview_hidden_descendant_count": 0,
+	"overview_visible_star_count": 0,
+}
 
 
 func configure(registry: Node, bubble: Node, topology = null) -> void:
@@ -64,6 +78,10 @@ func set_focus(body_id: StringName) -> void:
 		if visual != null:
 			visual.set_focused(id == body_id)
 	_apply_focus_emphasis()
+
+
+func set_frame_label(frame_label: StringName) -> void:
+	_frame_label = frame_label
 
 
 func set_world_scale(value: float) -> void:
@@ -111,14 +129,7 @@ func pick_body_at_screen(screen_pos: Vector2) -> StringName:
 
 
 func get_body_view_position_ru(id: StringName) -> Vector2:
-	if _bubble == null:
-		return Vector2.ZERO
-	if not _body_shares_focus_root(id):
-		return Vector2(INF, INF)
-	var view_m: Vector3 = _bubble.compose_view_position_m(id)
-	if not _is_finite_vec3(view_m):
-		return Vector2(INF, INF)
-	return Vector2(view_m.x, view_m.y) / UnitSystem.RENDER_SCALE_M_PER_UNIT
+	return _compute_body_view_position_ru(id, false)
 
 
 func get_scope_frame(focus_id: StringName) -> Dictionary:
@@ -133,6 +144,10 @@ func get_scope_frame(focus_id: StringName) -> Dictionary:
 func clear_trails() -> void:
 	for id in _trail_visuals.keys():
 		_clear_trail(id)
+
+
+func get_debug_snapshot() -> Dictionary:
+	return _last_debug_snapshot.duplicate(true)
 
 
 func rebuild_from_registry() -> void:
@@ -156,8 +171,11 @@ func _rebuild_visuals() -> void:
 	_orbit_visuals.clear()
 	_trail_visuals.clear()
 	_trail_histories.clear()
+	_paused_trail_histories.clear()
 	_body_view_is_finite.clear()
 	_applied_environment_snapshot_revision = -1
+	_compose_view_position_body_ids.clear()
+	_trail_update_body_ids.clear()
 
 	if _registry == null:
 		return
@@ -205,29 +223,37 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 	if _registry == null or _bubble == null:
 		return
 	_apply_environment_visuals()
+	_compose_view_position_body_ids.clear()
+	_trail_update_body_ids.clear()
+	var overview_hidden_descendant_count: int = 0
+	var overview_visible_star_count: int = 0
+	var root_overview_active: bool = _is_root_overview_active()
+	var positions_by_id: Dictionary = {}
 
 	for id in _registry.get_update_order():
 		var def: BodyDef = _registry.get_def(id)
 		if def == null:
 			continue
 
-		var pos: Vector2 = get_body_view_position_ru(id)
-		var is_finite: bool = _is_finite_vec2(pos)
-		var was_finite: bool = bool(_body_view_is_finite.get(id, false))
-		_body_view_is_finite[id] = is_finite
-
 		var visual: OrbitBodyVisual = _body_visuals.get(id, null)
 		var orbit_entry: Dictionary = _orbit_visuals.get(id, {})
 		var orbit_line: AntialiasedLine2D = orbit_entry.get("line", null)
 		var trail_line: AntialiasedLine2D = _trail_visuals.get(id, null)
 
+		if root_overview_active and _should_hide_in_root_overview(id, def):
+			overview_hidden_descendant_count += 1
+			_hide_visual_stack(visual, orbit_line, trail_line)
+			_pause_trail(id)
+			continue
+
+		var pos: Vector2 = _compute_body_view_position_ru(id, true)
+		positions_by_id[id] = pos
+		var is_finite: bool = _is_finite_vec2(pos)
+		var was_finite: bool = bool(_body_view_is_finite.get(id, false))
+		_body_view_is_finite[id] = is_finite
+
 		if not is_finite:
-			if visual != null:
-				visual.visible = false
-			if orbit_line != null:
-				orbit_line.visible = false
-			if trail_line != null:
-				trail_line.visible = false
+			_hide_visual_stack(visual, orbit_line, trail_line)
 			if was_finite or reset_trails:
 				_clear_trail(id)
 			continue
@@ -253,19 +279,44 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 			visual.set_detail_factor(detail_factor)
 			visual.set_star_closeup_phase(star_phase)
 
+		if root_overview_active and _is_visible_root_overview_star(def):
+			overview_visible_star_count += 1
+
 		if not orbit_entry.is_empty():
 			var parent_id: StringName = orbit_entry.get("parent_id", &"")
 			if orbit_line != null:
-				orbit_line.visible = true
-				orbit_line.position = get_body_view_position_ru(parent_id)
+				var orbit_visible: bool = not root_overview_active or _should_show_orbit_in_root_overview(def)
+				orbit_line.visible = orbit_visible
+				if orbit_visible:
+					var parent_pos: Vector2 = positions_by_id.get(parent_id, Vector2(INF, INF))
+					if not _is_finite_vec2(parent_pos):
+						parent_pos = _compute_body_view_position_ru(parent_id, true)
+						positions_by_id[parent_id] = parent_pos
+					orbit_line.position = parent_pos
 
 		if trail_line != null:
-			trail_line.visible = true
-		_update_trail(id, pos, reset_trails)
+			var show_trail: bool = not root_overview_active
+			trail_line.visible = show_trail
+			if show_trail:
+				_resume_trail_if_paused(id, pos)
+				_update_trail(id, pos, reset_trails)
+			else:
+				_pause_trail(id)
+
+	_last_debug_snapshot = {
+		"frame_label": _frame_label,
+		"root_overview_active": root_overview_active,
+		"compose_view_position_distinct_body_count": _compose_view_position_body_ids.size(),
+		"trail_update_distinct_body_count": _trail_update_body_ids.size(),
+		"overview_hidden_descendant_count": overview_hidden_descendant_count,
+		"overview_visible_star_count": overview_visible_star_count,
+	}
 
 
 func _apply_environment_visuals() -> void:
 	if _registry == null:
+		return
+	if _is_root_overview_active():
 		return
 
 	if _derived_snapshot_cache != null:
@@ -337,6 +388,7 @@ func _update_trail(id: StringName, pos: Vector2, reset_trails: bool) -> void:
 	var line: AntialiasedLine2D = _trail_visuals.get(id, null)
 	if line == null:
 		return
+	_trail_update_body_ids[id] = true
 
 	var history: Array = _trail_histories.get(id, [])
 	if reset_trails or history.is_empty():
@@ -360,9 +412,29 @@ func _update_trail(id: StringName, pos: Vector2, reset_trails: bool) -> void:
 
 func _clear_trail(id: StringName) -> void:
 	_trail_histories[id] = []
+	_paused_trail_histories.erase(id)
 	var line: AntialiasedLine2D = _trail_visuals.get(id, null)
 	if line != null:
 		line.points = PackedVector2Array()
+
+
+func _pause_trail(id: StringName) -> void:
+	if _paused_trail_histories.has(id):
+		return
+	var history: Array = _trail_histories.get(id, [])
+	if history.is_empty():
+		return
+	_paused_trail_histories[id] = history.duplicate(true)
+
+
+func _resume_trail_if_paused(id: StringName, pos: Vector2) -> void:
+	if not _paused_trail_histories.has(id):
+		return
+	_trail_histories[id] = [pos]
+	var line: AntialiasedLine2D = _trail_visuals.get(id, null)
+	if line != null:
+		line.points = PackedVector2Array(_trail_histories[id])
+	_paused_trail_histories.erase(id)
 
 
 func _apply_line_widths() -> void:
@@ -481,6 +553,53 @@ static func _is_finite_vec2(value: Vector2) -> bool:
 
 static func _is_finite_vec3(value: Vector3) -> bool:
 	return is_finite(value.x) and is_finite(value.y) and is_finite(value.z)
+
+
+func _compute_body_view_position_ru(id: StringName, count_for_frame: bool = false) -> Vector2:
+	if _bubble == null:
+		return Vector2.ZERO
+	if not _body_shares_focus_root(id):
+		return Vector2(INF, INF)
+	if count_for_frame:
+		_compose_view_position_body_ids[id] = true
+	var view_m: Vector3 = _bubble.compose_view_position_m(id)
+	if not _is_finite_vec3(view_m):
+		return Vector2(INF, INF)
+	return Vector2(view_m.x, view_m.y) / UnitSystem.RENDER_SCALE_M_PER_UNIT
+
+
+func _is_root_overview_active() -> bool:
+	if _frame_label != OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW:
+		return false
+	var focus_def: BodyDef = null if _registry == null else _registry.get_def(_focus_id)
+	return focus_def != null and focus_def.is_root()
+
+
+func _should_hide_in_root_overview(id: StringName, def: BodyDef) -> bool:
+	if not _is_root_overview_active():
+		return false
+	if def == null:
+		return false
+	if id == _focus_id:
+		return false
+	return not _is_visible_root_overview_star(def)
+
+
+func _is_visible_root_overview_star(def: BodyDef) -> bool:
+	return def != null and def.kind == BodyType.Kind.STAR and def.parent_id == _focus_id
+
+
+func _should_show_orbit_in_root_overview(def: BodyDef) -> bool:
+	return _is_visible_root_overview_star(def)
+
+
+static func _hide_visual_stack(visual: CanvasItem, orbit_line: CanvasItem, trail_line: CanvasItem) -> void:
+	if visual != null:
+		visual.visible = false
+	if orbit_line != null:
+		orbit_line.visible = false
+	if trail_line != null:
+		trail_line.visible = false
 
 
 func _body_shares_focus_root(id: StringName) -> bool:

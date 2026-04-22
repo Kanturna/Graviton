@@ -8,6 +8,8 @@ const OrbitBodyVisualScript := preload("res://src/tools/rendering/orbit_body_vis
 const STAR_PROXY_RADIUS_PX: float = 3.0
 const STAR_PROXY_LINE_WIDTH_PX: float = 1.0
 const PICK_RADIUS_PX: float = 36.0
+const STAR_PROXY_ENTER_PROJECTED_EXTENT_PX: float = 96.0
+const STAR_PROXY_EXIT_PROJECTED_EXTENT_PX: float = 80.0
 
 var _galaxy = null
 var _registry: Node = null
@@ -18,6 +20,12 @@ var _streaming_controller = null
 var _detail_renderer = null
 
 var _root_local_positions_ru: Dictionary = {}
+var _star_proxy_visible_by_root: Dictionary = {}
+var _last_debug_snapshot: Dictionary = {
+	"bh_only_root_count": 0,
+	"star_proxy_root_count": 0,
+	"star_proxy_count": 0,
+}
 
 
 func configure(
@@ -36,6 +44,12 @@ func configure(
 	_time_service = time_service
 	_streaming_controller = streaming_controller
 	_detail_renderer = detail_renderer
+	_star_proxy_visible_by_root.clear()
+	_last_debug_snapshot = {
+		"bh_only_root_count": 0,
+		"star_proxy_root_count": 0,
+		"star_proxy_count": 0,
+	}
 	queue_redraw()
 
 
@@ -60,6 +74,10 @@ func _process(_delta: float) -> void:
 	queue_redraw()
 
 
+func get_debug_snapshot() -> Dictionary:
+	return _last_debug_snapshot.duplicate(true)
+
+
 func _draw() -> void:
 	_root_local_positions_ru.clear()
 	if _galaxy == null or _bubble == null or _topology == null or _time_service == null or _detail_renderer == null:
@@ -77,6 +95,9 @@ func _draw() -> void:
 	var resident_roots: Array[StringName] = [] if _streaming_controller == null else _streaming_controller.get_resident_root_ids()
 	var t_s: float = _time_service.sim_time_s
 	var screen_scale: float = maxf(absf(scale.x), 0.001)
+	var bh_only_root_count: int = 0
+	var star_proxy_root_count: int = 0
+	var star_proxy_count: int = 0
 
 	for manifest in _galaxy.manifests:
 		if manifest == null or manifest.root_id == focus_root_id:
@@ -89,6 +110,13 @@ func _draw() -> void:
 		_root_local_positions_ru[manifest.root_id] = root_pos_ru
 
 		_draw_root_proxy(root_pos_ru, resident_roots.has(manifest.root_id), screen_scale)
+		var projected_extent_px: float = (float(manifest.system_extent_m) / UnitSystem.RENDER_SCALE_M_PER_UNIT) * screen_scale
+		var show_star_proxies: bool = _resolve_star_proxy_visibility(manifest.root_id, projected_extent_px)
+		if show_star_proxies:
+			star_proxy_root_count += 1
+		else:
+			bh_only_root_count += 1
+			continue
 
 		for star_manifest in manifest.star_manifests:
 			var star_state: Dictionary = GalaxyProxyMathScript.star_local_state(star_manifest, t_s)
@@ -109,6 +137,13 @@ func _draw() -> void:
 				screen_px_to_local_units(STAR_PROXY_RADIUS_PX, screen_scale),
 				Color(1.0, 0.86, 0.48, 0.90)
 			)
+			star_proxy_count += 1
+
+	_last_debug_snapshot = {
+		"bh_only_root_count": bh_only_root_count,
+		"star_proxy_root_count": star_proxy_root_count,
+		"star_proxy_count": star_proxy_count,
+	}
 
 
 static func _is_finite_vec2(value: Vector2) -> bool:
@@ -117,6 +152,12 @@ static func _is_finite_vec2(value: Vector2) -> bool:
 
 static func root_proxy_visual_spec() -> Dictionary:
 	return OrbitBodyVisualScript.black_hole_base_visual_spec()
+
+
+static func resolve_star_proxy_visibility(was_visible: bool, projected_extent_px: float) -> bool:
+	if was_visible:
+		return projected_extent_px >= STAR_PROXY_EXIT_PROJECTED_EXTENT_PX
+	return projected_extent_px >= STAR_PROXY_ENTER_PROJECTED_EXTENT_PX
 
 
 static func screen_px_to_local_units(screen_px: float, screen_scale: float) -> float:
@@ -165,3 +206,10 @@ func _draw_root_proxy(root_pos_ru: Vector2, is_resident: bool, screen_scale: flo
 
 static func _alpha_scaled(color: Color, scale_factor: float) -> Color:
 	return Color(color.r, color.g, color.b, clampf(color.a * scale_factor, 0.0, 1.0))
+
+
+func _resolve_star_proxy_visibility(root_id: StringName, projected_extent_px: float) -> bool:
+	var was_visible: bool = bool(_star_proxy_visible_by_root.get(root_id, false))
+	var next_visible: bool = resolve_star_proxy_visibility(was_visible, projected_extent_px)
+	_star_proxy_visible_by_root[root_id] = next_visible
+	return next_visible

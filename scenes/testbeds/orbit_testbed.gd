@@ -1,6 +1,7 @@
 extends Node2D
 
 const OrbitCameraControllerScript = preload("res://src/tools/rendering/orbit_camera_controller.gd")
+const OrbitCameraFramingScript = preload("res://src/tools/rendering/orbit_camera_framing.gd")
 const OrbitHudFormatterScript = preload("res://src/tools/rendering/orbit_hud_formatter.gd")
 const OrbitTimeScaleControllerScript = preload("res://src/tools/rendering/orbit_time_scale_controller.gd")
 const UniverseTopologyScript = preload("res://src/sim/topology/universe_topology.gd")
@@ -42,6 +43,7 @@ var _topology = null
 var _focus_index: int = 0
 var _current_galaxy = null
 var _is_large_world: bool = false
+var _last_frame_label: StringName = StringName("")
 
 
 func _ready() -> void:
@@ -140,6 +142,7 @@ func _ready() -> void:
 	_time_scale_controller.configure(_speed_slider)
 	_set_focus(_focus_order[_focus_index], false, true)
 	_camera_controller.step(0.0, get_viewport_rect().size)
+	_sync_view_lod_state(true, false)
 	_sync_galaxy_proxy_transform()
 	_update_hud()
 
@@ -156,8 +159,8 @@ func _process(delta: float) -> void:
 	_camera_controller.step(delta, get_viewport_rect().size)
 	if _is_large_world:
 		_streaming_controller.update(delta, _camera_controller.get_zoom_factor())
+	_sync_view_lod_state(false, false)
 	_sync_galaxy_proxy_transform()
-	_refresh_snapshot_interest_ids()
 	_update_hud()
 
 
@@ -183,6 +186,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_F3:
 				_debug_overlay.visible = not _debug_overlay.visible
+				_debug_overlay.mark_dirty(_debug_overlay.visible)
 				get_viewport().set_input_as_handled()
 			KEY_BACKSPACE:
 				_camera_controller.fit_current_focus()
@@ -224,8 +228,10 @@ func _set_focus(body_id: StringName, immediate: bool = false, force_fit: bool = 
 		return
 	_camera_controller.set_focus(body_id, false, force_fit)
 	_refresh_snapshot_interest_ids()
+	_debug_overlay.mark_dirty(_debug_overlay.visible)
 	if immediate:
 		_camera_controller.step(0.0, get_viewport_rect().size)
+		_sync_view_lod_state(true, _debug_overlay.visible)
 		_sync_galaxy_proxy_transform()
 
 
@@ -288,6 +294,9 @@ func _refresh_focus_order() -> void:
 func _refresh_snapshot_interest_ids() -> void:
 	if _derived_snapshot_cache == null or _topology == null or _bubble == null:
 		return
+	if _camera_controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW:
+		_derived_snapshot_cache.set_interest_ids([])
+		return
 	var focus_id: StringName = _bubble.get_focus()
 	var focus_root_id: StringName = _topology.root_id_of(focus_id)
 	var interest_ids: Array[StringName] = []
@@ -315,7 +324,8 @@ func _on_streaming_residency_changed(_resident_root_ids: Array[StringName], focu
 	if not UniverseRegistry.has_body(_bubble.get_focus()) and UniverseRegistry.has_body(focus_root_id):
 		_focus_index = maxi(_focus_order.find(focus_root_id), 0)
 		_set_focus(focus_root_id, true, true)
-	_refresh_snapshot_interest_ids()
+	_sync_view_lod_state(true, _debug_overlay.visible)
+	_debug_overlay.mark_dirty(_debug_overlay.visible)
 	_sync_galaxy_proxy_transform()
 
 
@@ -327,3 +337,15 @@ static func _is_large_world_id(world_id: StringName) -> bool:
 	return world_id == WorldLoader.PILOT_GALAXY_ID \
 		or world_id == WorldLoader.SCALEUP_GALAXY_10_ID \
 		or world_id == WorldLoader.SCALEUP_GALAXY_30_ID
+
+
+func _sync_view_lod_state(force_interest_refresh: bool, immediate_debug_refresh: bool) -> void:
+	var frame_label: StringName = _camera_controller.get_frame_label()
+	_renderer.set_frame_label(frame_label)
+	_debug_overlay.set_view_context(_is_large_world, frame_label)
+	var frame_changed: bool = frame_label != _last_frame_label
+	if force_interest_refresh or frame_changed:
+		_refresh_snapshot_interest_ids()
+	if frame_changed:
+		_debug_overlay.mark_dirty(immediate_debug_refresh)
+	_last_frame_label = frame_label
