@@ -150,18 +150,10 @@ func _format_body_line(id: StringName) -> String:
 	if _activation_set != null:
 		activation_txt = "  activation=%s" % _activation_set.to_string_state(_activation_set.classify(id))
 	var thermal_txt: String = ""
-	if _snapshot_cache != null or _thermal_service != null:
-		var thermal_desc: Dictionary = _snapshot_cache.get_thermal_desc(id) if _snapshot_cache != null else {}
-		if thermal_desc.is_empty() and _thermal_service != null:
-			thermal_desc = _thermal_service.describe_body(id)
-		var source_id: StringName = thermal_desc.get(ThermalServiceScript.KEY_SOURCE_ID, StringName(""))
-		var source_txt: String = "none" if source_id == StringName("") else String(source_id)
-		thermal_txt = "  primary_source=%s  insolation=%s W/m^2  absorbed=%s W/m^2  teq=%s K" % [
-			source_txt,
-			_format_metric(float(thermal_desc.get(ThermalServiceScript.KEY_INSOLATION_WPM2, 0.0))),
-			_format_metric(float(thermal_desc.get(ThermalServiceScript.KEY_ABSORBED_FLUX_WPM2, 0.0))),
-			_format_metric(float(thermal_desc.get(ThermalServiceScript.KEY_EQUILIBRIUM_TEMPERATURE_K, 0.0))),
-		]
+	if _snapshot_cache != null:
+		thermal_txt = _format_thermal_debug_segment(_snapshot_cache.get_thermal_desc(id))
+	elif _thermal_service != null:
+		thermal_txt = _format_thermal_debug_segment(_thermal_service.describe_body(id))
 	return "  %s  kind=%s  parent=%s  mode=%s  |pf|=%s m  root_local=%s m%s" % [
 		String(id),
 		BodyType.to_string_kind(def.kind),
@@ -171,6 +163,26 @@ func _format_body_line(id: StringName) -> String:
 		_format_optional_metric(root_local_m),
 		activation_txt + thermal_txt,
 	]
+
+
+func _format_thermal_debug_segment(thermal_desc: Dictionary) -> String:
+	if thermal_desc.is_empty():
+		return "  primary_source=n/a  insolation=n/a W/m^2  absorbed=n/a W/m^2  teq=n/a K"
+	var source_id: StringName = thermal_desc.get(ThermalServiceScript.KEY_SOURCE_ID, StringName(""))
+	var source_txt: String = "none" if source_id == StringName("") else String(source_id)
+	return "  primary_source=%s  insolation=%s W/m^2  absorbed=%s W/m^2  teq=%s K" % [
+		source_txt,
+		_format_optional_numeric_metric(thermal_desc, ThermalServiceScript.KEY_INSOLATION_WPM2),
+		_format_optional_numeric_metric(thermal_desc, ThermalServiceScript.KEY_ABSORBED_FLUX_WPM2),
+		_format_optional_numeric_metric(thermal_desc, ThermalServiceScript.KEY_EQUILIBRIUM_TEMPERATURE_K),
+	]
+
+
+static func _format_optional_numeric_metric(desc: Dictionary, key: StringName) -> String:
+	if not desc.has(key):
+		return "n/a"
+	var value: float = float(desc.get(key, 0.0))
+	return "n/a" if not is_finite(value) else _format_metric(value)
 
 
 static func _format_metric(value: float) -> String:

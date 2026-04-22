@@ -33,6 +33,8 @@ signal bodies_updated(ids: Array[StringName], reason: StringName)
 @export_range(0.0, 3600.0, 1.0, "or_greater") var numeric_local_target_substep_s: float = 10.0
 @export_range(1, 4096, 1, "or_greater") var numeric_local_max_substeps_per_tick: int = 64
 @export_range(0, 64, 1, "or_greater") var numeric_local_missing_request_grace_ticks: int = 1
+@export_range(0.0, 1.0, 0.0001, "or_greater") var numeric_local_exit_max_position_delta_ratio: float = 0.001
+@export_range(0.0, 1.0, 0.0001, "or_greater") var numeric_local_exit_max_velocity_delta_ratio: float = 0.001
 
 var _registry: Node = null
 var _time: Node = null
@@ -40,6 +42,7 @@ var _configured: bool = false
 var _requested_numeric_local_ids: Dictionary = {}
 var _last_requested_tick_by_id: Dictionary = {}
 var _substep_cap_warning_active_by_id: Dictionary = {}
+var _exit_budget_warning_active_by_id: Dictionary = {}
 var _sim_tick_index: int = 0
 
 
@@ -53,6 +56,7 @@ func configure(registry: Node, time_service: Node) -> void:
 	_requested_numeric_local_ids.clear()
 	_last_requested_tick_by_id.clear()
 	_substep_cap_warning_active_by_id.clear()
+	_exit_budget_warning_active_by_id.clear()
 	_sim_tick_index = 0
 	if not _time.sim_tick.is_connected(_on_sim_tick):
 		_time.sim_tick.connect(_on_sim_tick)
@@ -97,6 +101,7 @@ func request_numeric_local_candidates(ids: Array[StringName]) -> void:
 			continue
 		_requested_numeric_local_ids[id] = true
 		_last_requested_tick_by_id[id] = _sim_tick_index
+		_exit_budget_warning_active_by_id.erase(id)
 
 
 func update_body(state: BodyState, def: BodyDef, t_s: float) -> void:
@@ -112,9 +117,11 @@ func update_body(state: BodyState, def: BodyDef, t_s: float) -> void:
 
 	if state.current_mode == OrbitMode.Kind.NUMERIC_LOCAL:
 		if _is_numeric_local_requested_or_in_grace(def.id):
+			_exit_budget_warning_active_by_id.erase(def.id)
 			_update_numeric_local(state, def, t_s)
 		else:
-			_exit_numeric_local_to_kepler(state, def, profile, t_s)
+			if not _exit_numeric_local_to_kepler(state, def, profile, t_s):
+				_update_numeric_local(state, def, t_s)
 		state.last_update_time_s = t_s
 		return
 
@@ -274,24 +281,41 @@ func _update_numeric_local(state: BodyState, def: BodyDef, t_s: float) -> void:
 		_substep_cap_warning_active_by_id.erase(def.id)
 
 
-func _exit_numeric_local_to_kepler(state: BodyState, def: BodyDef, profile: OrbitProfile, t_s: float) -> void:
+func _exit_numeric_local_to_kepler(state: BodyState, def: BodyDef, profile: OrbitProfile, t_s: float) -> bool:
 	var numeric_pos: Vector3 = state.position_parent_frame_m
 	var numeric_vel: Vector3 = state.velocity_parent_frame_mps
 	var evaluated: Dictionary = _evaluate_kepler_state(def, profile, t_s)
 	var analytical_pos: Vector3 = evaluated.get("position_parent_frame_m", Vector3.ZERO)
 	var analytical_vel: Vector3 = evaluated.get("velocity_parent_frame_mps", Vector3.ZERO)
+	var pos_delta_m: float = numeric_pos.distance_to(analytical_pos)
+	var vel_delta_mps: float = numeric_vel.distance_to(analytical_vel)
+	var pos_budget_m: float = _compute_numeric_local_exit_budget(
+		analytical_pos.length(),
+		numeric_local_exit_max_position_delta_ratio
+	)
+	var vel_budget_mps: float = _compute_numeric_local_exit_budget(
+		analytical_vel.length(),
+		numeric_local_exit_max_velocity_delta_ratio
+	)
+	if pos_delta_m > pos_budget_m or vel_delta_mps > vel_budget_mps:
+		_warn_on_exit_budget_block(def.id, pos_delta_m, vel_delta_mps, pos_budget_m, vel_budget_mps)
+		return false
+	_exit_budget_warning_active_by_id.erase(def.id)
 	push_warning(
-		"OrbitService: NUMERIC_LOCAL exit fuer %s pos_delta=%s vel_delta=%s"
+		"OrbitService: NUMERIC_LOCAL exit fuer %s pos_delta=%s vel_delta=%s pos_budget=%s vel_budget=%s"
 			% [
 				String(def.id),
-				str(numeric_pos.distance_to(analytical_pos)),
-				str(numeric_vel.distance_to(analytical_vel))
+				str(pos_delta_m),
+				str(vel_delta_mps),
+				str(pos_budget_m),
+				str(vel_budget_mps),
 			]
 	)
 	state.position_parent_frame_m = analytical_pos
 	state.velocity_parent_frame_mps = analytical_vel
 	state.current_mode = OrbitMode.Kind.KEPLER_APPROX
 	_clear_numeric_local_runtime_for(def.id)
+	return true
 
 
 func _is_numeric_local_requested_or_in_grace(id: StringName) -> bool:
@@ -318,9 +342,31 @@ func _warn_on_substep_cap(id: StringName, dt_s: float, integrated: Dictionary) -
 	_substep_cap_warning_active_by_id[id] = true
 
 
+func _warn_on_exit_budget_block(id: StringName, pos_delta_m: float, vel_delta_mps: float,
+		pos_budget_m: float, vel_budget_mps: float) -> void:
+	if bool(_exit_budget_warning_active_by_id.get(id, false)):
+		return
+	push_warning(
+		"OrbitService: NUMERIC_LOCAL exit blocked fuer %s pos_delta=%s vel_delta=%s pos_budget=%s vel_budget=%s"
+			% [
+				String(id),
+				str(pos_delta_m),
+				str(vel_delta_mps),
+				str(pos_budget_m),
+				str(vel_budget_mps),
+			]
+	)
+	_exit_budget_warning_active_by_id[id] = true
+
+
 func _clear_numeric_local_runtime_for(id: StringName) -> void:
 	_last_requested_tick_by_id.erase(id)
 	_substep_cap_warning_active_by_id.erase(id)
+	_exit_budget_warning_active_by_id.erase(id)
+
+
+static func _compute_numeric_local_exit_budget(reference_magnitude: float, ratio: float) -> float:
+	return maxf(maxf(reference_magnitude, 1.0) * maxf(ratio, 0.0), 0.0)
 
 
 func _emit_bodies_updated(ids: Array[StringName], reason: StringName) -> void:

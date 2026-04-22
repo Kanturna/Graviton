@@ -30,6 +30,7 @@ static func run(ctx) -> void:
 	_test_streaming_controller_primary_focus_falls_back_to_first_root(ctx)
 	_test_streaming_controller_applies_hysteresis_keepalive_and_prewarm(ctx)
 	_test_streaming_controller_pins_prewarm_boundaries(ctx)
+	_test_prewarm_reuses_loader_scoped_slice_cache(ctx)
 	_test_focus_ping_pong_keeps_old_focus_resident_when_qualified(ctx)
 	_test_proxy_detail_handoff_matches_position_and_velocity(ctx)
 	_test_stress_and_pilot_share_manifest_defs_signature(ctx)
@@ -146,6 +147,24 @@ static func _test_streaming_controller_pins_prewarm_boundaries(ctx) -> void:
 
 	controller.update(0.0, 0.89)
 	ctx.assert_true(controller.get_prewarm_root_id() == expected_neighbor, "0.89 liegt klar innerhalb des Enter-Bands")
+
+	_cleanup_streaming_setup(setup)
+
+
+static func _test_prewarm_reuses_loader_scoped_slice_cache(ctx) -> void:
+	var setup: Dictionary = _make_streaming_setup()
+	var controller = setup.get("controller")
+	var loader = setup.get("loader")
+	var galaxy = setup.get("galaxy")
+	var baseline_cache_size: int = loader.get_prepared_root_slice_cache_size()
+
+	ctx.assert_true(loader.get_prepared_root_slice_cache_scope_id() == galaxy.galaxy_id, "Streaming-Setup scoped den Loader-Cache an die aktive Galaxy")
+	controller.update(0.0, 0.60)
+	var cache_size_after_prewarm: int = loader.get_prepared_root_slice_cache_size()
+	ctx.assert_true(cache_size_after_prewarm == baseline_cache_size + 1, "Prewarm fuellt genau einen zusaetzlichen vorbereiteten Root-Slice im Loader-Cache")
+
+	controller.update(0.0, 0.61)
+	ctx.assert_true(loader.get_prepared_root_slice_cache_size() == cache_size_after_prewarm, "Prewarm dupliziert denselben vorbereiteten Root-Slice im Loader-Cache nicht")
 
 	_cleanup_streaming_setup(setup)
 

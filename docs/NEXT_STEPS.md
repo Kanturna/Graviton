@@ -1,6 +1,6 @@
 # Graviton - Next Steps
 
-Stand: 2026-04-20
+Stand: 2026-04-22
 
 ## Akut - Backdrop-Flicker im Editor beseitigen - erledigt
 
@@ -182,6 +182,11 @@ Erledigt:
 - Anti-Thrashing bewusst im `OrbitService`, nicht im
   `BubbleActivationSet`
 - `Cap+Warn`-Policy mit Warning-Dedup statt hartem Kepler-Fallback
+- Exit-Rejoin-Budgets fuer `NUMERIC_LOCAL -> KEPLER_APPROX`; bei
+  ueberschrittenem Delta bleibt der Body numerisch und integriert
+  weiter statt analytisch zu snappen
+- neue Regressionen fuer blocked Exit im Sim-Pfad und fuer
+  `ThermalService`-Kontinuitaet ohne stillen Rueck-Snap
 - neue Tests fuer grosse `dt`, Grace-Verhalten und Warning-Dedup
 
 ## Prioritaet 11 - Derived Phase E: Saisonale Insolation / Tilt-Geometrie - erledigt
@@ -796,6 +801,28 @@ Erledigt:
   Collision- und Hard-Fail-Pfad sowie explizit versteckte Cross-Root-
   Orbit-/Trail-Visuals
 
+## Prioritaet 23.1 - Streaming-/Diagnose-Qualitaet haerten - erledigt
+
+Ziel:
+Vor dem naechsten groesseren 30-Root-Playtest die auffaelligen
+Review-Funde im Runtime-/Diagnosepfad entfernen, ohne die bestehende
+Large-World-Architektur umzubauen.
+
+Erledigt:
+
+- `WorldLoader` fuehrt vorbereitete Root-Slices jetzt nur noch in genau
+  einem cache-scopegebundenen Loader-Cache pro aktiver Welt/Galaxy
+- `GalaxyStreamingController.prewarm` fuellt nur noch diesen
+  Loader-Cache und haelt keine zweite Root-Def-Kopie mehr
+- das `F3`-Debug-Overlay liest bei verdrahtetem
+  `DerivedSnapshotCache` strikt snapshot-only; Cache-Miss bleibt
+  bewusst `n/a` statt live `ThermalService.describe_body(...)`
+- neue Tests pinnen den loader-scoped Prewarm-Cache und den
+  snapshot-only-Overlay-Contract
+- `test_orbit_body_visual.gd` gibt erzeugte Visual-Nodes wieder frei,
+  damit die Rendering-Suite keine offensichtlichen Node-Leaks mehr
+  akkumuliert
+
 ## Prioritaet 24 - `scaleup_galaxy_30` im Editor validieren
 
 Ziel:
@@ -813,8 +840,15 @@ Konkreter Arbeitsblock:
 - dabei das bestehende `F3`-Streaming-Overlay mit
   `desired_neighbor_root_id`, `resident_neighbor_root_id`,
   `prewarm_root_id`, Keepalive-Restzeit und Ringbuffer mitlaufen lassen
+- dabei zusaetzlich bestaetigen, dass `F3` den Hotpath nicht mehr selbst
+  verfremdet:
+  Thermal-/Environment-Werte nur aus Snapshot, Cache-Miss sichtbar als
+  `n/a`
 - bestaetigen, dass der root-aware Renderer-Kurzschluss auch in der
   30-Root-Welt keine sichtbaren Cross-Root-Detailleichen hinterlaesst
+- kurzen Blick darauf halten, dass der neue loader-scoped Prewarm-Pfad
+  bei Fokus-/Root-Wechseln ruhig bleibt und keine zweite Def-Haltung
+  neben dem Loader mehr braucht
 - kurzen Profil-/Playtest fuer einen Detail-Root plus Proxies in der
   30-Root-Welt machen
 
@@ -906,6 +940,10 @@ Zielbild fuer diesen Strang:
 - spaeter numerische Tuning-Arbeit jenseits des aktuellen
   `Cap+Warn`-Best-Effort-Pfads, falls hoehere `time_scale` praktisch
   wichtig werden
+- falls Bodies nach dem neuen Exit-Budget ueber lange Strecken
+  numerisch kleben bleiben, gezielt ueber strengere Rejoin-Strategien
+  oder ein explizites analytisches Re-Seeding nachdenken statt ueber
+  blinde Rueck-Snaps
 - moegliche spaetere strengere Overspeed-Policies oder weitere
   High-Speed-Regeln im `OrbitService`
 - Topologie-Helfer sind jetzt zentralisiert; spaetere Folgearbeit liegt

@@ -19,6 +19,7 @@ const SCALEUP_GALAXY_30_ID: StringName = &"scaleup_galaxy_30"
 signal world_loaded(world_id: StringName)
 
 var _prepared_root_slices_by_cache_key: Dictionary = {}
+var _prepared_root_slice_cache_scope_id: StringName = &""
 
 
 func available_world_ids() -> Array[StringName]:
@@ -32,16 +33,20 @@ func load_named_world(world_id: StringName, registry: Node) -> bool:
 	var defs: Array[BodyDef] = []
 	match world_id:
 		STARTER_WORLD_ID:
+			_set_prepared_root_slice_cache_scope(world_id)
 			defs = StarterWorldScript.build()
 		SAMPLE_SYSTEM_ID:
+			_set_prepared_root_slice_cache_scope(world_id)
 			defs = SampleSystemScript.build()
 		GENERATED_SYSTEM_ID:
+			_set_prepared_root_slice_cache_scope(world_id)
 			defs = DeterministicWorldGeneratorScript.build(DeterministicWorldGeneratorScript.DEFAULT_SEED)
 		PILOT_GALAXY_ID, SCALEUP_GALAXY_10_ID, SCALEUP_GALAXY_30_ID:
 			var galaxy = load_named_galaxy(world_id)
 			if galaxy == null:
 				return false
-			defs = build_defs_for_root_ids(galaxy, galaxy.default_resident_root_ids)
+			_set_prepared_root_slice_cache_scope(galaxy.galaxy_id)
+			defs = build_defs_for_root_ids(galaxy, galaxy.default_resident_root_ids, galaxy.galaxy_id)
 		_:
 			push_error("WorldLoader.load_named_world: unknown world_id '%s'" % world_id)
 			return false
@@ -74,7 +79,8 @@ func materialize_galaxy_roots(
 		push_error("WorldLoader.materialize_galaxy_roots: registry is null")
 		return false
 
-	var target_slices: Array = _prepare_root_slices_for_ids(galaxy, root_ids)
+	var cache_scope_id: StringName = loaded_world_id if loaded_world_id != StringName("") else galaxy.galaxy_id
+	var target_slices: Array = _prepare_root_slices_for_ids(galaxy, root_ids, cache_scope_id)
 	if target_slices.is_empty():
 		push_error("WorldLoader.materialize_galaxy_roots: no valid target roots for %s" % str(root_ids))
 		return false
@@ -126,15 +132,28 @@ func materialize_galaxy_roots(
 	return true
 
 
-func build_defs_for_root_ids(galaxy, root_ids: Array[StringName]) -> Array[BodyDef]:
-	return _flatten_defs_from_slices(_prepare_root_slices_for_ids(galaxy, root_ids))
+func build_defs_for_root_ids(galaxy, root_ids: Array[StringName], cache_scope_id: StringName = StringName("")) -> Array[BodyDef]:
+	return _flatten_defs_from_slices(_prepare_root_slices_for_ids(galaxy, root_ids, cache_scope_id))
 
 
-func build_defs_for_root_manifest(manifest) -> Array[BodyDef]:
-	var prepared_slice: Dictionary = _prepare_root_slice(manifest)
+func build_defs_for_root_manifest(manifest, cache_scope_id: StringName = StringName("")) -> Array[BodyDef]:
+	var prepared_slice: Dictionary = _prepare_root_slice(manifest, cache_scope_id)
 	var defs: Array[BodyDef] = []
 	defs.append_array(prepared_slice.get("defs", []))
 	return defs
+
+
+func clear_prepared_root_slice_cache() -> void:
+	_prepared_root_slice_cache_scope_id = StringName("")
+	_prepared_root_slices_by_cache_key.clear()
+
+
+func get_prepared_root_slice_cache_size() -> int:
+	return _prepared_root_slices_by_cache_key.size()
+
+
+func get_prepared_root_slice_cache_scope_id() -> StringName:
+	return _prepared_root_slice_cache_scope_id
 
 
 # Mutiert die Registry nur nach vollstaendiger Vorvalidierung.
@@ -157,7 +176,7 @@ func load_defs_into_registry(defs: Array[BodyDef], registry: Node, loaded_world_
 	return true
 
 
-func _prepare_root_slices_for_ids(galaxy, root_ids: Array[StringName]) -> Array:
+func _prepare_root_slices_for_ids(galaxy, root_ids: Array[StringName], cache_scope_id: StringName = StringName("")) -> Array:
 	var out: Array = []
 	if galaxy == null:
 		return out
@@ -169,17 +188,19 @@ func _prepare_root_slices_for_ids(galaxy, root_ids: Array[StringName]) -> Array:
 		var manifest = galaxy.get_manifest(root_id)
 		if manifest == null:
 			continue
-		var slice: Dictionary = _prepare_root_slice(manifest)
+		var slice: Dictionary = _prepare_root_slice(manifest, cache_scope_id)
 		if not slice.is_empty():
 			out.append(slice)
 	return out
 
 
-func _prepare_root_slice(manifest) -> Dictionary:
+func _prepare_root_slice(manifest, cache_scope_id: StringName = StringName("")) -> Dictionary:
 	if manifest == null or not manifest.is_valid():
 		return {}
 
-	var cache_key: String = _prepared_slice_cache_key(manifest)
+	if cache_scope_id != StringName(""):
+		_set_prepared_root_slice_cache_scope(cache_scope_id)
+	var cache_key: String = _prepared_slice_cache_key(manifest, cache_scope_id)
 	if cache_key != "" and _prepared_root_slices_by_cache_key.has(cache_key):
 		return _prepared_root_slices_by_cache_key[cache_key]
 
@@ -209,10 +230,17 @@ func _prepare_root_slice(manifest) -> Dictionary:
 	return slice
 
 
-static func _prepared_slice_cache_key(manifest) -> String:
-	if manifest == null:
+func _set_prepared_root_slice_cache_scope(scope_id: StringName) -> void:
+	if scope_id == _prepared_root_slice_cache_scope_id:
+		return
+	_prepared_root_slice_cache_scope_id = scope_id
+	_prepared_root_slices_by_cache_key.clear()
+
+
+static func _prepared_slice_cache_key(manifest, cache_scope_id: StringName = StringName("")) -> String:
+	if manifest == null or cache_scope_id == StringName(""):
 		return ""
-	return "%s#%s" % [String(manifest.root_id), str(manifest.get_instance_id())]
+	return "%s|%s#%s" % [String(cache_scope_id), String(manifest.root_id), str(manifest.get_instance_id())]
 
 
 static func _flatten_defs_from_slices(slices: Array) -> Array[BodyDef]:

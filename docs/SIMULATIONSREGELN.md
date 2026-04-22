@@ -60,10 +60,12 @@ weiter integriert. `BodyState.current_mode` wechselt zu
 **Austritt (NUMERIC_LOCAL -> KEPLER_APPROX):** `OrbitService` verlaesst
 den numerischen Pfad nicht sofort beim ersten fehlenden Wish, sondern
 toleriert aktuell genau einen Missing-Request-Tick. Erst nach Ablauf
-dieser Grace wird die Kepler-Loesung reevaluiert. Ein kleiner
-Diskontinuitaetssprung ist moeglich und dokumentiert -
-`OrbitService` loggt ihn explizit via `push_warning` inklusive
-Positions- und Velocity-Delta. Kein stiller Datendrift.
+dieser Grace wird die Kepler-Loesung reevaluiert. Der Rueckwechsel ist
+jetzt budgetiert: nur wenn Positions- und Velocity-Delta innerhalb der
+konfigurierten Rejoin-Budgets liegen, snappt der Body zur analytischen
+Loesung zurueck. Sonst bleibt er autoritativ `NUMERIC_LOCAL`, loggt den
+blocked Exit explizit und integriert im selben Tick numerisch weiter.
+Kein stiller analytischer Rueck-Snap in Derived-Pfaden.
 
 **Trigger:** Die Szene (Composition Root) ruft
 `orbit_service.request_numeric_local_candidates(active_ids)` nach jedem

@@ -25,6 +25,7 @@ static func run(ctx) -> void:
 	_test_load_named_scaleup_galaxy_returns_catalog(ctx)
 	_test_load_named_scaleup_galaxy_30_returns_catalog(ctx)
 	_test_materialize_galaxy_roots_preserves_unchanged_resident_states(ctx)
+	_test_prepared_root_slice_cache_is_scoped_to_active_galaxy(ctx)
 	_test_world_loaded_signal_emits_named_world_id(ctx)
 	_test_unknown_world_id_keeps_registry_unchanged(ctx)
 	_test_load_defs_accepts_two_root_world(ctx)
@@ -266,6 +267,24 @@ static func _test_materialize_galaxy_roots_preserves_unchanged_resident_states(c
 	time_service.free()
 	loader.free()
 	reg.free()
+
+
+static func _test_prepared_root_slice_cache_is_scoped_to_active_galaxy(ctx) -> void:
+	var loader := _make_loader()
+	var pilot_galaxy = loader.load_named_galaxy(&"pilot_galaxy")
+	loader.build_defs_for_root_manifest(pilot_galaxy.get_manifest(&"onyx"), pilot_galaxy.galaxy_id)
+	loader.build_defs_for_root_manifest(pilot_galaxy.get_manifest(&"umbra"), pilot_galaxy.galaxy_id)
+	ctx.assert_true(loader.get_prepared_root_slice_cache_scope_id() == &"pilot_galaxy", "Loader bindet vorbereitete Root-Slices an die aktive Pilot-Galaxy")
+	ctx.assert_true(loader.get_prepared_root_slice_cache_size() == 2, "Loader cached zwei vorbereitete Pilot-Roots innerhalb desselben Galaxy-Scopes")
+
+	var scaleup_galaxy = loader.load_named_galaxy(&"scaleup_galaxy_30")
+	loader.build_defs_for_root_manifest(scaleup_galaxy.get_manifest(&"shade_01"), scaleup_galaxy.galaxy_id)
+	ctx.assert_true(loader.get_prepared_root_slice_cache_scope_id() == &"scaleup_galaxy_30", "Galaxy-Wechsel setzt den Loader-Cache auf den neuen Scope um")
+	ctx.assert_true(loader.get_prepared_root_slice_cache_size() == 1, "Galaxy-Wechsel verwirft alte vorbereitete Root-Slices statt galaxy-uebergreifend zu wachsen")
+
+	loader.clear_prepared_root_slice_cache()
+	ctx.assert_true(loader.get_prepared_root_slice_cache_size() == 0, "Loader kann vorbereitete Root-Slices explizit wieder leeren")
+	loader.free()
 
 
 static func _test_world_loaded_signal_emits_named_world_id(ctx) -> void:

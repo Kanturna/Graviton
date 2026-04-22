@@ -1,5 +1,23 @@
 # Graviton - Decisions
 
+## 2026-04-22 - `NUMERIC_LOCAL` verlaesst den numerischen Pfad nur noch ueber budgetierten Rejoin
+
+Der Rueckwechsel `NUMERIC_LOCAL -> KEPLER_APPROX` bleibt weiter eine
+explizite OrbitService-Entscheidung, darf aber nicht mehr blind auf die
+analytische Loesung snappen, wenn der aktuelle numerische Zustand zu
+weit davon entfernt ist.
+
+Konsequenz:
+
+- `OrbitService` prueft beim Exit jetzt relative Rejoin-Budgets fuer
+  Positions- und Velocity-Delta gegen die analytische Kepler-Loesung
+- liegt der Delta ueber Budget, bleibt der Body autoritativ in
+  `NUMERIC_LOCAL` und wird im selben Tick numerisch weiterintegriert
+- `ThermalService` und darauf aufbauende Derived-Services sehen dadurch
+  keinen stillen analytischen Rueck-Snap mehr aus dem Exit-Pfad
+- Exit-Block-Warnings werden dedupliziert; ein neuer Wish oder ein
+  erfolgreicher Exit setzt den Warning-Zustand wieder zurueck
+
 ## 2026-04-20 - Produktive Scale-up-Galaxien laufen ueber genau einen Catalog-Builder mit Spacing-Guard
 
 Nach `pilot_galaxy` und `scaleup_galaxy_10` wird der 30-Root-Schritt

@@ -112,6 +112,7 @@ static func _test_temperate_theme_enables_hybrid_reference(ctx) -> void:
 		is_zero_approx(float(mat.get_shader_parameter("cloud_strength"))),
 		"TEMPERATE_OCEAN legt keine zusaetzlichen Shader-Wolken mehr ueber die Referenz"
 	)
+	_free_visual(visual)
 
 
 static func _test_frozen_theme_enables_hybrid_reference(ctx) -> void:
@@ -146,6 +147,7 @@ static func _test_frozen_theme_enables_hybrid_reference(ctx) -> void:
 		is_zero_approx(float(mat.get_shader_parameter("cloud_strength"))),
 		"FROZEN legt keine zusaetzlichen Shader-Wolken mehr ueber die Referenz"
 	)
+	_free_visual(visual)
 
 
 static func _test_hot_theme_enables_hybrid_reference(ctx) -> void:
@@ -168,6 +170,7 @@ static func _test_hot_theme_enables_hybrid_reference(ctx) -> void:
 		is_zero_approx(float(mat.get_shader_parameter("surface_reference_portrait_strength"))),
 		"HOT_SCORCHED bleibt ohne separaten portrait-stabilen Closeup-Sprite"
 	)
+	_free_visual(visual)
 
 
 static func _test_identical_theme_apply_is_idempotent(ctx) -> void:
@@ -180,6 +183,7 @@ static func _test_identical_theme_apply_is_idempotent(ctx) -> void:
 		visual.get_theme_apply_count() == apply_count_after_first_theme,
 		"identische Theme-Werte loesen kein zweites Material-Apply aus"
 	)
+	_free_visual(visual)
 
 
 static func _make_visual(kind: int):
@@ -187,3 +191,8 @@ static func _make_visual(kind: int):
 	visual.configure(kind)
 	visual._ready()
 	return visual
+
+
+static func _free_visual(visual) -> void:
+	if visual != null:
+		visual.free()

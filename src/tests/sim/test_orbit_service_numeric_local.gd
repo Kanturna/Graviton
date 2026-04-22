@@ -11,6 +11,7 @@ static func run(ctx) -> void:
 	_test_numeric_local_substeps_large_dt(ctx)
 	_test_capped_numeric_local_keeps_mode_and_sets_warning_flag(ctx)
 	_test_empty_request_exits_back_to_kepler_after_grace(ctx)
+	_test_exit_budget_block_keeps_numeric_and_integrates(ctx)
 	_test_request_return_during_grace_avoids_reseed(ctx)
 	_test_ineligible_requested_bodies_are_ignored(ctx)
 	_test_request_replace_semantics_drop_old_wish_after_grace(ctx)
@@ -318,6 +319,61 @@ static func _test_empty_request_exits_back_to_kepler_after_grace(ctx) -> void:
 		1.0e-3,
 		"Rueckwechsel nach Grace setzt analytische Kepler-Velocity"
 	)
+
+	service.free()
+	time_service.free()
+	reg.free()
+
+
+static func _test_exit_budget_block_keeps_numeric_and_integrates(ctx) -> void:
+	var reg := _make_registry()
+	var time_service := _make_time_service()
+	var service = _make_orbit_service(reg, time_service)
+	var state: BodyState = reg.get_state(&"planet_a")
+	var def: BodyDef = reg.get_def(&"planet_a")
+
+	service.numeric_local_exit_max_position_delta_ratio = 1.0e-8
+	service.numeric_local_exit_max_velocity_delta_ratio = 1.0e-8
+	service.request_numeric_local_candidates(_ids([&"planet_a"]))
+	service.recompute_all_at_time(0.0)
+	_emit_sim_tick(time_service, 1.0)
+	service.request_numeric_local_candidates(_ids([&"planet_a"]))
+	service.request_numeric_local_candidates(_ids([]))
+
+	_emit_sim_tick(time_service, 1.0)
+	var pos_before_block: Vector3 = state.position_parent_frame_m
+	var vel_before_block: Vector3 = state.velocity_parent_frame_mps
+
+	_emit_sim_tick(time_service, 1.0)
+
+	var expected: Dictionary = _integrator_script().step_velocity_verlet_substepped(
+		pos_before_block,
+		vel_before_block,
+		1.0,
+		_compute_parent_mu(reg, def),
+		service.numeric_local_target_substep_s,
+		service.numeric_local_max_substeps_per_tick
+	)
+	ctx.assert_true(state.current_mode == OrbitMode.Kind.NUMERIC_LOCAL,
+		"uebergrosse Exit-Deltas halten den Body im numerischen Regime")
+	ctx.assert_vec_almost(
+		state.position_parent_frame_m,
+		expected.get("position_parent_frame_m", Vector3.ZERO),
+		1.0e-3,
+		"blocked Exit integriert im selben Tick numerisch weiter statt auf Kepler zu snappen"
+	)
+	ctx.assert_vec_almost(
+		state.velocity_parent_frame_mps,
+		expected.get("velocity_parent_frame_mps", Vector3.ZERO),
+		1.0e-3,
+		"blocked Exit behaelt die numerische Velocity-Fortschreibung"
+	)
+	ctx.assert_true(service._exit_budget_warning_active_by_id.has(&"planet_a"),
+		"blocked Exit setzt das Exit-Budget-Warning-Dedup-Flag")
+
+	service.request_numeric_local_candidates(_ids([&"planet_a"]))
+	ctx.assert_true(not service._exit_budget_warning_active_by_id.has(&"planet_a"),
+		"ein neuer Request setzt das Exit-Budget-Warning-Flag wieder zurueck")
 
 	service.free()
 	time_service.free()

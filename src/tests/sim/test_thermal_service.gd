@@ -1,5 +1,6 @@
 extends RefCounted
 
+const LOCAL_ORBIT_INTEGRATOR_SCRIPT = preload("res://src/sim/orbit/local_orbit_integrator.gd")
 const SimTestHarnessScript = preload("res://src/tests/helpers/sim_test_harness.gd")
 const HK_REGISTRY: StringName = SimTestHarnessScript.HARNESS_KEY_REGISTRY
 const HK_THERMAL_SERVICE: StringName = SimTestHarnessScript.HARNESS_KEY_THERMAL_SERVICE
@@ -21,6 +22,7 @@ static func run(ctx) -> void:
 	_test_polar_day_and_polar_night_follow_explicit_branches(ctx)
 	_test_authored_orbit_body_reports_non_zero_seasonal_values(ctx)
 	_test_cross_root_light_does_not_leak(ctx)
+	_test_numeric_local_exit_block_preserves_thermal_continuity(ctx)
 	_test_albedo_boundaries_control_absorption_and_temperature(ctx)
 	_test_unknown_and_non_finite_paths_return_zero(ctx)
 	_test_describe_body_matches_compute_and_reports_source(ctx)
@@ -45,6 +47,10 @@ static func _make_thermal_service(registry: Node):
 	var service = load("res://src/sim/thermal/thermal_service.gd").new()
 	service.configure(registry)
 	return service
+
+
+static func _emit_sim_tick(time_service: Node, dt_s: float) -> void:
+	time_service._emit_tick(dt_s)
 
 
 static func _setup_named_world(world_id: StringName) -> Dictionary:
@@ -409,6 +415,78 @@ static func _test_cross_root_light_does_not_leak(ctx) -> void:
 		thermal_service.compute_insolation_wpm2(&"bright_planet") > 0.0,
 		"bright_planet erhaelt unter luminous root normale Insolation"
 	)
+	thermal_service.free()
+	orbit_service.free()
+	time_service.free()
+	registry.free()
+
+
+static func _test_numeric_local_exit_block_preserves_thermal_continuity(ctx) -> void:
+	var registry := _make_registry()
+	var time_service := _make_time_service()
+	var orbit_service = _make_orbit_service(registry, time_service)
+	for def in [
+		_root_def(&"bright_root", UnitSystem.SOLAR_LUMINOSITY_W),
+		_planet_def(&"planet_a", &"bright_root", 1.0e9),
+	]:
+		registry.register_body(def)
+	var thermal_service = _make_thermal_service(registry)
+	orbit_service.numeric_local_exit_max_position_delta_ratio = 1.0e-8
+	orbit_service.numeric_local_exit_max_velocity_delta_ratio = 1.0e-8
+	var requested_ids: Array[StringName] = [&"planet_a"]
+	var cleared_ids: Array[StringName] = []
+	orbit_service.request_numeric_local_candidates(requested_ids)
+	orbit_service.recompute_all_at_time(0.0)
+	_emit_sim_tick(time_service, 1.0)
+	orbit_service.request_numeric_local_candidates(requested_ids)
+	orbit_service.request_numeric_local_candidates(cleared_ids)
+	_emit_sim_tick(time_service, 1.0)
+
+	var state: BodyState = registry.get_state(&"planet_a")
+	var def: BodyDef = registry.get_def(&"planet_a")
+	var pos_before_block: Vector3 = state.position_parent_frame_m
+	var vel_before_block: Vector3 = state.velocity_parent_frame_mps
+
+	_emit_sim_tick(time_service, 1.0)
+
+	var expected_numeric: Dictionary = LOCAL_ORBIT_INTEGRATOR_SCRIPT.step_velocity_verlet_substepped(
+		pos_before_block,
+		vel_before_block,
+		1.0,
+		UnitSystem.mu_from_mass(UnitSystem.SOLAR_MASS_KG),
+		orbit_service.numeric_local_target_substep_s,
+		orbit_service.numeric_local_max_substeps_per_tick
+	)
+	var actual_teq_k: float = thermal_service.compute_equilibrium_temperature_k(&"planet_a")
+	var numeric_pos: Vector3 = expected_numeric.get("position_parent_frame_m", Vector3.ZERO)
+	var numeric_vel: Vector3 = expected_numeric.get("velocity_parent_frame_mps", Vector3.ZERO)
+	var numeric_radius_m: float = numeric_pos.length()
+	var expected_numeric_teq_k: float = _expected_equilibrium_temperature_k(
+		_expected_absorbed_flux_wpm2(
+			UnitSystem.SOLAR_LUMINOSITY_W / (4.0 * PI * numeric_radius_m * numeric_radius_m),
+			def.albedo
+		)
+	)
+	var numeric_pos_epsilon_m: float = maxf(numeric_radius_m * 1.0e-9, 1.0e-3)
+	var numeric_vel_epsilon_mps: float = maxf(numeric_vel.length() * 1.0e-9, 1.0e-6)
+
+	ctx.assert_true(state.current_mode == OrbitMode.Kind.NUMERIC_LOCAL,
+		"blocked Exit behaelt den Thermal-Input im numerischen Regime")
+	ctx.assert_true(
+		state.position_parent_frame_m.distance_to(numeric_pos) <= numeric_pos_epsilon_m,
+		"blocked Exit behaelt den numerisch fortgeschriebenen Positionszustand"
+	)
+	ctx.assert_true(
+		state.velocity_parent_frame_mps.distance_to(numeric_vel) <= numeric_vel_epsilon_mps,
+		"blocked Exit behaelt den numerisch fortgeschriebenen Geschwindigkeitszustand"
+	)
+	ctx.assert_almost(
+		actual_teq_k,
+		expected_numeric_teq_k,
+		maxf(expected_numeric_teq_k * 1.0e-6, 1.0e-9),
+		"ThermalService folgt beim blocked Exit der numerisch fortgeschriebenen Bahn"
+	)
+
 	thermal_service.free()
 	orbit_service.free()
 	time_service.free()

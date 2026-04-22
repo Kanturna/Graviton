@@ -174,6 +174,10 @@ treibt keine Zeit vorwaerts. Es stellt nur sicher, dass alle
 abhaengige interessierte Bodies; ohne dieses Signal bleibt
 `TimeService.sim_tick` der konservative Fallback. Im Frame-Loop werden
 nur bereits berechnete Snapshots konsumiert.
+Auch Diagnosepfade wie `DebugOverlay` duerfen bei verdrahtetem
+`DerivedSnapshotCache` nicht live auf
+`ThermalService.describe_body(...)` zurueckfallen; Cache-Miss bleibt
+sichtbar als `n/a`.
 
 Fuer grosse Multi-Root-Welten bleibt dieselbe Schichtung erhalten:
 
@@ -181,6 +185,10 @@ Fuer grosse Multi-Root-Welten bleibt dieselbe Schichtung erhalten:
   plus den aktuell residenten Detail-Slice in die Registry
 - `WorldLoader` materialisiert Galaxy-Slices delta-basiert:
   unveraenderte residente Roots bleiben samt `BodyState` erhalten
+- vorbereitete Root-Slices leben dabei in genau einem
+  cache-scopegebundenen Loader-Cache pro aktiver Welt/Galaxy; `prewarm`
+  fuellt nur diesen Loader-Cache und fuehrt keine zweite Def-Haltung im
+  `GalaxyStreamingController` ein
 - `GalaxyStreamingController.update(delta_s, zoom_factor)` entscheidet
   focus-/zoomgetrieben ueber Resident-/Prewarm-Shells, Hysterese und
   Keepalive
@@ -410,8 +418,9 @@ Eligibility und ersetzt das Wunsch-Set bei jedem Aufruf vollstaendig.
 eligible.
 
 **Uebergangs-Logging:** Beim Austritt (`NUMERIC_LOCAL` ->
-`KEPLER_APPROX`) ruft `OrbitService` `push_warning` auf, damit
-Diskontinuitaeten sichtbar bleiben.
+`KEPLER_APPROX`) loggt `OrbitService` weiter Positions-/Velocity-Deltas.
+Wenn der Rejoin am Budget scheitert, wird dieser blocked Exit ebenfalls
+explizit per Warning sichtbar gemacht.
 
 **Eintritts-Seeding:** Beim Eintritt in `NUMERIC_LOCAL` seedet
 `OrbitService` Position und Velocity aus der analytischen Kepler-Loesung
@@ -423,7 +432,10 @@ der eigentliche Sim-Tick in `_physics_process()`. Dieser
 Ein-Frame-Versatz bleibt bewusst bestehen, wird aber jetzt im
 `OrbitService` ueber eine kleine Missing-Request-Grace abgefedert.
 `BubbleActivationSet` bleibt dabei rein geometrisch und bekommt keine
-Hysterese.
+Hysterese. Zusaetzlich erfolgt der Rueckwechsel auf `KEPLER_APPROX` nur
+noch ueber budgetierten Rejoin; liegt der numerische Zustand zu weit von
+der analytischen Loesung entfernt, bleibt der Body autoritativ
+`NUMERIC_LOCAL`.
 
 **Overspeed-Policy:** `OrbitService` integriert `NUMERIC_LOCAL` jetzt
 per Substepping bis zu einem festen Budget und nutzt darueber hinaus

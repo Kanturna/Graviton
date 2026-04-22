@@ -22,7 +22,6 @@ var _resident_root_ids: Array[StringName] = []
 var _resident_neighbor_root_id: StringName = &""
 var _neighbor_unload_remaining_s: float = 0.0
 var _prewarm_root_id: StringName = &""
-var _prewarmed_defs_by_root: Dictionary = {}
 var _last_zoom_factor: float = 1.0
 var _debug_events: Array[Dictionary] = []
 
@@ -49,7 +48,6 @@ func configure(
 	_resident_neighbor_root_id = StringName("")
 	_neighbor_unload_remaining_s = 0.0
 	_prewarm_root_id = StringName("")
-	_prewarmed_defs_by_root.clear()
 	_debug_events.clear()
 	_update_residency_state(0.0, _last_zoom_factor)
 	_update_prewarm_state(_focus_root_id, _last_zoom_factor)
@@ -176,11 +174,11 @@ func _update_prewarm_state(focus_root_id: StringName, zoom_factor: float) -> voi
 
 
 func _ensure_prewarmed(root_id: StringName) -> void:
-	if root_id == StringName("") or _prewarmed_defs_by_root.has(root_id):
+	if root_id == StringName("") or _galaxy == null or _world_loader == null:
 		return
 	var manifest = _galaxy.get_manifest(root_id)
 	if manifest != null:
-		_prewarmed_defs_by_root[root_id] = _world_loader.build_defs_for_root_manifest(manifest)
+		_world_loader.build_defs_for_root_manifest(manifest, _galaxy.galaxy_id)
 
 
 func _set_prewarm_root_id(root_id: StringName) -> void:

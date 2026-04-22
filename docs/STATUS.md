@@ -1,6 +1,6 @@
 # Graviton - Status
 
-Stand: 2026-04-20
+Stand: 2026-04-22
 
 ## Kurzfassung
 
@@ -50,6 +50,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `OrbitService` haertet den numerischen Pfad jetzt mit
   OrbitService-seitiger Missing-Request-Grace, Substepping sowie
   `Cap+Warn`-Dedup gegen dt-Spitzen und Wish-Rand-Thrashing.
+- `OrbitService` budgetiert jetzt auch den Rueckwechsel
+  `NUMERIC_LOCAL -> KEPLER_APPROX`: uebergrosse Rejoin-Deltas blockieren
+  den Snap, halten den Body autoritativ im numerischen Regime und
+  integrieren im selben Tick weiter.
 - `ThermalService` liefert jetzt on-demand minimale Insolation,
   global gemittelten absorbierten Fluss und einfache
   Gleichgewichtstemperatur aus `luminosity_w`, `albedo`, Parent-Kette
@@ -68,11 +72,18 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `HABITABLE`, `MARGINAL` oder `HOSTILE` und leitet zusaetzlich erste
   planetare Oekosystem-Typen (`FROZEN`, `TEMPERATE`, `SEASONAL`,
   `HOT`) ab.
+- Neue Sim-/Thermal-Regressionen pinnen jetzt explizit, dass ein
+  blocked `NUMERIC_LOCAL`-Exit numerisch weiterintegriert und
+  `ThermalService` dabei keinen stillen analytischen Rueck-Snap sieht.
 - `DerivedSnapshotCache` verteilt jetzt read-only den letzten
   Thermal-/Environment-Snapshot an HUD und Renderer, fuehrt jetzt aber
   ein explizites Interest-Set und invalidiert bei verdrahtetem
   `OrbitService` nur dirty-abhaengige interessierte Bodies; ohne diesen
   Hook bleibt `TimeService.sim_tick` der Fallback.
+- Das `F3`-Debug-Overlay konsumiert bei verdrahtetem
+  `DerivedSnapshotCache` denselben read-only Snapshot jetzt strikt
+  snapshot-only; Cache-Misses bleiben sichtbar als `n/a`, statt im
+  Frame-Loop live `ThermalService.describe_body(...)` nachzuziehen.
 - `OrbitService` emittiert jetzt explizit `bodies_updated(ids, reason)`
   fuer geaenderte Runtime-Bodies und nutzt fuer `AUTHORED_ORBIT`-
   Velocities denselben zentralen Finite-Difference-Pfad wie der neue
@@ -138,6 +149,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Fokus-Root, Resident-/Neighbor-/Prewarm-IDs, Keepalive-Restzeit,
   letzter Zoom-Faktor und ein kleiner Ringbuffer der juengsten
   Streaming-Ereignisse werden rein diagnostisch mitgefuehrt.
+- `WorldLoader` fuehrt vorbereitete Root-Slices jetzt bewusst nur noch
+  in genau einem cache-scopegebundenen Loader-Cache pro aktiver
+  Welt/Galaxy; `GalaxyStreamingController.prewarm` fuellt nur noch
+  diesen Loader-Cache und haelt keine zweite Root-Def-Kopie mehr.
 - Topologie-Helfer sind jetzt in einem read-only
   `UniverseTopology`-Helper ueber `UniverseRegistry` gebuendelt statt
   parallel in Bubble-, Renderer- und Testbed-Code verteilt.
@@ -201,6 +216,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   einen kompakten Streaming-Block:
   aktueller Fokus-/Resident-/Prewarm-Zustand plus die letzten
   Streaming-Ereignisse aus dem Controller-Ringbuffer.
+- Dieselbe `F3`-Diagnose liest Thermal-/Environment-Werte dabei nicht
+  mehr still live nach; bei Snapshot-Luecken zeigt sie bewusst `n/a`
+  statt den Frame-Pfad mit verstecktem Derived-Workload zu verfremden.
 - Bodies werden jetzt als 2D-Visuals mit Glow, Orbit-Linien und Trails
   dargestellt.
 - Planet-/Mond-Themes werden nicht mehr blind pro Frame komplett neu
@@ -547,10 +565,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 ## Bekannte offene Punkte
 
 - Schritte 1-4 sind jetzt minimal implementiert; der erste
-  `NUMERIC_LOCAL`-Guardrail ist jetzt ebenfalls eingezogen. Offene
-  Folgearbeit im Regime-Fundament ist damit eher spaeteres Tuning
-  jenseits des aktuellen `Cap+Warn`-Best-Effort-Pfads als ein
-  fehlender Guardrail-Block.
+  `NUMERIC_LOCAL`-Guardrail-Block umfasst jetzt Missing-Request-Grace,
+  Substep-`Cap+Warn` und budgetierten Exit-Rejoin. Offene Folgearbeit
+  im Regime-Fundament ist damit eher spaeteres Tuning der Budgets /
+  Langlauf-Policy als ein fehlender Guardrail-Block.
 - `LocalBubbleManager` liefert jetzt die dokumentierte LCA-/
   praezisionsbewusste Bubble-Komposition fuer same-root-Faelle.
 - `BubbleActivationSet` ist jetzt implementiert, wird im Testbed pro
@@ -621,6 +639,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   per-frame-Derived-Workload jetzt deutlich staerker ueber
   Interest-/Dirty-Tracking, ist aber noch nicht durch einen laengeren
   visuellen Idle-/Playtest im neuen 30-Root-Produktpfad profiliert.
+- `test_orbit_body_visual.gd` gibt seine erzeugten Visual-Nodes jetzt
+  wieder explizit frei; die noch sichtbaren Headless-Exit-Leaks muessen
+  aber erst nach der breiteren lokalen Class-Resolution-/Runner-
+  Stabilisierung erneut gegen den kompletten Testlauf bewertet werden.
 - `pilot_galaxy` bleibt bewusst exakt der kleine 3-Root-Referenzslice;
   `scaleup_galaxy_10` und `scaleup_galaxy_30` sind jetzt die
   produktiven Folgepfade.
