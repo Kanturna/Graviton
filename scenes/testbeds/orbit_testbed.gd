@@ -33,6 +33,7 @@ const ZOOM_FACTOR_STEP: float = 1.12
 @onready var _speed_slider: HSlider = $HudLayer/TopPanel/Margin/VBox/SpeedSlider
 @onready var _mode_value: Label = $HudLayer/TopPanel/Margin/VBox/ModeValue
 @onready var _hint_label: Label = $HudLayer/BottomPanel/Margin/Hints
+@onready var _root_inspector = $HudLayer/RootInspector
 
 var _camera_controller = OrbitCameraControllerScript.new()
 var _time_scale_controller = OrbitTimeScaleControllerScript.new()
@@ -44,6 +45,7 @@ var _focus_index: int = 0
 var _current_galaxy = null
 var _is_large_world: bool = false
 var _last_frame_label: StringName = StringName("")
+var _active_world_scope_id: StringName = StringName("")
 
 
 func _ready() -> void:
@@ -64,6 +66,7 @@ func _ready() -> void:
 			set_process_unhandled_input(false)
 			return
 		_streaming_controller.configure(_current_galaxy, _world_loader, UniverseRegistry, TimeService, _orbit_service)
+		_active_world_scope_id = _current_galaxy.galaxy_id
 		if not _streaming_controller.residency_changed.is_connected(_on_streaming_residency_changed):
 			_streaming_controller.residency_changed.connect(_on_streaming_residency_changed)
 	else:
@@ -73,6 +76,7 @@ func _ready() -> void:
 			set_process_unhandled_input(false)
 			return
 		_orbit_service.recompute_all_at_time(TimeService.sim_time_s)
+		_active_world_scope_id = StringName(initial_world_id)
 
 	_refresh_focus_order()
 	if _focus_order.is_empty():
@@ -100,6 +104,8 @@ func _ready() -> void:
 
 	_renderer.configure(UniverseRegistry, _bubble, _topology)
 	_renderer.set_environment_service(_environment_service)
+	if not _world_loader.world_loaded.is_connected(_on_world_loader_world_loaded):
+		_world_loader.world_loaded.connect(_on_world_loader_world_loaded)
 	_derived_snapshot_cache.configure(
 		UniverseRegistry,
 		TimeService,
@@ -109,6 +115,7 @@ func _ready() -> void:
 		_environment_service,
 		_orbit_service
 	)
+	_configure_root_inspector()
 	_refresh_snapshot_interest_ids()
 	_renderer.set_derived_snapshot_cache(_derived_snapshot_cache)
 	_camera_controller.configure(_renderer, _bubble, UniverseRegistry, _topology)
@@ -199,6 +206,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				if picked_id != StringName(""):
 					_focus_index = maxi(_focus_order.find(picked_id), 0)
 					_set_focus(picked_id)
+					var picked_def: BodyDef = UniverseRegistry.get_def(picked_id)
+					if picked_def != null and picked_def.is_root():
+						_open_root_inspector_for_current_root()
 					get_viewport().set_input_as_handled()
 				elif _is_large_world:
 					var picked_root_id: StringName = _galaxy_proxy_renderer.pick_root_at_screen(event.position)
@@ -207,6 +217,7 @@ func _unhandled_input(event: InputEvent) -> void:
 						_refresh_focus_order()
 						_focus_index = maxi(_focus_order.find(picked_root_id), 0)
 						_set_focus(picked_root_id, true, true)
+						_open_root_inspector_for_current_root()
 						get_viewport().set_input_as_handled()
 			MOUSE_BUTTON_WHEEL_UP:
 				_camera_controller.handle_zoom_multiplier(ZOOM_FACTOR_STEP)
@@ -227,6 +238,7 @@ func _set_focus(body_id: StringName, immediate: bool = false, force_fit: bool = 
 	if body_id == StringName(""):
 		return
 	_camera_controller.set_focus(body_id, false, force_fit)
+	_sync_root_inspector_context(false)
 	_refresh_snapshot_interest_ids()
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
 	if immediate:
@@ -294,21 +306,15 @@ func _refresh_focus_order() -> void:
 func _refresh_snapshot_interest_ids() -> void:
 	if _derived_snapshot_cache == null or _topology == null or _bubble == null:
 		return
+	var focus_id: StringName = _bubble.get_focus()
+	var focus_root_id: StringName = _topology.root_id_of(focus_id)
+	if _is_root_inspector_interest_override_active(focus_root_id):
+		_derived_snapshot_cache.set_interest_ids(_planetary_interest_ids_for_root(focus_root_id))
+		return
 	if _camera_controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW:
 		_derived_snapshot_cache.set_interest_ids([])
 		return
-	var focus_id: StringName = _bubble.get_focus()
-	var focus_root_id: StringName = _topology.root_id_of(focus_id)
-	var interest_ids: Array[StringName] = []
-	for id in UniverseRegistry.get_update_order():
-		var def: BodyDef = UniverseRegistry.get_def(id)
-		if def == null:
-			continue
-		if _topology.root_id_of(id) != focus_root_id:
-			continue
-		if def.kind == BodyType.Kind.PLANET or def.kind == BodyType.Kind.MOON:
-			interest_ids.append(id)
-	_derived_snapshot_cache.set_interest_ids(interest_ids)
+	_derived_snapshot_cache.set_interest_ids(_planetary_interest_ids_for_root(focus_root_id))
 
 
 func _sync_galaxy_proxy_transform() -> void:
@@ -324,6 +330,8 @@ func _on_streaming_residency_changed(_resident_root_ids: Array[StringName], focu
 	if not UniverseRegistry.has_body(_bubble.get_focus()) and UniverseRegistry.has_body(focus_root_id):
 		_focus_index = maxi(_focus_order.find(focus_root_id), 0)
 		_set_focus(focus_root_id, true, true)
+	else:
+		_sync_root_inspector_context(false)
 	_sync_view_lod_state(true, _debug_overlay.visible)
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
 	_sync_galaxy_proxy_transform()
@@ -350,3 +358,75 @@ func _sync_view_lod_state(force_interest_refresh: bool, immediate_debug_refresh:
 	if frame_changed:
 		_debug_overlay.mark_dirty(immediate_debug_refresh)
 	_last_frame_label = frame_label
+
+
+func _configure_root_inspector() -> void:
+	if _root_inspector == null:
+		return
+	_root_inspector.clear_state()
+	_root_inspector.visible = false
+	if not _is_large_world:
+		return
+	_root_inspector.configure(UniverseRegistry, _topology, _derived_snapshot_cache)
+	if not _root_inspector.focus_requested.is_connected(_on_root_inspector_focus_requested):
+		_root_inspector.focus_requested.connect(_on_root_inspector_focus_requested)
+	if not _root_inspector.closed.is_connected(_on_root_inspector_closed):
+		_root_inspector.closed.connect(_on_root_inspector_closed)
+
+
+func _sync_root_inspector_context(auto_open: bool = false) -> void:
+	if not _is_large_world or _root_inspector == null:
+		return
+	var focus_id: StringName = _bubble.get_focus()
+	var focus_root_id: StringName = _topology.root_id_of(focus_id)
+	_root_inspector.set_root_context(focus_root_id, focus_id, auto_open)
+
+
+func _open_root_inspector_for_current_root() -> void:
+	if not _is_large_world or _root_inspector == null:
+		return
+	_sync_root_inspector_context(true)
+	_refresh_snapshot_interest_ids()
+	_debug_overlay.mark_dirty(_debug_overlay.visible)
+
+
+func _planetary_interest_ids_for_root(root_id: StringName) -> Array[StringName]:
+	var interest_ids: Array[StringName] = []
+	if root_id == StringName(""):
+		return interest_ids
+	for id in UniverseRegistry.get_update_order():
+		var def: BodyDef = UniverseRegistry.get_def(id)
+		if def == null:
+			continue
+		if _topology.root_id_of(id) != root_id:
+			continue
+		if def.kind == BodyType.Kind.PLANET or def.kind == BodyType.Kind.MOON:
+			interest_ids.append(id)
+	return interest_ids
+
+
+func _is_root_inspector_interest_override_active(focus_root_id: StringName) -> bool:
+	if not _is_large_world or _root_inspector == null or not _root_inspector.is_open():
+		return false
+	return _camera_controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW \
+		and _root_inspector.get_root_id() == focus_root_id
+
+
+func _on_root_inspector_focus_requested(body_id: StringName) -> void:
+	_focus_index = maxi(_focus_order.find(body_id), 0)
+	_set_focus(body_id)
+
+
+func _on_root_inspector_closed() -> void:
+	_refresh_snapshot_interest_ids()
+	_debug_overlay.mark_dirty(_debug_overlay.visible)
+
+
+func _on_world_loader_world_loaded(world_id: StringName) -> void:
+	if world_id == StringName("") or world_id == _active_world_scope_id:
+		return
+	_active_world_scope_id = world_id
+	if _root_inspector != null:
+		_root_inspector.clear_state()
+	_refresh_snapshot_interest_ids()
+	_debug_overlay.mark_dirty(_debug_overlay.visible)

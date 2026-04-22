@@ -13,12 +13,8 @@ static func format_environment(environment_desc: Dictionary) -> String:
 	if not bool(environment_desc.get(EnvironmentServiceScript.KEY_IS_SUPPORTED_BODY_KIND, false)):
 		return "Environment: n/a"
 	return "Environment: %s   Climate: %s" % [
-		EnvironmentServiceScript.to_string_class(
-			int(environment_desc.get(EnvironmentServiceScript.KEY_ENVIRONMENT_CLASS, EnvironmentServiceScript.Class.HOSTILE))
-		),
-		EnvironmentServiceScript.to_string_ecosystem(
-			int(environment_desc.get(EnvironmentServiceScript.KEY_ECOSYSTEM_TYPE, EnvironmentServiceScript.EcosystemType.FROZEN_WORLD))
-		),
+		_environment_class_text(environment_desc),
+		_ecosystem_text(environment_desc),
 	]
 
 
@@ -46,6 +42,15 @@ static func format_primary_source(thermal_desc: Dictionary) -> String:
 		return "Primary source: none"
 	var source_id: StringName = thermal_desc.get(ThermalServiceScript.KEY_SOURCE_ID, StringName(""))
 	return "Primary source: %s" % [String(source_id)]
+
+
+static func format_inspector_environment_badge(environment_desc: Dictionary) -> String:
+	if not bool(environment_desc.get(EnvironmentServiceScript.KEY_IS_SUPPORTED_BODY_KIND, false)):
+		return "n/a"
+	return "%s / %s" % [
+		_environment_class_text(environment_desc),
+		_ecosystem_text(environment_desc),
+	]
 
 
 static func format_time(sim_time_s: float, tick_count: int, fps: int) -> String:
@@ -81,3 +86,15 @@ static func _zoom_percent_text(zoom_factor: float) -> String:
 	if is_equal_approx(percent, rounded):
 		return "%d%%" % int(rounded)
 	return "%.1f%%" % percent
+
+
+static func _environment_class_text(environment_desc: Dictionary) -> String:
+	return EnvironmentServiceScript.to_string_class(
+		int(environment_desc.get(EnvironmentServiceScript.KEY_ENVIRONMENT_CLASS, EnvironmentServiceScript.Class.HOSTILE))
+	)
+
+
+static func _ecosystem_text(environment_desc: Dictionary) -> String:
+	return EnvironmentServiceScript.to_string_ecosystem(
+		int(environment_desc.get(EnvironmentServiceScript.KEY_ECOSYSTEM_TYPE, EnvironmentServiceScript.EcosystemType.FROZEN_WORLD))
+	)

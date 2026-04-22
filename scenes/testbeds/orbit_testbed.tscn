@@ -12,6 +12,7 @@
 [ext_resource type="Script" uid="uid://cfvw4f7tb8u5f" path="res://src/sim/environment/environment_service.gd" id="10_environment"]
 [ext_resource type="Script" uid="uid://qm1pdtq6eb1n" path="res://src/sim/atmosphere/atmosphere_service.gd" id="11_atmosphere"]
 [ext_resource type="Script" uid="uid://dcxf2ukdedoa1" path="res://src/tools/rendering/galaxy_proxy_renderer.gd" id="12_galaxyproxy"]
+[ext_resource type="Script" path="res://src/tools/ui/root_inspector_overlay.gd" id="13_rootinspector"]
 
 [sub_resource type="StyleBoxFlat" id="1_panel_style"]
 bg_color = Color(0.0352941, 0.0509804, 0.0941176, 0.811765)
@@ -49,7 +50,7 @@ expand_margin_bottom = 8.0
 
 [node name="OrbitTestbed" type="Node2D" unique_id=1632956140]
 script = ExtResource("1_testbed")
-initial_world_id = "scaleup_galaxy_30"
+initial_world_id = "scaleup_galaxy_100"
 
 [node name="OrbitService" type="Node" parent="." unique_id=23357554]
 script = ExtResource("2_orbitsvc")
@@ -196,6 +197,21 @@ theme_override_constants/margin_bottom = 10
 layout_mode = 2
 theme_override_colors/font_color = Color(0.776471, 0.854902, 0.972549, 0.898039)
 text = "Wheel zoom (0.5%-10000%)   Backspace fit focus"
+
+[node name="RootInspector" type="PanelContainer" parent="HudLayer"]
+visible = false
+anchors_preset = 10
+anchor_left = 1.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -440.0
+offset_top = 24.0
+offset_right = -24.0
+offset_bottom = -104.0
+grow_horizontal = 0
+grow_vertical = 2
+script = ExtResource("13_rootinspector")
 
 [node name="DebugOverlay" parent="." unique_id=1282186245 instance=ExtResource("6_overlay")]
 visible = false

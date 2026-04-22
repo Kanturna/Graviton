@@ -1,5 +1,34 @@
 # Graviton - Decisions
 
+## 2026-04-22 - Survey-UX startet als residenter Root-Inspector vor einem globalen Galaxy-Atlas
+
+Die erste Survey-/Navigationsoberflaeche fuer Large Worlds startet nicht
+als globale Liste oder Suchansicht ueber alle Systeme. Stattdessen kommt
+zuerst ein fokussierter Inspector fuer genau den aktuell residenten
+Fokus-Root.
+
+Konsequenz:
+
+- V1 der Survey-UX ist ein `RootInspectorOverlay` fuer den aktuell
+  ausgewaehlten BH-/Root
+- das Panel oeffnet nur bei expliziten Root-Klicks
+  (BH-Proxy oder BH-Body), nicht bei `Home`, `Tab`, `Backspace` oder
+  passiven Residency-Wechseln
+- das Panel zeigt nur residente Daten
+  `BLACK_HOLE -> STAR -> PLANET -> MOON`; es gibt noch keine
+  nichtresidenten Root-Summaries
+- der Inspector bleibt rein view-seitig:
+  Daten kommen aus `UniverseRegistry`, `UniverseTopology` und
+  `DerivedSnapshotCache`; Fokuswechsel laufen weiter ueber
+  `orbit_testbed.gd` als einzige Autoritaet
+- der `ROOT_OVERVIEW`-Performance-Contract bleibt fokus-only, bekommt
+  aber einen expliziten Ausnahmefall:
+  waehrend der Inspector fuer den aktuellen Fokus-Root offen ist, darf
+  das Testbed wieder root-lokales Planet-/Moon-Interest aktivieren,
+  damit Planetentypen und Climate-Badges sofort sichtbar bleiben
+- ein globaler Galaxy-Atlas ueber leichte Root-Summaries ist damit
+  ausdruecklich ein Folgeblock, nicht Teil dieser ersten Inspector-Stufe
+
 ## 2026-04-22 - 100-Root-Scale-up bleibt ein Catalog-/Proxy-Schritt statt ein Residency-Rewrite
 
 Der Schritt von 30 auf 100 Roots wird nicht ueber mehr geladene

@@ -12,7 +12,9 @@ Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und
 100-Root-Galaxien mit Proxy-Layer, Streaming, deterministischem
 Catalog-Builder und inkrementellen Runtime-Hotpath-Fixes fuer Bubble-,
-Derived- und Proxy-/Neighbor-Arbeit.
+Derived- und Proxy-/Neighbor-Arbeit. Darauf sitzt jetzt zusaetzlich
+ein erster fokussierter Survey-UX-Slice als Root-Inspector fuer
+residente BH-Systeme.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -196,6 +198,28 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   im `ROOT_OVERVIEW` bleibt Derived-Interesse fokus-only, waehrend
   Detailansichten weiter ihr root-lokales Planet-/Moon-Interest
   behalten.
+- Large-World-Testbeds haben jetzt rechts angedockt einen ersten
+  `RootInspectorOverlay`:
+  ein expliziter BH-Proxy- oder BH-Body-Klick oeffnet fuer den aktuell
+  residenten Fokus-Root ein read-only Hierarchiepanel
+  `BLACK_HOLE -> STAR -> PLANET -> MOON`.
+- Der neue `RootInspectorModelBuilder` baut diese Hierarchie rein
+  view-seitig aus `UniverseRegistry`, `UniverseTopology` und
+  `DerivedSnapshotCache`; V1 fuehrt noch keinen globalen Atlas und keine
+  nichtresidenten Root-Summaries ein.
+- `OrbitHudFormatter` stellt jetzt zusaetzlich kleine wiederverwendbare
+  Inspector-Badges fuer Environment-/Climate-Texte bereit, statt die
+  Mapping-Logik in Overlay und HUD zu duplizieren.
+- `orbit_testbed.gd` bleibt die einzige Controller-Stelle fuer den
+  Inspector:
+  explizite Root-Klicks oeffnen ihn, normale Fokuswechsel oder passive
+  Residency-Wechsel nicht.
+- Der `ROOT_OVERVIEW`-Performance-Contract bleibt ausserhalb des
+  offenen Inspectors unveraendert fokus-only.
+  Als dokumentierter Ausnahmefall darf ein offener Inspector fuer genau
+  den aktuell inspizierten Fokus-Root wieder root-lokales
+  Planet-/Moon-Interest aktivieren, damit Planetentypen und Climate-
+  Badges sofort sichtbar bleiben.
 - `GalaxyProxyRenderer` arbeitet jetzt auch view-seitig mit Tiering:
   entfernte Roots sind erst BH-only-Proxies; Stern-Proxies kommen erst
   oberhalb einer projizierten Root-Groesse mit eigener 96/80-px-
@@ -207,6 +231,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   exponieren jetzt kleine read-only Debug-Snapshots/Counter, damit
   Compose-/Trail-Arbeit, Proxy-Tiering und Overlay-Refreshes in Tests
   strukturell statt nur ueber FPS-Gefuehl gepinnt werden koennen.
+- Neue Tests pinnen jetzt zusaetzlich den Root-Inspector ueber drei
+  Ebenen:
+  Formatter-/Badge-Regressionen, ModelBuilder-/Overlay-Hierarchie und
+  die Testbed-Controller-Regeln fuer explizites Oeffnen,
+  Interest-Override und Reset bei Welt-Wechsel.
 - `INACTIVE_NO_LCA` bleibt fuer legitime Cross-Root-Faelle sichtbar,
   loggt aber jetzt als Warning statt als Fehler.
 - `TimeService` und `UniverseRegistry` bleiben die einzigen
@@ -219,7 +248,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist wieder reproduzierbar: direkter
   `godot_console.exe --headless ...`-Aufruf und `run_tests.bat` laufen
-  auf `main` jetzt mit `1896` erfolgreichen Assertions bei `0`
+  auf `main` jetzt mit `7241` erfolgreichen Assertions bei `0`
   Failures.
 
 ### Aktuelle Praesentation

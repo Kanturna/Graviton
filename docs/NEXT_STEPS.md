@@ -2,7 +2,51 @@
 
 Stand: 2026-04-22
 
-## Prioritaet 0 - 100-Root Playtest Gate
+## Prioritaet 0 - Root-Inspector Acceptance Gate
+
+Ziel:
+Den neuen `RootInspectorOverlay` im echten Editor-Lauf gegen
+`scaleup_galaxy_30` und `scaleup_galaxy_100` validieren, bevor ein
+groesserer Galaxy-Atlas oder weitere Survey-UX dazukommen.
+
+Konkreter Ablauf:
+
+- `orbit_testbed.tscn` im Editor oeffnen
+- `initial_world_id` nacheinander auf `scaleup_galaxy_30` und
+  `scaleup_galaxy_100` setzen
+- in beiden Welten gezielt dieselben Faelle pruefen:
+  - `ROOT_OVERVIEW`, Inspector zu
+  - `ROOT_OVERVIEW`, Inspector offen
+  - Detailblick nach Fokus auf Stern / Planet / Mond
+- dabei bewusst auf diese Punkte achten:
+  - BH-Proxy-Klick und BH-Body-Klick oeffnen den Inspector
+  - `Home`, `Tab`, `Backspace` und passive Residency-Wechsel oeffnen ihn
+    nicht
+  - der Inspector zeigt fuer den residenten Fokus-Root sauber
+    `BH -> stars -> planets -> moons`
+  - Planet-/Moon-Zeilen zeigen im offenen Inspector sofort
+    Environment-/Climate-Badges statt `n/a`, solange derselbe Root
+    inspiziert wird
+  - Klick auf eine Inspector-Zeile routed ueber den normalen Fokuspfad
+  - nach Close geht `ROOT_OVERVIEW` wieder auf den billigeren
+    fokus-only-Interest-Pfad zurueck
+  - speziell auf `scaleup_galaxy_100`: `ROOT_OVERVIEW + Inspector offen`
+    bleibt weiter ruhig und interaktiv
+
+Wenn der Playtest sauber ist:
+
+- danach als naechster UX-Block ein echter Galaxy-Atlas ueber leichte
+  Root-Summaries fuer nichtresidente Systeme
+- oder alternativ wieder Proxy-/Derived-Arbeit, falls der Inspector
+  noch keine groessere Survey-Oberflaeche braucht
+
+Wenn der Playtest kippt:
+
+- keinen Atlas-Block anfangen
+- stattdessen einen kleinen Korrekturblock direkt aus Inspector-,
+  Focus- oder Interest-Befunden schneiden
+
+## Prioritaet 1 - 100-Root Playtest Gate
 
 Ziel:
 Den neuen produktiven `scaleup_galaxy_100`-Pfad im Editor gegen den
@@ -67,7 +111,7 @@ Erledigt:
   umgestellt
 - Test-Baseline wieder als verlaessliche Basis hergestellt
 
-## Prioritaet 1 - Foundation Phase A: Step 2 Bubble / Frame-Modell - erledigt
+## Prioritaet 2 - Foundation Phase A: Step 2 Bubble / Frame-Modell - erledigt
 
 Ziel:
 Den `LocalBubbleManager` vom frueheren Fokus-Subtraktionsmodell auf das
