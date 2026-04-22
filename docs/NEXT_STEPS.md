@@ -837,6 +837,13 @@ Konkreter Arbeitsblock:
   bleibt:
   Neighbor-/Prewarm-Wechsel, Keepalive, Fokus-Ping-Pong und
   Root-Wechsel ueber mehrere `shade_*`-Kandidaten
+- dabei jetzt zusaetzlich gegenpruefen, dass generierte Root-Systeme
+  im Detailblick wirklich auf derselben `obsidian`-Baseline lesen:
+  gleiche BH-Stern-Skalierung, vergleichbarer System-Footprint und kein
+  sichtbarer Sprung zwischen `obsidian` und `shade_*`
+- dabei speziell bestaetigen, dass die jetzt normalisierte planetare
+  Generator-Skala keine scheinbar BH-nahen Planetenausreisser oder
+  rootweit kollidierenden Orbitbilder mehr erzeugt
 - dabei das bestehende `F3`-Streaming-Overlay mit
   `desired_neighbor_root_id`, `resident_neighbor_root_id`,
   `prewarm_root_id`, Keepalive-Restzeit und Ringbuffer mitlaufen lassen
@@ -856,6 +863,8 @@ Erfolgskriterium:
 
 - `scaleup_galaxy_30` liest sich weiterhin als kontinuierlicher Fokus-/
   Scale-Pfad und nicht wie Root-Chunks oder versteckte Sektoren
+- die neue screen-stabile Proxy-Groesse macht entfernte BH-/Sternsysteme
+  jetzt klar genug sichtbar, ohne den Root-Ueberblick zu ueberladen
 - danach entscheiden, ob der naechste Block eher Layout-/Polish fuer die
   30-Root-Welt oder planetare Proxy-/Derived-Folgearbeit wird
 

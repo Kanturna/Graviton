@@ -1,17 +1,17 @@
-[gd_scene load_steps=16 format=3 uid="uid://atraxistestbed01"]
+[gd_scene format=3 uid="uid://cmdaj66pj21ma"]
 
-[ext_resource type="Script" path="res://scenes/testbeds/orbit_testbed.gd" id="1_testbed"]
-[ext_resource type="Script" path="res://src/sim/orbit/orbit_service.gd" id="2_orbitsvc"]
-[ext_resource type="Script" path="res://src/runtime/local_bubble/local_bubble_manager.gd" id="3_bubble"]
-[ext_resource type="Script" path="res://src/tools/rendering/orbit_view_renderer.gd" id="4_renderer"]
-[ext_resource type="Script" path="res://src/tools/rendering/space_backdrop.gd" id="5_backdrop"]
-[ext_resource type="PackedScene" uid="uid://bxdebugoverlay001" path="res://src/tools/debug/debug_overlay.tscn" id="6_overlay"]
-[ext_resource type="Script" path="res://src/sim/world/world_loader.gd" id="7_worldloader"]
-[ext_resource type="Script" path="res://src/runtime/local_bubble/bubble_activation_set.gd" id="8_activation"]
-[ext_resource type="Script" path="res://src/sim/thermal/thermal_service.gd" id="9_thermal"]
-[ext_resource type="Script" path="res://src/sim/environment/environment_service.gd" id="10_environment"]
-[ext_resource type="Script" path="res://src/sim/atmosphere/atmosphere_service.gd" id="11_atmosphere"]
-[ext_resource type="Script" path="res://src/tools/rendering/galaxy_proxy_renderer.gd" id="12_galaxyproxy"]
+[ext_resource type="Script" uid="uid://b4ykab31pyfw4" path="res://scenes/testbeds/orbit_testbed.gd" id="1_testbed"]
+[ext_resource type="Script" uid="uid://de11llljxy55a" path="res://src/sim/orbit/orbit_service.gd" id="2_orbitsvc"]
+[ext_resource type="Script" uid="uid://bwwr4cem38upv" path="res://src/runtime/local_bubble/local_bubble_manager.gd" id="3_bubble"]
+[ext_resource type="Script" uid="uid://dc2eere31cm1r" path="res://src/tools/rendering/orbit_view_renderer.gd" id="4_renderer"]
+[ext_resource type="Script" uid="uid://balk3pfemyysl" path="res://src/tools/rendering/space_backdrop.gd" id="5_backdrop"]
+[ext_resource type="PackedScene" uid="uid://dyjvthe156cei" path="res://src/tools/debug/debug_overlay.tscn" id="6_overlay"]
+[ext_resource type="Script" uid="uid://bohyauoxpqu0p" path="res://src/sim/world/world_loader.gd" id="7_worldloader"]
+[ext_resource type="Script" uid="uid://dm7lbsk68a1hv" path="res://src/runtime/local_bubble/bubble_activation_set.gd" id="8_activation"]
+[ext_resource type="Script" uid="uid://b3p5ergtten6v" path="res://src/sim/thermal/thermal_service.gd" id="9_thermal"]
+[ext_resource type="Script" uid="uid://cfvw4f7tb8u5f" path="res://src/sim/environment/environment_service.gd" id="10_environment"]
+[ext_resource type="Script" uid="uid://qm1pdtq6eb1n" path="res://src/sim/atmosphere/atmosphere_service.gd" id="11_atmosphere"]
+[ext_resource type="Script" uid="uid://dcxf2ukdedoa1" path="res://src/tools/rendering/galaxy_proxy_renderer.gd" id="12_galaxyproxy"]
 
 [sub_resource type="StyleBoxFlat" id="1_panel_style"]
 bg_color = Color(0.0352941, 0.0509804, 0.0941176, 0.811765)
@@ -47,131 +47,132 @@ expand_margin_top = 8.0
 expand_margin_right = 8.0
 expand_margin_bottom = 8.0
 
-[node name="OrbitTestbed" type="Node2D"]
+[node name="OrbitTestbed" type="Node2D" unique_id=1632956140]
 script = ExtResource("1_testbed")
+initial_world_id = "scaleup_galaxy_30"
 
-[node name="OrbitService" type="Node" parent="."]
+[node name="OrbitService" type="Node" parent="." unique_id=23357554]
 script = ExtResource("2_orbitsvc")
 
-[node name="WorldLoader" type="Node" parent="."]
+[node name="WorldLoader" type="Node" parent="." unique_id=16680242]
 script = ExtResource("7_worldloader")
 
-[node name="LocalBubbleManager" type="Node" parent="."]
+[node name="LocalBubbleManager" type="Node" parent="." unique_id=43796001]
 script = ExtResource("3_bubble")
 
-[node name="BubbleActivationSet" type="Node" parent="."]
+[node name="BubbleActivationSet" type="Node" parent="." unique_id=327488893]
 script = ExtResource("8_activation")
 
-[node name="ThermalService" type="Node" parent="."]
+[node name="ThermalService" type="Node" parent="." unique_id=98551871]
 script = ExtResource("9_thermal")
 
-[node name="AtmosphereService" type="Node" parent="."]
+[node name="AtmosphereService" type="Node" parent="." unique_id=2009187548]
 script = ExtResource("11_atmosphere")
 
-[node name="EnvironmentService" type="Node" parent="."]
+[node name="EnvironmentService" type="Node" parent="." unique_id=1398257023]
 script = ExtResource("10_environment")
 
-[node name="BackdropLayer" type="CanvasLayer" parent="."]
+[node name="BackdropLayer" type="CanvasLayer" parent="." unique_id=1337208041]
 layer = -20
 
-[node name="Backdrop" type="Control" parent="BackdropLayer"]
+[node name="Backdrop" type="Control" parent="BackdropLayer" unique_id=408026085]
+layout_mode = 3
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_right = 0.0
-offset_bottom = 0.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("5_backdrop")
 
-[node name="WorldRoot" type="Node2D" parent="."]
+[node name="WorldRoot" type="Node2D" parent="." unique_id=1588850280]
 script = ExtResource("4_renderer")
 
-[node name="OrbitLayer" type="Node2D" parent="WorldRoot"]
+[node name="OrbitLayer" type="Node2D" parent="WorldRoot" unique_id=876814813]
 
-[node name="TrailLayer" type="Node2D" parent="WorldRoot"]
+[node name="TrailLayer" type="Node2D" parent="WorldRoot" unique_id=1804430234]
 
-[node name="BodyLayer" type="Node2D" parent="WorldRoot"]
+[node name="BodyLayer" type="Node2D" parent="WorldRoot" unique_id=1259284635]
 
-[node name="GalaxyProxyRoot" type="Node2D" parent="."]
+[node name="GalaxyProxyRoot" type="Node2D" parent="." unique_id=1964328916]
 script = ExtResource("12_galaxyproxy")
 
-[node name="HudLayer" type="CanvasLayer" parent="."]
+[node name="HudLayer" type="CanvasLayer" parent="." unique_id=1193541704]
 layer = 20
 
-[node name="TopPanel" type="PanelContainer" parent="HudLayer"]
+[node name="TopPanel" type="PanelContainer" parent="HudLayer" unique_id=1320243966]
 offset_left = 24.0
 offset_top = 24.0
 offset_right = 476.0
 offset_bottom = 286.0
 theme_override_styles/panel = SubResource("1_panel_style")
 
-[node name="Margin" type="MarginContainer" parent="HudLayer/TopPanel"]
+[node name="Margin" type="MarginContainer" parent="HudLayer/TopPanel" unique_id=398651009]
 layout_mode = 2
 theme_override_constants/margin_left = 18
 theme_override_constants/margin_top = 14
 theme_override_constants/margin_right = 18
 theme_override_constants/margin_bottom = 14
 
-[node name="VBox" type="VBoxContainer" parent="HudLayer/TopPanel/Margin"]
+[node name="VBox" type="VBoxContainer" parent="HudLayer/TopPanel/Margin" unique_id=1067594388]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Title" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
+[node name="Title" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=326840178]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.937255, 0.968627, 1, 1)
 theme_override_font_sizes/font_size = 22
 text = "Graviton"
 
-[node name="Subtitle" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
-layout_mode = 2
+[node name="Subtitle" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=1186218379]
 visible = false
+layout_mode = 2
 theme_override_colors/font_color = Color(0.654902, 0.772549, 0.937255, 0.784314)
 text = "Stylized Orbit View"
 
-[node name="FocusValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
+[node name="FocusValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=292892084]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 theme_override_font_sizes/font_size = 16
 text = "Focus:"
 
-[node name="EnvironmentValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
+[node name="EnvironmentValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=555378987]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 text = "Environment: n/a"
 
-[node name="ClimateValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
+[node name="ClimateValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=1348875665]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 text = "Bands: n/a"
 
-[node name="SeasonValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
+[node name="SeasonValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=715198920]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 text = "Season: n/a"
 
-[node name="TimeValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
+[node name="TimeValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=1744590320]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 text = "T+ 0.00 d"
 
-[node name="ScaleValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
+[node name="ScaleValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=1123534186]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 text = "Speed x1"
 
-[node name="SpeedSlider" type="HSlider" parent="HudLayer/TopPanel/Margin/VBox"]
+[node name="SpeedSlider" type="HSlider" parent="HudLayer/TopPanel/Margin/VBox" unique_id=992072737]
 custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
 size_flags_horizontal = 3
 step = 0.001
 
-[node name="ModeValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
+[node name="ModeValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=1368012465]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 text = "Bodies 0"
 
-[node name="BottomPanel" type="PanelContainer" parent="HudLayer"]
+[node name="BottomPanel" type="PanelContainer" parent="HudLayer" unique_id=1558414037]
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
@@ -184,17 +185,17 @@ grow_horizontal = 2
 grow_vertical = 0
 theme_override_styles/panel = SubResource("2_chip_style")
 
-[node name="Margin" type="MarginContainer" parent="HudLayer/BottomPanel"]
+[node name="Margin" type="MarginContainer" parent="HudLayer/BottomPanel" unique_id=293675833]
 layout_mode = 2
 theme_override_constants/margin_left = 16
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 16
 theme_override_constants/margin_bottom = 10
 
-[node name="Hints" type="Label" parent="HudLayer/BottomPanel/Margin"]
+[node name="Hints" type="Label" parent="HudLayer/BottomPanel/Margin" unique_id=1587224714]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.776471, 0.854902, 0.972549, 0.898039)
 text = "Wheel zoom (0.5%-10000%)   Backspace fit focus"
 
-[node name="DebugOverlay" parent="." instance=ExtResource("6_overlay")]
+[node name="DebugOverlay" parent="." unique_id=1282186245 instance=ExtResource("6_overlay")]
 visible = false

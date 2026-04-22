@@ -9,8 +9,10 @@ const UniverseTopologyScript = preload("res://src/sim/topology/universe_topology
 const StressGalaxyFactoryScript = preload("res://src/tests/helpers/stress_galaxy_factory.gd")
 const ScaleupGalaxyCatalogFactoryScript = preload("res://src/sim/world/scaleup_galaxy_catalog_factory.gd")
 const GeneratedScaleupRootFactoryScript = preload("res://src/sim/world/generated_scaleup_root_factory.gd")
+const GeneratedRootManifestFactoryScript = preload("res://src/sim/world/generated_root_manifest_factory.gd")
+const RootSystemGeneratorScript = preload("res://src/sim/world/root_system_generator.gd")
 
-const SCALEUP_GALAXY_10_CONTENT_SIGNATURE_SHA256: String = "e5ee3fb66d4766f9b7fe47df311a9476f0c4537f6276a5b14dacc3e50b1e4483"
+const SCALEUP_GALAXY_10_CONTENT_SIGNATURE_SHA256: String = "07f9964968d845d8cd684637c44c153b240a8408b35304396e9a83cb5252bd9d"
 
 
 class BubbleProbe:
@@ -34,6 +36,8 @@ static func run(ctx) -> void:
 	_test_focus_ping_pong_keeps_old_focus_resident_when_qualified(ctx)
 	_test_proxy_detail_handoff_matches_position_and_velocity(ctx)
 	_test_stress_and_pilot_share_manifest_defs_signature(ctx)
+	_test_generated_roots_use_obsidian_root_standard(ctx)
+	_test_generated_root_planets_use_obsidian_local_scale(ctx)
 	_test_scaleup_galaxy_extra_roots_share_stress_prefix(ctx)
 	_test_scaleup_galaxy_10_content_signature_is_pinned(ctx)
 	_test_scaleup_galaxy_30_matches_stress_catalog_for_all_roots(ctx)
@@ -263,6 +267,72 @@ static func _test_stress_and_pilot_share_manifest_defs_signature(ctx) -> void:
 	var pilot_defs: Array[BodyDef] = loader.build_defs_for_root_manifest(pilot_manifest)
 	var stress_defs: Array[BodyDef] = loader.build_defs_for_root_manifest(stress_manifest)
 	ctx.assert_true(_defs_signature(pilot_defs) == _defs_signature(stress_defs), "gemeinsam uebernommener Pilot-Root bleibt ueber dieselbe Produktiv-Pipeline bit-identisch")
+
+	loader.free()
+
+
+static func _test_generated_roots_use_obsidian_root_standard(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var pilot_galaxy = loader.load_named_galaxy(&"pilot_galaxy")
+	var hero_manifest = pilot_galaxy.get_manifest(&"obsidian")
+	ctx.assert_true(hero_manifest != null, "Hero-Root obsidian existiert fuer den Root-Standard-Vergleich")
+
+	for root_id in [&"onyx", &"umbra", &"shade_01", &"shade_07"]:
+		var manifest = null
+		if String(root_id).begins_with("shade_"):
+			manifest = GeneratedScaleupRootFactoryScript.build_manifest_for_ordinal(int(String(root_id).trim_prefix("shade_")))
+		else:
+			manifest = pilot_galaxy.get_manifest(root_id)
+		ctx.assert_true(manifest != null, "Generated Root %s existiert fuer den Obsidian-Standard-Vergleich" % String(root_id))
+		ctx.assert_true(
+			is_equal_approx(float(manifest.system_extent_m), float(hero_manifest.system_extent_m)),
+			"Generated Root %s nutzt denselben system_extent wie obsidian" % String(root_id)
+		)
+		ctx.assert_true(
+			manifest.star_manifests.size() == GeneratedRootManifestFactoryScript.STANDARD_STAR_ORBIT_RADII_M.size(),
+			"Generated Root %s nutzt dieselbe Standard-Sternanzahl wie obsidian" % String(root_id)
+		)
+		for star_index in range(manifest.star_manifests.size()):
+			var generated_star_manifest = manifest.star_manifests[star_index]
+			ctx.assert_true(
+				is_equal_approx(
+					float(generated_star_manifest.orbit_radius_m),
+					float(GeneratedRootManifestFactoryScript.STANDARD_STAR_ORBIT_RADII_M[star_index])
+				),
+				"Generated Root %s nutzt auf Lane %d denselben Orbit-Radius wie der Obsidian-Standard" % [String(root_id), star_index]
+			)
+			ctx.assert_true(
+				is_equal_approx(
+					float(generated_star_manifest.orbit_period_s),
+					float(GeneratedRootManifestFactoryScript.STANDARD_STAR_ORBIT_PERIODS_S[star_index])
+				),
+				"Generated Root %s nutzt auf Lane %d denselben Orbit-Periodenstandard wie obsidian" % [String(root_id), star_index]
+			)
+
+	loader.free()
+
+
+static func _test_generated_root_planets_use_obsidian_local_scale(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var pilot_galaxy = loader.load_named_galaxy(&"pilot_galaxy")
+	for root_id in [&"onyx", &"umbra", &"shade_01", &"shade_07"]:
+		var manifest = null
+		if String(root_id).begins_with("shade_"):
+			manifest = GeneratedScaleupRootFactoryScript.build_manifest_for_ordinal(int(String(root_id).trim_prefix("shade_")))
+		else:
+			manifest = pilot_galaxy.get_manifest(root_id)
+		var defs: Array[BodyDef] = loader.build_defs_for_root_manifest(manifest)
+		for def in defs:
+			if def == null or def.kind != BodyType.Kind.PLANET or def.orbit_profile == null:
+				continue
+			ctx.assert_true(
+				def.orbit_profile.semi_major_axis_m >= RootSystemGeneratorScript.STANDARD_PLANET_START_AXIS_MIN_M,
+				"Generated Root %s haelt planetare Innenbahnen auf Obsidian-Skala" % String(root_id)
+			)
+			ctx.assert_true(
+				def.orbit_profile.semi_major_axis_m <= RootSystemGeneratorScript.STANDARD_PLANET_AXIS_MAX_M,
+				"Generated Root %s laesst Planeten nicht mehr bis in root-nahe Ausreisserbahnen wachsen" % String(root_id)
+			)
 
 	loader.free()
 

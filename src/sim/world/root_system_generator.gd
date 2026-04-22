@@ -1,6 +1,12 @@
 class_name RootSystemGenerator
 extends RefCounted
 
+const STANDARD_PLANET_START_AXIS_MIN_M: float = 1.4e9
+const STANDARD_PLANET_START_AXIS_MAX_M: float = 2.1e9
+const STANDARD_PLANET_AXIS_GROWTH_MIN: float = 1.55
+const STANDARD_PLANET_AXIS_GROWTH_MAX: float = 1.85
+const STANDARD_PLANET_AXIS_MAX_M: float = 9.5e9
+
 
 static func build_root_defs(manifest) -> Array[BodyDef]:
 	var out: Array[BodyDef] = []
@@ -61,13 +67,11 @@ static func _build_planet_defs(
 		rng: RandomNumberGenerator
 	) -> Array[BodyDef]:
 	var out: Array[BodyDef] = []
-	var luminosity_scale: float = clampf(
-		star_manifest.luminosity_w / maxf(UnitSystem.SOLAR_LUMINOSITY_W, 1.0),
-		0.15,
-		6.0
-	)
-	var current_axis_m: float = rng.randf_range(0.18, 0.34) * UnitSystem.AU_M * sqrt(luminosity_scale)
 	var planet_count: int = star_manifest.planet_count if star_manifest.planet_count > 0 else rng.randi_range(2, 5)
+	var current_axis_m: float = rng.randf_range(
+		STANDARD_PLANET_START_AXIS_MIN_M,
+		STANDARD_PLANET_START_AXIS_MAX_M
+	)
 
 	for planet_index in range(planet_count):
 		var planet_id: StringName = StringName("%s_p%d" % [String(star_manifest.id), planet_index + 1])
@@ -101,7 +105,8 @@ static func _build_planet_defs(
 		if rng.randf() < 0.42:
 			out.append(_build_moon_def(planet_id, planet_display_name, rng))
 
-		current_axis_m *= rng.randf_range(1.42, 1.96)
+		current_axis_m *= rng.randf_range(STANDARD_PLANET_AXIS_GROWTH_MIN, STANDARD_PLANET_AXIS_GROWTH_MAX)
+		current_axis_m = minf(current_axis_m, STANDARD_PLANET_AXIS_MAX_M)
 
 	return out
 

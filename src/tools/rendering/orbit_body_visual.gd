@@ -24,6 +24,13 @@ const _STAR_HALO_OUTER_RADIUS: float = 23.2
 const _STAR_HALO_OUTER_COLOR: Color = Color(1.0, 0.42, 0.16, 0.018)
 const _STAR_HALO_BREATH_FREQ_RAD_PER_S: float = 0.28
 const _STAR_HALO_BREATH_AMPLITUDE: float = 0.10
+const _BLACK_HOLE_OUTER_GLOW_RADIUS_PX: float = 32.0
+const _BLACK_HOLE_MID_GLOW_RADIUS_PX: float = 26.0
+const _BLACK_HOLE_INNER_GLOW_RADIUS_PX: float = 18.0
+const _BLACK_HOLE_RING_RADIUS_PX: float = 13.0
+const _BLACK_HOLE_RING_WIDTH_PX: float = 2.4
+const _BLACK_HOLE_CORE_RADIUS_PX: float = 8.2
+const _BLACK_HOLE_CENTER_GLOW_RADIUS_PX: float = 3.0
 static var _TEXTURE_CACHE: Dictionary = {}
 static var _WHITE_PIXEL_TEXTURE: Texture2D = null
 static var _TRANSPARENT_PIXEL_TEXTURE: Texture2D = null
@@ -169,14 +176,24 @@ func _on_overlay_draw() -> void:
 
 
 func _draw_black_hole() -> void:
-	draw_circle(Vector2.ZERO, 32.0, Color(0.40, 0.12, 0.56, 0.04))
-	draw_circle(Vector2.ZERO, 26.0, Color(0.45, 0.18, 0.62, 0.08))
-	draw_circle(Vector2.ZERO, 18.0, Color(0.28, 0.10, 0.42, 0.12))
-	draw_arc(Vector2.ZERO, 13.0, 0.0, TAU, 72, Color(0.84, 0.48, 1.0, 0.58), 2.4, true)
+	var spec: Dictionary = black_hole_base_visual_spec()
+	draw_circle(Vector2.ZERO, float(spec.get("outer_glow_radius_px", _BLACK_HOLE_OUTER_GLOW_RADIUS_PX)), spec.get("outer_glow_color", Color(0.40, 0.12, 0.56, 0.04)))
+	draw_circle(Vector2.ZERO, float(spec.get("mid_glow_radius_px", _BLACK_HOLE_MID_GLOW_RADIUS_PX)), spec.get("mid_glow_color", Color(0.45, 0.18, 0.62, 0.08)))
+	draw_circle(Vector2.ZERO, float(spec.get("inner_glow_radius_px", _BLACK_HOLE_INNER_GLOW_RADIUS_PX)), spec.get("inner_glow_color", Color(0.28, 0.10, 0.42, 0.12)))
+	draw_arc(
+		Vector2.ZERO,
+		float(spec.get("ring_radius_px", _BLACK_HOLE_RING_RADIUS_PX)),
+		0.0,
+		TAU,
+		72,
+		spec.get("ring_color", Color(0.84, 0.48, 1.0, 0.58)),
+		float(spec.get("ring_width_px", _BLACK_HOLE_RING_WIDTH_PX)),
+		true
+	)
 	if _detail_factor > 1.25:
 		draw_arc(Vector2.ZERO, 15.5, -0.55, 1.15, 28, Color(0.98, 0.78, 0.52, 0.20), 1.4, true)
-	draw_circle(Vector2.ZERO, 8.2, Color(0.05, 0.04, 0.09, 1.0))
-	draw_circle(Vector2.ZERO, 3.0, Color(0.72, 0.34, 0.88, 0.18))
+	draw_circle(Vector2.ZERO, float(spec.get("core_radius_px", _BLACK_HOLE_CORE_RADIUS_PX)), spec.get("core_color", Color(0.05, 0.04, 0.09, 1.0)))
+	draw_circle(Vector2.ZERO, float(spec.get("center_glow_radius_px", _BLACK_HOLE_CENTER_GLOW_RADIUS_PX)), spec.get("center_glow_color", Color(0.72, 0.34, 0.88, 0.18)))
 
 
 func _draw_planet_glow() -> void:
@@ -704,3 +721,21 @@ static func _theme_signature_for(theme) -> String:
 
 static func _float_signature(value: float) -> String:
 	return "%.6f" % value
+
+
+static func black_hole_base_visual_spec() -> Dictionary:
+	return {
+		"outer_glow_radius_px": _BLACK_HOLE_OUTER_GLOW_RADIUS_PX,
+		"outer_glow_color": Color(0.40, 0.12, 0.56, 0.04),
+		"mid_glow_radius_px": _BLACK_HOLE_MID_GLOW_RADIUS_PX,
+		"mid_glow_color": Color(0.45, 0.18, 0.62, 0.08),
+		"inner_glow_radius_px": _BLACK_HOLE_INNER_GLOW_RADIUS_PX,
+		"inner_glow_color": Color(0.28, 0.10, 0.42, 0.12),
+		"ring_radius_px": _BLACK_HOLE_RING_RADIUS_PX,
+		"ring_color": Color(0.84, 0.48, 1.0, 0.58),
+		"ring_width_px": _BLACK_HOLE_RING_WIDTH_PX,
+		"core_radius_px": _BLACK_HOLE_CORE_RADIUS_PX,
+		"core_color": Color(0.05, 0.04, 0.09, 1.0),
+		"center_glow_radius_px": _BLACK_HOLE_CENTER_GLOW_RADIUS_PX,
+		"center_glow_color": Color(0.72, 0.34, 0.88, 0.18),
+	}

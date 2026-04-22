@@ -3,6 +3,7 @@ extends RefCounted
 
 
 const GalaxyDefScript := preload("res://src/sim/world/galaxy_def.gd")
+const GeneratedRootManifestFactoryScript := preload("res://src/sim/world/generated_root_manifest_factory.gd")
 const RootSystemManifestScript := preload("res://src/sim/world/root_system_manifest.gd")
 const RootStarManifestScript := preload("res://src/sim/world/root_star_manifest.gd")
 
@@ -49,46 +50,7 @@ static func _build_generated_manifest(
 		seed: int,
 		galaxy_position_m: Vector3
 	):
-	var rng := RandomNumberGenerator.new()
-	rng.seed = seed
-
-	var manifest = RootSystemManifestScript.new()
-	manifest.root_id = root_id
-	manifest.display_name = display_name
-	manifest.galaxy_position_m = galaxy_position_m
-	manifest.seed = seed
-	manifest.root_mass_kg = rng.randf_range(0.9, 2.1) * 2.0e33
-	manifest.root_radius_m = rng.randf_range(0.85, 1.25) * 3.0e9
-
-	var star_count: int = rng.randi_range(4, 6)
-	var current_radius_m: float = rng.randf_range(1.7e11, 2.2e11)
-	var max_radius_m: float = 0.0
-	for star_index in range(star_count):
-		var star_id: StringName = StringName("%s_%s" % [String(root_id), _star_suffix(star_index)])
-		var star_display_name: String = "%s %s" % [display_name, _star_suffix(star_index).to_upper()]
-		var star_mass_scale: float = rng.randf_range(0.18, 3.9)
-		var star_radius_m: float = 1.9e8 * lerpf(0.75, 4.0, clampf(star_mass_scale / 4.0, 0.0, 1.0))
-		var rotation_period_s: float = rng.randf_range(14.0, 34.0) * UnitSystem.DAY_S
-		var luminosity_scale: float = pow(maxf(star_mass_scale, 0.18), 3.15)
-		var orbit_period_s: float = rng.randf_range(4.5e4, 1.55e5)
-		var orbit_phase_rad: float = rng.randf_range(0.0, TAU)
-		var planet_count: int = rng.randi_range(2, 5)
-		manifest.star_manifests.append(_make_star_manifest(
-			star_id,
-			star_display_name,
-			star_mass_scale,
-			star_radius_m,
-			rotation_period_s,
-			luminosity_scale,
-			current_radius_m,
-			orbit_period_s,
-			orbit_phase_rad,
-			planet_count
-		))
-		max_radius_m = maxf(max_radius_m, current_radius_m)
-		current_radius_m *= rng.randf_range(1.28, 1.52)
-	manifest.system_extent_m = max_radius_m * 1.18
-	return manifest
+	return GeneratedRootManifestFactoryScript.build_manifest(root_id, display_name, seed, galaxy_position_m)
 
 
 static func _make_star_manifest(

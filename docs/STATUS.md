@@ -127,6 +127,16 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `ScaleupGalaxyCatalogFactory`-Builder in `src/sim/world/`;
   `StressGalaxyFactory` ist dadurch nur noch duennes Test-Wrapper-
   Stueck ueber denselben Produktpfad.
+- Generierte Root-Systeme sind jetzt bewusst auf den
+  `obsidian`-/`starter_world`-Rootstandard normalisiert:
+  dieselbe Sternanzahl, dieselben BH-Stern-Orbit-Lanes und derselbe
+  `system_extent_m`-Baseline-Footprint statt kleinerer eigener
+  Generator-Skalen.
+- Der planetare Generator nutzt fuer generierte Roots jetzt ebenfalls
+  wieder eine `obsidian`-artige lokale Orbit-Skala statt alter
+  AU-/Luminositaets-basierter Fernbahnen; dadurch haengen Planeten in
+  Root-Overviews nicht mehr scheinbar am schwarzen Loch oder schneiden
+  rootweit sichtbar durch fremde Sternsysteme.
 - Der produktive Catalog-Builder fuehrt jetzt zusaetzlich einen
   deterministischen Spacing-Guard ein:
   alle Root-Paare muessen mindestens
@@ -318,6 +328,12 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Proxy-Sterne animieren mit denselben authored Orbit-Parametern wie
   der Detail-Slice, damit Proxy->Detail-Handoffs ohne sichtbaren
   Positions- oder Velocity-Sprung moeglich bleiben.
+- Root-Proxies halten ihre sichtbare Bildschirmgroesse jetzt bewusst
+  gegen den Kamera-Scale: entfernte BH-Roots schrumpfen beim
+  Herauszoomen nicht mehr zu Fast-Pixeln zusammen, sondern lesen sich
+  ueber dieselbe BH-Grundform und grob denselben Footprint wie
+  `obsidian`; auch Proxy-Sterne und ihre Verbindungslinien bleiben
+  screen-stabil sichtbar.
 - `starter_world` ist jetzt als groessere asymmetrische BH-
   Referenzwelt ausgebaut: vier Sterne unter `obsidian`, ungleich grosse
   Planetensysteme und bewusst keine neue Spiegel-Symmetrie.
@@ -648,6 +664,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   produktiven Folgepfade.
   Noch offen ist damit primaer der echte Editor-/Feel-Playtest der
   30-Root-Welt statt weiterer Loader-/Catalog-Grundlagenarbeit.
+- Der Large-World-Content ist damit nicht nur builder-seitig vereinheitlicht,
+  sondern auch root-seitig besser vergleichbar:
+  `onyx`, `umbra` und `shade_*` lesen jetzt als Varianten desselben
+  `obsidian`-Standards statt als still kleiner skalierte BH-Systeme.
 - Der neue Streaming-Pfad ist jetzt headless-seitig auch auf
   Hysterese, Keepalive, Delta-Materialisierung, Proxy-/Detail-Handoff
   und einen test-only 30-Root-Stress abgesichert; zusaetzlich pinnen

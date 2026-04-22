@@ -1,5 +1,26 @@
 # Graviton - Decisions
 
+## 2026-04-22 - Generierte Root-Systeme nehmen `obsidian` als Skalenstandard
+
+Die ersten Large-World-Playtests haben gezeigt, dass nicht nur die
+Proxy-Icons, sondern auch die innere Root-System-Skalierung zwischen
+`obsidian` und generierten Roots visuell vergleichbar bleiben muss.
+Darum nehmen generierte Root-Systeme jetzt bewusst `obsidian` /
+`starter_world` als Standard fuer BH-Stern-Lanes und Root-Footprint.
+
+Konsequenz:
+
+- `onyx`, `umbra` und `shade_*` nutzen jetzt denselben
+  `system_extent_m`-Baselinewert wie `obsidian`
+- generierte Roots nutzen jetzt dieselbe Standard-Sternanzahl und
+  dieselben BH-Stern-Orbit-Radien/-Perioden wie die `obsidian`-Vorlage
+- der planetare Generator nutzt fuer generierte Roots jetzt ebenfalls
+  eine `obsidian`-artige lokale Orbit-Skala statt alter
+  AU-/Luminositaets-basierter Fernbahnen
+- Variation bleibt weiter in Sternmassen, Leuchtkraeften, Phasen,
+  Rotationen und Planetensystemen, nicht mehr in einer still kleineren
+  Root-System-Skala
+
 ## 2026-04-22 - `NUMERIC_LOCAL` verlaesst den numerischen Pfad nur noch ueber budgetierten Rejoin
 
 Der Rueckwechsel `NUMERIC_LOCAL -> KEPLER_APPROX` bleibt weiter eine
