@@ -181,7 +181,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist wieder reproduzierbar: direkter
   `godot_console.exe --headless ...`-Aufruf und `run_tests.bat` laufen
-  jetzt mit `1726` erfolgreichen Assertions.
+  auf `main` jetzt mit `1745` erfolgreichen Assertions bei `0`
+  Failures.
 
 ### Aktuelle Praesentation
 
@@ -640,9 +641,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Interest-/Dirty-Tracking, ist aber noch nicht durch einen laengeren
   visuellen Idle-/Playtest im neuen 30-Root-Produktpfad profiliert.
 - `test_orbit_body_visual.gd` gibt seine erzeugten Visual-Nodes jetzt
-  wieder explizit frei; die noch sichtbaren Headless-Exit-Leaks muessen
-  aber erst nach der breiteren lokalen Class-Resolution-/Runner-
-  Stabilisierung erneut gegen den kompletten Testlauf bewertet werden.
+  wieder explizit frei; im aktuellen `main`-Runner taucht damit kein
+  separater neuer Headless-Exit-Leak-Befund mehr auf.
 - `pilot_galaxy` bleibt bewusst exakt der kleine 3-Root-Referenzslice;
   `scaleup_galaxy_10` und `scaleup_galaxy_30` sind jetzt die
   produktiven Folgepfade.
