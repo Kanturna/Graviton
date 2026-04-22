@@ -21,9 +21,11 @@ static func run(ctx) -> void:
 	_test_load_named_pilot_galaxy(ctx)
 	_test_load_named_scaleup_galaxy(ctx)
 	_test_load_named_scaleup_galaxy_30(ctx)
+	_test_load_named_scaleup_galaxy_100(ctx)
 	_test_load_named_galaxy_returns_catalog(ctx)
 	_test_load_named_scaleup_galaxy_returns_catalog(ctx)
 	_test_load_named_scaleup_galaxy_30_returns_catalog(ctx)
+	_test_load_named_scaleup_galaxy_100_returns_catalog(ctx)
 	_test_materialize_galaxy_roots_preserves_unchanged_resident_states(ctx)
 	_test_prepared_root_slice_cache_is_scoped_to_active_galaxy(ctx)
 	_test_world_loaded_signal_emits_named_world_id(ctx)
@@ -74,13 +76,14 @@ static func _child_def(id: StringName, parent: StringName) -> BodyDef:
 static func _test_available_world_ids(ctx) -> void:
 	var loader := _make_loader()
 	var ids: Array[StringName] = loader.available_world_ids()
-	ctx.assert_true(ids.size() == 6, "available_world_ids liefert genau sechs Eintraege")
+	ctx.assert_true(ids.size() == 7, "available_world_ids liefert genau sieben Eintraege")
 	ctx.assert_true(ids[0] == &"starter_world", "starter_world steht an erster Stelle")
 	ctx.assert_true(ids[1] == &"sample_system", "sample_system steht an zweiter Stelle")
 	ctx.assert_true(ids[2] == &"generated_system", "generated_system steht an dritter Stelle")
 	ctx.assert_true(ids[3] == &"pilot_galaxy", "pilot_galaxy steht an vierter Stelle")
 	ctx.assert_true(ids[4] == &"scaleup_galaxy_10", "scaleup_galaxy_10 steht an fuenfter Stelle")
 	ctx.assert_true(ids[5] == &"scaleup_galaxy_30", "scaleup_galaxy_30 steht an sechster Stelle")
+	ctx.assert_true(ids[6] == &"scaleup_galaxy_100", "scaleup_galaxy_100 steht an siebter Stelle")
 	loader.free()
 
 
@@ -179,6 +182,18 @@ static func _test_load_named_scaleup_galaxy_30(ctx) -> void:
 	reg.free()
 
 
+static func _test_load_named_scaleup_galaxy_100(ctx) -> void:
+	var loader := _make_loader()
+	var reg := _make_registry()
+	ctx.assert_true(loader.load_named_world(&"scaleup_galaxy_100", reg), "scaleup_galaxy_100 laedt erfolgreich")
+	ctx.assert_true(reg.body_count() == 18, "scaleup_galaxy_100 startet weiterhin mit genau einem residenten Detail-Root")
+	ctx.assert_true(reg.has_body(&"obsidian"), "scaleup_galaxy_100 enthaelt den Fokus-Root obsidian")
+	ctx.assert_true(not reg.has_body(&"onyx"), "scaleup_galaxy_100 laedt standardmaessig keinen zweiten Pilot-Root")
+	ctx.assert_true(not reg.has_body(&"shade_97"), "scaleup_galaxy_100 laedt standardmaessig keinen entfernten Zusatz-Root")
+	loader.free()
+	reg.free()
+
+
 static func _test_load_named_galaxy_returns_catalog(ctx) -> void:
 	var loader := _make_loader()
 	var galaxy = loader.load_named_galaxy(&"pilot_galaxy")
@@ -225,6 +240,23 @@ static func _test_load_named_scaleup_galaxy_30_returns_catalog(ctx) -> void:
 	ctx.assert_true(galaxy.get_manifest(&"shade_27") != null, "30er-Catalog enthaelt den siebenundzwanzigsten Zusatz-Root")
 	ctx.assert_true(galaxy.default_resident_root_ids.size() == 1 and galaxy.default_resident_root_ids[0] == &"obsidian",
 		"30er-Catalog startet bewusst mit genau einem Detail-Root")
+	loader.free()
+
+
+static func _test_load_named_scaleup_galaxy_100_returns_catalog(ctx) -> void:
+	var loader := _make_loader()
+	var galaxy = loader.load_named_galaxy(&"scaleup_galaxy_100")
+	ctx.assert_true(galaxy != null, "scaleup_galaxy_100 Catalog laedt erfolgreich")
+	ctx.assert_true(galaxy.galaxy_id == &"scaleup_galaxy_100", "100er-Catalog meldet die korrekte Galaxy-ID")
+	ctx.assert_true(galaxy.focus_root_id == &"obsidian", "100er-Catalog setzt obsidian als Fokus-Root")
+	ctx.assert_true(galaxy.root_ids().size() == 100, "100er-Catalog enthaelt genau hundert Roots")
+	ctx.assert_true(galaxy.get_manifest(&"obsidian") != null, "100er-Catalog enthaelt den Hero-Root")
+	ctx.assert_true(galaxy.get_manifest(&"onyx") != null, "100er-Catalog behaelt den ersten Pilot-Nachbarn")
+	ctx.assert_true(galaxy.get_manifest(&"umbra") != null, "100er-Catalog behaelt den zweiten Pilot-Nachbarn")
+	ctx.assert_true(galaxy.get_manifest(&"shade_01") != null, "100er-Catalog enthaelt den ersten Zusatz-Root")
+	ctx.assert_true(galaxy.get_manifest(&"shade_97") != null, "100er-Catalog enthaelt den siebenundneunzigsten Zusatz-Root")
+	ctx.assert_true(galaxy.default_resident_root_ids.size() == 1 and galaxy.default_resident_root_ids[0] == &"obsidian",
+		"100er-Catalog startet bewusst mit genau einem Detail-Root")
 	loader.free()
 
 

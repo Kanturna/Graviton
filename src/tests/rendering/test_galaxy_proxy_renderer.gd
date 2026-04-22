@@ -9,6 +9,7 @@ static func run(ctx) -> void:
 	_test_root_proxies_reuse_black_hole_visual_contract(ctx)
 	_test_proxy_sizes_counter_scale_against_camera_zoom(ctx)
 	_test_star_proxy_tier_uses_hysteresis(ctx)
+	_test_root_proxy_culling_uses_envelope_margin(ctx)
 
 
 static func _test_root_proxies_reuse_black_hole_visual_contract(ctx) -> void:
@@ -59,4 +60,24 @@ static func _test_star_proxy_tier_uses_hysteresis(ctx) -> void:
 	ctx.assert_true(
 		not GalaxyProxyRendererScript.resolve_star_proxy_visibility(true, 79.0),
 		"unterhalb der Exit-Schwelle fallen Stern-Proxies wieder auf BH-only zurueck"
+	)
+
+
+static func _test_root_proxy_culling_uses_envelope_margin(ctx) -> void:
+	var viewport_size_px := Vector2(800.0, 600.0)
+	ctx.assert_true(
+		not GalaxyProxyRendererScript.should_cull_root_proxy(Vector2(-128.0, 300.0), viewport_size_px, 128.0),
+		"ein Root genau auf der negativen Envelope-Grenze bleibt sichtbar"
+	)
+	ctx.assert_true(
+		GalaxyProxyRendererScript.should_cull_root_proxy(Vector2(-129.0, 300.0), viewport_size_px, 128.0),
+		"ein Root knapp ausserhalb der negativen Envelope-Grenze wird gecullt"
+	)
+	ctx.assert_true(
+		not GalaxyProxyRendererScript.should_cull_root_proxy(Vector2(928.0, 300.0), viewport_size_px, 128.0),
+		"ein Root genau auf der positiven Envelope-Grenze bleibt sichtbar"
+	)
+	ctx.assert_true(
+		GalaxyProxyRendererScript.should_cull_root_proxy(Vector2(929.0, 300.0), viewport_size_px, 128.0),
+		"ein Root knapp ausserhalb der positiven Envelope-Grenze wird gecullt"
 	)

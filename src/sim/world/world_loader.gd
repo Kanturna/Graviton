@@ -7,6 +7,7 @@ const DeterministicWorldGeneratorScript = preload("res://src/sim/world/determini
 const PilotGalaxyWorldScript = preload("res://src/sim/world/pilot_galaxy_world.gd")
 const ScaleupGalaxyWorldScript = preload("res://src/sim/world/scaleup_galaxy_world.gd")
 const ScaleupGalaxy30WorldScript = preload("res://src/sim/world/scaleup_galaxy_30_world.gd")
+const ScaleupGalaxy100WorldScript = preload("res://src/sim/world/scaleup_galaxy_100_world.gd")
 const RootSystemGeneratorScript = preload("res://src/sim/world/root_system_generator.gd")
 
 const STARTER_WORLD_ID: StringName = &"starter_world"
@@ -15,6 +16,7 @@ const GENERATED_SYSTEM_ID: StringName = &"generated_system"
 const PILOT_GALAXY_ID: StringName = &"pilot_galaxy"
 const SCALEUP_GALAXY_10_ID: StringName = &"scaleup_galaxy_10"
 const SCALEUP_GALAXY_30_ID: StringName = &"scaleup_galaxy_30"
+const SCALEUP_GALAXY_100_ID: StringName = &"scaleup_galaxy_100"
 
 signal world_loaded(world_id: StringName)
 
@@ -23,7 +25,7 @@ var _prepared_root_slice_cache_scope_id: StringName = &""
 
 
 func available_world_ids() -> Array[StringName]:
-	return [STARTER_WORLD_ID, SAMPLE_SYSTEM_ID, GENERATED_SYSTEM_ID, PILOT_GALAXY_ID, SCALEUP_GALAXY_10_ID, SCALEUP_GALAXY_30_ID]
+	return [STARTER_WORLD_ID, SAMPLE_SYSTEM_ID, GENERATED_SYSTEM_ID, PILOT_GALAXY_ID, SCALEUP_GALAXY_10_ID, SCALEUP_GALAXY_30_ID, SCALEUP_GALAXY_100_ID]
 
 
 # Laedt eine benannte Welt nur dann in die Registry, wenn die Welt-ID bekannt ist
@@ -41,7 +43,7 @@ func load_named_world(world_id: StringName, registry: Node) -> bool:
 		GENERATED_SYSTEM_ID:
 			_set_prepared_root_slice_cache_scope(world_id)
 			defs = DeterministicWorldGeneratorScript.build(DeterministicWorldGeneratorScript.DEFAULT_SEED)
-		PILOT_GALAXY_ID, SCALEUP_GALAXY_10_ID, SCALEUP_GALAXY_30_ID:
+		PILOT_GALAXY_ID, SCALEUP_GALAXY_10_ID, SCALEUP_GALAXY_30_ID, SCALEUP_GALAXY_100_ID:
 			var galaxy = load_named_galaxy(world_id)
 			if galaxy == null:
 				return false
@@ -61,6 +63,8 @@ func load_named_galaxy(world_id: StringName):
 			return ScaleupGalaxyWorldScript.build()
 		SCALEUP_GALAXY_30_ID:
 			return ScaleupGalaxy30WorldScript.build()
+		SCALEUP_GALAXY_100_ID:
+			return ScaleupGalaxy100WorldScript.build()
 		_:
 			push_error("WorldLoader.load_named_galaxy: unknown galaxy_id '%s'" % world_id)
 			return null

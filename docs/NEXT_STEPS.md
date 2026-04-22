@@ -2,6 +2,46 @@
 
 Stand: 2026-04-22
 
+## Prioritaet 0 - 100-Root Playtest Gate
+
+Ziel:
+Den neuen produktiven `scaleup_galaxy_100`-Pfad im Editor gegen den
+etablierten `scaleup_galaxy_30`-Pfad validieren, bevor weitere
+Root-Zahlen oder neue Proxy-Typen dazukommen.
+
+Konkreter Ablauf:
+
+- `orbit_testbed.tscn` im Editor oeffnen
+- `initial_world_id` temporaer auf `scaleup_galaxy_30` und danach auf
+  `scaleup_galaxy_100` setzen
+- dieselben Szenen jeweils in drei Zustaenden vergleichen:
+  - `F3 aus + ROOT_OVERVIEW`
+  - `F3 an + ROOT_OVERVIEW`
+  - Detailansicht
+- dabei bewusst auf Large-World-spezifische Diagnosepunkte achten:
+  - `resident_root_ids` bleibt immer `1..2`
+  - `desired_neighbor_root_id` / `resident_neighbor_root_id` lesen
+    weiter ruhig
+  - Proxy-Culling liest als reduzierte sichtbare Teilmenge, nicht als
+    Ausfall oder Chatter
+  - BH-only-/Stern-Proxy-Tiering bleibt an Zoom- und Pan-Kanten stabil
+  - Fokuswechsel ueber mehrere `shade_*`-Roots bleiben ohne spuerbare
+    Chunk-/Sektor-Haptik
+  - `F3` bleibt trotz 100 Roots noch diagnostisch brauchbar
+
+Wenn der Playtest sauber ist:
+
+- danach entweder ein weiterer kleiner Proxy-/Perf-Trim-Pass fuer noch
+  groessere Catalogs
+- oder wieder Sim-/Derived-Arbeit wie Mehrquellenstrahlung bzw.
+  planetare Proxy-/Derived-Folgepfade
+
+Wenn der Playtest kippt:
+
+- keinen weiteren Scale-up
+- stattdessen einen kleinen Korrekturblock direkt aus den beobachteten
+  F3-/Proxy-/Pan-Befunden schneiden
+
 ## Akut - Backdrop-Flicker im Editor beseitigen - erledigt
 
 Erledigt:

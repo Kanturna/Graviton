@@ -203,7 +203,7 @@ func _target_resident_roots_from_state() -> Array[StringName]:
 
 
 func _desired_neighbor_root_id(focus_root_id: StringName) -> StringName:
-	var neighbors: Array[StringName] = _sorted_neighbor_root_ids(focus_root_id)
+	var neighbors: Array[StringName] = _neighbor_root_ids(focus_root_id)
 	return StringName("") if neighbors.is_empty() else neighbors[0]
 
 
@@ -219,7 +219,7 @@ func _primary_focus_root_id() -> StringName:
 
 
 func _next_prewarm_candidate_id(focus_root_id: StringName) -> StringName:
-	for candidate_id in _sorted_neighbor_root_ids(focus_root_id):
+	for candidate_id in _neighbor_root_ids(focus_root_id):
 		if _resident_root_ids.has(candidate_id):
 			continue
 		return candidate_id
@@ -234,25 +234,10 @@ func _neighbor_still_qualified(current_neighbor_id: StringName, desired_neighbor
 	return zoom_factor < neighbor_exit_zoom
 
 
-func _sorted_neighbor_root_ids(root_id: StringName) -> Array[StringName]:
-	var focus_manifest = _galaxy.get_manifest(root_id)
-	var entries: Array = []
-	if focus_manifest == null:
+func _neighbor_root_ids(root_id: StringName) -> Array[StringName]:
+	if _galaxy == null or root_id == StringName(""):
 		return []
-	for manifest in _galaxy.manifests:
-		if manifest == null or manifest.root_id == root_id:
-			continue
-		entries.append({
-			"root_id": manifest.root_id,
-			"distance_sq": focus_manifest.galaxy_position_m.distance_squared_to(manifest.galaxy_position_m),
-		})
-	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return float(a.get("distance_sq", INF)) < float(b.get("distance_sq", INF))
-	)
-	var out: Array[StringName] = []
-	for entry in entries:
-		out.append(entry.get("root_id", StringName("")))
-	return out
+	return _galaxy.sorted_neighbor_root_ids(root_id)
 
 
 static func _same_root_id_lists(a: Array[StringName], b: Array[StringName]) -> bool:

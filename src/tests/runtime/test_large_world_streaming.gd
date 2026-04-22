@@ -4,6 +4,7 @@ const WorldLoaderScript = preload("res://src/sim/world/world_loader.gd")
 const GalaxyStreamingControllerScript = preload("res://src/runtime/streaming/galaxy_streaming_controller.gd")
 const GalaxyProxyMathScript = preload("res://src/runtime/streaming/galaxy_proxy_math.gd")
 const DerivedSnapshotCacheScript = preload("res://src/runtime/derived/derived_snapshot_cache.gd")
+const GalaxyProxyRendererScript = preload("res://src/tools/rendering/galaxy_proxy_renderer.gd")
 const OrbitViewRendererScript = preload("res://src/tools/rendering/orbit_view_renderer.gd")
 const OrbitCameraFramingScript = preload("res://src/tools/rendering/orbit_camera_framing.gd")
 const UniverseTopologyScript = preload("res://src/sim/topology/universe_topology.gd")
@@ -14,6 +15,8 @@ const GeneratedRootManifestFactoryScript = preload("res://src/sim/world/generate
 const RootSystemGeneratorScript = preload("res://src/sim/world/root_system_generator.gd")
 
 const SCALEUP_GALAXY_10_CONTENT_SIGNATURE_SHA256: String = "07f9964968d845d8cd684637c44c153b240a8408b35304396e9a83cb5252bd9d"
+const SCALEUP_GALAXY_30_CONTENT_SIGNATURE_SHA256: String = "d96aad5d466c1e1adadfffa9b3fdd7026d0c8d384fac3de1d2dd89d49a4fe06f"
+const SCALEUP_GALAXY_100_CONTENT_SIGNATURE_SHA256: String = "bcba99825e7e2331aa66081b6c565f0949b1a357b1fb37fbbc4b72d85ca4e5ac"
 
 
 class BubbleProbe:
@@ -38,6 +41,61 @@ class StatefulBubbleProbe:
 		return positions_by_id.get(id, Vector3.ZERO)
 
 
+class ProxyRendererProbe:
+	extends GalaxyProxyRendererScript
+
+	var probe_viewport_size_px: Vector2 = Vector2(800.0, 600.0)
+	var probe_canvas_xform: Transform2D = Transform2D.IDENTITY
+
+	func _viewport_size_px() -> Vector2:
+		return probe_viewport_size_px
+
+	func _canvas_xform() -> Transform2D:
+		return probe_canvas_xform
+
+
+class ProxyBubble:
+	extends RefCounted
+
+	var focus_id: StringName = &"obsidian"
+
+	func get_focus() -> StringName:
+		return focus_id
+
+
+class ProxyTopology:
+	extends RefCounted
+
+	func root_id_of(id: StringName) -> StringName:
+		return id
+
+
+class ProxyTime:
+	extends Node
+
+	var sim_time_s: float = 0.0
+
+
+class ProxyStreaming:
+	extends RefCounted
+
+	var resident_root_ids: Array[StringName] = []
+
+	func get_resident_root_ids() -> Array[StringName]:
+		var out: Array[StringName] = []
+		out.append_array(resident_root_ids)
+		return out
+
+
+class ProxyDetailRenderer:
+	extends RefCounted
+
+	var positions_by_id: Dictionary = {}
+
+	func get_body_view_position_ru(id: StringName) -> Vector2:
+		return positions_by_id.get(id, Vector2.ZERO)
+
+
 static func run(ctx) -> void:
 	ctx.current_suite = "test_large_world_streaming"
 	_test_pilot_galaxy_catalog_and_generated_roots_are_deterministic(ctx)
@@ -52,13 +110,20 @@ static func run(ctx) -> void:
 	_test_generated_root_planets_use_obsidian_local_scale(ctx)
 	_test_scaleup_galaxy_extra_roots_share_stress_prefix(ctx)
 	_test_scaleup_galaxy_10_content_signature_is_pinned(ctx)
+	_test_scaleup_galaxy_30_content_signature_is_pinned(ctx)
 	_test_scaleup_galaxy_30_matches_stress_catalog_for_all_roots(ctx)
 	_test_scaleup_galaxy_30_spacing_guard_covers_all_root_pairs(ctx)
+	_test_scaleup_galaxy_100_build_spike_and_neighbor_cache_stays_lazy(ctx)
+	_test_scaleup_galaxy_100_content_signature_is_pinned(ctx)
+	_test_scaleup_galaxy_100_matches_stress_catalog_for_all_roots(ctx)
+	_test_scaleup_galaxy_100_spacing_guard_covers_all_root_pairs(ctx)
 	_test_spacing_guard_relaxes_generated_root_radially_without_changing_content(ctx)
 	_test_spacing_guard_hard_fails_for_impossible_generated_root(ctx)
 	_test_streaming_controller_debug_snapshot_tracks_recent_events(ctx)
 	_test_scaleup_galaxy_streaming_stays_bounded(ctx)
 	_test_scaleup_galaxy_30_streaming_stays_bounded(ctx)
+	_test_scaleup_galaxy_100_streaming_stays_bounded(ctx)
+	_test_proxy_renderer_culls_offscreen_roots_for_scaleup_galaxy_100(ctx)
 	_test_renderer_shortcuts_cross_root_detail_localization_for_pilot_and_scaleup(ctx)
 	_test_root_overview_lod_hides_planetary_descendants_and_tracks_debug_counts(ctx)
 	_test_root_overview_trail_resume_avoids_bridge_and_rebuild_clears_pause_state(ctx)
@@ -383,6 +448,17 @@ static func _test_scaleup_galaxy_10_content_signature_is_pinned(ctx) -> void:
 	loader.free()
 
 
+static func _test_scaleup_galaxy_30_content_signature_is_pinned(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var galaxy = loader.load_named_galaxy(&"scaleup_galaxy_30")
+	var content_signature: String = _catalog_content_signature(loader, galaxy)
+	ctx.assert_true(
+		_sha256_hex(content_signature) == SCALEUP_GALAXY_30_CONTENT_SIGNATURE_SHA256,
+		"scaleup_galaxy_30 bleibt ueber weitere Builder- und Perf-Aenderungen inhaltlich gepinnt"
+	)
+	loader.free()
+
+
 static func _test_scaleup_galaxy_30_matches_stress_catalog_for_all_roots(ctx) -> void:
 	var loader = WorldLoaderScript.new()
 	var scaleup_galaxy = loader.load_named_galaxy(&"scaleup_galaxy_30")
@@ -414,6 +490,77 @@ static func _test_scaleup_galaxy_30_spacing_guard_covers_all_root_pairs(ctx) -> 
 			var distance_m: float = left_manifest.galaxy_position_m.distance_to(right_manifest.galaxy_position_m)
 			var min_spacing_m: float = ScaleupGalaxyCatalogFactoryScript.minimum_spacing_m(left_manifest, right_manifest)
 			ctx.assert_true(distance_m >= min_spacing_m, "Spacing-Guard haelt %s <-> %s im 30-Root-Catalog auseinander" % [
+				String(left_manifest.root_id),
+				String(right_manifest.root_id),
+			])
+
+	loader.free()
+
+
+static func _test_scaleup_galaxy_100_build_spike_and_neighbor_cache_stays_lazy(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var galaxy = loader.load_named_galaxy(&"scaleup_galaxy_100")
+	ctx.assert_true(galaxy != null, "scaleup_galaxy_100 Build-Spike laeuft ohne Hard-Fail durch")
+	ctx.assert_true(galaxy.root_ids().size() == 100, "scaleup_galaxy_100 Build-Spike liefert exakt hundert Roots")
+	ctx.assert_true(galaxy.neighbor_order_cache_size() == 0, "Neighbor-Cache startet lazy und leer")
+
+	var obsidian_neighbors: Array[StringName] = galaxy.sorted_neighbor_root_ids(&"obsidian")
+	ctx.assert_true(not obsidian_neighbors.is_empty(), "Neighbor-Cache liefert fuer obsidian eine stabile Distanzordnung")
+	ctx.assert_true(galaxy.neighbor_order_cache_size() == 1, "Neighbor-Cache baut beim ersten Zugriff genau einen Fokus-Root-Eintrag")
+
+	var repeated_neighbors: Array[StringName] = galaxy.sorted_neighbor_root_ids(&"obsidian")
+	ctx.assert_true(obsidian_neighbors == repeated_neighbors, "Neighbor-Cache bleibt fuer denselben Fokus-Root stabil")
+	ctx.assert_true(galaxy.neighbor_order_cache_size() == 1, "wiederholter Zugriff baut keinen zweiten Cache-Eintrag")
+
+	var shade_neighbors: Array[StringName] = galaxy.sorted_neighbor_root_ids(&"shade_42")
+	ctx.assert_true(not shade_neighbors.is_empty(), "Neighbor-Cache liefert auch fuer einen generierten Root Nachbarn")
+	ctx.assert_true(galaxy.neighbor_order_cache_size() == 2, "Neighbor-Cache baut pro Fokus-Root lazy genau einen weiteren Eintrag")
+
+	loader.free()
+
+
+static func _test_scaleup_galaxy_100_content_signature_is_pinned(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var galaxy = loader.load_named_galaxy(&"scaleup_galaxy_100")
+	var content_signature: String = _catalog_content_signature(loader, galaxy)
+	ctx.assert_true(
+		_sha256_hex(content_signature) == SCALEUP_GALAXY_100_CONTENT_SIGNATURE_SHA256,
+		"scaleup_galaxy_100 bleibt als Produkt-Catalog inhaltlich gepinnt"
+	)
+	loader.free()
+
+
+static func _test_scaleup_galaxy_100_matches_stress_catalog_for_all_roots(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var scaleup_galaxy = loader.load_named_galaxy(&"scaleup_galaxy_100")
+	var stress_galaxy = StressGalaxyFactoryScript.build(100)
+	ctx.assert_true(scaleup_galaxy.root_ids().size() == 100, "scaleup_galaxy_100 meldet genau hundert Roots")
+
+	for root_id in scaleup_galaxy.root_ids():
+		var scaleup_manifest = scaleup_galaxy.get_manifest(root_id)
+		var stress_manifest = stress_galaxy.get_manifest(root_id)
+		ctx.assert_true(scaleup_manifest != null and stress_manifest != null, "Root %s existiert in Produkt- und Stress-Catalog fuer 100 Roots" % String(root_id))
+		ctx.assert_true(_manifest_signature(scaleup_manifest) == _manifest_signature(stress_manifest), "Manifest %s bleibt zwischen Produkt- und Stresspfad bei 100 Roots identisch" % String(root_id))
+		var scaleup_defs: Array[BodyDef] = loader.build_defs_for_root_manifest(scaleup_manifest)
+		var stress_defs: Array[BodyDef] = loader.build_defs_for_root_manifest(stress_manifest)
+		ctx.assert_true(_canonical_defs_signature(scaleup_defs) == _canonical_defs_signature(stress_defs), "Defs fuer %s bleiben ueber Produkt- und Stresspfad bei 100 Roots identisch" % String(root_id))
+
+	loader.free()
+
+
+static func _test_scaleup_galaxy_100_spacing_guard_covers_all_root_pairs(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var galaxy = loader.load_named_galaxy(&"scaleup_galaxy_100")
+	var manifests: Array = []
+	manifests.append_array(galaxy.manifests)
+
+	for left_index in range(manifests.size()):
+		var left_manifest = manifests[left_index]
+		for right_index in range(left_index + 1, manifests.size()):
+			var right_manifest = manifests[right_index]
+			var distance_m: float = left_manifest.galaxy_position_m.distance_to(right_manifest.galaxy_position_m)
+			var min_spacing_m: float = ScaleupGalaxyCatalogFactoryScript.minimum_spacing_m(left_manifest, right_manifest)
+			ctx.assert_true(distance_m >= min_spacing_m, "Spacing-Guard haelt %s <-> %s im 100-Root-Catalog auseinander" % [
 				String(left_manifest.root_id),
 				String(right_manifest.root_id),
 			])
@@ -579,6 +726,86 @@ static func _test_scaleup_galaxy_30_streaming_stays_bounded(ctx) -> void:
 		ctx.assert_true(collapsed_roots.size() == 1 and collapsed_roots[0] == root_id, "30er-Fokus %s faellt nach Keepalive wieder auf einen Detail-Root zurueck" % String(root_id))
 
 	_cleanup_streaming_setup(setup)
+	loader.free()
+
+
+static func _test_scaleup_galaxy_100_streaming_stays_bounded(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var galaxy = loader.load_named_galaxy(&"scaleup_galaxy_100")
+	ctx.assert_true(galaxy.root_ids().size() == 100, "scaleup_galaxy_100 meldet hundert Roots")
+
+	var setup: Dictionary = _make_streaming_setup(galaxy)
+	var controller = setup.get("controller")
+	var focus_candidates: Array[StringName] = [&"obsidian", &"umbra", &"shade_01", &"shade_27", &"shade_54", &"shade_97"]
+
+	ctx.assert_true(controller.get_resident_root_ids().size() == 1, "scaleup_galaxy_100 startet mit genau einem residenten Fokus-Root")
+	for root_id in focus_candidates:
+		controller.set_focus_root(root_id)
+		controller.update(0.0, 0.50)
+		var wide_roots: Array[StringName] = controller.get_resident_root_ids()
+		ctx.assert_true(wide_roots.size() >= 1 and wide_roots.size() <= 2, "100er-Fokus %s bleibt im Wide-Zoom auf maximal zwei residenten Roots begrenzt" % String(root_id))
+		ctx.assert_true(wide_roots[0] == root_id, "100er-Fokus %s bleibt als erster residenter Root erhalten" % String(root_id))
+		controller.update(0.0, 1.00)
+		controller.update(1.6, 1.00)
+		var collapsed_roots: Array[StringName] = controller.get_resident_root_ids()
+		ctx.assert_true(collapsed_roots.size() == 1 and collapsed_roots[0] == root_id, "100er-Fokus %s faellt nach Keepalive wieder auf einen Detail-Root zurueck" % String(root_id))
+
+	_cleanup_streaming_setup(setup)
+	loader.free()
+
+
+static func _test_proxy_renderer_culls_offscreen_roots_for_scaleup_galaxy_100(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var galaxy = loader.load_named_galaxy(&"scaleup_galaxy_100")
+	ctx.assert_true(galaxy != null and galaxy.root_ids().size() == 100, "scaleup_galaxy_100 steht fuer den Proxy-Culling-Test bereit")
+
+	var renderer := ProxyRendererProbe.new()
+	renderer.scale = Vector2(0.003, 0.003)
+	renderer.probe_viewport_size_px = Vector2(800.0, 600.0)
+	renderer.probe_canvas_xform = Transform2D(Vector2(0.003, 0.0), Vector2(0.0, 0.003), Vector2(400.0, 300.0))
+
+	var registry := Node.new()
+	var bubble := ProxyBubble.new()
+	bubble.focus_id = &"obsidian"
+	var topology := ProxyTopology.new()
+	var time_service := ProxyTime.new()
+	var streaming := ProxyStreaming.new()
+	streaming.resident_root_ids = [&"obsidian", &"shade_97"]
+	var detail_renderer := ProxyDetailRenderer.new()
+	detail_renderer.positions_by_id[&"obsidian"] = Vector2.ZERO
+
+	renderer.configure(galaxy, registry, bubble, topology, time_service, streaming, detail_renderer)
+	var first_state: Dictionary = renderer.recompute_proxy_state()
+	var first_snapshot: Dictionary = renderer.get_debug_snapshot()
+	ctx.assert_true(int(first_snapshot.get("culled_root_count", 0)) > 0, "100er-Proxy-Culling spart im Fernblick off-screen Roots komplett aus")
+	ctx.assert_true(int(first_snapshot.get("visible_root_count", 0)) > 0, "100er-Proxy-Culling behaelt im Fernblick weiterhin eine sichtbare Teilmenge")
+	ctx.assert_true(
+		int(first_snapshot.get("visible_root_count", 0)) == int(first_snapshot.get("bh_only_root_count", 0)) + int(first_snapshot.get("star_proxy_root_count", 0)),
+		"sichtbare Roots zerfallen im Debug-Snapshot weiterhin exakt in BH-only und Stern-Proxy-Tiers"
+	)
+	ctx.assert_true(
+		int(first_snapshot.get("culled_root_count", 0)) + int(first_snapshot.get("visible_root_count", 0)) == galaxy.root_ids().size() - 1,
+		"Culling plus sichtbare Roots decken weiterhin alle Non-Focus-Roots ab"
+	)
+
+	var visible_entries: Array = first_state.get("entries", [])
+	ctx.assert_true(not visible_entries.is_empty(), "Culling-Test liefert mindestens einen sichtbaren Root-Eintrag fuer Picking")
+	var picked_entry: Dictionary = visible_entries[0]
+	var picked_root_id: StringName = picked_entry.get("root_id", StringName(""))
+	var picked_screen_pos: Vector2 = renderer.probe_canvas_xform * Vector2(picked_entry.get("root_pos_ru", Vector2.ZERO))
+	ctx.assert_true(renderer.pick_root_at_screen(picked_screen_pos) == picked_root_id, "sichtbare Root-Proxies bleiben auch nach dem Culling pickbar")
+	ctx.assert_true(not renderer._root_local_positions_ru.has(&"shade_97"), "ein off-screen residenter Neighbor darf weiterhin unsichtbar und ungepickt bleiben")
+
+	renderer.probe_canvas_xform = Transform2D(Vector2(0.003, 0.0), Vector2(0.0, 0.003), Vector2(400.25, 300.0))
+	renderer.recompute_proxy_state()
+	var panned_snapshot: Dictionary = renderer.get_debug_snapshot()
+	ctx.assert_true(
+		abs(int(panned_snapshot.get("visible_root_count", 0)) - int(first_snapshot.get("visible_root_count", 0))) <= 1,
+		"kleiner konstanter Pan an der Viewport-Kante erzeugt kein unnoetiges Sichtbarkeits-Chattering"
+	)
+
+	renderer.free()
+	registry.free()
 	loader.free()
 
 

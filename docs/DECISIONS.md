@@ -1,5 +1,32 @@
 # Graviton - Decisions
 
+## 2026-04-22 - 100-Root-Scale-up bleibt ein Catalog-/Proxy-Schritt statt ein Residency-Rewrite
+
+Der Schritt von 30 auf 100 Roots wird nicht ueber mehr geladene
+Detailslices, weitere Neighbor-Shells oder einen neuen Spatial-Index
+erreicht. Stattdessen bleibt die bestehende Large-World-Invariante
+erhalten: ein Fokus-Root ist resident, maximal ein Neighbor-Root kommt
+zusaetzlich dazu. Die Skalierung passiert ueber billigere Catalog- und
+Proxy-Arbeit.
+
+Konsequenz:
+
+- `scaleup_galaxy_100` ist nur eine weitere produktive Named-Galaxy
+  ueber denselben `ScaleupGalaxyCatalogFactory`
+- `scaleup_galaxy_10`, `scaleup_galaxy_30` und `scaleup_galaxy_100`
+  werden alle ueber feste Content-Signaturen gegen Drift gepinnt
+- `GalaxyDef` haelt einen lazy Neighbor-Order-Cache pro Fokus-Root,
+  damit `GalaxyStreamingController` seine Neighbor-/Prewarm-Auswahl
+  nicht mehr frameweise ueber neue Vollsortierungen zieht
+- `GalaxyProxyRenderer` spart 100-Root-Fernsicht ueber
+  Viewport-Culling plus bestehendes BH-only-/Stern-Proxy-Tiering aus,
+  statt ueber mehr Streaming-Komplexitaet
+- Sichtbarkeit und Residency bleiben dabei bewusst getrennt:
+  ein residenter Neighbor darf off-screen und damit ungezeichnet sein
+- wenn ein groesserer Catalog spaeter Probleme macht, wird zuerst an
+  Proxy-/Cache-/Budget-Pfaden gearbeitet, nicht das Resident-Limit
+  aufgeweicht
+
 ## 2026-04-22 - `ROOT_OVERVIEW` bleibt ein View-LOD fuer BH plus direkte Sterne
 
 Der Large-World-Root-Overview soll nicht mehr dieselbe komplette

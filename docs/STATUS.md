@@ -9,10 +9,10 @@ Weltraum-/Systemsimulation und eine erste stilisierte 2D-
 Praesentationsschicht.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
-ein validierter 3-Root-Pilot plus separate produktive 10- und 30-Root-
-Galaxien mit Proxy-Layer, Streaming, deterministischem Catalog-Builder
-und inkrementellen Runtime-Hotpath-Fixes fuer Bubble- und Derived-
-Daten.
+ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und
+100-Root-Galaxien mit Proxy-Layer, Streaming, deterministischem
+Catalog-Builder und inkrementellen Runtime-Hotpath-Fixes fuer Bubble-,
+Derived- und Proxy-/Neighbor-Arbeit.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -122,11 +122,18 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Galaxy `scaleup_galaxy_30` auf:
   `obsidian`, `onyx` und `umbra` bleiben erhalten, dazu kommen
   `shade_01 .. shade_27` als deterministische Zusatz-Roots.
+- Darauf baut jetzt zusaetzlich eine vierte produktive Large-World-
+  Galaxy `scaleup_galaxy_100` auf:
+  `obsidian`, `onyx`, `umbra` plus `shade_01 .. shade_97`.
 - `scaleup_galaxy_10`, `scaleup_galaxy_30` und der test-only
   Stresspfad laufen jetzt ueber genau einen produktiven
   `ScaleupGalaxyCatalogFactory`-Builder in `src/sim/world/`;
   `StressGalaxyFactory` ist dadurch nur noch duennes Test-Wrapper-
   Stueck ueber denselben Produktpfad.
+- `GalaxyDef` haelt jetzt zusaetzlich einen lazy Neighbor-Order-Cache
+  pro Fokus-Root; `GalaxyStreamingController` zieht seine
+  Neighbor-/Prewarm-Kandidaten dadurch nicht mehr frameweise ueber eine
+  neue Vollsortierung des ganzen Catalogs.
 - Generierte Root-Systeme sind jetzt bewusst auf den
   `obsidian`-/`starter_world`-Rootstandard normalisiert:
   dieselbe Sternanzahl, dieselben BH-Stern-Orbit-Lanes und derselbe
@@ -193,6 +200,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   entfernte Roots sind erst BH-only-Proxies; Stern-Proxies kommen erst
   oberhalb einer projizierten Root-Groesse mit eigener 96/80-px-
   Hysterese dazu.
+- Derselbe `GalaxyProxyRenderer` cullt off-screen Roots jetzt schon vor
+  BH-/Stern-Draws ueber einen konservativen Viewport-Envelop und fuehrt
+  dafuer explizite Debug-Counts fuer sichtbare und gecullte Roots.
 - `OrbitViewRenderer`, `GalaxyProxyRenderer` und `DebugOverlay`
   exponieren jetzt kleine read-only Debug-Snapshots/Counter, damit
   Compose-/Trail-Arbeit, Proxy-Tiering und Overlay-Refreshes in Tests
@@ -348,6 +358,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Default bleibt bewusst `starter_world`.
 - Das Testbed unterstuetzt jetzt zusaetzlich auch
   `scaleup_galaxy_30` als dritte produktive Large-World-Welt; der
+  Default bleibt bewusst `starter_world`.
+- Das Testbed unterstuetzt jetzt zusaetzlich auch
+  `scaleup_galaxy_100` als vierte produktive Large-World-Welt; der
   Default bleibt bewusst `starter_world`.
 - Dieser Large-World-Pfad entlaedt den bestehenden Fokus-Root dabei
   nicht mehr bei jedem Neighbor-Wechsel: Delta-Materialisierung und
@@ -706,6 +719,12 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Forced-Collision-/Hard-Fail-Pfad und den Debug-Ringbuffer.
 - Offene Restarbeit liegt damit noch klarer im echten Editor-/Playtest
   als in weiterer Grundarchitektur.
+- Die Large-World-Produktreihe ist jetzt auch testseitig durchgaengig
+  gepinnt:
+  `scaleup_galaxy_10`, `scaleup_galaxy_30` und `scaleup_galaxy_100`
+  haben feste kanonische Content-Signaturen; `scaleup_galaxy_100` ist
+  zusaetzlich auf Produkt-/Stress-Paritaet, Spacing, lazy Neighbor-
+  Cache und bounded Streaming abgesichert.
 - Der neue galaktische Backdrop ist bewusst screen-fixed und
   dekorativ; ein spaeterer root-aware oder BH-zentrierter Spezialeffekt
   waere ein eigener View-Pass und kein stilles Follow-up dieses
@@ -729,16 +748,17 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- als naechsten grossen Architektur-/Playtest-Block jetzt
-  `scaleup_galaxy_30` im Editor und unter Bewegung/Zoom validieren
-- dabei besonders bestaetigen, dass sich die 30-Root-Welt genauso ruhig
-  liest wie `scaleup_galaxy_10` und der validierte 3-Root-Pilot:
-  Proxy-/Detail-Handoffs, Hysterese-/Keepalive-Haptik, Fokuswechsel
-  zwischen mehreren Roots, Kamera-Haptik und der neue F3-
-  Streaming-Diagnoseblock
-- danach den produktiven Large-World-Pfad eher ueber Layout-/Polish-
-  oder planetare Proxy-/Derived-Folgearbeit weiterziehen statt ueber
-  noch mehr Root-Anzahl ohne Playtest-Grundlage
+- als naechsten grossen Playtest-Block jetzt `scaleup_galaxy_100` im
+  Editor und unter Bewegung/Zoom gegen `scaleup_galaxy_30` vergleichen
+- dabei besonders bestaetigen, dass sich auch die 100-Root-Welt weiter
+  ruhig liest:
+  Proxy-Culling, BH-only-/Stern-Proxy-Tiering, bounded Streaming,
+  Fokuswechsel zwischen mehreren `shade_*`-Roots, Kamera-Haptik und der
+  F3-Diagnosepfad fuer sichtbare/gecullte Roots
+- danach den produktiven Large-World-Pfad eher ueber weitere
+  Proxy-/Perf-Trim-Arbeit oder planetare Proxy-/Derived-Folgearbeit
+  weiterziehen statt ueber noch mehr Root-Anzahl ohne 100-Root-
+  Playtest-Grundlage
 - parallel die additive Mehrquellenstrahlung fuer Mehrstern-Faelle als
   naechsten grossen `ThermalService`-Block vorbereiten
 - danach weiter bewusst in Richtung globaler planetarer Oekosystem-
@@ -750,3 +770,5 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Schicht ueber bestehender Sim-Wahrheit planen
 - parallel kleine nicht-kanonische Doku-Drift bereinigen, wenn sie
   wieder sichtbar wird
+- Headless-Basis nach diesem Block:
+  `./run_tests.bat` laeuft gruen mit `7207` Passed, `0` Failed

@@ -10,6 +10,7 @@ const STAR_PROXY_LINE_WIDTH_PX: float = 1.0
 const PICK_RADIUS_PX: float = 36.0
 const STAR_PROXY_ENTER_PROJECTED_EXTENT_PX: float = 96.0
 const STAR_PROXY_EXIT_PROJECTED_EXTENT_PX: float = 80.0
+const PROXY_CULL_MARGIN_PX: float = 128.0
 
 var _galaxy = null
 var _registry: Node = null
@@ -25,6 +26,8 @@ var _last_debug_snapshot: Dictionary = {
 	"bh_only_root_count": 0,
 	"star_proxy_root_count": 0,
 	"star_proxy_count": 0,
+	"visible_root_count": 0,
+	"culled_root_count": 0,
 }
 
 
@@ -49,12 +52,14 @@ func configure(
 		"bh_only_root_count": 0,
 		"star_proxy_root_count": 0,
 		"star_proxy_count": 0,
+		"visible_root_count": 0,
+		"culled_root_count": 0,
 	}
 	queue_redraw()
 
 
 func pick_root_at_screen(screen_pos: Vector2) -> StringName:
-	var canvas_xform: Transform2D = get_global_transform_with_canvas()
+	var canvas_xform: Transform2D = _canvas_xform()
 	var best_id: StringName = StringName("")
 	var best_score: float = INF
 	for root_id_variant in _root_local_positions_ru.keys():
@@ -78,26 +83,52 @@ func get_debug_snapshot() -> Dictionary:
 	return _last_debug_snapshot.duplicate(true)
 
 
-func _draw() -> void:
+func recompute_proxy_state() -> Dictionary:
 	_root_local_positions_ru.clear()
 	if _galaxy == null or _bubble == null or _topology == null or _time_service == null or _detail_renderer == null:
-		return
+		_last_debug_snapshot = {
+			"bh_only_root_count": 0,
+			"star_proxy_root_count": 0,
+			"star_proxy_count": 0,
+			"visible_root_count": 0,
+			"culled_root_count": 0,
+		}
+		return {"entries": []}
 	var focus_id: StringName = _bubble.get_focus()
 	var focus_root_id: StringName = _topology.root_id_of(focus_id)
 	if focus_root_id == StringName(""):
-		return
+		_last_debug_snapshot = {
+			"bh_only_root_count": 0,
+			"star_proxy_root_count": 0,
+			"star_proxy_count": 0,
+			"visible_root_count": 0,
+			"culled_root_count": 0,
+		}
+		return {"entries": []}
 	var focus_manifest = _galaxy.get_manifest(focus_root_id)
 	if focus_manifest == null:
-		return
+		_last_debug_snapshot = {
+			"bh_only_root_count": 0,
+			"star_proxy_root_count": 0,
+			"star_proxy_count": 0,
+			"visible_root_count": 0,
+			"culled_root_count": 0,
+		}
+		return {"entries": []}
 	var focus_root_view_ru: Vector2 = _detail_renderer.get_body_view_position_ru(focus_root_id)
 	if not _is_finite_vec2(focus_root_view_ru):
 		focus_root_view_ru = Vector2.ZERO
 	var resident_roots: Array[StringName] = [] if _streaming_controller == null else _streaming_controller.get_resident_root_ids()
 	var t_s: float = _time_service.sim_time_s
 	var screen_scale: float = maxf(absf(scale.x), 0.001)
+	var canvas_xform: Transform2D = _canvas_xform()
+	var viewport_size_px: Vector2 = _viewport_size_px()
 	var bh_only_root_count: int = 0
 	var star_proxy_root_count: int = 0
 	var star_proxy_count: int = 0
+	var visible_root_count: int = 0
+	var culled_root_count: int = 0
+	var entries: Array = []
 
 	for manifest in _galaxy.manifests:
 		if manifest == null or manifest.root_id == focus_root_id:
@@ -107,24 +138,63 @@ func _draw() -> void:
 			(manifest.galaxy_position_m.y - focus_manifest.galaxy_position_m.y) / UnitSystem.RENDER_SCALE_M_PER_UNIT
 		)
 		var root_pos_ru: Vector2 = focus_root_view_ru + relative_root_ru
-		_root_local_positions_ru[manifest.root_id] = root_pos_ru
-
-		_draw_root_proxy(root_pos_ru, resident_roots.has(manifest.root_id), screen_scale)
 		var projected_extent_px: float = (float(manifest.system_extent_m) / UnitSystem.RENDER_SCALE_M_PER_UNIT) * screen_scale
 		var show_star_proxies: bool = _resolve_star_proxy_visibility(manifest.root_id, projected_extent_px)
-		if show_star_proxies:
-			star_proxy_root_count += 1
-		else:
-			bh_only_root_count += 1
+		var proxy_envelope_px: float = PROXY_CULL_MARGIN_PX + (projected_extent_px if show_star_proxies else 0.0)
+		var screen_root_pos: Vector2 = canvas_xform * root_pos_ru
+		if should_cull_root_proxy(screen_root_pos, viewport_size_px, proxy_envelope_px):
+			culled_root_count += 1
 			continue
 
-		for star_manifest in manifest.star_manifests:
-			var star_state: Dictionary = GalaxyProxyMathScript.star_local_state(star_manifest, t_s)
-			var star_pos_m: Vector3 = star_state.get("position_parent_frame_m", Vector3.ZERO)
-			var star_pos_ru: Vector2 = root_pos_ru + Vector2(
-				star_pos_m.x / UnitSystem.RENDER_SCALE_M_PER_UNIT,
-				star_pos_m.y / UnitSystem.RENDER_SCALE_M_PER_UNIT
-			)
+		_root_local_positions_ru[manifest.root_id] = root_pos_ru
+		visible_root_count += 1
+		var entry := {
+			"root_id": manifest.root_id,
+			"root_pos_ru": root_pos_ru,
+			"is_resident": resident_roots.has(manifest.root_id),
+			"show_star_proxies": show_star_proxies,
+			"star_positions_ru": [],
+		}
+		if show_star_proxies:
+			star_proxy_root_count += 1
+			for star_manifest in manifest.star_manifests:
+				var star_state: Dictionary = GalaxyProxyMathScript.star_local_state(star_manifest, t_s)
+				var star_pos_m: Vector3 = star_state.get("position_parent_frame_m", Vector3.ZERO)
+				var star_pos_ru: Vector2 = root_pos_ru + Vector2(
+					star_pos_m.x / UnitSystem.RENDER_SCALE_M_PER_UNIT,
+					star_pos_m.y / UnitSystem.RENDER_SCALE_M_PER_UNIT
+				)
+				entry["star_positions_ru"].append(star_pos_ru)
+				star_proxy_count += 1
+		else:
+			bh_only_root_count += 1
+		entries.append(entry)
+
+	_last_debug_snapshot = {
+		"bh_only_root_count": bh_only_root_count,
+		"star_proxy_root_count": star_proxy_root_count,
+		"star_proxy_count": star_proxy_count,
+		"visible_root_count": visible_root_count,
+		"culled_root_count": culled_root_count,
+	}
+	return {
+		"entries": entries,
+		"screen_scale": screen_scale,
+	}
+
+
+func _draw() -> void:
+	var state: Dictionary = recompute_proxy_state()
+	var entries: Array = state.get("entries", [])
+	var screen_scale: float = float(state.get("screen_scale", maxf(absf(scale.x), 0.001)))
+	for entry_variant in entries:
+		var entry: Dictionary = entry_variant
+		var root_pos_ru: Vector2 = entry.get("root_pos_ru", Vector2.ZERO)
+		_draw_root_proxy(root_pos_ru, bool(entry.get("is_resident", false)), screen_scale)
+		if not bool(entry.get("show_star_proxies", false)):
+			continue
+		for star_pos_variant in entry.get("star_positions_ru", []):
+			var star_pos_ru: Vector2 = star_pos_variant
 			draw_line(
 				root_pos_ru,
 				star_pos_ru,
@@ -137,13 +207,6 @@ func _draw() -> void:
 				screen_px_to_local_units(STAR_PROXY_RADIUS_PX, screen_scale),
 				Color(1.0, 0.86, 0.48, 0.90)
 			)
-			star_proxy_count += 1
-
-	_last_debug_snapshot = {
-		"bh_only_root_count": bh_only_root_count,
-		"star_proxy_root_count": star_proxy_root_count,
-		"star_proxy_count": star_proxy_count,
-	}
 
 
 static func _is_finite_vec2(value: Vector2) -> bool:
@@ -158,6 +221,16 @@ static func resolve_star_proxy_visibility(was_visible: bool, projected_extent_px
 	if was_visible:
 		return projected_extent_px >= STAR_PROXY_EXIT_PROJECTED_EXTENT_PX
 	return projected_extent_px >= STAR_PROXY_ENTER_PROJECTED_EXTENT_PX
+
+
+static func should_cull_root_proxy(screen_pos: Vector2, viewport_size_px: Vector2, proxy_envelope_px: float) -> bool:
+	var envelope_px: float = maxf(proxy_envelope_px, 0.0)
+	return (
+		screen_pos.x < -envelope_px
+		or screen_pos.y < -envelope_px
+		or screen_pos.x > viewport_size_px.x + envelope_px
+		or screen_pos.y > viewport_size_px.y + envelope_px
+	)
 
 
 static func screen_px_to_local_units(screen_px: float, screen_scale: float) -> float:
@@ -213,3 +286,11 @@ func _resolve_star_proxy_visibility(root_id: StringName, projected_extent_px: fl
 	var next_visible: bool = resolve_star_proxy_visibility(was_visible, projected_extent_px)
 	_star_proxy_visible_by_root[root_id] = next_visible
 	return next_visible
+
+
+func _viewport_size_px() -> Vector2:
+	return get_viewport_rect().size
+
+
+func _canvas_xform() -> Transform2D:
+	return get_global_transform_with_canvas()
