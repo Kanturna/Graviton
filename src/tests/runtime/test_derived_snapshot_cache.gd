@@ -132,6 +132,7 @@ static func run(ctx) -> void:
 	ctx.current_suite = "test_derived_snapshot_cache"
 	_test_cache_tracks_interest_and_dirty_updates(ctx)
 	_test_cache_falls_back_to_sim_tick_without_orbit_signal(ctx)
+	_test_cache_throttles_sim_tick_refresh_but_not_user_events(ctx)
 
 
 static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
@@ -216,6 +217,79 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	planetary_state_service.free()
 	life_potential_service.free()
 	biosphere_service.free()
+	world_loader.free()
+	time_service.free()
+	registry.free()
+
+
+static func _test_cache_throttles_sim_tick_refresh_but_not_user_events(ctx) -> void:
+	var registry: Node = _make_registry()
+	var time_service: Node = load("res://src/core/time/time_service.gd").new()
+	var bubble := BubbleStub.new()
+	var world_loader := WorldLoaderStub.new()
+	var orbit_service := OrbitServiceStub.new()
+	var thermal_service := ThermalStub.new()
+	var environment_service := EnvironmentStub.new()
+	var cache = DerivedSnapshotCacheScript.new()
+
+	bubble.set_focus(&"planet_a")
+	cache.configure(
+		registry,
+		time_service,
+		bubble,
+		world_loader,
+		thermal_service,
+		environment_service,
+		orbit_service
+	)
+
+	var revision_after_configure: int = cache.get_revision()
+	var throttled_before: int = cache.get_refresh_throttled_count()
+
+	orbit_service.emit_bodies_updated([&"genesis"], DerivedSnapshotCacheScript.REASON_SIM_TICK)
+	ctx.assert_true(
+		cache.get_revision() == revision_after_configure + 1,
+		"erster sim_tick nach configure laesst Refresh sofort durch"
+	)
+
+	orbit_service.emit_bodies_updated([&"genesis"], DerivedSnapshotCacheScript.REASON_SIM_TICK)
+	orbit_service.emit_bodies_updated([&"genesis"], DerivedSnapshotCacheScript.REASON_SIM_TICK)
+	ctx.assert_true(
+		cache.get_revision() == revision_after_configure + 1,
+		"weitere sim_tick-Signale innerhalb des Cooldowns werden verworfen"
+	)
+	ctx.assert_true(
+		cache.get_refresh_throttled_count() == throttled_before + 2,
+		"throttled_count zaehlt genau die geschluckten sim_tick-Refreshes"
+	)
+
+	bubble.set_focus(&"moon_a")
+	ctx.assert_true(
+		cache.get_revision() == revision_after_configure + 2,
+		"focus_changed umgeht den sim_tick-Cooldown und refresht sofort"
+	)
+	ctx.assert_true(
+		cache.get_last_refresh_reason() == DerivedSnapshotCacheScript.REASON_FOCUS_CHANGED,
+		"user-event behaelt seinen reason"
+	)
+
+	world_loader.emit_loaded(&"pilot_galaxy")
+	ctx.assert_true(
+		cache.get_revision() == revision_after_configure + 3,
+		"world_loaded umgeht den Cooldown und resetet ihn fuer den naechsten sim_tick"
+	)
+
+	orbit_service.emit_bodies_updated([&"genesis"], DerivedSnapshotCacheScript.REASON_SIM_TICK)
+	ctx.assert_true(
+		cache.get_revision() == revision_after_configure + 4,
+		"sim_tick nach world_loaded rebuildet sofort dank Cooldown-Reset"
+	)
+
+	cache.dispose()
+	orbit_service.free()
+	bubble.free()
+	thermal_service.free()
+	environment_service.free()
 	world_loader.free()
 	time_service.free()
 	registry.free()

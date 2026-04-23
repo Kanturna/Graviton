@@ -2,7 +2,7 @@ class_name OrbitTimeScaleController
 extends RefCounted
 
 
-const DEFAULT_PRESET_INDEX: int = 5
+const DEFAULT_PRESET_INDEX: int = 6
 const TIME_SCALE_PRESETS: Array[float] = [0.25, 1.0, 10.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0]
 
 var _slider: HSlider = null

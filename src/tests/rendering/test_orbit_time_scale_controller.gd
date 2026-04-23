@@ -56,11 +56,11 @@ static func _test_adjacent_preset_controls_step_through_presets(ctx) -> void:
 	var setup := _make_setup()
 	var controller = setup["controller"]
 	controller.apply_previous_preset()
-	ctx.assert_almost(TimeService.time_scale, 100.0, 1.0e-9, "previous springt auf das naechste kleinere Preset")
-	ctx.assert_true(controller.get_step_label() == "5/10", "Preset-Label folgt dem kleineren Schritt")
+	ctx.assert_almost(TimeService.time_scale, 250.0, 1.0e-9, "previous springt auf das naechste kleinere Preset")
+	ctx.assert_true(controller.get_step_label() == "6/10", "Preset-Label folgt dem kleineren Schritt")
 	controller.apply_next_preset()
-	ctx.assert_almost(TimeService.time_scale, 250.0, 1.0e-9, "next springt auf das naechste groessere Preset")
-	ctx.assert_true(controller.get_step_label() == "6/10", "Preset-Label folgt dem groesseren Schritt")
+	ctx.assert_almost(TimeService.time_scale, 500.0, 1.0e-9, "next springt auf das naechste groessere Preset")
+	ctx.assert_true(controller.get_step_label() == "7/10", "Preset-Label folgt dem groesseren Schritt")
 	_teardown_setup(setup)
 
 

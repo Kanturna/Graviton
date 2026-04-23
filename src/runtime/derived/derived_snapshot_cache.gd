@@ -10,6 +10,7 @@ const REASON_FOCUS_CHANGED: StringName = &"focus_changed"
 const REASON_WORLD_RELOAD: StringName = &"world_reload"
 const REASON_MANUAL: StringName = &"manual"
 const REASON_INTEREST_CHANGED: StringName = &"interest_changed"
+const SIM_TICK_REFRESH_COOLDOWN_USEC: int = 50_000
 
 var _registry: Node = null
 var _time_service: Node = null
@@ -39,6 +40,9 @@ var _dirty_all_interest: bool = true
 var _revision: int = 0
 var _last_refresh_reason: StringName = REASON_MANUAL
 var _last_refreshed_body_count: int = 0
+var _last_sim_tick_refresh_usec: int = 0
+var _refresh_call_count_total: int = 0
+var _refresh_throttled_count: int = 0
 
 
 func configure(
@@ -117,9 +121,19 @@ func dispose() -> void:
 	_dirty_interest_ids.clear()
 	_dirty_all_interest = true
 	_last_refreshed_body_count = 0
+	_last_sim_tick_refresh_usec = 0
+	_refresh_call_count_total = 0
+	_refresh_throttled_count = 0
 
 
 func refresh(reason: StringName = REASON_MANUAL) -> void:
+	_refresh_call_count_total += 1
+	if reason == REASON_SIM_TICK:
+		var now_usec: int = Time.get_ticks_usec()
+		if now_usec - _last_sim_tick_refresh_usec < SIM_TICK_REFRESH_COOLDOWN_USEC:
+			_refresh_throttled_count += 1
+			return
+		_last_sim_tick_refresh_usec = now_usec
 	_focus_id = StringName("") if _bubble == null else _bubble.get_focus()
 	var effective_interest: Dictionary = _effective_interest_set()
 	if reason == REASON_MANUAL or reason == REASON_CONFIGURE or reason == REASON_WORLD_RELOAD:
@@ -197,6 +211,14 @@ func get_last_refresh_reason() -> StringName:
 
 func get_last_refreshed_body_count() -> int:
 	return _last_refreshed_body_count
+
+
+func get_refresh_call_count_total() -> int:
+	return _refresh_call_count_total
+
+
+func get_refresh_throttled_count() -> int:
+	return _refresh_throttled_count
 
 
 func get_focus_id() -> StringName:
@@ -290,6 +312,7 @@ func _on_focus_changed(_new_focus_id: StringName) -> void:
 
 func _on_world_loaded(_world_id: StringName) -> void:
 	_dirty_all_interest = true
+	_last_sim_tick_refresh_usec = 0
 	refresh(REASON_WORLD_RELOAD)
 
 
