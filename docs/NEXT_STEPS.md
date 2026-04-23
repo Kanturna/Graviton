@@ -2,12 +2,12 @@
 
 Stand: 2026-04-23
 
-## Prioritaet 0 - Planetary-State Acceptance Gate
+## Prioritaet 0 - Life-Potential-v1a Acceptance Gate
 
 Ziel:
-Die neue `Planetary State Foundation` im echten Editor-/Playtest-Lauf
-validieren, bevor daraus `Life Potential v1` oder eine groessere
-Survey-/Atlas-Schicht weitergezogen wird.
+Die neue `Life Potential v1a`-Schicht im echten Editor-/Playtest-Lauf
+validieren, bevor daraus ein persistenter Proto-Biosphaeren-Block oder
+eine groessere Survey-/Atlas-Schicht weitergezogen wird.
 
 Konkreter Ablauf:
 
@@ -20,19 +20,24 @@ Konkreter Ablauf:
 - jeweils dieselben Dinge lesen:
   - normales Fokus-HUD
   - Root-Inspector-Zeile fuer denselben Body
-  - `Environment` / `Climate` gegen `World`
+  - `Environment` / `Climate` gegen `World` gegen `Life Potential`
 - dabei bewusst auf diese Punkte achten:
   - `Environment` bleibt die Aussage fuer **jetzt**
   - `World` liest als **Jahrescharakter** statt als zweite
     Momentaufnahme
-  - die `World:`-Zeile wirkt informativ, aber noch nicht wie heimlich
-    eingebaute Life- oder Biosphaeren-Logik
+  - die neue `Life Potential:`-Zeile liest als dominanter Chemiepfad,
+    aber noch nicht wie eine versteckte Biosphaere
   - `planet_a` liest weiter als reich/gut gepuffert, ohne die alte
-    `sample_system`-Umweltsemantik zu verlieren
+    `sample_system`-Umweltsemantik zu verlieren, und zeigt jetzt klar
+    `WATER_CARBON / HIGH`
   - `gamma_iv` bleibt aktuell brauchbar, darf aber jahresweise klar nur
-    `WINDOWED`/saisonal lesen
+    `WINDOWED`/saisonal lesen und soll life-seitig bewusst nur
+    `WATER_CARBON / MEDIUM` bleiben
+  - `alpha_iii` liest klar sulfur-dominiert
+  - `gamma_iii` liest klar cryogen-dominiert statt als kalte
+    Reservoir-Erdkopie
 
-## Prioritaet 1 - Large-World Regression Gate mit offener World-Zeile
+## Prioritaet 1 - Large-World Regression Gate mit offener World- und Potential-Zeile
 
 Ziel:
 Sicherstellen, dass die neue planetare Desc-Familie den ruhigen
@@ -48,7 +53,7 @@ Konkreter Ablauf:
 - dabei besonders bestaetigen:
   - `resident_root_ids` bleibt weiter `1..2`
   - der Inspector zeigt fuer residente Planeten/Monde jetzt zusaetzlich
-    die kompakte `World:`-Lesart
+    die kompakte `World:`- und `Potential:`-Lesart
   - `ROOT_OVERVIEW + Inspector offen` bleibt auf `scaleup_galaxy_100`
     weiter ruhig und interaktiv
   - Proxy-Culling, BH-only-/Stern-Proxy-Tiering und Streaming-Hysterese
@@ -60,7 +65,7 @@ Wenn dieser Gate kippt:
 - stattdessen einen kleinen Korrekturblock direkt aus Inspector-,
   Snapshot- oder Derived-Interest-Befunden schneiden
 
-## Prioritaet 2 - Naechster Simulationsblock: Life Potential v1 oder Mehrquellenstrahlung
+## Prioritaet 2 - Naechster Simulationsblock: Life Potential v1b oder Mehrquellenstrahlung
 
 Ziel:
 Nach einem sauberen Acceptance-Run den naechsten grossen planetaren
@@ -68,17 +73,18 @@ Simulationsschritt bewusst waehlen.
 
 Bevorzugte Richtung:
 
-- `Life Potential v1` auf Basis der neuen `World`-Achsen
-- read-only und status-/textbasiert
-- noch keine Populationen, Wesen oder Zivilisation
-- unterschiedliche Chemiepfade bleiben moeglich, weil die Foundation
-  bewusst chemie-agnostisch gebaut ist
+- `Life Potential v1b` auf Basis der neuen read-only Potenzialschicht
+- persistenter Proto-Biosphaerenzustand pro Planet/Mond
+- Seeding aus den jetzt kalibrierten Chemiepfad-Klassen
+- erster langsamer Tick-/Progress-Pfad, aber weiterhin noch keine
+  Populationen, Wesen oder Zivilisation
 
 Fallback-Reihenfolge:
 
 - wenn im Playtest `has_primary_source_only_basis` fuer Mehrstern-Faelle
   stoert, zuerst einen `Mehrquellenstrahlung`-Block vorziehen
-- erst danach einen Life-Potential-Pass darueberlegen
+- erst danach `Life Potential v1b` auf die verbesserte Thermalbasis
+  setzen
 
 ## Akut - Backdrop-Flicker im Editor beseitigen - erledigt
 

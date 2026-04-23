@@ -1,5 +1,43 @@
 # Graviton - Decisions
 
+## 2026-04-23 - Life startet als read-only Potenzialschicht vor jeder persistenten Biosphaere
+
+Auf die neue `Planetary State Foundation` folgt bewusst noch **keine**
+persistente Proto-Biosphaere. Stattdessen bekommt `Graviton` zuerst
+einen kleinen read-only `LifePotentialService`, der benannte
+Chemiepfade gegen die neuen Jahres-/Weltachsen auswertet.
+
+Konsequenz:
+
+- `Life Potential v1a` bleibt bewusst ein read-only Block:
+  kein `ProtoBiosphereState`, kein Ticking, kein Save-/Load, keine
+  Offscreen-Life-Sim
+- ausgewertet werden drei explizite Chemiepfade:
+  `WATER_CARBON`, `SULFUR_REACTIVE`, `CRYOGENIC_SOLVENT`
+- die Life-Lookups arbeiten bewusst nur ueber die neuen
+  Jahres-/World-Achsen
+  (`Thermal Extremity`, `Volatiles`, `Buffering`, `Stability`,
+  `Seasonality`) und **nicht** ueber `Environment` als gewichtete
+  Kernachse
+- `Environment` bleibt damit weiter die Antwort auf **jetzt**,
+  `World` die Antwort auf **ueber das Jahr**,
+  `Life Potential` die Antwort auf **welcher Chemiepfad liest hier
+  aktuell am plausibelsten**
+- die erste v1a-Kalibrierung ist bei `COLD` bewusst schaerfer als die
+  urspruengliche Planformulierung:
+  `WATER_CARBON` behandelt `COLD` nicht als toleriert, sondern effektiv
+  als unguenstig, waehrend `CRYOGENIC_SOLVENT` sowohl `FROZEN` als auch
+  `COLD` als Top-Thermik liest; damit kippen kalte, stabile
+  Reservoirwelten nicht versehentlich in einen water-biased
+  Mittelbereich
+- der Dominanz-Tie-Break ist bewusst nicht Earth-first:
+  Gleichstaende werden zuerst ueber `thermal_extremity_class`, dann ueber
+  `volatile_inventory_class` aufgeloest; ein fixer Fallback ist nur der
+  letzte technische Restpfad
+- HUD und Root-Inspector duerfen die neue
+  `Life Potential:`-/`Potential:`-Zeile direkt anzeigen, ohne daraus
+  schon biologische Persistenz oder Population abzuleiten
+
 ## 2026-04-23 - Planetare Zustandsbasis landet als eigener Jahres-Layer vor jeder Life-Simulation
 
 Der naechste planetare Simulationsschritt wird nicht als direkte

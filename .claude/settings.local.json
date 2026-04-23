@@ -11,7 +11,8 @@
       "PowerShell(git diff HEAD -- scenes/testbeds/orbit_testbed.tscn)",
       "PowerShell(git diff HEAD -- data/sample_system.gd data/starter_world.gd src/sim/world/root_system_generator.gd)",
       "PowerShell(& \"D:\\\\Programme\\\\Godot\\\\godot_console.exe\" --path . --headless --script res://src/tests/test_runner.gd --quit 2>&1)",
-      "PowerShell(git diff HEAD -- src/sim/world/world_loader.gd src/tests/helpers/sim_test_harness.gd)"
+      "PowerShell(git diff HEAD -- src/sim/world/world_loader.gd src/tests/helpers/sim_test_harness.gd)",
+      "PowerShell(git diff HEAD -- scenes/testbeds/orbit_testbed.gd scenes/testbeds/orbit_testbed.tscn src/tools/rendering/orbit_hud_formatter.gd src/tools/ui/root_inspector_model_builder.gd src/tools/ui/root_inspector_overlay.gd src/runtime/derived/derived_snapshot_cache.gd src/tests/helpers/sim_test_harness.gd)"
     ]
   }
 }

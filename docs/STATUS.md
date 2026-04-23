@@ -16,6 +16,9 @@ Derived- und Proxy-/Neighbor-Arbeit. Darauf sitzt jetzt zusaetzlich
 ein erster fokussierter Survey-UX-Slice als Root-Inspector fuer
 residente BH-Systeme sowie eine erste read-only `Planetary State
 Foundation` fuer laengerfristige Weltprofile von Planeten und Monden.
+Darauf sitzt jetzt zusaetzlich `Life Potential v1a` als kleiner
+read-only Life-Layer mit benannten Chemiepfaden auf Basis dieser
+Jahresachsen.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -91,10 +94,28 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Derived-Service neben `EnvironmentService`:
   `Environment` bleibt die Aussage fuer den aktuellen Zustand, `World`
   beschreibt den Charakter ueber das Jahr.
+- `LifePotentialService` liegt jetzt als weiterer read-only
+  Derived-Service neben `PlanetaryStateService`:
+  `Life Potential` beschreibt fuer `PLANET`- und `MOON`-Bodies noch
+  keine Biosphaere, sondern nur den aktuell dominanten Chemiepfad
+  (`WATER_CARBON`, `SULFUR_REACTIVE`, `CRYOGENIC_SOLVENT`) samt
+  Potenzialklasse (`NONE`, `LOW`, `MEDIUM`, `HIGH`).
 - `PlanetaryStateService` cached seine annualisierten sampled-year-
   Profile pro Body jetzt lazy, weil diese in v1 nur von statischen
   `BodyDef`-/Orbit-Daten abhaengen; `DerivedSnapshotCache` cached davon
   nur noch die UI-konsumierbaren Desc-Copies.
+- `LifePotentialService` bewertet diese World-Achsen bewusst nur ueber
+  die fuenf Jahresklassen
+  `Thermal Extremity`, `Volatiles`, `Buffering`, `Stability` und
+  `Seasonality`; `Environment` bleibt dabei bewusst eine separate
+  "jetzt"-Aussage und geht nicht als gewichtete Kernachse in den
+  Life-Score ein.
+- Die aktuelle v1a-Kalibrierung ist dabei fuer kalte Welten bewusst
+  etwas schaerfer als der urspruengliche Plantext:
+  `WATER_CARBON` wird auf `COLD` aktiv zurueckgedraengt, waehrend
+  `CRYOGENIC_SOLVENT` sowohl `FROZEN` als auch `COLD` als starke
+  Thermikbasis liest; das verhindert kaltes Water-/Earth-Rauschen auf
+  Bodies wie `gamma_iii`.
 - Die annuale `World`-Lesart arbeitet jetzt ueber fuenf explizite
   Klassenachsen:
   `Volatiles`, `Buffering`, `Seasonality`, `Stability` und
@@ -254,6 +275,13 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `MOON`-Bodies jetzt zusaetzlich eine kompakte `World:`-Zeile aus den
   neuen planetaren Zustandsachsen, ohne daraus schon eine versteckte
   Life- oder Biosphaeren-Aussage abzuleiten.
+- Der Fokus-HUD und der Root-Inspector zeigen fuer `PLANET`- und
+  `MOON`-Bodies jetzt zusaetzlich eine kompakte
+  `Life Potential:`-/`Potential:`-Zeile:
+  derselbe Planet kann damit gleichzeitig als
+  `Environment` = jetzt, `World` = Jahrescharakter und
+  `Life Potential` = dominanter Chemiepfad lesbar werden, ohne dass
+  dieser Block schon persistenten Bio-State oder Ticking einfuehrt.
 - `GalaxyProxyRenderer` arbeitet jetzt auch view-seitig mit Tiering:
   entfernte Roots sind erst BH-only-Proxies; Stern-Proxies kommen erst
   oberhalb einer projizierten Root-Groesse mit eigener 96/80-px-
@@ -270,6 +298,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Formatter-/Badge-Regressionen, ModelBuilder-/Overlay-Hierarchie und
   die Testbed-Controller-Regeln fuer explizites Oeffnen,
   Interest-Override und Reset bei Welt-Wechsel.
+- Neue Tests pinnen jetzt zusaetzlich den neuen Life-Layer ueber vier
+  Ebenen:
+  `LifePotentialService`-Anchor- und Tie-Break-Regressionen,
+  `DerivedSnapshotCache`-Glue, HUD-/Formatter-Ausgabe und die
+  Root-Inspector-Potenzialzeile.
 - `INACTIVE_NO_LCA` bleibt fuer legitime Cross-Root-Faelle sichtbar,
   loggt aber jetzt als Warning statt als Fehler.
 - `TimeService` und `UniverseRegistry` bleiben die einzigen
@@ -280,10 +313,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `OrbitService` schreibt autoritativ die `BodyState`-Positionsdaten.
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
-- Die Headless-Testbasis ist wieder reproduzierbar: direkter
+- Die Headless-Testbasis ist weiter reproduzierbar: direkter
   `godot_console.exe --headless ...`-Aufruf und `run_tests.bat` laufen
-  auf `main` jetzt mit `7241` erfolgreichen Assertions bei `0`
-  Failures.
+  nach `Life Potential v1a` jetzt mit `7308` erfolgreichen Assertions
+  bei `0` Failures.
 
 ### Aktuelle Praesentation
 
@@ -624,7 +657,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/sim/atmosphere/atmosphere_service.gd`
 - `src/tests/sim/test_atmosphere_service.gd`
 - `src/sim/environment/environment_service.gd`
+- `src/sim/life/life_potential_service.gd`
 - `src/tests/sim/test_environment_service.gd`
+- `src/tests/sim/test_life_potential_service.gd`
 - `docs/SIMULATIONSREGELN.md`
 - `docs/STARTER_WORLD.md`
 - `docs/NEXT_STEPS.md`
@@ -817,17 +852,20 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   heisses und kaltes Gegenbeispiel im Fokus-HUD und im Root-Inspector
   lesen
 - dabei den neuen `World:`-Pfad explizit gegen den bestehenden
-  `Environment`-/`Climate`-Pfad pruefen:
+  `Environment`-/`Climate`-Pfad pruefen und jetzt zusaetzlich die neue
+  `Life Potential:`-Lesart mitlesen:
   `Environment` soll weiter "jetzt", `World` bewusst "ueber das Jahr"
-  bedeuten
+  und `Life Potential` bewusst "dominanter Chemiepfad" bedeuten
 - denselben Acceptance-Run gleich mit den offenen Large-World-Gates
   koppeln:
   `scaleup_galaxy_30` und `scaleup_galaxy_100` mit offenem Inspector im
   `ROOT_OVERVIEW` pruefen, damit die neue planetare Desc-Familie die
   ruhige Large-World-Haptik nicht regressiert
 - wenn dieser Playtest sauber ist, als naechsten Simulationsblock
-  `Life Potential v1` auf Basis der neuen Weltachsen schneiden:
-  read-only, text-/statusbasiert, noch ohne Populationen oder Wesen
+  `Life Potential v1b` auf Basis der neuen read-only Potenzialschicht
+  schneiden:
+  persistenter Proto-Biosphaerenzustand, Seeding und Ticking, aber
+  weiterhin noch ohne Populationen oder Wesen
 - falls der Playtest stattdessen zeigt, dass
   `has_primary_source_only_basis` fuer Mehrstern-Faelle zu stoerend
   wird, zuerst einen expliziten `Mehrquellenstrahlung`-Block vorziehen
@@ -835,4 +873,4 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   oder planetare Derived-Folgearbeit ausbauen, nicht ueber noch mehr
   Root-Anzahl ohne echten Editor-/Feel-Playtest
 - Headless-Basis nach diesem Block:
-  `./run_tests.bat` laeuft gruen mit `7279` Passed, `0` Failed
+  `./run_tests.bat` laeuft gruen mit `7308` Passed, `0` Failed

@@ -82,6 +82,10 @@ static func _test_model_builder_builds_hierarchy_and_summary_for_starter_root(ct
 		String(gamma_iv_row.get("world_text", "")) == "World: LIMITED / MODERATE / WINDOWED / TEMPERATE / SEASONAL",
 		"ModelBuilder haengt fuer planetare Bodies die neue kompakte World-Zeile an"
 	)
+	ctx.assert_true(
+		String(gamma_iv_row.get("potential_text", "")) == "Potential: WATER_CARBON / MEDIUM",
+		"ModelBuilder haengt fuer planetare Bodies zusaetzlich die kompakte Potenzialzeile an"
+	)
 
 	var summary: Dictionary = model.get("summary", {})
 	var expected_environment_counts: Dictionary = _environment_class_counts(context.get("snapshot_cache"), _planetary_interest_ids_for_root(context.get("registry"), context.get("topology"), &"obsidian"))
@@ -150,7 +154,8 @@ static func _build_starter_root_context() -> Dictionary:
 		setup.get(SimTestHarnessScript.HARNESS_KEY_THERMAL_SERVICE),
 		setup.get(SimTestHarnessScript.HARNESS_KEY_ENVIRONMENT_SERVICE),
 		setup.get(SimTestHarnessScript.HARNESS_KEY_ORBIT_SERVICE),
-		setup.get(SimTestHarnessScript.HARNESS_KEY_PLANETARY_STATE_SERVICE)
+		setup.get(SimTestHarnessScript.HARNESS_KEY_PLANETARY_STATE_SERVICE),
+		setup.get(SimTestHarnessScript.HARNESS_KEY_LIFE_POTENTIAL_SERVICE)
 	)
 	snapshot_cache.set_interest_ids(
 		_planetary_interest_ids_for_root(

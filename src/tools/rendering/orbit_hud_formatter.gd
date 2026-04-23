@@ -4,6 +4,7 @@ extends RefCounted
 const EnvironmentServiceScript = preload("res://src/sim/environment/environment_service.gd")
 const ThermalServiceScript = preload("res://src/sim/thermal/thermal_service.gd")
 const PlanetaryStateServiceScript = preload("res://src/sim/planetary/planetary_state_service.gd")
+const LifePotentialServiceScript = preload("res://src/sim/life/life_potential_service.gd")
 
 
 static func format_focus(focus_name: String) -> String:
@@ -43,6 +44,15 @@ static func format_world(planetary_state_desc: Dictionary) -> String:
 	]
 
 
+static func format_life_potential(life_potential_desc: Dictionary) -> String:
+	if not bool(life_potential_desc.get(LifePotentialServiceScript.KEY_HAS_LIFE_POTENTIAL_BASIS, false)):
+		return "Life Potential: n/a"
+	return "Life Potential: %s / %s" % [
+		_track_text(life_potential_desc),
+		_potential_class_text(life_potential_desc),
+	]
+
+
 static func format_season(thermal_desc: Dictionary) -> String:
 	if not bool(thermal_desc.get(ThermalServiceScript.KEY_HAS_SEASONAL_BASIS, false)):
 		return "Season: n/a"
@@ -79,6 +89,15 @@ static func format_inspector_world_line(planetary_state_desc: Dictionary) -> Str
 	if seasonality_text != "LOW":
 		segments.append(seasonality_text)
 	return "World: %s" % " / ".join(segments)
+
+
+static func format_inspector_life_potential_line(life_potential_desc: Dictionary) -> String:
+	if not bool(life_potential_desc.get(LifePotentialServiceScript.KEY_HAS_LIFE_POTENTIAL_BASIS, false)):
+		return "Potential: n/a"
+	return "Potential: %s / %s" % [
+		_track_text(life_potential_desc),
+		_potential_class_text(life_potential_desc),
+	]
 
 
 static func format_time(sim_time_s: float, tick_count: int, fps: int) -> String:
@@ -169,5 +188,23 @@ static func _stability_text(planetary_state_desc: Dictionary) -> String:
 		int(planetary_state_desc.get(
 			PlanetaryStateServiceScript.KEY_STABILITY_CLASS,
 			PlanetaryStateServiceScript.StabilityClass.FRAGILE
+		))
+	)
+
+
+static func _track_text(life_potential_desc: Dictionary) -> String:
+	return LifePotentialServiceScript.to_string_track(
+		int(life_potential_desc.get(
+			LifePotentialServiceScript.KEY_DOMINANT_TRACK_ID,
+			LifePotentialServiceScript.Track.WATER_CARBON
+		))
+	)
+
+
+static func _potential_class_text(life_potential_desc: Dictionary) -> String:
+	return LifePotentialServiceScript.to_string_potential_class(
+		int(life_potential_desc.get(
+			LifePotentialServiceScript.KEY_DOMINANT_POTENTIAL_CLASS,
+			LifePotentialServiceScript.PotentialClass.NONE
 		))
 	)

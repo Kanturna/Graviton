@@ -9,7 +9,9 @@ static func run(ctx) -> void:
 	_test_primary_source_formatter_handles_missing_source(ctx)
 	_test_inspector_environment_badge_reuses_environment_and_climate_labels(ctx)
 	_test_world_formatter_uses_fixed_axis_order(ctx)
+	_test_life_potential_formatter_uses_track_and_class(ctx)
 	_test_inspector_world_line_hides_low_seasonality(ctx)
+	_test_inspector_life_potential_line_reuses_hud_language(ctx)
 
 
 static func _test_primary_source_formatter_uses_visible_label(ctx) -> void:
@@ -69,6 +71,22 @@ static func _test_world_formatter_uses_fixed_axis_order(ctx) -> void:
 	)
 
 
+static func _test_life_potential_formatter_uses_track_and_class(ctx) -> void:
+	var life_potential_desc: Dictionary = {
+		"has_life_potential_basis": true,
+		"dominant_track_id": 0,
+		"dominant_potential_class": 3,
+	}
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_life_potential(life_potential_desc) == "Life Potential: WATER_CARBON / HIGH",
+		"HUD formatter rendert die Life-Potential-Zeile im festgelegten Track/Class-Format"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_life_potential({}) == "Life Potential: n/a",
+		"HUD formatter zeigt ohne Life-Potential-Basis explizit Life Potential: n/a"
+	)
+
+
 static func _test_inspector_world_line_hides_low_seasonality(ctx) -> void:
 	var low_seasonality_desc: Dictionary = {
 		"has_sampled_year_basis": true,
@@ -94,4 +112,20 @@ static func _test_inspector_world_line_hides_low_seasonality(ctx) -> void:
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_inspector_world_line(seasonal_desc) == "World: LIMITED / MODERATE / WINDOWED / TEMPERATE / SEASONAL",
 		"Inspector haengt nicht-LOW-Seasonality explizit an die kompakte World-Zeile an"
+	)
+
+
+static func _test_inspector_life_potential_line_reuses_hud_language(ctx) -> void:
+	var life_potential_desc: Dictionary = {
+		"has_life_potential_basis": true,
+		"dominant_track_id": 2,
+		"dominant_potential_class": 3,
+	}
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_inspector_life_potential_line(life_potential_desc) == "Potential: CRYOGENIC_SOLVENT / HIGH",
+		"Inspector rendert die kompakte Potenzialzeile in derselben Sprache wie das HUD"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_inspector_life_potential_line({}) == "Potential: n/a",
+		"Inspector zeigt ohne Life-Potential-Basis explizit Potential: n/a"
 	)

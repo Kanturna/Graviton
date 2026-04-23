@@ -255,9 +255,15 @@ static func _format_row_text(row: Dictionary) -> String:
 		parts.append(note_text)
 	var line_one: String = "   ".join(parts)
 	var world_text: String = String(row.get("world_text", ""))
-	if world_text == "":
+	var potential_text: String = String(row.get("potential_text", ""))
+	var extra_lines: Array[String] = []
+	if world_text != "":
+		extra_lines.append(world_text)
+	if potential_text != "":
+		extra_lines.append(potential_text)
+	if extra_lines.is_empty():
 		return line_one
-	return "%s\n%s" % [line_one, world_text]
+	return "%s\n%s" % [line_one, "\n".join(extra_lines)]
 
 
 func _on_row_pressed(body_id: StringName) -> void:

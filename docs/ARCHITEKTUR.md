@@ -26,6 +26,7 @@ src/runtime/       LocalBubbleManager, BubbleActivationSet,
 src/sim/           UniverseRegistry, WorldLoader, OrbitService, LocalOrbitIntegrator,
                    ThermalService, AtmosphereService, EnvironmentService,
                    PlanetaryYearSampler, PlanetaryStateService,
+                   LifePotentialService,
                    GalaxyDef/RootSystemManifest/RootSystemGenerator,
                    BodyDef/State, OrbitProfile, OrbitMode
    |
@@ -140,6 +141,11 @@ _ready():
         AtmosphereService,
         PlanetaryYearSampler
     )
+    LifePotentialService.configure(
+        UniverseRegistry,
+        PlanetaryStateService,
+        EnvironmentService
+    )
     DerivedSnapshotCache.configure(
         UniverseRegistry,
         TimeService,
@@ -148,7 +154,8 @@ _ready():
         ThermalService,
         EnvironmentService,
         OrbitService,
-        PlanetaryStateService
+        PlanetaryStateService,
+        LifePotentialService
     )
     OrbitViewRenderer.set_derived_snapshot_cache(DerivedSnapshotCache)
     OrbitService.bodies_updated.connect(
@@ -183,6 +190,10 @@ treibt keine Zeit vorwaerts. Es stellt nur sicher, dass alle
 abhaengige interessierte Bodies; ohne dieses Signal bleibt
 `TimeService.sim_tick` der konservative Fallback. Im Frame-Loop werden
 nur bereits berechnete Snapshots konsumiert.
+Nach `PlanetaryStateService` und `LifePotentialService` fuehrt der
+Cache damit jetzt mehrere read-only Desc-Familien fuer dieselben
+Interessens-Bodies, ohne neue Simulationswahrheit in `runtime/`
+aufzubauen.
 Auch Diagnosepfade wie `DebugOverlay` duerfen bei verdrahtetem
 `DerivedSnapshotCache` nicht live auf
 `ThermalService.describe_body(...)` zurueckfallen; Cache-Miss bleibt
