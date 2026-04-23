@@ -168,6 +168,10 @@ static func to_string_thermal_extremity_class(value: int) -> String:
 	return "UNKNOWN"
 
 
+static func thermal_extremity_class_from_temperature_k(temperature_k: float) -> int:
+	return _thermal_extremity_class_of(temperature_k)
+
+
 static func to_string_seasonality_class(value: int) -> String:
 	match value:
 		SeasonalityClass.LOW:

@@ -22,6 +22,7 @@ var _orbit_service: Node = null
 var _planetary_state_service: Node = null
 var _life_potential_service: Node = null
 var _proto_biosphere_service: Node = null
+var _biosphere_scale_service: Node = null
 
 var _focus_id: StringName = &""
 var _focus_thermal_desc: Dictionary = {}
@@ -29,11 +30,13 @@ var _focus_environment_desc: Dictionary = {}
 var _focus_planetary_state_desc: Dictionary = {}
 var _focus_life_potential_desc: Dictionary = {}
 var _focus_biosphere_desc: Dictionary = {}
+var _focus_biosphere_scale_desc: Dictionary = {}
 var _thermal_desc_by_id: Dictionary = {}
 var _environment_desc_by_id: Dictionary = {}
 var _planetary_state_desc_by_id: Dictionary = {}
 var _life_potential_desc_by_id: Dictionary = {}
 var _biosphere_desc_by_id: Dictionary = {}
+var _biosphere_scale_desc_by_id: Dictionary = {}
 var _explicit_interest_ids: Dictionary = {}
 var _dirty_interest_ids: Dictionary = {}
 var _dirty_all_interest: bool = true
@@ -55,7 +58,8 @@ func configure(
 		orbit_service: Node = null,
 		planetary_state_service: Node = null,
 		life_potential_service: Node = null,
-		proto_biosphere_service: Node = null
+		proto_biosphere_service: Node = null,
+		biosphere_scale_service: Node = null
 	) -> void:
 	assert(registry != null, "DerivedSnapshotCache.configure: registry is null")
 	assert(time_service != null, "DerivedSnapshotCache.configure: time_service is null")
@@ -74,6 +78,7 @@ func configure(
 	_planetary_state_service = planetary_state_service
 	_life_potential_service = life_potential_service
 	_proto_biosphere_service = proto_biosphere_service
+	_biosphere_scale_service = biosphere_scale_service
 	if _orbit_service != null and _orbit_service.has_signal("bodies_updated"):
 		if not _orbit_service.bodies_updated.is_connected(_on_bodies_updated):
 			_orbit_service.bodies_updated.connect(_on_bodies_updated)
@@ -106,17 +111,20 @@ func dispose() -> void:
 	_planetary_state_service = null
 	_life_potential_service = null
 	_proto_biosphere_service = null
+	_biosphere_scale_service = null
 	_focus_id = StringName("")
 	_focus_thermal_desc.clear()
 	_focus_environment_desc.clear()
 	_focus_planetary_state_desc.clear()
 	_focus_life_potential_desc.clear()
 	_focus_biosphere_desc.clear()
+	_focus_biosphere_scale_desc.clear()
 	_thermal_desc_by_id.clear()
 	_environment_desc_by_id.clear()
 	_planetary_state_desc_by_id.clear()
 	_life_potential_desc_by_id.clear()
 	_biosphere_desc_by_id.clear()
+	_biosphere_scale_desc_by_id.clear()
 	_explicit_interest_ids.clear()
 	_dirty_interest_ids.clear()
 	_dirty_all_interest = true
@@ -155,6 +163,7 @@ func refresh(reason: StringName = REASON_MANUAL) -> void:
 			_planetary_state_desc_by_id.erase(id)
 			_life_potential_desc_by_id.erase(id)
 			_biosphere_desc_by_id.erase(id)
+			_biosphere_scale_desc_by_id.erase(id)
 			continue
 		_thermal_desc_by_id[id] = _thermal_service.describe_body(id)
 		_environment_desc_by_id[id] = _environment_service.describe_body(id)
@@ -170,6 +179,10 @@ func refresh(reason: StringName = REASON_MANUAL) -> void:
 			_biosphere_desc_by_id[id] = _proto_biosphere_service.describe_body(id)
 		else:
 			_biosphere_desc_by_id.erase(id)
+		if _biosphere_scale_service != null:
+			_biosphere_scale_desc_by_id[id] = _biosphere_scale_service.describe_body(id)
+		else:
+			_biosphere_scale_desc_by_id.erase(id)
 		_last_refreshed_body_count += 1
 
 	_prune_uninterested_entries(effective_interest)
@@ -178,6 +191,7 @@ func refresh(reason: StringName = REASON_MANUAL) -> void:
 	_focus_planetary_state_desc = _planetary_state_desc_by_id.get(_focus_id, {})
 	_focus_life_potential_desc = _life_potential_desc_by_id.get(_focus_id, {})
 	_focus_biosphere_desc = _biosphere_desc_by_id.get(_focus_id, {})
+	_focus_biosphere_scale_desc = _biosphere_scale_desc_by_id.get(_focus_id, {})
 	_dirty_interest_ids.clear()
 	_dirty_all_interest = false
 	_revision += 1
@@ -245,6 +259,10 @@ func get_focus_biosphere_desc() -> Dictionary:
 	return _focus_biosphere_desc
 
 
+func get_focus_biosphere_scale_desc() -> Dictionary:
+	return _focus_biosphere_scale_desc
+
+
 func get_thermal_desc(id: StringName) -> Dictionary:
 	return _thermal_desc_by_id.get(id, {})
 
@@ -263,6 +281,10 @@ func get_life_potential_desc(id: StringName) -> Dictionary:
 
 func get_biosphere_desc(id: StringName) -> Dictionary:
 	return _biosphere_desc_by_id.get(id, {})
+
+
+func get_biosphere_scale_desc(id: StringName) -> Dictionary:
+	return _biosphere_scale_desc_by_id.get(id, {})
 
 
 func _effective_interest_set() -> Dictionary:
@@ -288,6 +310,9 @@ func _prune_uninterested_entries(effective_interest: Dictionary) -> void:
 	for id in _biosphere_desc_by_id.keys():
 		if not effective_interest.has(id):
 			_biosphere_desc_by_id.erase(id)
+	for id in _biosphere_scale_desc_by_id.keys():
+		if not effective_interest.has(id):
+			_biosphere_scale_desc_by_id.erase(id)
 
 
 func _on_bodies_updated(ids: Array[StringName], reason: StringName) -> void:

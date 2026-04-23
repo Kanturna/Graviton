@@ -3,6 +3,7 @@ extends Node
 
 
 const PlanetaryStateServiceScript = preload("res://src/sim/planetary/planetary_state_service.gd")
+const LifeTrackLookupScript = preload("res://src/sim/life/life_track_lookup.gd")
 
 enum Track {
 	WATER_CARBON,
@@ -34,11 +35,11 @@ const TRACK_IDS: Array[int] = [
 	Track.CRYOGENIC_SOLVENT,
 ]
 
-const AXIS_THERMAL_EXTREMITY: StringName = &"thermal_extremity_class"
-const AXIS_VOLATILE_INVENTORY: StringName = &"volatile_inventory_class"
-const AXIS_CLIMATE_BUFFER: StringName = &"climate_buffer_class"
-const AXIS_STABILITY: StringName = &"stability_class"
-const AXIS_SEASONALITY: StringName = &"seasonality_class"
+const AXIS_THERMAL_EXTREMITY: StringName = LifeTrackLookupScript.AXIS_THERMAL_EXTREMITY
+const AXIS_VOLATILE_INVENTORY: StringName = LifeTrackLookupScript.AXIS_VOLATILE_INVENTORY
+const AXIS_CLIMATE_BUFFER: StringName = LifeTrackLookupScript.AXIS_CLIMATE_BUFFER
+const AXIS_STABILITY: StringName = LifeTrackLookupScript.AXIS_STABILITY
+const AXIS_SEASONALITY: StringName = LifeTrackLookupScript.AXIS_SEASONALITY
 
 const AXIS_WEIGHTS := {
 	AXIS_THERMAL_EXTREMITY: 0.30,
@@ -48,11 +49,11 @@ const AXIS_WEIGHTS := {
 	AXIS_SEASONALITY: 0.15,
 }
 
-const LOOKUP_PREFERRED: float = 1.0
-const LOOKUP_TOLERATED: float = 0.6
-const LOOKUP_WEAK: float = 0.3
-const LOOKUP_INCOMPATIBLE: float = 0.0
-const SCORE_EPSILON: float = 0.000001
+const LOOKUP_PREFERRED: float = LifeTrackLookupScript.LOOKUP_PREFERRED
+const LOOKUP_TOLERATED: float = LifeTrackLookupScript.LOOKUP_TOLERATED
+const LOOKUP_WEAK: float = LifeTrackLookupScript.LOOKUP_WEAK
+const LOOKUP_INCOMPATIBLE: float = LifeTrackLookupScript.LOOKUP_INCOMPATIBLE
+const SCORE_EPSILON: float = LifeTrackLookupScript.SCORE_EPSILON
 
 var _registry: Node = null
 var _planetary_state_service: Node = null
@@ -129,14 +130,7 @@ static func evaluate_from_planetary_desc(
 
 
 static func to_string_track(value: int) -> String:
-	match value:
-		Track.WATER_CARBON:
-			return "WATER_CARBON"
-		Track.SULFUR_REACTIVE:
-			return "SULFUR_REACTIVE"
-		Track.CRYOGENIC_SOLVENT:
-			return "CRYOGENIC_SOLVENT"
-	return "UNKNOWN"
+	return LifeTrackLookupScript.to_string_track(value)
 
 
 static func to_string_potential_class(value: int) -> String:
@@ -190,58 +184,15 @@ static func _sum_axis_contributions(contributions: Dictionary) -> float:
 
 
 static func _dominant_track_id(scores_by_track: Dictionary, planetary_state_desc: Dictionary) -> int:
-	var best_score: float = -1.0
-	var tied_track_ids: Array[int] = []
-	for track_id in TRACK_IDS:
-		var score: float = float(scores_by_track.get(track_id, 0.0))
-		if score > best_score + SCORE_EPSILON:
-			best_score = score
-			tied_track_ids = [track_id]
-		elif is_equal_approx(score, best_score):
-			tied_track_ids.append(track_id)
-	if tied_track_ids.size() <= 1:
-		return tied_track_ids[0] if not tied_track_ids.is_empty() else Track.WATER_CARBON
-
-	var thermal_class: int = int(planetary_state_desc.get(
-		PlanetaryStateServiceScript.KEY_THERMAL_EXTREMITY_CLASS,
-		PlanetaryStateServiceScript.ThermalExtremityClass.FROZEN
-	))
-	var thermal_tie_break_track_id: int = _tie_break_track_id_from_thermal(thermal_class)
-	if tied_track_ids.has(thermal_tie_break_track_id):
-		return thermal_tie_break_track_id
-
-	var volatile_class: int = int(planetary_state_desc.get(
-		PlanetaryStateServiceScript.KEY_VOLATILE_INVENTORY_CLASS,
-		PlanetaryStateServiceScript.VolatileInventoryClass.TRACE
-	))
-	var volatile_tie_break_track_id: int = _tie_break_track_id_from_volatiles(volatile_class)
-	if tied_track_ids.has(volatile_tie_break_track_id):
-		return volatile_tie_break_track_id
-
-	for fallback_track_id in TRACK_IDS:
-		if tied_track_ids.has(fallback_track_id):
-			return fallback_track_id
-	return tied_track_ids[0]
+	return LifeTrackLookupScript.dominant_track_id_from_scores(scores_by_track, planetary_state_desc)
 
 
 static func _tie_break_track_id_from_thermal(thermal_class: int) -> int:
-	match thermal_class:
-		PlanetaryStateServiceScript.ThermalExtremityClass.TEMPERATE:
-			return Track.WATER_CARBON
-		PlanetaryStateServiceScript.ThermalExtremityClass.HOT, PlanetaryStateServiceScript.ThermalExtremityClass.EXTREME:
-			return Track.SULFUR_REACTIVE
-		PlanetaryStateServiceScript.ThermalExtremityClass.FROZEN, PlanetaryStateServiceScript.ThermalExtremityClass.COLD:
-			return Track.CRYOGENIC_SOLVENT
-	return Track.WATER_CARBON
+	return LifeTrackLookupScript.tie_break_track_id_from_thermal(thermal_class)
 
 
 static func _tie_break_track_id_from_volatiles(volatile_class: int) -> int:
-	match volatile_class:
-		PlanetaryStateServiceScript.VolatileInventoryClass.RICH:
-			return Track.WATER_CARBON
-		PlanetaryStateServiceScript.VolatileInventoryClass.LIMITED, PlanetaryStateServiceScript.VolatileInventoryClass.TRACE:
-			return Track.SULFUR_REACTIVE
-	return Track.WATER_CARBON
+	return LifeTrackLookupScript.tie_break_track_id_from_volatiles(volatile_class)
 
 
 static func _dominant_track_reasons(track_id: int, planetary_state_desc: Dictionary, contributions_by_track: Dictionary) -> Array[String]:
@@ -319,138 +270,19 @@ static func _potential_class_of(score: float) -> int:
 
 
 static func _lookup_value_for_axis(track_id: int, axis_name: StringName, axis_class: int) -> float:
-	if _is_preferred(track_id, axis_name, axis_class):
-		return LOOKUP_PREFERRED
-	if _is_tolerated(track_id, axis_name, axis_class):
-		return LOOKUP_TOLERATED
-	if _is_weak(track_id, axis_name, axis_class):
-		return LOOKUP_WEAK
-	return LOOKUP_INCOMPATIBLE
+	return LifeTrackLookupScript.lookup_value_for_axis(track_id, axis_name, axis_class)
 
 
 static func _is_preferred(track_id: int, axis_name: StringName, axis_class: int) -> bool:
-	match track_id:
-		Track.WATER_CARBON:
-			match axis_name:
-				AXIS_THERMAL_EXTREMITY:
-					return axis_class == PlanetaryStateServiceScript.ThermalExtremityClass.TEMPERATE
-				AXIS_VOLATILE_INVENTORY:
-					return axis_class == PlanetaryStateServiceScript.VolatileInventoryClass.RICH
-				AXIS_CLIMATE_BUFFER:
-					return axis_class == PlanetaryStateServiceScript.ClimateBufferClass.BUFFERED
-				AXIS_STABILITY:
-					return axis_class == PlanetaryStateServiceScript.StabilityClass.STABLE
-				AXIS_SEASONALITY:
-					return axis_class == PlanetaryStateServiceScript.SeasonalityClass.LOW
-		Track.SULFUR_REACTIVE:
-			match axis_name:
-				AXIS_THERMAL_EXTREMITY:
-					return axis_class == PlanetaryStateServiceScript.ThermalExtremityClass.HOT
-				AXIS_VOLATILE_INVENTORY:
-					return axis_class == PlanetaryStateServiceScript.VolatileInventoryClass.LIMITED
-				AXIS_CLIMATE_BUFFER:
-					return axis_class == PlanetaryStateServiceScript.ClimateBufferClass.MODERATE
-				AXIS_STABILITY:
-					return axis_class == PlanetaryStateServiceScript.StabilityClass.WINDOWED
-				AXIS_SEASONALITY:
-					return axis_class == PlanetaryStateServiceScript.SeasonalityClass.SEASONAL
-		Track.CRYOGENIC_SOLVENT:
-			match axis_name:
-				AXIS_THERMAL_EXTREMITY:
-					return axis_class == PlanetaryStateServiceScript.ThermalExtremityClass.FROZEN \
-						or axis_class == PlanetaryStateServiceScript.ThermalExtremityClass.COLD
-				AXIS_VOLATILE_INVENTORY:
-					return false
-				AXIS_CLIMATE_BUFFER:
-					return axis_class == PlanetaryStateServiceScript.ClimateBufferClass.MODERATE
-				AXIS_STABILITY:
-					return false
-				AXIS_SEASONALITY:
-					return axis_class == PlanetaryStateServiceScript.SeasonalityClass.LOW
-	return false
+	return LifeTrackLookupScript.lookup_value_for_axis(track_id, axis_name, axis_class) == LOOKUP_PREFERRED
 
 
 static func _is_tolerated(track_id: int, axis_name: StringName, axis_class: int) -> bool:
-	match track_id:
-		Track.WATER_CARBON:
-			match axis_name:
-				AXIS_THERMAL_EXTREMITY:
-					return false
-				AXIS_VOLATILE_INVENTORY:
-					return axis_class == PlanetaryStateServiceScript.VolatileInventoryClass.LIMITED
-				AXIS_CLIMATE_BUFFER:
-					return axis_class == PlanetaryStateServiceScript.ClimateBufferClass.MODERATE
-				AXIS_STABILITY:
-					return axis_class == PlanetaryStateServiceScript.StabilityClass.WINDOWED
-				AXIS_SEASONALITY:
-					return axis_class == PlanetaryStateServiceScript.SeasonalityClass.SEASONAL
-		Track.SULFUR_REACTIVE:
-			match axis_name:
-				AXIS_THERMAL_EXTREMITY:
-					return axis_class == PlanetaryStateServiceScript.ThermalExtremityClass.EXTREME
-				AXIS_VOLATILE_INVENTORY:
-					return axis_class == PlanetaryStateServiceScript.VolatileInventoryClass.TRACE
-				AXIS_CLIMATE_BUFFER:
-					return axis_class == PlanetaryStateServiceScript.ClimateBufferClass.UNBUFFERED
-				AXIS_STABILITY:
-					return axis_class == PlanetaryStateServiceScript.StabilityClass.FRAGILE
-				AXIS_SEASONALITY:
-					return axis_class == PlanetaryStateServiceScript.SeasonalityClass.VIOLENT
-		Track.CRYOGENIC_SOLVENT:
-			match axis_name:
-				AXIS_THERMAL_EXTREMITY:
-					return false
-				AXIS_VOLATILE_INVENTORY:
-					return axis_class == PlanetaryStateServiceScript.VolatileInventoryClass.RICH
-				AXIS_CLIMATE_BUFFER:
-					return axis_class == PlanetaryStateServiceScript.ClimateBufferClass.BUFFERED
-				AXIS_STABILITY:
-					return axis_class == PlanetaryStateServiceScript.StabilityClass.STABLE \
-						or axis_class == PlanetaryStateServiceScript.StabilityClass.WINDOWED
-				AXIS_SEASONALITY:
-					return axis_class == PlanetaryStateServiceScript.SeasonalityClass.SEASONAL
-	return false
+	return LifeTrackLookupScript.lookup_value_for_axis(track_id, axis_name, axis_class) == LOOKUP_TOLERATED
 
 
 static func _is_weak(track_id: int, axis_name: StringName, axis_class: int) -> bool:
-	match track_id:
-		Track.WATER_CARBON:
-			match axis_name:
-				AXIS_THERMAL_EXTREMITY:
-					return axis_class == PlanetaryStateServiceScript.ThermalExtremityClass.HOT
-				AXIS_VOLATILE_INVENTORY:
-					return false
-				AXIS_CLIMATE_BUFFER:
-					return axis_class == PlanetaryStateServiceScript.ClimateBufferClass.UNBUFFERED
-				AXIS_STABILITY:
-					return axis_class == PlanetaryStateServiceScript.StabilityClass.FRAGILE
-				AXIS_SEASONALITY:
-					return false
-		Track.SULFUR_REACTIVE:
-			match axis_name:
-				AXIS_THERMAL_EXTREMITY:
-					return false
-				AXIS_VOLATILE_INVENTORY:
-					return axis_class == PlanetaryStateServiceScript.VolatileInventoryClass.RICH
-				AXIS_CLIMATE_BUFFER:
-					return axis_class == PlanetaryStateServiceScript.ClimateBufferClass.BUFFERED
-				AXIS_STABILITY:
-					return axis_class == PlanetaryStateServiceScript.StabilityClass.STABLE
-				AXIS_SEASONALITY:
-					return axis_class == PlanetaryStateServiceScript.SeasonalityClass.LOW
-		Track.CRYOGENIC_SOLVENT:
-			match axis_name:
-				AXIS_THERMAL_EXTREMITY:
-					return false
-				AXIS_VOLATILE_INVENTORY:
-					return axis_class == PlanetaryStateServiceScript.VolatileInventoryClass.LIMITED
-				AXIS_CLIMATE_BUFFER:
-					return false
-				AXIS_STABILITY:
-					return axis_class == PlanetaryStateServiceScript.StabilityClass.FRAGILE
-				AXIS_SEASONALITY:
-					return false
-	return false
+	return LifeTrackLookupScript.lookup_value_for_axis(track_id, axis_name, axis_class) == LOOKUP_WEAK
 
 
 static func _default_description(id: StringName) -> Dictionary:
@@ -460,13 +292,13 @@ static func _default_description(id: StringName) -> Dictionary:
 	for track_id in TRACK_IDS:
 		track_scores[track_id] = 0.0
 		track_classes[track_id] = PotentialClass.NONE
-		contributions[track_id] = {
-			AXIS_THERMAL_EXTREMITY: 0.0,
-			AXIS_VOLATILE_INVENTORY: 0.0,
-			AXIS_CLIMATE_BUFFER: 0.0,
-			AXIS_STABILITY: 0.0,
-			AXIS_SEASONALITY: 0.0,
-		}
+		contributions[track_id] = LifeTrackLookupScript.zero_axis_contributions([
+			AXIS_THERMAL_EXTREMITY,
+			AXIS_VOLATILE_INVENTORY,
+			AXIS_CLIMATE_BUFFER,
+			AXIS_STABILITY,
+			AXIS_SEASONALITY,
+		])
 	return {
 		KEY_BODY_ID: id,
 		KEY_IS_SUPPORTED_BODY_KIND: false,

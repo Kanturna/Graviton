@@ -35,6 +35,13 @@ Proto-Biosphaeren-Schicht:
 `Life Potential` bleibt der read-only Chemiepfad-Layer,
 `Life` beschreibt jetzt zusaetzlich den aktuellen
 Proto-Biosphaerenstand (`STERILE`, `PREBIOTIC`, `MICROBIAL`).
+Darauf sitzt jetzt zusaetzlich `Life v2` als quantitativer
+Biosphaeren-Layer:
+`ProtoBiosphereSimulationService` bleibt das interne deterministische
+Seed-/Progress-Substrat, waehrend ein neuer read-only
+`BiosphereScaleService` daraus bandweise Carrying Capacity, Biomasse und
+neue player-facing `Life`-Stages
+(`COMPLEX_MULTICELLULAR`, `COMPLEX_ECOSYSTEM`) ableitet.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -126,6 +133,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   gespeichert werden nur stabile Seed-/Drift-Parameter pro
   `PLANET`/`MOON`, waehrend aktueller `Life`-Fortschritt, Stage und
   dominanter Track lazy aus `sim_time_s` berechnet werden.
+- `LifeTrackLookup` buendelt jetzt die chemistry-aware
+  Track-Praeferenzmatrix fuer `WATER_CARBON`, `SULFUR_REACTIVE` und
+  `CRYOGENIC_SOLVENT` an genau einer Stelle; `LifePotentialService` und
+  `BiosphereScaleService` konsumieren dieselben Lookups und
+  Tie-Break-Regeln statt still zu driften.
 - Diese v1b-Proto-Biosphaere ist bewusst deterministisch und
   monoton-konvergent:
   `progress = clamp(seed + delta * ticks_elapsed, 0, 1)`.
@@ -143,6 +155,34 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Galaxy-Catalogs jetzt Background-State fuer alle `PLANET`-/`MOON`-
   Bodies, auch wenn ein Root nie resident wird; resident und offscreen
   lesen bei gleichem `sim_time_s` denselben `Life`-Zustand.
+- `BiosphereScaleService` fuehrt jetzt den naechsten quantitativen
+  Life-Layer ein:
+  pro Track und pro festem Band (`south`, `equator`, `north`) werden
+  `carrying_capacity` und `biomass` read-only berechnet.
+- Die bandweise Carrying Capacity liest dieselben chemistry-aware
+  Track-Lookups wie `LifePotentialService`, nutzt aber die bandweisen
+  Jahres-Mitteltemperaturen als lokale Thermal-Gates und die globalen
+  `World`-Achsen fuer Volatiles, Buffer, Stability und Seasonality.
+- Biomasse fuehrt bewusst **kein** zweites Zeitmodell ein:
+  `BiosphereScaleService` nutzt direkt den bestehenden
+  Proto-Progress aus `ProtoBiosphereSimulationService` und leitet daraus
+  `biomass_fraction = progress^2` ab.
+- Die neue player-facing `Life:`-Aussage kommt ab jetzt aus
+  `BiosphereScaleService`, nicht mehr direkt aus dem Proto-Substrat.
+  Die sichtbaren Stages sind jetzt:
+  `STERILE`, `PREBIOTIC`, `MICROBIAL`,
+  `COMPLEX_MULTICELLULAR`, `COMPLEX_ECOSYSTEM`.
+- Der alte Proto-Desc-Pfad bleibt parallel erhalten fuer interne Tests
+  und Debug; `Life v2` fuehrt also bewusst eine neue Snapshot-Familie
+  ein, statt den v1b-Substratpfad semantisch umzudeuten.
+- Die aktuelle v2-Kalibrierung ist dabei bewusst bandstrenger als die
+  frueheren groben Anchor-Annahmen:
+  `sample_system.planet_a` traegt faktisch nur aequatoriale
+  `WATER_CARBON`-Biomasse und endet mit den jetzigen Band-Gates deshalb
+  bei `COMPLEX_MULTICELLULAR`, nicht bei `COMPLEX_ECOSYSTEM`.
+  `starter_world.gamma_iv` kalibriert auf
+  `COMPLEX_MULTICELLULAR`, `starter_world.gamma_iii` dagegen auf
+  `COMPLEX_ECOSYSTEM`.
 - `PlanetaryStateService` cached seine annualisierten sampled-year-
   Profile pro Body jetzt lazy, weil diese in v1 nur von statischen
   `BodyDef`-/Orbit-Daten abhaengen; `DerivedSnapshotCache` cached davon
@@ -180,6 +220,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   weitere read-only Desc-Familie; HUD und Inspector lesen damit
   `Life` aus demselben Snapshot-Pfad wie `Environment`, `World` und
   `Life Potential`.
+- `DerivedSnapshotCache` fuehrt jetzt zusaetzlich
+  `biosphere_scale_desc` als weitere read-only Desc-Familie;
+  der alte `biosphere_desc`-Pfad bleibt fuer das Proto-Substrat
+  erhalten, waehrend HUD und Inspector ihr player-facing `Life:` jetzt
+  aus `biosphere_scale_desc` lesen.
 - Das `F3`-Debug-Overlay konsumiert bei verdrahtetem
   `DerivedSnapshotCache` denselben read-only Snapshot jetzt strikt
   snapshot-only; Cache-Misses bleiben sichtbar als `n/a`, statt im
@@ -329,6 +374,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `Environment` = jetzt, `World` = Jahrescharakter,
   `Life` = Proto-Biosphaerenstand und
   `Life Potential` = dominanter Chemiepfad lesbar werden.
+- Der Fokus-HUD zeigt jetzt zusaetzlich eine quantitative
+  `Biomass:`-Zeile; `Life:` ist damit nicht mehr nur der alte
+  Proto-Stage-Text, sondern die player-facing Kurzfassung des neuen
+  quantitativen Biosphaeren-Layers.
 - Der rechte Root-Inspector liest sich jetzt bewusster als Navigator:
   `BLACK_HOLE`- und `STAR`-Rows bleiben schlanke Einzeiler ohne
   unnoetiges `n/a`-Badge, nicht fokussierte `PLANET`-/`MOON`-Rows
@@ -720,8 +769,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tests/sim/test_atmosphere_service.gd`
 - `src/sim/environment/environment_service.gd`
 - `src/sim/life/life_potential_service.gd`
+- `src/sim/life/life_track_lookup.gd`
+- `src/sim/life/biosphere_scale_service.gd`
 - `src/tests/sim/test_environment_service.gd`
 - `src/tests/sim/test_life_potential_service.gd`
+- `src/tests/sim/test_biosphere_scale_service.gd`
 - `docs/SIMULATIONSREGELN.md`
 - `docs/STARTER_WORLD.md`
 - `docs/NEXT_STEPS.md`
@@ -908,16 +960,16 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- zuerst die neue `Planetary State Foundation` im echten Editor-/HUD-
-  Lauf abnehmen:
-  `sample_system.planet_a`, `starter_world.gamma_iv` sowie je ein klar
-  heisses und kaltes Gegenbeispiel im Fokus-HUD und im Root-Inspector
-  lesen
+- zuerst den neuen `Life v2`-Pfad im echten Editor-/HUD-Lauf abnehmen:
+  `sample_system.planet_a`, `starter_world.gamma_iv`,
+  `starter_world.alpha_iii` und `starter_world.gamma_iii`
+  im Fokus-HUD und im Root-Inspector lesen
 - dabei den neuen `World:`-Pfad explizit gegen den bestehenden
   `Environment`-/`Climate`-Pfad pruefen und jetzt zusaetzlich die neuen
-  `Life:`- und `Life Potential:`-Lesarten mitlesen:
+  `Life:`-, `Biomass:`- und `Life Potential:`-Lesarten mitlesen:
   `Environment` soll weiter "jetzt", `World` bewusst "ueber das Jahr",
-  `Life` bewusst "Proto-Biosphaerenstand" und `Life Potential` bewusst
+  `Life` bewusst "quantitative Biosphaerenstufe",
+  `Biomass` bewusst "Menge" und `Life Potential` bewusst
   "dominanter Chemiepfad" bedeuten
 - denselben Acceptance-Run gleich mit den offenen Large-World-Gates
   koppeln:
@@ -925,8 +977,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `ROOT_OVERVIEW` pruefen, damit die neue planetare Desc-Familie die
   ruhige Large-World-Haptik nicht regressiert
 - wenn dieser Playtest sauber ist, als naechsten Simulationsblock
-  entweder `Mehrquellenstrahlung` oder ein `Life v2` oberhalb von
-  `MICROBIAL` schneiden
+  `Population Foundation v1` schneiden:
+  erster echter Population-/Settlement-State auf Basis von
+  `World + Life Potential + Life v2`
 - falls der Playtest stattdessen zeigt, dass
   `has_primary_source_only_basis` fuer Mehrstern-Faelle zu stoerend
   wird, zuerst einen expliziten `Mehrquellenstrahlung`-Block vorziehen
@@ -934,4 +987,4 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   oder planetare Derived-Folgearbeit ausbauen, nicht ueber noch mehr
   Root-Anzahl ohne echten Editor-/Feel-Playtest
 - Headless-Basis nach diesem Block:
-  `./run_tests.bat` laeuft gruen mit `7308` Passed, `0` Failed
+  `./run_tests.bat` laeuft gruen mit `7395` Passed, `0` Failed

@@ -2,13 +2,12 @@
 
 Stand: 2026-04-23
 
-## Prioritaet 0 - Life-Potential-v1b Acceptance Gate
+## Prioritaet 0 - Life-v2 Acceptance Gate
 
 Ziel:
-Die neue `Life Potential v1b`-Schicht zusammen mit dem jetzt
-verdichteten `Root Inspector v2.1` im echten Editor-/Playtest-Lauf
-validieren, bevor danach ein weiterer Physik- oder Life-Folgeblock
-weitergezogen wird.
+Den neuen quantitativen `Life v2`-Pfad zusammen mit dem bestehenden
+kompakten `Root Inspector v2.1` im echten Editor-/Playtest-Lauf
+validieren, bevor danach der erste echte Population-Block geplant wird.
 
 Konkreter Ablauf:
 
@@ -16,12 +15,13 @@ Konkreter Ablauf:
 - nacheinander diese Fokusfaelle pruefen:
   - `sample_system` -> `planet_a`
   - `starter_world` -> `gamma_iv`
-  - `starter_world` -> ein klar heisser Referenzplanet
-  - `starter_world` -> ein klar kalter Referenzplanet oder Mond
+  - `starter_world` -> `alpha_iii`
+  - `starter_world` -> `gamma_iii`
 - jeweils dieselben Dinge lesen:
   - normales Fokus-HUD
   - Root-Inspector-Zeile fuer denselben Body
   - `Environment` / `Climate` gegen `World` gegen `Life` gegen
+    `Biomass` gegen
     `Life Potential`
 - dabei beim Inspector zusaetzlich bewusst pruefen:
   - `BLACK_HOLE`- und `STAR`-Rows lesen sich als schlanke Einzeiler
@@ -40,19 +40,21 @@ Konkreter Ablauf:
   - `Environment` bleibt die Aussage fuer **jetzt**
   - `World` liest als **Jahrescharakter** statt als zweite
     Momentaufnahme
-  - `Life` liest als etablierter Proto-Biosphaerenstand ueber Sim-Zeit
+  - `Life` liest als quantitativer, player-facing Biosphaerenstand
+    ueber Sim-Zeit
+  - `Biomass` liest als Menge und nicht als zweites Potential-Label
   - `Life Potential` bleibt der zugrunde liegende Chemiepfad und ist
     nicht nur eine zweite `Life:`-Beschriftung
-  - `planet_a` liest weiter als reich/gut gepuffert, ohne die alte
-    `sample_system`-Umweltsemantik zu verlieren, zeigt klar
-    `Life Potential: WATER_CARBON / HIGH`, startet aber erst
-    `PREBIOTIC`
+  - `planet_a` liest weiter als reich/gut gepuffert, bleibt klar
+    `WATER_CARBON / HIGH`, erreicht life-seitig aber mit der aktuellen
+    bandweisen Gate-Kalibrierung nur `COMPLEX_MULTICELLULAR`
   - `gamma_iv` bleibt aktuell brauchbar, darf aber jahresweise klar nur
-    `WINDOWED`/saisonal lesen und soll life-seitig bewusst nur
-    `WATER_CARBON / MEDIUM` bleiben
-  - `alpha_iii` liest life-seitig klar sulfur-dominiert
-  - `gamma_iii` liest life-seitig klar cryogen-dominiert statt als kalte
-    Reservoir-Erdkopie
+    `WINDOWED`/saisonal lesen und soll life-seitig bei langer Laufzeit
+    unter `COMPLEX_ECOSYSTEM` bleiben
+  - `alpha_iii` liest life-seitig klar sulfur-dominiert und nicht
+    still water-biased
+  - `gamma_iii` liest life-seitig klar cryogen-dominiert und darf
+    quantitiv bis `COMPLEX_ECOSYSTEM` kommen
 
 ## Prioritaet 1 - Large-World Regression Gate mit kompaktem Navigator
 
@@ -87,26 +89,24 @@ Wenn dieser Gate kippt:
 - stattdessen einen kleinen Korrekturblock direkt aus Inspector-,
   Snapshot- oder Derived-Interest-Befunden schneiden
 
-## Prioritaet 2 - Naechster Simulationsblock: Mehrquellenstrahlung oder Life v2
+## Prioritaet 2 - Naechster Simulationsblock: Population Foundation v1
 
 Ziel:
-Nach einem sauberen Acceptance-Run den naechsten grossen planetaren
-Simulationsschritt bewusst waehlen.
+Nach einem sauberen `Life v2`-Acceptance-Run den ersten echten
+Population-/Settlement-Unterbau schneiden.
 
 Bevorzugte Richtung:
 
-- `Mehrquellenstrahlung`, falls die bestehende
-  `has_primary_source_only_basis`-Vereinfachung fuer Mehrstern-Faelle
-  im Playtest jetzt stoert
-- alternativ direkt `Life v2`, wenn oberhalb von `MICROBIAL` die erste
-  echte Biosphaeren-Diversifizierung kommen soll
+- eigener `PopulationState` / `SettlementState`
+- erste planetare Population-Counts auf Basis von
+  `World + Life Potential + Life v2`
+- noch keine Civics, keine Factions, keine Makropolitik
 
 Fallback-Reihenfolge:
 
-- wenn Mehrquellenstrahlung visuell / semantisch noch nicht stoert,
-  zuerst `Life v2` planen
-- wenn Mehrstern-Faelle die neue `Life`-/`Life Potential`-Lesart
-  sichtbar verziehen, zuerst die Thermalbasis verbreitern
+- wenn Mehrstern-Faelle die neue `Life v2`-Lesart sichtbar verziehen,
+  zuerst einen expliziten `Mehrquellenstrahlung`-Block vorziehen
+- wenn der Editor-Run sauber ist, danach direkt `Population Foundation v1`
 
 ## Akut - Backdrop-Flicker im Editor beseitigen - erledigt
 

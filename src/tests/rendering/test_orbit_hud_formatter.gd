@@ -10,6 +10,7 @@ static func run(ctx) -> void:
 	_test_inspector_environment_badge_reuses_environment_and_climate_labels(ctx)
 	_test_world_formatter_uses_fixed_axis_order(ctx)
 	_test_life_formatter_handles_track_and_none_cases(ctx)
+	_test_biomass_formatter_shows_quantitative_index(ctx)
 	_test_life_potential_formatter_uses_track_and_class(ctx)
 	_test_inspector_world_line_hides_low_seasonality(ctx)
 	_test_inspector_life_line_reuses_hud_language(ctx)
@@ -90,27 +91,43 @@ static func _test_life_potential_formatter_uses_track_and_class(ctx) -> void:
 
 static func _test_life_formatter_handles_track_and_none_cases(ctx) -> void:
 	var biosphere_desc: Dictionary = {
-		"has_biosphere_basis": true,
-		"biosphere_stage": 1,
+		"has_biosphere_scale_basis": true,
+		"biosphere_stage": 3,
 		"dominant_track_id": 0,
 		"dominant_potential_class": 3,
+		"dominant_biomass_index": 0.57,
 	}
 	ctx.assert_true(
-		OrbitHudFormatterScript.format_life(biosphere_desc) == "Life: PREBIOTIC / WATER_CARBON",
-		"HUD formatter rendert die neue Life-Zeile mit Stage und Track"
+		OrbitHudFormatterScript.format_life(biosphere_desc) == "Life: COMPLEX_MULTICELLULAR / WATER_CARBON",
+		"HUD formatter rendert die player-facing Life-v2-Zeile mit Stage und Track"
 	)
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_life({
-			"has_biosphere_basis": true,
+			"has_biosphere_scale_basis": true,
 			"biosphere_stage": 0,
 			"dominant_track_id": 0,
 			"dominant_potential_class": 0,
+			"dominant_biomass_index": 0.0,
 		}) == "Life: STERILE",
 		"HUD formatter blendet bei NONE bewusst jeden Default-Track aus"
 	)
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_life({}) == "Life: n/a",
 		"HUD formatter zeigt ohne Biosphaeren-Basis explizit Life: n/a"
+	)
+
+
+static func _test_biomass_formatter_shows_quantitative_index(ctx) -> void:
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_biomass({
+			"has_biosphere_scale_basis": true,
+			"dominant_biomass_index": 0.57,
+		}) == "Biomass: 0.57",
+		"HUD formatter rendert die neue quantitative Biomass-Zeile mit zwei Nachkommastellen"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_biomass({}) == "Biomass: n/a",
+		"HUD formatter zeigt ohne Biosphere-Scale-Basis explizit Biomass: n/a"
 	)
 
 
@@ -144,10 +161,11 @@ static func _test_inspector_world_line_hides_low_seasonality(ctx) -> void:
 
 static func _test_inspector_life_line_reuses_hud_language(ctx) -> void:
 	var biosphere_desc: Dictionary = {
-		"has_biosphere_basis": true,
+		"has_biosphere_scale_basis": true,
 		"biosphere_stage": 2,
 		"dominant_track_id": 2,
 		"dominant_potential_class": 3,
+		"dominant_biomass_index": 0.40,
 	}
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_inspector_life_line(biosphere_desc) == "Life: MICROBIAL / CRYOGENIC_SOLVENT / HIGH",
@@ -155,10 +173,11 @@ static func _test_inspector_life_line_reuses_hud_language(ctx) -> void:
 	)
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_inspector_life_line({
-			"has_biosphere_basis": true,
+			"has_biosphere_scale_basis": true,
 			"biosphere_stage": 0,
 			"dominant_track_id": 0,
 			"dominant_potential_class": 0,
+			"dominant_biomass_index": 0.0,
 		}) == "Life: STERILE",
 		"Inspector blendet bei NONE auch in der kompakten Life-Zeile den Track aus"
 	)

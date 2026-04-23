@@ -157,6 +157,11 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 text = "Life: n/a"
 
+[node name="BiomassValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
+text = "Biomass: n/a"
+
 [node name="LifePotentialValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=901245113]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)

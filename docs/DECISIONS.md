@@ -1,5 +1,41 @@
 # Graviton - Decisions
 
+## 2026-04-23 - Life v2 bleibt ein quantitativer Read-Only-Layer auf dem v1b-Proto-Substrat
+
+Der erste Schritt in Richtung spaeterer Population fuehrt bewusst noch
+keine Population, keine Settlements und kein zweites Zeitmodell ein.
+Stattdessen landet `Life v2` als quantitativer Read-Only-Layer ueber dem
+bestehenden deterministischen Proto-Substrat.
+
+Konsequenz:
+
+- `ProtoBiosphereSimulationService` bleibt unveraendert der interne
+  Seed-/Progress-Substrat-Service fuer `seed + delta * ticks_elapsed`
+- der neue `BiosphereScaleService` fuehrt darueber bandweise
+  `carrying_capacity` und `biomass` ein und liefert die neue
+  player-facing `Life:`-Aussage
+- Biomasse fuehrt bewusst **kein** zweites Wachstumsmodell ein, sondern
+  nutzt direkt den bestehenden Proto-Progress:
+  `biomass_fraction = progress^2`
+- `LifePotentialService` und `BiosphereScaleService` teilen sich ueber
+  `LifeTrackLookup` dieselbe Track-Praeferenzmatrix; es gibt keine
+  zweite Water-/Sulfur-/Cryogenic-Lookup-Welt
+- `DerivedSnapshotCache` fuehrt dafuer eine neue
+  `biosphere_scale_desc`-Familie ein; der alte proto-biosphere-Desc
+  bleibt parallel fuer interne Tests und Debug bestehen
+- der dominante `Life v2`-Track bleibt standardmaessig am
+  `Life Potential`-Track verankert und darf nur dann abweichen, wenn
+  dessen `carrying_capacity_index == 0.0` ist und ein anderer Track
+  positive Biomasse traegt
+- die erste v2-Kalibrierung fuehrt offen zu einer strengeren
+  Band-Lesart als fruehere grobe Anchor-Annahmen:
+  `planet_a` endet mit den aktuellen Thermal-Gates bei
+  `COMPLEX_MULTICELLULAR`, waehrend `gamma_iii` bis
+  `COMPLEX_ECOSYSTEM` tragen kann
+
+Der naechste logische Folgeblock ist damit nicht mehr ein weiterer
+Life-Klassifikator, sondern `Population Foundation v1`.
+
 ## 2026-04-23 - Proto-Biosphaere v1b landet als deterministischer Background-State, nicht als aktiver Tick-Loop
 
 Auf `Life Potential v1a` folgt jetzt bewusst **keine** aktiv tickende

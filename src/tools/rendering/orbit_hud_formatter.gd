@@ -6,6 +6,7 @@ const ThermalServiceScript = preload("res://src/sim/thermal/thermal_service.gd")
 const PlanetaryStateServiceScript = preload("res://src/sim/planetary/planetary_state_service.gd")
 const LifePotentialServiceScript = preload("res://src/sim/life/life_potential_service.gd")
 const ProtoBiosphereSimulationServiceScript = preload("res://src/sim/life/proto_biosphere_simulation_service.gd")
+const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_service.gd")
 
 
 static func format_focus(focus_name: String) -> String:
@@ -55,14 +56,23 @@ static func format_life_potential(life_potential_desc: Dictionary) -> String:
 
 
 static func format_life(biosphere_desc: Dictionary) -> String:
-	if not bool(biosphere_desc.get(ProtoBiosphereSimulationServiceScript.KEY_HAS_BIOSPHERE_BASIS, false)):
+	if not _biosphere_has_basis(biosphere_desc):
 		return "Life: n/a"
-	if _life_has_no_track(biosphere_desc):
+	if _biosphere_has_no_track(biosphere_desc):
 		return "Life: %s" % _biosphere_stage_text(biosphere_desc)
 	return "Life: %s / %s" % [
 		_biosphere_stage_text(biosphere_desc),
 		_biosphere_track_text(biosphere_desc),
 	]
+
+
+static func format_biomass(biosphere_scale_desc: Dictionary) -> String:
+	if not bool(biosphere_scale_desc.get(BiosphereScaleServiceScript.KEY_HAS_BIOSPHERE_SCALE_BASIS, false)):
+		return "Biomass: n/a"
+	return "Biomass: %.2f" % float(biosphere_scale_desc.get(
+		BiosphereScaleServiceScript.KEY_DOMINANT_BIOMASS_INDEX,
+		0.0
+	))
 
 
 static func format_season(thermal_desc: Dictionary) -> String:
@@ -104,9 +114,9 @@ static func format_inspector_world_line(planetary_state_desc: Dictionary) -> Str
 
 
 static func format_inspector_life_line(biosphere_desc: Dictionary) -> String:
-	if not bool(biosphere_desc.get(ProtoBiosphereSimulationServiceScript.KEY_HAS_BIOSPHERE_BASIS, false)):
+	if not _biosphere_has_basis(biosphere_desc):
 		return "Life: n/a"
-	if _life_has_no_track(biosphere_desc):
+	if _biosphere_has_no_track(biosphere_desc):
 		return "Life: %s" % _biosphere_stage_text(biosphere_desc)
 	return "Life: %s / %s / %s" % [
 		_biosphere_stage_text(biosphere_desc),
@@ -226,6 +236,13 @@ static func _potential_class_text(life_potential_desc: Dictionary) -> String:
 
 
 static func _biosphere_stage_text(biosphere_desc: Dictionary) -> String:
+	if bool(biosphere_desc.get(BiosphereScaleServiceScript.KEY_HAS_BIOSPHERE_SCALE_BASIS, false)):
+		return BiosphereScaleServiceScript.to_string_stage(
+			int(biosphere_desc.get(
+				BiosphereScaleServiceScript.KEY_BIOSPHERE_STAGE,
+				BiosphereScaleServiceScript.Stage.STERILE
+			))
+		)
 	return ProtoBiosphereSimulationServiceScript.to_string_stage(
 		int(biosphere_desc.get(
 			ProtoBiosphereSimulationServiceScript.KEY_BIOSPHERE_STAGE,
@@ -235,25 +252,47 @@ static func _biosphere_stage_text(biosphere_desc: Dictionary) -> String:
 
 
 static func _biosphere_track_text(biosphere_desc: Dictionary) -> String:
+	var dominant_track_key: StringName = ProtoBiosphereSimulationServiceScript.KEY_DOMINANT_TRACK_ID
+	if bool(biosphere_desc.get(BiosphereScaleServiceScript.KEY_HAS_BIOSPHERE_SCALE_BASIS, false)):
+		dominant_track_key = BiosphereScaleServiceScript.KEY_DOMINANT_TRACK_ID
 	return LifePotentialServiceScript.to_string_track(
 		int(biosphere_desc.get(
-			ProtoBiosphereSimulationServiceScript.KEY_DOMINANT_TRACK_ID,
+			dominant_track_key,
 			LifePotentialServiceScript.Track.WATER_CARBON
 		))
 	)
 
 
 static func _biosphere_potential_class_text(biosphere_desc: Dictionary) -> String:
+	var dominant_potential_class_key: StringName = ProtoBiosphereSimulationServiceScript.KEY_DOMINANT_POTENTIAL_CLASS
+	if bool(biosphere_desc.get(BiosphereScaleServiceScript.KEY_HAS_BIOSPHERE_SCALE_BASIS, false)):
+		dominant_potential_class_key = BiosphereScaleServiceScript.KEY_DOMINANT_POTENTIAL_CLASS
 	return LifePotentialServiceScript.to_string_potential_class(
 		int(biosphere_desc.get(
-			ProtoBiosphereSimulationServiceScript.KEY_DOMINANT_POTENTIAL_CLASS,
+			dominant_potential_class_key,
 			LifePotentialServiceScript.PotentialClass.NONE
 		))
 	)
 
 
-static func _life_has_no_track(biosphere_desc: Dictionary) -> bool:
-	return int(biosphere_desc.get(
-		ProtoBiosphereSimulationServiceScript.KEY_DOMINANT_POTENTIAL_CLASS,
+static func _biosphere_has_basis(biosphere_desc: Dictionary) -> bool:
+	return bool(biosphere_desc.get(BiosphereScaleServiceScript.KEY_HAS_BIOSPHERE_SCALE_BASIS, false)) \
+		or bool(biosphere_desc.get(ProtoBiosphereSimulationServiceScript.KEY_HAS_BIOSPHERE_BASIS, false))
+
+
+static func _biosphere_has_no_track(biosphere_desc: Dictionary) -> bool:
+	var dominant_potential_class_key: StringName = ProtoBiosphereSimulationServiceScript.KEY_DOMINANT_POTENTIAL_CLASS
+	if bool(biosphere_desc.get(BiosphereScaleServiceScript.KEY_HAS_BIOSPHERE_SCALE_BASIS, false)):
+		dominant_potential_class_key = BiosphereScaleServiceScript.KEY_DOMINANT_POTENTIAL_CLASS
+	var dominant_potential_class: int = int(biosphere_desc.get(
+		dominant_potential_class_key,
 		LifePotentialServiceScript.PotentialClass.NONE
-	)) == LifePotentialServiceScript.PotentialClass.NONE
+	))
+	if dominant_potential_class == LifePotentialServiceScript.PotentialClass.NONE:
+		return true
+	if bool(biosphere_desc.get(BiosphereScaleServiceScript.KEY_HAS_BIOSPHERE_SCALE_BASIS, false)):
+		return is_zero_approx(float(biosphere_desc.get(
+			BiosphereScaleServiceScript.KEY_DOMINANT_BIOMASS_INDEX,
+			0.0
+		)))
+	return false

@@ -27,6 +27,7 @@ src/sim/           UniverseRegistry, WorldLoader, OrbitService, LocalOrbitIntegr
                    ThermalService, AtmosphereService, EnvironmentService,
                    PlanetaryYearSampler, PlanetaryStateService,
                    LifePotentialService, ProtoBiosphereSimulationService,
+                   BiosphereScaleService,
                    GalaxyDef/RootSystemManifest/RootSystemGenerator,
                    BodyDef/State, OrbitProfile, OrbitMode
    |
@@ -152,6 +153,12 @@ _ready():
         WorldLoader
     )
     ProtoBiosphereSimulationService.initialize_for_named_world(...)
+    BiosphereScaleService.configure(
+        UniverseRegistry,
+        PlanetaryStateService,
+        LifePotentialService,
+        ProtoBiosphereSimulationService
+    )
     DerivedSnapshotCache.configure(
         UniverseRegistry,
         TimeService,
@@ -162,7 +169,8 @@ _ready():
         OrbitService,
         PlanetaryStateService,
         LifePotentialService,
-        ProtoBiosphereSimulationService
+        ProtoBiosphereSimulationService,
+        BiosphereScaleService
     )
     OrbitViewRenderer.set_derived_snapshot_cache(DerivedSnapshotCache)
     OrbitService.bodies_updated.connect(
@@ -197,10 +205,13 @@ treibt keine Zeit vorwaerts. Es stellt nur sicher, dass alle
 abhaengige interessierte Bodies; ohne dieses Signal bleibt
 `TimeService.sim_tick` der konservative Fallback. Im Frame-Loop werden
 nur bereits berechnete Snapshots konsumiert.
-Nach `PlanetaryStateService`, `LifePotentialService` und
-`ProtoBiosphereSimulationService` fuehrt der Cache damit jetzt mehrere
-read-only Desc-Familien fuer dieselben Interessens-Bodies, ohne neue
-Simulationswahrheit in `runtime/` aufzubauen.
+Nach `PlanetaryStateService`, `LifePotentialService`,
+`ProtoBiosphereSimulationService` und `BiosphereScaleService` fuehrt
+der Cache damit jetzt mehrere read-only Desc-Familien fuer dieselben
+Interessens-Bodies, ohne neue Simulationswahrheit in `runtime/`
+aufzubauen. Der proto-biosphere-Desc bleibt dabei internes
+Substrat/Debug, waehrend `biosphere_scale_desc` die player-facing
+`Life:`-Wahrheit fuer HUD und Inspector liefert.
 Auch Diagnosepfade wie `DebugOverlay` duerfen bei verdrahtetem
 `DerivedSnapshotCache` nicht live auf
 `ThermalService.describe_body(...)` zurueckfallen; Cache-Miss bleibt
@@ -218,6 +229,14 @@ Background-State lazy aus stabilen Seed-/Drift-Parametern und
 `TimeService.sim_time_s`. Offscreen-/All-Roots-Pfade duerfen dafuer
 dieselben Pure-Helper wie die residenten Live-Pfade nutzen, aber keine
 zweite Temp-Registry oder duplizierte Planetary-/Life-Math aufbauen.
+
+`Life v2` folgt derselben Architekturdisziplin: `BiosphereScaleService`
+fuehrt bandweise Carrying Capacity und Biomasse als read-only
+Derived-Layer ein, nutzt dafuer aber direkt den bestehenden
+Proto-Progress (`biomass_fraction = progress^2`) statt ein zweites
+Zeitmodell zu erfinden. Die chemistry-aware Track-Praeferenzen leben
+dafuer gebuendelt in `LifeTrackLookup`, damit `LifePotentialService`
+und `BiosphereScaleService` dieselbe Lookup-Wahrheit teilen.
 
 Fuer grosse Multi-Root-Welten bleibt dieselbe Schichtung erhalten:
 

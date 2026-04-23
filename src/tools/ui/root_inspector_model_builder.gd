@@ -100,7 +100,7 @@ func _append_rows(
 		"badge_text": _badge_text_for_body(def, environment_desc),
 		"note_text": _note_text_for_body(body_id, def, children_by_parent),
 		"world_text": _world_text_for_body(def, planetary_state_desc),
-		"life_text": _life_text_for_body(def, _snapshot_cache.get_biosphere_desc(body_id)),
+		"life_text": _life_text_for_body(def, _snapshot_cache.get_biosphere_scale_desc(body_id)),
 		"is_focused": body_id == focused_body_id,
 	})
 
