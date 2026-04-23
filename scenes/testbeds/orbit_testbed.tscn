@@ -180,12 +180,12 @@ text = "T+ 0 s"
 [node name="DayValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=860135220]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
-text = "Day: n/a"
+text = "Rotation: n/a"
 
 [node name="YearValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=685630559]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
-text = "Year: n/a"
+text = "Orbit: n/a"
 
 [node name="ScaleValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=1123534186]
 layout_mode = 2

@@ -133,14 +133,14 @@ static func format_time(sim_time_s: float, tick_count: int, fps: int) -> String:
 	return "T+ %s   steps %d   FPS %d" % [_elapsed_time_text(sim_time_s), tick_count, fps]
 
 
-static func format_day(orbit_readout_desc: Dictionary) -> String:
-	return "Day: %s" % _period_text(
+static func format_rotation(orbit_readout_desc: Dictionary) -> String:
+	return "Rotation: %s" % _period_text(
 		float(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_ROTATION_PERIOD_S, 0.0))
 	)
 
 
-static func format_year(orbit_readout_desc: Dictionary) -> String:
-	return "Year: %s" % _period_text(
+static func format_orbit(orbit_readout_desc: Dictionary) -> String:
+	return "Orbit: %s" % _period_text(
 		float(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_ORBITAL_PERIOD_S, 0.0))
 	)
 

@@ -357,10 +357,10 @@ func _update_hud() -> void:
 	_time_value.text = OrbitHudFormatterScript.format_time(TimeService.sim_time_s, TimeService.tick_count, fps)
 	_day_value.visible = bool(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_HAS_ROTATION_BASIS, false))
 	if _day_value.visible:
-		_day_value.text = OrbitHudFormatterScript.format_day(orbit_readout_desc)
+		_day_value.text = OrbitHudFormatterScript.format_rotation(orbit_readout_desc)
 	_year_value.visible = bool(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_HAS_ORBITAL_PERIOD_BASIS, false))
 	if _year_value.visible:
-		_year_value.text = OrbitHudFormatterScript.format_year(orbit_readout_desc)
+		_year_value.text = OrbitHudFormatterScript.format_orbit(orbit_readout_desc)
 	_scale_value.text = OrbitHudFormatterScript.format_scale(
 		TimeService.time_scale,
 		speed_step_label,

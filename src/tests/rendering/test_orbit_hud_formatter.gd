@@ -222,19 +222,19 @@ static func _test_day_and_year_formatter_use_single_unit_periods(ctx) -> void:
 		"orbital_period_s": 12.1 * UnitSystem.DAY_S,
 	}
 	ctx.assert_true(
-		OrbitHudFormatterScript.format_day(orbit_readout_desc) == "Day: 4.6 h",
-		"Day-Readout bleibt bei einer Zahl plus einer Einheit"
+		OrbitHudFormatterScript.format_rotation(orbit_readout_desc) == "Rotation: 4.6 h",
+		"Rotation-Readout bleibt bei einer Zahl plus einer Einheit"
 	)
 	ctx.assert_true(
-		OrbitHudFormatterScript.format_year(orbit_readout_desc) == "Year: 12.1 d",
-		"Year-Readout bleibt bei einer Zahl plus einer Einheit"
+		OrbitHudFormatterScript.format_orbit(orbit_readout_desc) == "Orbit: 12.1 d",
+		"Orbit-Readout bleibt bei einer Zahl plus einer Einheit"
 	)
 	ctx.assert_true(
-		OrbitHudFormatterScript.format_year({
+		OrbitHudFormatterScript.format_orbit({
 			"has_orbital_period_basis": true,
 			"orbital_period_s": UnitSystem.YEAR_S,
-		}) == "Year: 1.0 y",
-		"Jahres-Readout schaltet ab YEAR_S auf plain y um"
+		}) == "Orbit: 1.0 y",
+		"Orbit-Readout schaltet ab YEAR_S auf plain y um"
 	)
 
 
