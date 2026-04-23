@@ -28,6 +28,9 @@ var _registry: Node = null
 var _time_service: Node = null
 var _world_loader: Node = null
 var _state_by_id: Dictionary = {}
+var _galaxy_defs_by_id: Dictionary = {}
+var _known_unsupported_ids: Dictionary = {}
+var _seed_time_s: float = 0.0
 var _current_world_scope_id: StringName = &""
 
 
@@ -47,12 +50,15 @@ func is_configured() -> bool:
 
 func clear_state() -> void:
 	_state_by_id.clear()
+	_galaxy_defs_by_id.clear()
+	_known_unsupported_ids.clear()
+	_seed_time_s = 0.0
 	_current_world_scope_id = StringName("")
 
 
 func initialize_for_named_world(world_id: StringName) -> void:
 	assert(_registry != null, "ProtoBiosphereSimulationService.initialize_for_named_world: service not configured")
-	_initialize_from_defs(_registry_defs_in_order(), world_id)
+	_register_galaxy_defs(_registry_defs_in_order(), world_id)
 
 
 func initialize_for_galaxy(galaxy) -> void:
@@ -65,17 +71,23 @@ func initialize_for_galaxy(galaxy) -> void:
 		galaxy.root_ids(),
 		galaxy.galaxy_id
 	)
-	_initialize_from_defs(defs, galaxy.galaxy_id)
+	_register_galaxy_defs(defs, galaxy.galaxy_id)
 
 
 func describe_body(id: StringName) -> Dictionary:
 	var description: Dictionary = _default_description(id)
 	var state = _state_by_id.get(id, null)
 	if state == null:
-		var def: BodyDef = null if _registry == null else _registry.get_def(id)
-		if def != null and (def.kind == BodyType.Kind.PLANET or def.kind == BodyType.Kind.MOON):
-			description[KEY_IS_SUPPORTED_BODY_KIND] = true
-		return description
+		if _known_unsupported_ids.has(id):
+			if _planetary_body_kind_in_galaxy_defs(id):
+				description[KEY_IS_SUPPORTED_BODY_KIND] = true
+			return description
+		state = _try_build_state_lazy(id)
+		if state == null:
+			var def: BodyDef = _lookup_def_for_id(id)
+			if def != null and (def.kind == BodyType.Kind.PLANET or def.kind == BodyType.Kind.MOON):
+				description[KEY_IS_SUPPORTED_BODY_KIND] = true
+			return description
 
 	description[KEY_IS_SUPPORTED_BODY_KIND] = true
 	description[KEY_HAS_BIOSPHERE_BASIS] = true
@@ -94,6 +106,8 @@ func describe_body(id: StringName) -> Dictionary:
 func get_debug_snapshot() -> Dictionary:
 	return {
 		"tracked_life_body_count": _state_by_id.size(),
+		"galaxy_def_count": _galaxy_defs_by_id.size(),
+		"known_unsupported_body_count": _known_unsupported_ids.size(),
 		"current_world_scope_id": _current_world_scope_id,
 		"bio_tick_step_s": BIO_TICK_STEP_S,
 	}
@@ -110,21 +124,49 @@ static func to_string_stage(value: int) -> String:
 	return "UNKNOWN"
 
 
-func _initialize_from_defs(defs: Array[BodyDef], scope_id: StringName) -> void:
+func _register_galaxy_defs(defs: Array[BodyDef], scope_id: StringName) -> void:
 	clear_state()
 	_current_world_scope_id = scope_id
+	_seed_time_s = _current_sim_time_s()
 	if defs.is_empty():
 		return
-	var def_lookup: Dictionary = _def_lookup_from_defs(defs)
-	var seed_time_s: float = _current_sim_time_s()
 	for def in defs:
-		if def == null:
-			continue
-		if def.kind != BodyType.Kind.PLANET and def.kind != BodyType.Kind.MOON:
-			continue
-		var state = _build_state_for_def(def, def_lookup, seed_time_s)
-		if state != null:
-			_state_by_id[def.id] = state
+		if def != null:
+			_galaxy_defs_by_id[def.id] = def
+
+
+func _try_build_state_lazy(id: StringName):
+	var def: BodyDef = _galaxy_defs_by_id.get(id, null) as BodyDef
+	if def == null:
+		def = _lookup_def_for_id(id)
+	if def == null:
+		_known_unsupported_ids[id] = true
+		return null
+	if def.kind != BodyType.Kind.PLANET and def.kind != BodyType.Kind.MOON:
+		_known_unsupported_ids[id] = true
+		return null
+	var state = _build_state_for_def(def, _galaxy_defs_by_id, _seed_time_s)
+	if state == null:
+		_known_unsupported_ids[id] = true
+		return null
+	_state_by_id[id] = state
+	return state
+
+
+func _lookup_def_for_id(id: StringName) -> BodyDef:
+	var def: BodyDef = _galaxy_defs_by_id.get(id, null) as BodyDef
+	if def != null:
+		return def
+	if _registry != null:
+		return _registry.get_def(id)
+	return null
+
+
+func _planetary_body_kind_in_galaxy_defs(id: StringName) -> bool:
+	var def: BodyDef = _lookup_def_for_id(id)
+	if def == null:
+		return false
+	return def.kind == BodyType.Kind.PLANET or def.kind == BodyType.Kind.MOON
 
 
 func _build_state_for_def(

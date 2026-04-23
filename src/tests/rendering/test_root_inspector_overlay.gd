@@ -37,6 +37,7 @@ static func run(ctx) -> void:
 	_test_model_builder_builds_hierarchy_and_summary_for_starter_root(ctx)
 	_test_overlay_formats_navigation_first_rows(ctx)
 	_test_overlay_starts_closed_and_emits_focus_requests(ctx)
+	_test_overlay_throttles_sim_tick_rebuilds_but_not_user_events(ctx)
 
 
 static func _test_model_builder_builds_hierarchy_and_summary_for_starter_root(ctx) -> void:
@@ -206,6 +207,62 @@ static func _test_overlay_starts_closed_and_emits_focus_requests(ctx) -> void:
 	overlay.clear_state()
 	ctx.assert_true(overlay.get_debug_snapshot().get("root_id", &"sentinel") == StringName(""), "clear_state loescht den Root-Kontext fuer Welt-Wechsel hart")
 	ctx.assert_true(first_row_container.is_queued_for_deletion(), "Beim Rebuild werden alte Row-Nodes nur noch per queue_free() entsorgt")
+
+	overlay.free()
+	_teardown_starter_root_context(context)
+
+
+static func _test_overlay_throttles_sim_tick_rebuilds_but_not_user_events(ctx) -> void:
+	var context: Dictionary = _build_starter_root_context()
+	var overlay = RootInspectorOverlayScript.new()
+	overlay.configure(context.get("registry"), context.get("topology"), context.get("snapshot_cache"))
+	overlay._ready()
+	overlay.set_root_context(&"obsidian", &"alpha", true)
+	ctx.assert_true(overlay.is_open(), "Overlay ist fuer den Throttle-Test sichtbar geoeffnet")
+
+	var baseline: int = int(overlay.get_debug_snapshot().get("rebuild_count", -1))
+	overlay._on_snapshot_refreshed(DerivedSnapshotCacheScript.REASON_SIM_TICK)
+	var after_first_tick: int = int(overlay.get_debug_snapshot().get("rebuild_count", -1))
+	ctx.assert_true(
+		after_first_tick == baseline + 1,
+		"Erster sim_tick nach set_root_context darf sofort rebuilden"
+	)
+	overlay._on_snapshot_refreshed(DerivedSnapshotCacheScript.REASON_SIM_TICK)
+	overlay._on_snapshot_refreshed(DerivedSnapshotCacheScript.REASON_SIM_TICK)
+	var after_burst: int = int(overlay.get_debug_snapshot().get("rebuild_count", -1))
+	ctx.assert_true(
+		after_burst == after_first_tick,
+		"Weitere sim_tick-Signale innerhalb des Cooldowns werden geschluckt"
+	)
+	overlay._on_snapshot_refreshed(DerivedSnapshotCacheScript.REASON_FOCUS_CHANGED)
+	var after_user_event: int = int(overlay.get_debug_snapshot().get("rebuild_count", -1))
+	ctx.assert_true(
+		after_user_event == after_burst + 1,
+		"User-Events umgehen den sim_tick-Cooldown und rebuilden sofort"
+	)
+	overlay._on_snapshot_refreshed(DerivedSnapshotCacheScript.REASON_WORLD_RELOAD)
+	var after_world_reload: int = int(overlay.get_debug_snapshot().get("rebuild_count", -1))
+	ctx.assert_true(
+		after_world_reload == after_user_event + 1,
+		"Welt-Reload umgeht den sim_tick-Cooldown"
+	)
+
+	overlay.set_root_context(&"obsidian", &"alpha_i", false)
+	var after_set_root: int = int(overlay.get_debug_snapshot().get("rebuild_count", -1))
+	overlay._on_snapshot_refreshed(DerivedSnapshotCacheScript.REASON_SIM_TICK)
+	var after_post_set_root_tick: int = int(overlay.get_debug_snapshot().get("rebuild_count", -1))
+	ctx.assert_true(
+		after_post_set_root_tick == after_set_root + 1,
+		"set_root_context setzt den Cooldown zurueck, naechster sim_tick rebuildet wieder sofort"
+	)
+
+	overlay.close_panel(false)
+	var after_close: int = int(overlay.get_debug_snapshot().get("rebuild_count", -1))
+	overlay._on_snapshot_refreshed(DerivedSnapshotCacheScript.REASON_SIM_TICK)
+	ctx.assert_true(
+		int(overlay.get_debug_snapshot().get("rebuild_count", -1)) == after_close,
+		"Geschlossenes Overlay rebuildet auch bei sim_tick gar nicht"
+	)
 
 	overlay.free()
 	_teardown_starter_root_context(context)

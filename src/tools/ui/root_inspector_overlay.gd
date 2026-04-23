@@ -6,9 +6,11 @@ signal focus_requested(body_id: StringName)
 signal closed
 
 const RootInspectorModelBuilderScript = preload("res://src/tools/ui/root_inspector_model_builder.gd")
+const DerivedSnapshotCacheScript = preload("res://src/runtime/derived/derived_snapshot_cache.gd")
 
 const PANEL_MIN_WIDTH: float = 392.0
 const ROW_INDENT_PX: int = 18
+const SIM_TICK_REBUILD_COOLDOWN_USEC: int = 100_000
 
 var _registry: Node = null
 var _topology = null
@@ -19,6 +21,8 @@ var _root_id: StringName = &""
 var _focused_body_id: StringName = &""
 var _current_model: Dictionary = {}
 var _row_body_ids: Array[StringName] = []
+var _last_sim_tick_rebuild_usec: int = 0
+var _rebuild_count: int = 0
 
 var _title_label: Label = null
 var _type_label: Label = null
@@ -55,6 +59,7 @@ func configure(registry: Node, topology, snapshot_cache) -> void:
 func set_root_context(root_id: StringName, focused_body_id: StringName, auto_open: bool = false) -> void:
 	_root_id = root_id
 	_focused_body_id = focused_body_id
+	_last_sim_tick_rebuild_usec = 0
 	if auto_open:
 		visible = true
 	if visible or auto_open:
@@ -63,6 +68,7 @@ func set_root_context(root_id: StringName, focused_body_id: StringName, auto_ope
 
 func close_panel(emit_close_signal: bool = true) -> void:
 	visible = false
+	_last_sim_tick_rebuild_usec = 0
 	if emit_close_signal:
 		closed.emit()
 
@@ -73,6 +79,7 @@ func clear_state() -> void:
 	_focused_body_id = StringName("")
 	_current_model.clear()
 	_row_body_ids.clear()
+	_last_sim_tick_rebuild_usec = 0
 	_apply_empty_model()
 
 
@@ -91,6 +98,7 @@ func get_debug_snapshot() -> Dictionary:
 		"focused_body_id": _focused_body_id,
 		"row_body_ids": _row_body_ids.duplicate(),
 		"summary": _current_model.get("summary", {}).duplicate(),
+		"rebuild_count": _rebuild_count,
 	}
 
 
@@ -170,6 +178,7 @@ func _ensure_ui() -> void:
 
 
 func _rebuild() -> void:
+	_rebuild_count += 1
 	if _registry == null or _topology == null or _snapshot_cache == null:
 		_apply_empty_model()
 		return
@@ -283,9 +292,15 @@ func _on_close_pressed() -> void:
 	close_panel()
 
 
-func _on_snapshot_refreshed(_reason: StringName) -> void:
-	if visible:
-		_rebuild()
+func _on_snapshot_refreshed(reason: StringName) -> void:
+	if not visible:
+		return
+	if reason == DerivedSnapshotCacheScript.REASON_SIM_TICK:
+		var now_usec: int = Time.get_ticks_usec()
+		if now_usec - _last_sim_tick_rebuild_usec < SIM_TICK_REBUILD_COOLDOWN_USEC:
+			return
+		_last_sim_tick_rebuild_usec = now_usec
+	_rebuild()
 
 
 static func _make_panel_style() -> StyleBoxFlat:

@@ -11,7 +11,9 @@ static func run(ctx) -> void:
 	ctx.current_suite = "test_proto_biosphere_simulation_service"
 	_test_sample_system_high_track_becomes_microbial_after_four_ticks(ctx)
 	_test_starter_world_anchors_start_with_expected_tracks(ctx)
-	_test_scaleup_galaxy_100_initializes_background_state_for_all_planets_and_moons(ctx)
+	_test_scaleup_galaxy_100_lazy_registers_defs_without_eager_state_build(ctx)
+	_test_describe_body_lazy_builds_state_for_offscreen_body(ctx)
+	_test_describe_body_caches_known_unsupported_ids(ctx)
 	_test_resident_and_offscreen_read_same_state_for_same_body(ctx)
 
 
@@ -73,7 +75,7 @@ static func _test_starter_world_anchors_start_with_expected_tracks(ctx) -> void:
 	SimTestHarnessScript.teardown_context(setup)
 
 
-static func _test_scaleup_galaxy_100_initializes_background_state_for_all_planets_and_moons(ctx) -> void:
+static func _test_scaleup_galaxy_100_lazy_registers_defs_without_eager_state_build(ctx) -> void:
 	var loader = WorldLoaderScript.new()
 	var registry: Node = load("res://src/sim/universe/universe_registry.gd").new()
 	var time_service: Node = load("res://src/core/time/time_service.gd").new()
@@ -87,19 +89,81 @@ static func _test_scaleup_galaxy_100_initializes_background_state_for_all_planet
 	service.initialize_for_galaxy(galaxy)
 
 	var defs: Array[BodyDef] = loader.build_defs_for_root_ids(galaxy, galaxy.root_ids(), galaxy.galaxy_id)
-	var expected_planetary_body_count: int = 0
-	for def in defs:
-		if def != null and (def.kind == BodyType.Kind.PLANET or def.kind == BodyType.Kind.MOON):
-			expected_planetary_body_count += 1
+	var snapshot_after_init: Dictionary = service.get_debug_snapshot()
 	ctx.assert_true(
-		int(service.get_debug_snapshot().get("tracked_life_body_count", -1)) == expected_planetary_body_count,
-		"scaleup_galaxy_100 initialisiert Background-State fuer alle PLANET-/MOON-Bodies der Galaxy"
+		int(snapshot_after_init.get("galaxy_def_count", -1)) == defs.size(),
+		"initialize_for_galaxy registriert alle Galaxy-Defs im Lazy-Lookup"
+	)
+	ctx.assert_true(
+		int(snapshot_after_init.get("tracked_life_body_count", -1)) == 0,
+		"initialize_for_galaxy baut keinen State eager; das passiert lazy beim ersten describe_body"
 	)
 
 	service.free()
 	time_service.free()
 	registry.free()
 	loader.free()
+
+
+static func _test_describe_body_lazy_builds_state_for_offscreen_body(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var registry: Node = load("res://src/sim/universe/universe_registry.gd").new()
+	var time_service: Node = load("res://src/core/time/time_service.gd").new()
+	var galaxy = loader.load_named_galaxy(WorldLoaderScript.SCALEUP_GALAXY_100_ID)
+	var loaded: bool = loader.load_named_world(WorldLoaderScript.SCALEUP_GALAXY_100_ID, registry)
+	ctx.assert_true(loaded, "scaleup_galaxy_100 materialisiert den Default-Resident-Slice fuer den Lazy-Build-Test")
+
+	var service = ProtoBiosphereSimulationServiceScript.new()
+	service.configure(registry, time_service, loader)
+	service.initialize_for_galaxy(galaxy)
+
+	var offscreen_root_id: StringName = StringName("")
+	for root_id in galaxy.root_ids():
+		if not galaxy.default_resident_root_ids.has(root_id):
+			offscreen_root_id = root_id
+			break
+	ctx.assert_true(offscreen_root_id != StringName(""), "scaleup_galaxy_100 enthaelt mindestens einen initial nichtresidenten Root")
+	var offscreen_defs: Array[BodyDef] = loader.build_defs_for_root_ids(galaxy, [offscreen_root_id], galaxy.galaxy_id)
+	var offscreen_body_id: StringName = _first_planetary_body_id(offscreen_defs)
+	ctx.assert_true(offscreen_body_id != StringName(""), "der initial nichtresidente Root liefert mindestens einen planetaren Body")
+
+	var tracked_before: int = int(service.get_debug_snapshot().get("tracked_life_body_count", -1))
+	var desc: Dictionary = service.describe_body(offscreen_body_id)
+	ctx.assert_true(
+		bool(desc.get("has_biosphere_basis", false)),
+		"describe_body baut lazy einen sinnvollen State fuer offscreen Planet/Mond"
+	)
+	var tracked_after: int = int(service.get_debug_snapshot().get("tracked_life_body_count", -1))
+	ctx.assert_true(tracked_after == tracked_before + 1, "lazy Build fuegt genau einen neuen State hinzu")
+
+	var second_desc: Dictionary = service.describe_body(offscreen_body_id)
+	ctx.assert_true(second_desc == desc, "zweiter describe_body trifft den Cache und liefert identischen State")
+	ctx.assert_true(
+		int(service.get_debug_snapshot().get("tracked_life_body_count", -1)) == tracked_after,
+		"zweiter describe_body loest keinen weiteren Build aus"
+	)
+
+	service.free()
+	time_service.free()
+	registry.free()
+	loader.free()
+
+
+static func _test_describe_body_caches_known_unsupported_ids(ctx) -> void:
+	var setup: Dictionary = SimTestHarnessScript.build_named_world_context(&"starter_world")
+	var service = setup[SimTestHarnessScript.HARNESS_KEY_PROTO_BIOSPHERE_SERVICE]
+
+	var star_desc: Dictionary = service.describe_body(&"alpha")
+	ctx.assert_true(not bool(star_desc.get("has_biosphere_basis", true)), "Sterne haben keine Biosphaerenbasis")
+	ctx.assert_true(not bool(star_desc.get("is_supported_body_kind", true)), "Sterne werden nicht als unterstuetzt markiert")
+
+	var known_before: int = int(service.get_debug_snapshot().get("known_unsupported_body_count", -1))
+	service.describe_body(&"alpha")
+	service.describe_body(&"alpha")
+	var known_after: int = int(service.get_debug_snapshot().get("known_unsupported_body_count", -1))
+	ctx.assert_true(known_after == known_before, "wiederholter describe_body auf bekannt unsupported Body waechst den Cache nicht weiter")
+
+	SimTestHarnessScript.teardown_context(setup)
 
 
 static func _test_resident_and_offscreen_read_same_state_for_same_body(ctx) -> void:
