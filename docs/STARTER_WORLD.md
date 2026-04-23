@@ -3,6 +3,10 @@
 Debug-fokussierte 18-Koerper-Referenzwelt fuer das Foundation-Testbed.
 Alle Werte sind bewusste Toy-Werte - nicht astrophysikalisch korrekt.
 
+Diese Datei beschreibt den Content-Slice von `starter_world`.
+Bei Widerspruch gelten `docs/STATUS.md`, `docs/NEXT_STEPS.md`,
+`docs/DECISIONS.md` und `docs/ARCHITEKTUR.md`.
+
 ## Systemuebersicht
 
 `starter_world` bleibt der groessere BH-Root-Sandkasten:
@@ -61,7 +65,7 @@ Zusatz seit P13:
 - `gamma` ist jetzt das kompakte Red-Dwarf-System der BH-Welt
 - `gamma_iv` sitzt bewusst innerhalb einer lokalen Stabilitaetsgrenze
   und traegt einen expliziten Greenhouse-Beitrag, damit der
-  Default-Testbed-Start in der grossen BH-Welt nicht nur `HOT`- und
+  explizite `starter_world`-BH-Playtest nicht nur `HOT`- und
   `FROZEN`-Beispiele zeigt
 
 ## Render-Skalierung
@@ -97,8 +101,10 @@ weiter klar vom Parent getrennt sind.
 ## Visuelle Zielwirkung
 
 - Im Root-Fokus sollen alle vier Sterne gleichzeitig sichtbar sein.
-- Bei Default-`250x` soll mindestens einer der Sterne in wenigen Sekunden
-  klar erkennbar auf seiner BH-Bahn voranschreiten.
+- Schon bei den heute dokumentierten Standardraten
+  (`1 h/s` plus hoehere spielbare Presets) soll mindestens einer der
+  Sterne in wenigen Sekunden klar erkennbar auf seiner BH-Bahn
+  voranschreiten.
 - `gamma` soll als sichtbar reichstes Sternsystem wirken.
 - `delta` soll als kleinstes, sparsames Sternsystem lesbar bleiben.
 

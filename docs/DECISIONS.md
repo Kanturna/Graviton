@@ -1107,7 +1107,7 @@ Konsequenz:
 
 Nach P12A wird `starter_world` bewusst nicht flaechig auf Habitability
 retuned, bekommt aber genau einen explizit sichtbaren Kandidaten
-(`gamma_iv`), damit der Default-Testbed-Start nicht nur extreme
+(`gamma_iv`), damit `starter_world` im expliziten BH-Sandkasten-Playtest nicht nur extreme
 `HOT`-/`FROZEN`-Faelle zeigt.
 
 Konsequenz:
