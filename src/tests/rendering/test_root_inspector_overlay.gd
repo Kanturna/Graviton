@@ -35,6 +35,7 @@ class FocusRequestProbe:
 static func run(ctx) -> void:
 	ctx.current_suite = "test_root_inspector_overlay"
 	_test_model_builder_builds_hierarchy_and_summary_for_starter_root(ctx)
+	_test_overlay_formats_navigation_first_rows(ctx)
 	_test_overlay_starts_closed_and_emits_focus_requests(ctx)
 
 
@@ -100,6 +101,57 @@ static func _test_model_builder_builds_hierarchy_and_summary_for_starter_root(ct
 	ctx.assert_true(
 		int(summary.get("hostile", 0)) == int(expected_environment_counts.get("hostile", 0)),
 		"ModelBuilder zaehlt HOSTILE-Klassen exakt aus den Derived-Snapshots"
+	)
+
+	_teardown_starter_root_context(context)
+
+
+static func _test_overlay_formats_navigation_first_rows(ctx) -> void:
+	var context: Dictionary = _build_starter_root_context()
+	var builder = RootInspectorModelBuilderScript.new()
+	builder.configure(
+		context.get("registry"),
+		context.get("topology"),
+		context.get("snapshot_cache")
+	)
+
+	var model_with_alpha_focus: Dictionary = builder.build(&"obsidian", &"alpha")
+	var alpha_row_text: String = RootInspectorOverlayScript._format_row_text(
+		_row_by_body_id(model_with_alpha_focus.get("rows", []), &"alpha")
+	)
+	ctx.assert_true(alpha_row_text.find("\n") == -1, "STAR-Rows bleiben im kompakten Navigator einzeilig")
+	ctx.assert_true(alpha_row_text.find("Potential:") == -1, "STAR-Rows tragen keine Potenzialzeile")
+	ctx.assert_true(alpha_row_text.find("World:") == -1, "STAR-Rows tragen keine World-Zeile")
+	ctx.assert_true(alpha_row_text.find("n/a") == -1, "STAR-Rows zeigen kein nutzloses n/a-Badge mehr")
+
+	var model_with_alpha_focus_rows: Array = model_with_alpha_focus.get("rows", [])
+	var non_focused_gamma_iv_text: String = RootInspectorOverlayScript._format_row_text(
+		_row_by_body_id(model_with_alpha_focus_rows, &"gamma_iv")
+	)
+	ctx.assert_true(
+		non_focused_gamma_iv_text.find("Potential: WATER_CARBON / MEDIUM") != -1,
+		"Nicht fokussierte PLANET-Rows behalten die kompakte Potenzialzeile"
+	)
+	ctx.assert_true(
+		non_focused_gamma_iv_text.find("World:") == -1,
+		"Nicht fokussierte PLANET-Rows blenden die World-Zeile im Navigator aus"
+	)
+
+	var model_with_gamma_iv_focus: Dictionary = builder.build(&"obsidian", &"gamma_iv")
+	var focused_gamma_iv_text: String = RootInspectorOverlayScript._format_row_text(
+		_row_by_body_id(model_with_gamma_iv_focus.get("rows", []), &"gamma_iv")
+	)
+	ctx.assert_true(
+		focused_gamma_iv_text.find("Potential: WATER_CARBON / MEDIUM") != -1,
+		"Fokussierte PLANET-Rows behalten die Potenzialzeile"
+	)
+	ctx.assert_true(
+		focused_gamma_iv_text.find("World: LIMITED / MODERATE / WINDOWED / TEMPERATE / SEASONAL") != -1,
+		"Fokussierte PLANET-Rows zeigen zusaetzlich die World-Zeile"
+	)
+	ctx.assert_true(
+		focused_gamma_iv_text.find("Potential:") < focused_gamma_iv_text.find("World:"),
+		"Im kompakten Navigator steht Potential vor World"
 	)
 
 	_teardown_starter_root_context(context)

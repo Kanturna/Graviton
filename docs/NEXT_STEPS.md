@@ -2,10 +2,11 @@
 
 Stand: 2026-04-23
 
-## Prioritaet 0 - Life-Potential-v1a Acceptance Gate
+## Prioritaet 0 - Life-Potential-v1a + Root-Inspector-v2.1 Acceptance Gate
 
 Ziel:
-Die neue `Life Potential v1a`-Schicht im echten Editor-/Playtest-Lauf
+Die neue `Life Potential v1a`-Schicht zusammen mit dem jetzt
+verdichteten `Root Inspector v2.1` im echten Editor-/Playtest-Lauf
 validieren, bevor daraus ein persistenter Proto-Biosphaeren-Block oder
 eine groessere Survey-/Atlas-Schicht weitergezogen wird.
 
@@ -21,6 +22,13 @@ Konkreter Ablauf:
   - normales Fokus-HUD
   - Root-Inspector-Zeile fuer denselben Body
   - `Environment` / `Climate` gegen `World` gegen `Life Potential`
+- dabei beim Inspector zusaetzlich bewusst pruefen:
+  - `BLACK_HOLE`- und `STAR`-Rows lesen sich als schlanke Einzeiler
+  - nicht fokussierte `PLANET`-/`MOON`-Rows zeigen `Potential:`, aber
+    kein `World:`
+  - `World:` erscheint nur auf der aktuell fokussierten Zeile
+  - Klick auf eine Inspector-Zeile fuehrt jetzt zu einem sofortigen
+    Fokus-/Center-/Fit-Sprung
 - dabei bewusst auf diese Punkte achten:
   - `Environment` bleibt die Aussage fuer **jetzt**
   - `World` liest als **Jahrescharakter** statt als zweite
@@ -37,7 +45,7 @@ Konkreter Ablauf:
   - `gamma_iii` liest klar cryogen-dominiert statt als kalte
     Reservoir-Erdkopie
 
-## Prioritaet 1 - Large-World Regression Gate mit offener World- und Potential-Zeile
+## Prioritaet 1 - Large-World Regression Gate mit kompaktem Navigator
 
 Ziel:
 Sicherstellen, dass die neue planetare Desc-Familie den ruhigen
@@ -52,10 +60,13 @@ Konkreter Ablauf:
   - Detailblick nach Fokus auf Stern / Planet / Mond
 - dabei besonders bestaetigen:
   - `resident_root_ids` bleibt weiter `1..2`
-  - der Inspector zeigt fuer residente Planeten/Monde jetzt zusaetzlich
-    die kompakte `World:`- und `Potential:`-Lesart
+  - der Inspector bleibt trotz kompakterer Rows fuer residente
+    Planeten/Monde informativ:
+    `Potential:` immer sichtbar, `World:` focused-row-only
   - `ROOT_OVERVIEW + Inspector offen` bleibt auf `scaleup_galaxy_100`
     weiter ruhig und interaktiv
+  - Inspector-Klicks auf Stern / Planet / Mond fuehren auch im
+    Large-World-Pfad sofort zu sauberem Zentrieren/Fit
   - Proxy-Culling, BH-only-/Stern-Proxy-Tiering und Streaming-Hysterese
     lesen weiter stabil
 

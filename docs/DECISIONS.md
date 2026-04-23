@@ -1,5 +1,29 @@
 # Graviton - Decisions
 
+## 2026-04-23 - Der rechte Root-Inspector wird bewusst navigation-first statt Mini-Datenblatt
+
+Der Large-World-Root-Inspector bleibt resident-root-only, verschiebt
+seine Rolle aber bewusst von einem kleinen Survey-Datenblatt zu einem
+schnell scanbaren Navigator.
+
+Konsequenz:
+
+- der reichere Detailkontext bleibt links im normalen Fokus-HUD
+- der rechte Inspector zeigt fuer `BLACK_HOLE` und `STAR` nur noch
+  schlanke Einzeiler statt bedeutungslosem `n/a`-Badge-Rauschen
+- `PLANET`- und `MOON`-Rows zeigen standardmaessig nur noch:
+  `Badge + Note` und darunter `Potential: ...`
+- `World:` bleibt im Inspector erhalten, wird aber nur noch fuer die
+  **aktuell fokussierte** Planet-/Moon-Zeile angezeigt
+- Klicks auf Inspector-Zeilen bleiben im bestehenden
+  `orbit_testbed.gd`-Fokuspfad; sie werden nicht zu einem zweiten
+  Kamera- oder Registry-Pfad
+- derselbe Fokuspfad wird fuer Inspector-Klicks jetzt bewusst als
+  sofortiger Navigationssprung genutzt:
+  `_set_focus(body_id, true, true)`
+- Open-/Close-Regeln, Interest-Override im `ROOT_OVERVIEW` und
+  Summary-Header des Inspectors bleiben in diesem Block unveraendert
+
 ## 2026-04-23 - Life startet als read-only Potenzialschicht vor jeder persistenten Biosphaere
 
 Auf die neue `Planetary State Foundation` folgt bewusst noch **keine**

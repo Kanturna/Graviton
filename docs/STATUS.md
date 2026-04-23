@@ -18,7 +18,10 @@ residente BH-Systeme sowie eine erste read-only `Planetary State
 Foundation` fuer laengerfristige Weltprofile von Planeten und Monden.
 Darauf sitzt jetzt zusaetzlich `Life Potential v1a` als kleiner
 read-only Life-Layer mit benannten Chemiepfaden auf Basis dieser
-Jahresachsen.
+Jahresachsen. Darauf sitzt jetzt zusaetzlich `Root Inspector v2.1` als
+kleiner UX-/Navigationsschritt: die rechte Liste ist kompakter, zeigt
+`World:` nur noch focused-row-only und springt bei Row-Klicks jetzt
+sofort auf den gewaehlten Body.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -282,6 +285,15 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `Environment` = jetzt, `World` = Jahrescharakter und
   `Life Potential` = dominanter Chemiepfad lesbar werden, ohne dass
   dieser Block schon persistenten Bio-State oder Ticking einfuehrt.
+- Der rechte Root-Inspector liest sich jetzt bewusster als Navigator:
+  `BLACK_HOLE`- und `STAR`-Rows bleiben schlanke Einzeiler ohne
+  unnoetiges `n/a`-Badge, nicht fokussierte `PLANET`-/`MOON`-Rows
+  zeigen nur noch `Potential: ...`, und `World:` erscheint dort nur
+  noch fuer die aktuell fokussierte Zeile.
+- Klicks auf Root-Inspector-Zeilen bleiben im bestehenden
+  `orbit_testbed.gd`-Fokuspfad, loesen jetzt aber bewusst einen
+  sofortigen Fokus-/Center-/Fit-Sprung ueber `_set_focus(..., true, true)`
+  aus, statt nur den normalen Fokuswechsel zu markieren.
 - `GalaxyProxyRenderer` arbeitet jetzt auch view-seitig mit Tiering:
   entfernte Roots sind erst BH-only-Proxies; Stern-Proxies kommen erst
   oberhalb einer projizierten Root-Groesse mit eigener 96/80-px-
@@ -298,6 +310,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Formatter-/Badge-Regressionen, ModelBuilder-/Overlay-Hierarchie und
   die Testbed-Controller-Regeln fuer explizites Oeffnen,
   Interest-Override und Reset bei Welt-Wechsel.
+- Dieselbe Overlay-/Inspector-Suite pinnt jetzt zusaetzlich die neue
+  Navigator-Verdichtung mechanisch:
+  `STAR` bleibt einzeilig, nicht fokussierte `PLANET`-/`MOON`-Rows
+  zeigen `Potential:` ohne `World:`, fokussierte Rows zeigen beide
+  Zeilen und behalten die Reihenfolge `Potential:` vor `World:`.
 - Neue Tests pinnen jetzt zusaetzlich den neuen Life-Layer ueber vier
   Ebenen:
   `LifePotentialService`-Anchor- und Tie-Break-Regressionen,

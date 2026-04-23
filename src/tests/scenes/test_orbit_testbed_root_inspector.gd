@@ -25,9 +25,13 @@ class CameraControllerProbe:
 	var bubble = null
 	var frame_label: StringName = OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW
 	var focused_ids: Array[StringName] = []
+	var immediate_flags: Array[bool] = []
+	var force_fit_flags: Array[bool] = []
 
-	func set_focus(body_id: StringName, _immediate := false, _force_fit := false) -> void:
+	func set_focus(body_id: StringName, immediate := false, force_fit := false) -> void:
 		focused_ids.append(body_id)
+		immediate_flags.append(immediate)
+		force_fit_flags.append(force_fit)
 		if bubble != null:
 			bubble.set_focus(body_id)
 
@@ -150,6 +154,7 @@ static func run(ctx) -> void:
 	ctx.current_suite = "test_orbit_testbed_root_inspector"
 	_test_root_inspector_opens_only_explicitly_and_overrides_root_overview_interest(ctx)
 	_test_root_inspector_stays_closed_for_focus_and_streaming_events_and_resets_on_world_change(ctx)
+	_test_root_inspector_clicks_use_immediate_focus_fit(ctx)
 	_test_non_large_world_keeps_root_inspector_hidden(ctx)
 
 
@@ -200,6 +205,18 @@ static func _test_non_large_world_keeps_root_inspector_hidden(ctx) -> void:
 	var testbed = _build_testbed_probe(false)
 	testbed._open_root_inspector_for_current_root()
 	ctx.assert_true(not testbed._root_inspector.is_open(), "Nicht-Large-World-Pfade ignorieren das Root-Inspector-Oeffnen komplett")
+	_destroy_testbed_probe(testbed)
+
+
+static func _test_root_inspector_clicks_use_immediate_focus_fit(ctx) -> void:
+	var testbed = _build_testbed_probe(true)
+	var camera: CameraControllerProbe = testbed._camera_controller
+	testbed._open_root_inspector_for_current_root()
+	testbed._on_root_inspector_focus_requested(&"alpha_i")
+	ctx.assert_true(camera.focused_ids.back() == &"alpha_i", "Inspector-Klick routed weiter ueber denselben Fokuspfad")
+	ctx.assert_true(camera.immediate_flags.back(), "Inspector-Klick fordert jetzt eine sofortige Kamerazentrierung an")
+	ctx.assert_true(camera.force_fit_flags.back(), "Inspector-Klick fordert jetzt zusaetzlich einen Fit des Fokus-Scope an")
+	ctx.assert_true(testbed._root_inspector.is_open(), "Inspector bleibt nach dem Fokus-Sprung offen")
 	_destroy_testbed_probe(testbed)
 
 

@@ -268,11 +268,11 @@ func _cycle_focus(direction: int) -> void:
 func _set_focus(body_id: StringName, immediate: bool = false, force_fit: bool = false) -> void:
 	if body_id == StringName(""):
 		return
-	_camera_controller.set_focus(body_id, false, force_fit)
+	_camera_controller.set_focus(body_id, immediate, force_fit)
 	_sync_root_inspector_context(false)
 	_refresh_snapshot_interest_ids()
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
-	if immediate:
+	if immediate and is_inside_tree():
 		_camera_controller.step(0.0, get_viewport_rect().size)
 		_sync_view_lod_state(true, _debug_overlay.visible)
 		_sync_galaxy_proxy_transform()
@@ -455,7 +455,7 @@ func _is_root_inspector_interest_override_active(focus_root_id: StringName) -> b
 
 func _on_root_inspector_focus_requested(body_id: StringName) -> void:
 	_focus_index = maxi(_focus_order.find(body_id), 0)
-	_set_focus(body_id)
+	_set_focus(body_id, true, true)
 
 
 func _on_root_inspector_closed() -> void:
