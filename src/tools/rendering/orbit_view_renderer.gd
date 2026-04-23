@@ -199,13 +199,14 @@ func _rebuild_visuals() -> void:
 				"kind": def.kind,
 			}
 
-		var trail_line := AntialiasedLine2D.new()
-		trail_line.name = "%sTrail" % id
-		trail_line.gradient = _trail_gradient(def.kind)
-		trail_line.z_index = -2
-		_trail_layer.add_child(trail_line)
-		_trail_visuals[id] = trail_line
-		_trail_histories[id] = []
+		if def.kind == BodyType.Kind.PLANET or def.kind == BodyType.Kind.MOON:
+			var trail_line := AntialiasedLine2D.new()
+			trail_line.name = "%sTrail" % id
+			trail_line.gradient = _trail_gradient(def.kind)
+			trail_line.z_index = -2
+			_trail_layer.add_child(trail_line)
+			_trail_visuals[id] = trail_line
+			_trail_histories[id] = []
 
 		var body_visual = BODY_VISUAL_SCRIPT.new()
 		body_visual.name = String(id)
@@ -295,14 +296,20 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 					orbit_line.position = parent_pos
 
 		if trail_line != null:
-			var is_ancestor_of_focus: bool = _is_ancestor_of_focus(id)
-			var show_trail: bool = not root_overview_active and not is_ancestor_of_focus
+			var show_trail: bool = not root_overview_active
 			trail_line.visible = show_trail
 			if show_trail:
-				_resume_trail_if_paused(id, pos)
-				_update_trail(id, pos, reset_trails)
-			elif is_ancestor_of_focus:
-				_clear_trail(id)
+				var trail_parent_pos: Vector2 = positions_by_id.get(def.parent_id, Vector2(INF, INF))
+				if not _is_finite_vec2(trail_parent_pos):
+					trail_parent_pos = _compute_body_view_position_ru(def.parent_id, true)
+					positions_by_id[def.parent_id] = trail_parent_pos
+				if _is_finite_vec2(trail_parent_pos):
+					trail_line.position = trail_parent_pos
+					var relative_pos: Vector2 = pos - trail_parent_pos
+					_resume_trail_if_paused(id, relative_pos)
+					_update_trail(id, relative_pos, reset_trails)
+				else:
+					_pause_trail(id)
 			else:
 				_pause_trail(id)
 
@@ -590,14 +597,6 @@ func _should_hide_in_root_overview(id: StringName, def: BodyDef) -> bool:
 
 func _is_visible_root_overview_star(def: BodyDef) -> bool:
 	return def != null and def.kind == BodyType.Kind.STAR and def.parent_id == _focus_id
-
-
-func _is_ancestor_of_focus(id: StringName) -> bool:
-	if id == StringName("") or _focus_id == StringName("") or id == _focus_id:
-		return false
-	if _topology == null:
-		return false
-	return _topology.is_descendant_of(_focus_id, id)
 
 
 func _should_show_orbit_in_root_overview(def: BodyDef) -> bool:

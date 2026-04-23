@@ -40,7 +40,6 @@ func set_focus(body_id: StringName, immediate := false, force_fit := false) -> v
 		return
 	_bubble.set_focus(body_id)
 	_renderer.set_focus(body_id)
-	_renderer.clear_trails()
 	_manual_pan_ru = Vector2.ZERO
 	_absolute_zoom_factor = OrbitZoomModelScript.FIT_ZOOM_FACTOR
 	_refresh_scope_radius(body_id)

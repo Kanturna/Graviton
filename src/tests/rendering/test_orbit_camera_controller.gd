@@ -158,7 +158,7 @@ static func _test_force_fit_centers_focus_and_resets_pan(ctx) -> void:
 	controller.step(0.0, Vector2(400.0, 200.0))
 	ctx.assert_true(bubble.get_focus() == &"planet", "set_focus schreibt den Bubble-Fokus")
 	ctx.assert_true(renderer.focused_id == &"planet", "set_focus schreibt den Renderer-Fokus")
-	ctx.assert_true(renderer.cleared_trails == 1, "Fokuswechsel leert Trails")
+	ctx.assert_true(renderer.cleared_trails == 0, "Fokuswechsel behaelt Trails bei, da sie jetzt parent-lokal stabil sind")
 	ctx.assert_almost(controller.get_zoom_factor(), 1.0, 1.0e-9, "force_fit setzt Zoom auf FIT")
 	ctx.assert_almost(renderer.scale.x, 3.04, 1.0e-6, "FIT-Skala basiert auf dem Fokus-Scope")
 	var planet_screen: Vector2 = renderer.screen_pos_of(&"planet")
