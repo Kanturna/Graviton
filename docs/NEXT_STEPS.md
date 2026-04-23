@@ -29,6 +29,12 @@ Konkreter Ablauf:
   - `World:` erscheint nur auf der aktuell fokussierten Zeile
   - Klick auf eine Inspector-Zeile fuehrt jetzt zu einem sofortigen
     Fokus-/Center-/Fit-Sprung
+  - der Live-Klickpfad bleibt dabei stabil:
+    kein stilles Nicht-Reagieren und kein Rebuild-/Button-Lifetime-
+    Problem mehr beim Klick auf `STAR`-/`PLANET`-/`MOON`-Rows
+  - ein Inspector-Klick bleibt auch waehrend laufender Sim stabil:
+    die Row darf nicht zwischen Mouse-Down und Mouse-Up so rebuilt
+    werden, dass der Fokuswechsel verloren geht
 - dabei bewusst auf diese Punkte achten:
   - `Environment` bleibt die Aussage fuer **jetzt**
   - `World` liest als **Jahrescharakter** statt als zweite

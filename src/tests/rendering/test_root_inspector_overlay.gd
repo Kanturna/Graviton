@@ -179,6 +179,24 @@ static func _test_overlay_starts_closed_and_emits_focus_requests(ctx) -> void:
 	ctx.assert_true(snapshot.get("focused_body_id", StringName("")) == &"alpha_i", "Inspector tracked die aktuell fokussierte Body-Zeile")
 	var row_body_ids: Array = snapshot.get("row_body_ids", [])
 	ctx.assert_true(row_body_ids.size() == 18, "Inspector rendert die vollstaendige Root-Hierarchie als eingerueckte Liste")
+	var alpha_row_button: Button = _find_row_button_by_substring(overlay, "Alpha   STAR")
+	ctx.assert_true(alpha_row_button != null, "Overlay rendert fuer STAR-Rows echte klickbare Buttons")
+	ctx.assert_true(
+		alpha_row_button.action_mode == BaseButton.ACTION_MODE_BUTTON_PRESS,
+		"Row-Buttons feuern auf Mouse-Down statt erst auf Mouse-Up, damit laufende Rebuilds den Live-Klick nicht verlieren"
+	)
+	var pressed_connections: Array[Dictionary] = alpha_row_button.get_signal_connection_list("pressed")
+	var uses_deferred_click_routing: bool = false
+	for connection_variant in pressed_connections:
+		var connection: Dictionary = connection_variant
+		if int(connection.get("flags", 0)) & CONNECT_DEFERRED:
+			uses_deferred_click_routing = true
+			break
+	ctx.assert_true(
+		uses_deferred_click_routing,
+		"Row-Buttons routen Fokuswechsel deferred, damit Rebuilds den aktiven Button nicht mitten im pressed-Signal freigeben"
+	)
+	var first_row_container: Control = overlay.find_children("Rows", "VBoxContainer", true, false)[0].get_child(0)
 
 	overlay._on_row_pressed(&"gamma_iv")
 	ctx.assert_true(focus_probe.requested_id == &"gamma_iv", "Inspector-Zeilen routen Fokuswunsch ueber ein einziges focus_requested-Signal")
@@ -187,6 +205,7 @@ static func _test_overlay_starts_closed_and_emits_focus_requests(ctx) -> void:
 	ctx.assert_true(not overlay.is_open(), "close_panel verbirgt das Panel wieder")
 	overlay.clear_state()
 	ctx.assert_true(overlay.get_debug_snapshot().get("root_id", &"sentinel") == StringName(""), "clear_state loescht den Root-Kontext fuer Welt-Wechsel hart")
+	ctx.assert_true(first_row_container.is_queued_for_deletion(), "Beim Rebuild werden alte Row-Nodes nur noch per queue_free() entsorgt")
 
 	overlay.free()
 	_teardown_starter_root_context(context)
@@ -284,3 +303,11 @@ static func _row_by_body_id(rows: Array, body_id: StringName) -> Dictionary:
 		if row.get("body_id", StringName("")) == body_id:
 			return row
 	return {}
+
+
+static func _find_row_button_by_substring(overlay: Control, text_fragment: String) -> Button:
+	for button_variant in overlay.find_children("*", "Button", true, false):
+		var button: Button = button_variant
+		if button.text.find(text_fragment) != -1:
+			return button
+	return null

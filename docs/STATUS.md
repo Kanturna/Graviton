@@ -21,7 +21,15 @@ read-only Life-Layer mit benannten Chemiepfaden auf Basis dieser
 Jahresachsen. Darauf sitzt jetzt zusaetzlich `Root Inspector v2.1` als
 kleiner UX-/Navigationsschritt: die rechte Liste ist kompakter, zeigt
 `World:` nur noch focused-row-only und springt bei Row-Klicks jetzt
-sofort auf den gewaehlten Body.
+sofort auf den gewaehlten Body. Der Live-Klickpfad des Inspectors wurde
+danach zusaetzlich gegen Reentrancy gehaertet: Row-Buttons routen ihren
+Fokuswunsch jetzt deferred und der Overlay-Rebuild gibt alte Row-Nodes
+nur noch per `queue_free()` frei, damit Snapshot-Refresh den gerade
+geklickten Button nicht mehr mitten im `pressed`-Signal zerstoert.
+Da der Inspector unter laufender Sim regelmaessig rebuilt, feuern die
+Rows jetzt ausserdem bewusst schon auf Mouse-Down statt erst auf
+Mouse-Up; sonst konnte eine Row zwischen Press und Release bereits
+ersetzt sein und der Live-Klick ging still verloren.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 

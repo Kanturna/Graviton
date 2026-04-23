@@ -224,6 +224,9 @@ func _apply_model(model: Dictionary) -> void:
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.text = _format_row_text(row)
 		button.clip_text = false
+		# The inspector rebuilds while the sim runs, so release-based buttons can
+		# lose their click between mouse-down and mouse-up. Fire on press-down.
+		button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 		button.focus_mode = Control.FOCUS_NONE
 		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		button.add_theme_stylebox_override("normal", _row_style_active if bool(row.get("is_focused", false)) else _row_style_normal)
@@ -232,7 +235,9 @@ func _apply_model(model: Dictionary) -> void:
 		button.add_theme_stylebox_override("focus", _row_style_active)
 		button.add_theme_color_override("font_color", Color(0.972549, 0.980392, 1.0, 1.0) if bool(row.get("is_focused", false)) else Color(0.890196, 0.92549, 0.988235, 0.94))
 		button.add_theme_font_size_override("font_size", 13)
-		button.pressed.connect(_on_row_pressed.bind(body_id))
+		# Inspector clicks rebuild the row list via snapshot refresh, so route the
+		# focus request deferred to avoid freeing the active button mid-signal.
+		button.pressed.connect(_on_row_pressed.bind(body_id), CONNECT_DEFERRED)
 		indent.add_child(button)
 
 
@@ -241,7 +246,7 @@ func _clear_rows() -> void:
 		return
 	for child in _rows_vbox.get_children():
 		_rows_vbox.remove_child(child)
-		child.free()
+		child.queue_free()
 
 
 static func _format_row_text(row: Dictionary) -> String:
