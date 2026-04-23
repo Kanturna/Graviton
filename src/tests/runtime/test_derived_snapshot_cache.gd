@@ -148,6 +148,24 @@ class BiosphereScaleStub:
 		}
 
 
+class OrbitReadoutStub:
+	extends Node
+
+	var describe_calls: int = 0
+	var describe_calls_by_id: Dictionary = {}
+
+	func describe_body(id: StringName) -> Dictionary:
+		describe_calls += 1
+		describe_calls_by_id[id] = int(describe_calls_by_id.get(id, 0)) + 1
+		return {
+			"body_id": id,
+			"has_rotation_basis": id != &"genesis",
+			"rotation_period_s": 86400.0 if id != &"genesis" else 0.0,
+			"has_orbital_period_basis": id != &"genesis",
+			"orbital_period_s": 365.25 * 86400.0 if id != &"genesis" else 0.0,
+		}
+
+
 static func run(ctx) -> void:
 	ctx.current_suite = "test_derived_snapshot_cache"
 	_test_cache_tracks_interest_and_dirty_updates(ctx)
@@ -167,6 +185,7 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	var life_potential_service := LifePotentialStub.new()
 	var biosphere_service := BiosphereStub.new()
 	var biosphere_scale_service := BiosphereScaleStub.new()
+	var orbit_readout_service := OrbitReadoutStub.new()
 	var cache = DerivedSnapshotCacheScript.new()
 
 	bubble.set_focus(&"planet_a")
@@ -181,7 +200,8 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 		planetary_state_service,
 		life_potential_service,
 		biosphere_service,
-		biosphere_scale_service
+		biosphere_scale_service,
+		orbit_readout_service
 	)
 
 	ctx.assert_true(cache.get_revision() == 1, "configure baut den ersten Snapshot sofort")
@@ -195,6 +215,7 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	ctx.assert_true(cache.get_focus_life_potential_desc().get("body_id", &"") == &"planet_a", "configure baut auch den Life-Potential-Focus-Snapshot")
 	ctx.assert_true(cache.get_focus_biosphere_desc().get("body_id", &"") == &"planet_a", "configure baut auch den Proto-Biosphaeren-Focus-Snapshot")
 	ctx.assert_true(cache.get_focus_biosphere_scale_desc().get("body_id", &"") == &"planet_a", "configure baut auch den Life-v2-Focus-Snapshot")
+	ctx.assert_true(cache.get_focus_orbit_readout_desc().get("body_id", &"") == &"planet_a", "configure baut auch den Orbit-Readout-Focus-Snapshot")
 	ctx.assert_true(cache.get_environment_desc(&"moon_a").is_empty(), "nicht interessierte Bodies bleiben ungecacht")
 
 	cache.set_interest_ids([&"planet_a", &"moon_a"])
@@ -206,6 +227,7 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	ctx.assert_true(cache.get_life_potential_desc(&"moon_a").get("body_id", &"") == &"moon_a", "interessierter Mond bekommt auch einen Life-Potential-Snapshot")
 	ctx.assert_true(cache.get_biosphere_desc(&"moon_a").get("body_id", &"") == &"moon_a", "interessierter Mond bekommt auch einen Proto-Biosphaeren-Snapshot")
 	ctx.assert_true(cache.get_biosphere_scale_desc(&"moon_a").get("body_id", &"") == &"moon_a", "interessierter Mond bekommt auch einen Life-v2-Snapshot")
+	ctx.assert_true(cache.get_orbit_readout_desc(&"moon_a").get("body_id", &"") == &"moon_a", "interessierter Mond bekommt auch einen Orbit-Readout-Snapshot")
 
 	var revision_before_irrelevant_update: int = cache.get_revision()
 	var thermal_calls_before_irrelevant_update: int = thermal_service.describe_calls
@@ -242,6 +264,7 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	life_potential_service.free()
 	biosphere_service.free()
 	biosphere_scale_service.free()
+	orbit_readout_service.free()
 	world_loader.free()
 	time_service.free()
 	registry.free()

@@ -105,7 +105,7 @@ layer = 20
 offset_left = 24.0
 offset_top = 24.0
 offset_right = 476.0
-offset_bottom = 388.0
+offset_bottom = 436.0
 theme_override_styles/panel = SubResource("1_panel_style")
 
 [node name="Margin" type="MarginContainer" parent="HudLayer/TopPanel" unique_id=398651009]
@@ -175,17 +175,27 @@ text = "Season: n/a"
 [node name="TimeValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=1744590320]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
-text = "T+ 0.00 d"
+text = "T+ 0 s"
+
+[node name="DayValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=860135220]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
+text = "Day: n/a"
+
+[node name="YearValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=685630559]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
+text = "Year: n/a"
 
 [node name="ScaleValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=1123534186]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
-text = "Rate: 1 s/s"
+text = "Rate: 1 h/s"
 
 [node name="CadenceValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=361783535]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
-text = "Cadence: Bio tick ~ 10 d"
+text = "Cadence: Bio tick ~ 4 min"
 
 [node name="SpeedSlider" type="HSlider" parent="HudLayer/TopPanel/Margin/VBox" unique_id=992072737]
 custom_minimum_size = Vector2(0, 18)

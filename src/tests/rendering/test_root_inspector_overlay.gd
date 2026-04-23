@@ -285,7 +285,8 @@ static func _build_starter_root_context() -> Dictionary:
 		setup.get(SimTestHarnessScript.HARNESS_KEY_PLANETARY_STATE_SERVICE),
 		setup.get(SimTestHarnessScript.HARNESS_KEY_LIFE_POTENTIAL_SERVICE),
 		setup.get(SimTestHarnessScript.HARNESS_KEY_PROTO_BIOSPHERE_SERVICE),
-		setup.get(SimTestHarnessScript.HARNESS_KEY_BIOSPHERE_SCALE_SERVICE)
+		setup.get(SimTestHarnessScript.HARNESS_KEY_BIOSPHERE_SCALE_SERVICE),
+		setup.get(SimTestHarnessScript.HARNESS_KEY_ORBIT_READOUT_SERVICE)
 	)
 	snapshot_cache.set_interest_ids(
 		_planetary_interest_ids_for_root(

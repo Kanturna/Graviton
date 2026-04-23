@@ -1,5 +1,34 @@
 # Graviton - Decisions
 
+## 2026-04-23 - Orbit Readout v1 bleibt ein reiner Readout-/HUD-Block und retuned keine Welten
+
+Das aktuelle Missverstaendnis um "zu schnelle" Planetenbewegung wird
+zuerst ueber bessere Lesbarkeit geloest und **nicht** ueber stilles
+Re-Authoring der bestehenden Orbitdaten.
+
+Konsequenz:
+
+- `OrbitReadoutService` landet als kleiner read-only Service im
+  `sim/orbit/`-Layer
+- `Day:` liest direkt aus `BodyDef.rotation_period_s`
+- `Year:` liest dieselbe bestehende Orbitperioden-Wahrheit wie der
+  planetare Jahrespfad; dafuer teilen `PlanetaryYearSampler` und der
+  neue Readout einen gemeinsamen Orbitperiod-Helper
+- `DerivedSnapshotCache` fuehrt dafuer eine neue
+  `orbit_readout_desc`-Familie ein; `Day:` und `Year:` kommen damit
+  ueber denselben read-only Snapshot-Pfad ins Fokus-HUD wie die
+  restlichen planetaren Derived-Werte
+- die bestehende Runtime-Zeile bleibt strukturell
+  `T+ ...   steps ...   FPS ...`; nur der `T+`-Wert selbst rendert
+  jetzt adaptiv als `s / min / h / d / y`
+- `Year:` bleibt bewusst der einheitliche User-Label fuer jede
+  Orbitperiode um den Parent, auch bei Monden und BH-Sternen
+- fuer sehr grosse `Year:`-Werte gibt es in v1 bewusst keine neue
+  Abkuerzungslogik; plain `y` reicht fuer den ersten Lesbarkeitsblock
+- `starter_world`, `sample_system` und alle authored Orbitdaten bleiben
+  in diesem Block unberuehrt; wenn danach realistischere Welten
+  gewuenscht sind, folgt dafuer ein separater Content-/Kalibrierungsschritt
+
 ## 2026-04-23 - Time UX bleibt ein reiner Control-/HUD-Block und aendert nicht die Simulationszeit
 
 Das aktuelle Time-Problem wird bewusst zuerst als UX-/Control-Frage und

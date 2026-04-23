@@ -13,6 +13,7 @@ const HARNESS_KEY_PLANETARY_STATE_SERVICE: StringName = &"planetary_state_servic
 const HARNESS_KEY_LIFE_POTENTIAL_SERVICE: StringName = &"life_potential_service"
 const HARNESS_KEY_PROTO_BIOSPHERE_SERVICE: StringName = &"proto_biosphere_service"
 const HARNESS_KEY_BIOSPHERE_SCALE_SERVICE: StringName = &"biosphere_scale_service"
+const HARNESS_KEY_ORBIT_READOUT_SERVICE: StringName = &"orbit_readout_service"
 
 
 static func build_named_world_context(world_id: StringName) -> Dictionary:
@@ -62,6 +63,8 @@ static func build_named_world_context(world_id: StringName) -> Dictionary:
 		life_potential_service,
 		proto_biosphere_service
 	)
+	var orbit_readout_service = load("res://src/sim/orbit/orbit_readout_service.gd").new()
+	orbit_readout_service.configure(registry)
 
 	return {
 		HARNESS_KEY_LOADER: loader,
@@ -76,12 +79,14 @@ static func build_named_world_context(world_id: StringName) -> Dictionary:
 		HARNESS_KEY_LIFE_POTENTIAL_SERVICE: life_potential_service,
 		HARNESS_KEY_PROTO_BIOSPHERE_SERVICE: proto_biosphere_service,
 		HARNESS_KEY_BIOSPHERE_SCALE_SERVICE: biosphere_scale_service,
+		HARNESS_KEY_ORBIT_READOUT_SERVICE: orbit_readout_service,
 	}
 
 
 static func teardown_context(ctx: Dictionary) -> void:
 	_free_if_present(ctx.get(HARNESS_KEY_PROTO_BIOSPHERE_SERVICE, null))
 	_free_if_present(ctx.get(HARNESS_KEY_BIOSPHERE_SCALE_SERVICE, null))
+	_free_if_present(ctx.get(HARNESS_KEY_ORBIT_READOUT_SERVICE, null))
 	_free_if_present(ctx.get(HARNESS_KEY_LIFE_POTENTIAL_SERVICE, null))
 	_free_if_present(ctx.get(HARNESS_KEY_PLANETARY_STATE_SERVICE, null))
 	_free_if_present(ctx.get(HARNESS_KEY_PLANETARY_YEAR_SAMPLER, null))

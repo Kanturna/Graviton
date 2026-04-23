@@ -48,6 +48,11 @@ die normale HUD-Sprache zeigt lesbare Zeitraten statt roher
 `x...`-Multiplikatoren, der Preset-Flow und der Slider-Bereich sind
 bewusst getrennt und das HUD macht die bestehende Life-Cadence als
 `Bio tick ~ ...` direkt sichtbar.
+Darauf sitzt jetzt zusaetzlich `Orbit Readout v1` als kleiner reiner
+Readout-/HUD-Schritt:
+die bestehende Runtime-Zeile rendert `T+` jetzt adaptiv statt stumpf in
+Tagen und das Fokus-HUD macht `Day:` und `Year:` fuer den aktuell
+fokussierten Body explizit sichtbar.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -209,6 +214,25 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `ProtoBiosphereSimulationService.BIO_TICK_STEP_S / time_scale` und
   macht damit die Simulationsgeschwindigkeit erstmals im Kontext der
   bereits existierenden Life-/Biosphaeren-Dynamik sichtbar.
+- `OrbitPeriodHelper` buendelt jetzt die bestehende
+  `AUTHORED_ORBIT`-/`KEPLER_APPROX`-Periodenlogik fuer
+  `PlanetaryYearSampler` und den neuen Orbit-Readout an genau einer
+  Stelle; es gibt dafuer keine zweite Kepler-Periodenformel.
+- `OrbitReadoutService` liegt jetzt als weiterer kleiner read-only
+  Service im `sim/orbit/`-Layer:
+  `rotation_period_s` wird direkt aus `BodyDef` gelesen,
+  `orbital_period_s` aus dem bestehenden Orbitmodell abgeleitet.
+- `DerivedSnapshotCache` fuehrt jetzt zusaetzlich
+  `orbit_readout_desc` als weitere read-only Desc-Familie; das
+  Fokus-HUD liest `Day:` und `Year:` dadurch ueber denselben
+  Snapshot-Pfad wie `Environment`, `World`, `Life` und `Biomass`.
+- Die bestehende Runtime-Zeile bleibt strukturell
+  `T+ ...   steps ...   FPS ...`, rendert den `T+`-Wert jetzt aber
+  adaptiv als `s`, `min`, `h`, `d` oder `y` statt immer nur in Tagen.
+- Das Fokus-HUD zeigt jetzt zusaetzlich optionale `Day:`- und
+  `Year:`-Zeilen fuer Bodies mit Rotations- bzw. Orbitbasis.
+  `Year:` bleibt dabei bewusst der einheitliche User-Label fuer die
+  Parent-Orbitperiode, auch bei Monden und BH-Sternen.
 - `LifePotentialService` bewertet diese World-Achsen bewusst nur ueber
   die fuenf Jahresklassen
   `Thermal Extremity`, `Volatiles`, `Buffering`, `Stability` und
@@ -853,6 +877,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tools/rendering/galaxy_proxy_renderer.gd`
 - `src/tests/rendering/test_debug_overlay.gd`
 - `src/tests/rendering/test_orbit_hud_formatter.gd`
+- `src/sim/orbit/orbit_period_helper.gd`
+- `src/sim/orbit/orbit_readout_service.gd`
+- `src/tests/sim/test_orbit_readout_service.gd`
 - `run_tests.bat`
 
 ## Bekannte offene Punkte
@@ -1008,5 +1035,5 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - den produktiven Large-World-Pfad weiter nur ueber Proxy-/Perf-Trim
   oder planetare Derived-Folgearbeit ausbauen, nicht ueber noch mehr
   Root-Anzahl ohne echten Editor-/Feel-Playtest
-- Headless-Basis nach diesem Block:
-  `./run_tests.bat` laeuft gruen mit `7395` Passed, `0` Failed
+- Headless-Basis nach `Orbit Readout v1`:
+  `./run_tests.bat` laeuft gruen mit `7427` Passed, `0` Failed

@@ -7,6 +7,7 @@ const PlanetaryStateServiceScript = preload("res://src/sim/planetary/planetary_s
 const LifePotentialServiceScript = preload("res://src/sim/life/life_potential_service.gd")
 const ProtoBiosphereSimulationServiceScript = preload("res://src/sim/life/proto_biosphere_simulation_service.gd")
 const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_service.gd")
+const OrbitReadoutServiceScript = preload("res://src/sim/orbit/orbit_readout_service.gd")
 
 const MINUTE_S: float = 60.0
 const HOUR_S: float = 60.0 * MINUTE_S
@@ -129,7 +130,19 @@ static func format_inspector_life_line(biosphere_desc: Dictionary) -> String:
 
 
 static func format_time(sim_time_s: float, tick_count: int, fps: int) -> String:
-	return "T+ %.2f d   steps %d   FPS %d" % [sim_time_s / UnitSystem.DAY_S, tick_count, fps]
+	return "T+ %s   steps %d   FPS %d" % [_elapsed_time_text(sim_time_s), tick_count, fps]
+
+
+static func format_day(orbit_readout_desc: Dictionary) -> String:
+	return "Day: %s" % _period_text(
+		float(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_ROTATION_PERIOD_S, 0.0))
+	)
+
+
+static func format_year(orbit_readout_desc: Dictionary) -> String:
+	return "Year: %s" % _period_text(
+		float(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_ORBITAL_PERIOD_S, 0.0))
+	)
 
 
 static func format_scale(time_scale: float, preset_label: String, zoom_factor: float, zoom_mode: String, frame_label: String = "") -> String:
@@ -208,6 +221,30 @@ static func _duration_text(seconds: float) -> String:
 	if hours_remainder == 0:
 		return "%d d" % days
 	return "%d d %d h" % [days, hours_remainder]
+
+
+static func _elapsed_time_text(seconds: float) -> String:
+	var safe_seconds: float = maxf(seconds, 0.0)
+	if safe_seconds < MINUTE_S:
+		return "%d s" % int(roundf(safe_seconds))
+	if safe_seconds < HOUR_S:
+		return "%.1f min" % (safe_seconds / MINUTE_S)
+	if safe_seconds < 48.0 * HOUR_S:
+		return "%.1f h" % (safe_seconds / HOUR_S)
+	if safe_seconds < UnitSystem.YEAR_S:
+		return "%.1f d" % (safe_seconds / UnitSystem.DAY_S)
+	return "%.1f y" % (safe_seconds / UnitSystem.YEAR_S)
+
+
+static func _period_text(seconds: float) -> String:
+	var safe_seconds: float = maxf(seconds, 0.0)
+	if safe_seconds < HOUR_S:
+		return "%.1f min" % (safe_seconds / MINUTE_S)
+	if safe_seconds < 48.0 * HOUR_S:
+		return "%.1f h" % (safe_seconds / HOUR_S)
+	if safe_seconds < UnitSystem.YEAR_S:
+		return "%.1f d" % (safe_seconds / UnitSystem.DAY_S)
+	return "%.1f y" % (safe_seconds / UnitSystem.YEAR_S)
 
 
 static func _environment_class_text(environment_desc: Dictionary) -> String:

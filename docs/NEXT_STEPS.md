@@ -2,6 +2,42 @@
 
 Stand: 2026-04-23
 
+## Prioritaet 0 - Orbit-Readout-v1 Acceptance Gate
+
+Ziel:
+Den neuen `Orbit Readout v1`-Pfad im echten Editor-/Playtest-Lauf
+validieren, bevor ueber Content-Rekalibrierung oder weitere HUD-Politur
+nachgedacht wird.
+
+Konkreter Ablauf:
+
+- `orbit_testbed.tscn` im Editor oeffnen
+- explizit diese Fokusfaelle durchgehen:
+  - `sample_system -> planet_a`
+  - `starter_world -> alpha_i`
+  - `starter_world -> gamma_iv`
+  - `starter_world -> alpha`
+  - `starter_world -> obsidian`
+- dabei dieselben Punkte bestaetigen:
+  - die bestehende Runtime-Zeile bleibt
+    `T+ ...   steps ...   FPS ...`
+  - `T+` liest adaptiv als `s / min / h / d / y` statt sofort als Tage
+  - `planet_a` liest sichtbar als
+    `Day: 1.0 d` und `Year: 1.0 y`
+  - `alpha_i` macht seinen kurzen Toy-/Debug-Orbit explizit ueber
+    `Year:` im Stunden-/Tagesbereich sichtbar
+  - `gamma_iv` liest mit `Year:` im Tagesbereich
+  - `alpha` zeigt seine Parent-Orbitperiode um `obsidian`
+  - `obsidian` zeigt bewusst kein `Day:`-/`Year:`-Rauschen
+  - `Rate:` und `Cadence:` bleiben dabei unveraendert lesbar
+  - die zwei neuen Zeilen kippen das HUD nicht in unnoetige Dichte
+
+Wenn dieser Gate kippt:
+
+- nicht sofort Orbitdaten oder `starter_world` retunen
+- zuerst nur aus den konkreten Lesbarkeitsproblemen einen kleinen
+  Folgeblock fuer Orbit-HUD-Politur schneiden
+
 ## Prioritaet 0 - Time-UX Acceptance Gate
 
 Ziel:
@@ -28,6 +64,9 @@ Konkreter Ablauf:
     sichtbar lebendiger, ohne staendig manuell hochzuschalten
   - `scaleup_galaxy_100` bleibt trotz hoeherer Rate im normalen
     Editor-Playtest ruhig und lesbar
+  - die neue adaptive `T+`-Zeile arbeitet sauber mit derselben
+    Time-UX zusammen und fuehlt sich nicht wie eine zweite
+    Zeitdarstellung an
 
 Wenn dieser Gate kippt:
 
@@ -137,6 +176,10 @@ Bevorzugte Richtung:
 
 Fallback-Reihenfolge:
 
+- wenn der neue Orbit-Readout zwar korrekt ist, die aktuellen Welten
+  aber weiter als zu kurzperiodig / zu toyhaft wirken,
+  zuerst einen separaten Content-/Kalibrierungsblock fuer die
+  betroffenen Referenzwelten schneiden
 - wenn der neue Time-UX-Block trotz Acceptance noch zu traege bleibt,
   zuerst einen kleinen view-only `Orbit Presentation v2`-Block fuer
   Survey-/Overview-Bewegung schneiden

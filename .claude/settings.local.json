@@ -22,7 +22,10 @@
       "PowerShell(git diff HEAD -- src/sim/planetary/planetary_state_service.gd 2>&1 | Select-Object -Last 40)",
       "PowerShell(git diff HEAD -- scenes/testbeds/orbit_testbed.gd scenes/testbeds/orbit_testbed.tscn src/tools/rendering/orbit_hud_formatter.gd src/tools/ui/root_inspector_model_builder.gd 2>&1 | Select-Object -First 200)",
       "PowerShell(git diff HEAD -- src/tools/ui/root_inspector_model_builder.gd 2>&1 | Select-Object -First 30)",
-      "PowerShell(git diff HEAD -- src/tools/rendering/orbit_hud_formatter.gd scenes/testbeds/orbit_testbed.tscn scenes/testbeds/orbit_testbed.gd 2>&1 | Select-Object -First 200)"
+      "PowerShell(git diff HEAD -- src/tools/rendering/orbit_hud_formatter.gd scenes/testbeds/orbit_testbed.tscn scenes/testbeds/orbit_testbed.gd 2>&1 | Select-Object -First 200)",
+      "PowerShell(git diff HEAD -- docs/STATUS.md 2>&1 | Select-String -Pattern \"^[+-]\" | Select-Object -First 5)",
+      "PowerShell(git diff HEAD -- src/sim/planetary/planetary_year_sampler.gd src/tools/rendering/orbit_hud_formatter.gd 2>&1 | Select-Object -First 200)",
+      "PowerShell(git diff HEAD -- scenes/testbeds/orbit_testbed.gd scenes/testbeds/orbit_testbed.tscn 2>&1 | Select-Object -First 120)"
     ]
   }
 }

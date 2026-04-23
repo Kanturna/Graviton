@@ -14,6 +14,8 @@ static func run(ctx) -> void:
 	_test_life_potential_formatter_uses_track_and_class(ctx)
 	_test_inspector_world_line_hides_low_seasonality(ctx)
 	_test_inspector_life_line_reuses_hud_language(ctx)
+	_test_time_formatter_uses_adaptive_elapsed_units(ctx)
+	_test_day_and_year_formatter_use_single_unit_periods(ctx)
 	_test_scale_formatter_uses_human_rate_language(ctx)
 	_test_cadence_formatter_humanizes_bio_tick_durations(ctx)
 
@@ -186,6 +188,53 @@ static func _test_inspector_life_line_reuses_hud_language(ctx) -> void:
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_inspector_life_line({}) == "Life: n/a",
 		"Inspector zeigt ohne Biosphaeren-Basis explizit Life: n/a"
+	)
+
+
+static func _test_time_formatter_uses_adaptive_elapsed_units(ctx) -> void:
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_time(45.0, 12, 81) == "T+ 45 s   steps 12   FPS 81",
+		"T+-Zeile bleibt strukturell erhalten und zeigt kurze Laufzeit in Sekunden"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_time(750.0, 12, 81) == "T+ 12.5 min   steps 12   FPS 81",
+		"T+-Zeile rendert mittlere Laufzeit adaptiv in Minuten"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_time(8.3 * 3600.0, 12, 81) == "T+ 8.3 h   steps 12   FPS 81",
+		"T+-Zeile rendert Stunden mit einer Nachkommastelle"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_time(12.4 * UnitSystem.DAY_S, 12, 81) == "T+ 12.4 d   steps 12   FPS 81",
+		"T+-Zeile rendert Tageswerte adaptiv in Tagen"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_time(1.2 * UnitSystem.YEAR_S, 12, 81) == "T+ 1.2 y   steps 12   FPS 81",
+		"T+-Zeile rendert lange Laufzeiten adaptiv in Jahren"
+	)
+
+
+static func _test_day_and_year_formatter_use_single_unit_periods(ctx) -> void:
+	var orbit_readout_desc: Dictionary = {
+		"has_rotation_basis": true,
+		"rotation_period_s": 4.6 * 3600.0,
+		"has_orbital_period_basis": true,
+		"orbital_period_s": 12.1 * UnitSystem.DAY_S,
+	}
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_day(orbit_readout_desc) == "Day: 4.6 h",
+		"Day-Readout bleibt bei einer Zahl plus einer Einheit"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_year(orbit_readout_desc) == "Year: 12.1 d",
+		"Year-Readout bleibt bei einer Zahl plus einer Einheit"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_year({
+			"has_orbital_period_basis": true,
+			"orbital_period_s": UnitSystem.YEAR_S,
+		}) == "Year: 1.0 y",
+		"Jahres-Readout schaltet ab YEAR_S auf plain y um"
 	)
 
 

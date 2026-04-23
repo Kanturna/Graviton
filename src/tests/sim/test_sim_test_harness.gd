@@ -18,6 +18,7 @@ static func _test_sample_system_context_is_fully_built_and_tears_down(ctx) -> vo
 	var environment_service = setup[SimTestHarnessScript.HARNESS_KEY_ENVIRONMENT_SERVICE]
 	var life_potential_service = setup[SimTestHarnessScript.HARNESS_KEY_LIFE_POTENTIAL_SERVICE]
 	var proto_biosphere_service = setup[SimTestHarnessScript.HARNESS_KEY_PROTO_BIOSPHERE_SERVICE]
+	var orbit_readout_service = setup[SimTestHarnessScript.HARNESS_KEY_ORBIT_READOUT_SERVICE]
 	ctx.assert_true(registry.has_body(&"sol"), "sample_system context enthaelt sol")
 	ctx.assert_true(registry.has_body(&"planet_a"), "sample_system context enthaelt planet_a")
 	ctx.assert_true(thermal_service.compute_insolation_wpm2(&"planet_a") > 0.0, "thermal_service ist fuer sample_system fertig konfiguriert")
@@ -28,6 +29,8 @@ static func _test_sample_system_context_is_fully_built_and_tears_down(ctx) -> vo
 		"life_potential_service ist fuer sample_system fertig konfiguriert")
 	ctx.assert_true(bool(proto_biosphere_service.describe_body(&"planet_a").get("has_biosphere_basis", false)),
 		"proto_biosphere_service ist fuer sample_system fertig konfiguriert")
+	ctx.assert_true(bool(orbit_readout_service.describe_body(&"planet_a").get("has_orbital_period_basis", false)),
+		"orbit_readout_service ist fuer sample_system fertig konfiguriert")
 	SimTestHarnessScript.teardown_context(setup)
 	ctx.assert_true(not is_instance_valid(registry), "teardown_context free't die sample_system registry")
 	ctx.assert_true(not is_instance_valid(environment_service), "teardown_context free't den sample_system environment_service")
@@ -39,6 +42,7 @@ static func _test_starter_world_context_is_fully_built_and_tears_down(ctx) -> vo
 	var environment_service = setup[SimTestHarnessScript.HARNESS_KEY_ENVIRONMENT_SERVICE]
 	var life_potential_service = setup[SimTestHarnessScript.HARNESS_KEY_LIFE_POTENTIAL_SERVICE]
 	var proto_biosphere_service = setup[SimTestHarnessScript.HARNESS_KEY_PROTO_BIOSPHERE_SERVICE]
+	var orbit_readout_service = setup[SimTestHarnessScript.HARNESS_KEY_ORBIT_READOUT_SERVICE]
 	ctx.assert_true(registry.body_count() == 18, "starter_world context enthaelt alle 18 Bodies")
 	ctx.assert_true(registry.has_body(&"obsidian"), "starter_world context enthaelt obsidian")
 	ctx.assert_true(bool(environment_service.describe_body(&"gamma_iv").get("is_supported_body_kind", false)),
@@ -47,6 +51,8 @@ static func _test_starter_world_context_is_fully_built_and_tears_down(ctx) -> vo
 		"starter_world life_potential_service beschreibt gamma_iv")
 	ctx.assert_true(bool(proto_biosphere_service.describe_body(&"gamma_iv").get("has_biosphere_basis", false)),
 		"starter_world proto_biosphere_service beschreibt gamma_iv")
+	ctx.assert_true(bool(orbit_readout_service.describe_body(&"alpha").get("has_orbital_period_basis", false)),
+		"starter_world orbit_readout_service beschreibt auch Sternorbits")
 	SimTestHarnessScript.teardown_context(setup)
 	ctx.assert_true(not is_instance_valid(registry), "teardown_context free't die starter_world registry")
 	ctx.assert_true(not is_instance_valid(environment_service), "teardown_context free't den starter_world environment_service")

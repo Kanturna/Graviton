@@ -12,6 +12,7 @@ const PlanetaryStateServiceScript = preload("res://src/sim/planetary/planetary_s
 const LifePotentialServiceScript = preload("res://src/sim/life/life_potential_service.gd")
 const ProtoBiosphereSimulationServiceScript = preload("res://src/sim/life/proto_biosphere_simulation_service.gd")
 const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_service.gd")
+const OrbitReadoutServiceScript = preload("res://src/sim/orbit/orbit_readout_service.gd")
 
 const ZOOM_FACTOR_STEP: float = 1.12
 
@@ -38,6 +39,8 @@ const ZOOM_FACTOR_STEP: float = 1.12
 @onready var _life_potential_value: Label = $HudLayer/TopPanel/Margin/VBox/LifePotentialValue
 @onready var _season_value: Label = $HudLayer/TopPanel/Margin/VBox/SeasonValue
 @onready var _time_value: Label = $HudLayer/TopPanel/Margin/VBox/TimeValue
+@onready var _day_value: Label = $HudLayer/TopPanel/Margin/VBox/DayValue
+@onready var _year_value: Label = $HudLayer/TopPanel/Margin/VBox/YearValue
 @onready var _scale_value: Label = $HudLayer/TopPanel/Margin/VBox/ScaleValue
 @onready var _cadence_value: Label = $HudLayer/TopPanel/Margin/VBox/CadenceValue
 @onready var _speed_slider: HSlider = $HudLayer/TopPanel/Margin/VBox/SpeedSlider
@@ -54,6 +57,7 @@ var _planetary_state_service = PlanetaryStateServiceScript.new()
 var _life_potential_service = LifePotentialServiceScript.new()
 var _proto_biosphere_service = ProtoBiosphereSimulationServiceScript.new()
 var _biosphere_scale_service = BiosphereScaleServiceScript.new()
+var _orbit_readout_service = OrbitReadoutServiceScript.new()
 var _focus_order: Array[StringName] = []
 var _topology = null
 var _focus_index: int = 0
@@ -143,6 +147,7 @@ func _ready() -> void:
 		_life_potential_service,
 		_proto_biosphere_service
 	)
+	_orbit_readout_service.configure(UniverseRegistry)
 
 	_renderer.configure(UniverseRegistry, _bubble, _topology)
 	_renderer.set_environment_service(_environment_service)
@@ -159,7 +164,8 @@ func _ready() -> void:
 		_planetary_state_service,
 		_life_potential_service,
 		_proto_biosphere_service,
-		_biosphere_scale_service
+		_biosphere_scale_service,
+		_orbit_readout_service
 	)
 	_configure_root_inspector()
 	_refresh_snapshot_interest_ids()
@@ -203,6 +209,9 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	_time_scale_controller.dispose()
 	_derived_snapshot_cache.dispose()
+	if _orbit_readout_service != null:
+		_orbit_readout_service.free()
+		_orbit_readout_service = null
 	if _planetary_state_service != null:
 		_planetary_state_service.free()
 		_planetary_state_service = null
@@ -320,6 +329,7 @@ func _update_hud() -> void:
 	var planetary_state_desc: Dictionary = _derived_snapshot_cache.get_focus_planetary_state_desc()
 	var biosphere_scale_desc: Dictionary = _derived_snapshot_cache.get_focus_biosphere_scale_desc()
 	var life_potential_desc: Dictionary = _derived_snapshot_cache.get_focus_life_potential_desc()
+	var orbit_readout_desc: Dictionary = _derived_snapshot_cache.get_focus_orbit_readout_desc()
 
 	var fps: int = Engine.get_frames_per_second()
 	var speed_step_label: String = _time_scale_controller.get_step_label()
@@ -345,6 +355,12 @@ func _update_hud() -> void:
 		OrbitHudFormatterScript.format_primary_source(thermal_desc)
 	]
 	_time_value.text = OrbitHudFormatterScript.format_time(TimeService.sim_time_s, TimeService.tick_count, fps)
+	_day_value.visible = bool(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_HAS_ROTATION_BASIS, false))
+	if _day_value.visible:
+		_day_value.text = OrbitHudFormatterScript.format_day(orbit_readout_desc)
+	_year_value.visible = bool(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_HAS_ORBITAL_PERIOD_BASIS, false))
+	if _year_value.visible:
+		_year_value.text = OrbitHudFormatterScript.format_year(orbit_readout_desc)
 	_scale_value.text = OrbitHudFormatterScript.format_scale(
 		TimeService.time_scale,
 		speed_step_label,
