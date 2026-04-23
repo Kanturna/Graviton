@@ -295,11 +295,14 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 					orbit_line.position = parent_pos
 
 		if trail_line != null:
-			var show_trail: bool = not root_overview_active
+			var is_ancestor_of_focus: bool = _is_ancestor_of_focus(id)
+			var show_trail: bool = not root_overview_active and not is_ancestor_of_focus
 			trail_line.visible = show_trail
 			if show_trail:
 				_resume_trail_if_paused(id, pos)
 				_update_trail(id, pos, reset_trails)
+			elif is_ancestor_of_focus:
+				_clear_trail(id)
 			else:
 				_pause_trail(id)
 
@@ -587,6 +590,14 @@ func _should_hide_in_root_overview(id: StringName, def: BodyDef) -> bool:
 
 func _is_visible_root_overview_star(def: BodyDef) -> bool:
 	return def != null and def.kind == BodyType.Kind.STAR and def.parent_id == _focus_id
+
+
+func _is_ancestor_of_focus(id: StringName) -> bool:
+	if id == StringName("") or _focus_id == StringName("") or id == _focus_id:
+		return false
+	if _topology == null:
+		return false
+	return _topology.is_descendant_of(_focus_id, id)
 
 
 func _should_show_orbit_in_root_overview(def: BodyDef) -> bool:
