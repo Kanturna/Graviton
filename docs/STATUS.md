@@ -53,6 +53,11 @@ Readout-/HUD-Schritt:
 die bestehende Runtime-Zeile rendert `T+` jetzt adaptiv statt stumpf in
 Tagen und das Fokus-HUD macht `Day:` und `Year:` fuer den aktuell
 fokussierten Body explizit sichtbar.
+Darauf sitzt jetzt zusaetzlich `Native Species Foundation v1` als
+kleiner read-only Species-Layer:
+aus `World + Life Potential + Life v2` wird erstmals ein konkreter
+nativer Species-Archetyp pro `PLANET`/`MOON` abgeleitet; das Fokus-HUD
+zeigt dafuer jetzt optional `Species:` im bestehenden CAPS-Stil.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -233,6 +238,38 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `Year:`-Zeilen fuer Bodies mit Rotations- bzw. Orbitbasis.
   `Year:` bleibt dabei bewusst der einheitliche User-Label fuer die
   Parent-Orbitperiode, auch bei Monden und BH-Sternen.
+- `NativeSpeciesService` landet jetzt als weiterer kleiner read-only
+  Derived-Service im `sim/life/`-Layer zwischen `Life v2` und spaeterer
+  Population:
+  pro `PLANET`/`MOON` wird genau ein dominanter nativer
+  Species-Archetyp aus `Life Potential`, `Life v2` und der dominanten
+  Band-Thermik abgeleitet.
+- Species starten bewusst erst ab
+  `BiosphereScaleService.Stage.COMPLEX_MULTICELLULAR`;
+  `MICROBIAL`, `PREBIOTIC` und `STERILE` bleiben weiter ohne konkrete
+  Species-Aussage.
+- `BiosphereScaleService` exponiert dafuer jetzt zusaetzlich
+  `dominant_band_id` und `dominant_band_thermal_class`, damit
+  `NativeSpeciesService` keine zweite Band- oder Thermal-Wahrheit
+  erfinden muss.
+- Die neue Species-Aussage bleibt in v1 klein und streng regelbasiert:
+  `complexity`, `richness`, `habitat`, `metabolism` und `mobility`
+  werden als feste Klassen ausgegeben; es gibt noch keine
+  Species-Listen, keine Oekologie und keine Populationen.
+- `species_richness_class` basiert bewusst auf dem dominanten
+  `carrying_capacity_index` statt auf Biomasse; damit bleiben
+  Evolutionsfortschritt (`complexity`) und Nischenbreite (`richness`)
+  zwei getrennte Achsen.
+- `mobility_class` koppelt bewusst nicht direkt an Biomasse, sondern an
+  `complexity + richness`; `EARLY_MACRO` bleibt in v1 auf
+  `SESSILE`/`COLONIAL` begrenzt, `MOTILE` wird erst fuer
+  `DIVERSE_MACRO + DIVERSE` freigeschaltet.
+- `DerivedSnapshotCache` fuehrt dafuer jetzt zusaetzlich
+  `native_species_desc` als weitere read-only Desc-Familie ein.
+- Das Fokus-HUD zeigt jetzt fuer Bodies mit Species-Basis zusaetzlich
+  eine kompakte Zeile
+  `Species: <COMPLEXITY> / <METABOLISM> / <HABITAT> / <MOBILITY>`.
+  `Root Inspector` bleibt dabei bewusst unveraendert kompakt.
 - `LifePotentialService` bewertet diese World-Achsen bewusst nur ueber
   die fuenf Jahresklassen
   `Thermal Extremity`, `Volatiles`, `Buffering`, `Stability` und

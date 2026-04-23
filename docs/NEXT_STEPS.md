@@ -128,6 +128,48 @@ Konkreter Ablauf:
   - `gamma_iii` liest life-seitig klar cryogen-dominiert und darf
     quantitiv bis `COMPLEX_ECOSYSTEM` kommen
 
+## Prioritaet 0 - Native-Species-v1 Acceptance Gate
+
+Ziel:
+Den neuen read-only `Native Species Foundation v1`-Pfad im echten
+Editor-/Playtest-Lauf validieren, bevor danach der erste echte
+Population-Block geplant wird.
+
+Konkreter Ablauf:
+
+- `orbit_testbed.tscn` im Editor oeffnen
+- nacheinander diese Fokusfaelle pruefen:
+  - `sample_system` -> `planet_a`
+  - `starter_world` -> `gamma_iv`
+  - `starter_world` -> `alpha_iii`
+  - `starter_world` -> `gamma_iii`
+- jeweils dieselben Dinge lesen:
+  - normales Fokus-HUD
+  - `Life`, `Biomass`, `Species`, `Life Potential`
+- dabei bewusst auf diese Punkte achten:
+  - `Species:` erscheint nur dann, wenn `Life v2` mindestens
+    `COMPLEX_MULTICELLULAR` erreicht hat
+  - `Species:` bleibt im CAPS-/Slash-Stil lesbar und fuehlt sich wie
+    derselbe HUD-Sprachraum an wie `Life:` und `World:`
+  - `planet_a` liest species-seitig als
+    `PHOTOTROPHIC / TEMPERATE_SURFACE`
+  - `gamma_iv` bleibt `WATER_CARBON`-nah und liest nicht still sulfur
+    oder cryogenic
+  - `alpha_iii` liest species-seitig klar
+    `SULFUR_CHEMOSYNTHETIC`
+  - `gamma_iii` liest species-seitig klar `CRYOCHEMICAL`
+  - `Species:` erklaert die neue Lebensform-Aussage, ohne sich wie eine
+    zweite `Life:`-Zeile oder wie versteckte Population anzufuehlen
+  - `Root Inspector` bleibt dabei unveraendert kompakt und kippt nicht
+    in ein zweites Species-Datenblatt
+
+Wenn dieser Gate kippt:
+
+- keinen Population-Block anfangen
+- zuerst nur aus den konkreten Lesbarkeits- oder
+  Trait-Mapping-Problemen einen kleinen Folgeblock fuer Species-Politur
+  schneiden
+
 ## Prioritaet 1 - Large-World Regression Gate mit kompaktem Navigator
 
 Ziel:
@@ -164,14 +206,14 @@ Wenn dieser Gate kippt:
 ## Prioritaet 2 - Naechster Simulationsblock: Population Foundation v1
 
 Ziel:
-Nach einem sauberen `Life v2`-Acceptance-Run den ersten echten
-Population-/Settlement-Unterbau schneiden.
+Nach einem sauberen `Life v2`- und `Native Species v1`-Acceptance-Run
+den ersten echten Population-/Settlement-Unterbau schneiden.
 
 Bevorzugte Richtung:
 
 - eigener `PopulationState` / `SettlementState`
 - erste planetare Population-Counts auf Basis von
-  `World + Life Potential + Life v2`
+  `World + Life Potential + Life v2 + Native Species`
 - noch keine Civics, keine Factions, keine Makropolitik
 
 Fallback-Reihenfolge:

@@ -12,6 +12,7 @@ const PlanetaryStateServiceScript = preload("res://src/sim/planetary/planetary_s
 const LifePotentialServiceScript = preload("res://src/sim/life/life_potential_service.gd")
 const ProtoBiosphereSimulationServiceScript = preload("res://src/sim/life/proto_biosphere_simulation_service.gd")
 const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_service.gd")
+const NativeSpeciesServiceScript = preload("res://src/sim/life/native_species_service.gd")
 const OrbitReadoutServiceScript = preload("res://src/sim/orbit/orbit_readout_service.gd")
 
 const ZOOM_FACTOR_STEP: float = 1.12
@@ -36,6 +37,7 @@ const ZOOM_FACTOR_STEP: float = 1.12
 @onready var _world_value: Label = $HudLayer/TopPanel/Margin/VBox/WorldValue
 @onready var _life_value: Label = $HudLayer/TopPanel/Margin/VBox/LifeValue
 @onready var _biomass_value: Label = $HudLayer/TopPanel/Margin/VBox/BiomassValue
+@onready var _species_value: Label = $HudLayer/TopPanel/Margin/VBox/SpeciesValue
 @onready var _life_potential_value: Label = $HudLayer/TopPanel/Margin/VBox/LifePotentialValue
 @onready var _season_value: Label = $HudLayer/TopPanel/Margin/VBox/SeasonValue
 @onready var _time_value: Label = $HudLayer/TopPanel/Margin/VBox/TimeValue
@@ -57,6 +59,7 @@ var _planetary_state_service = PlanetaryStateServiceScript.new()
 var _life_potential_service = LifePotentialServiceScript.new()
 var _proto_biosphere_service = ProtoBiosphereSimulationServiceScript.new()
 var _biosphere_scale_service = BiosphereScaleServiceScript.new()
+var _native_species_service = NativeSpeciesServiceScript.new()
 var _orbit_readout_service = OrbitReadoutServiceScript.new()
 var _focus_order: Array[StringName] = []
 var _topology = null
@@ -147,6 +150,12 @@ func _ready() -> void:
 		_life_potential_service,
 		_proto_biosphere_service
 	)
+	_native_species_service.configure(
+		UniverseRegistry,
+		_planetary_state_service,
+		_life_potential_service,
+		_biosphere_scale_service
+	)
 	_orbit_readout_service.configure(UniverseRegistry)
 
 	_renderer.configure(UniverseRegistry, _bubble, _topology)
@@ -165,7 +174,8 @@ func _ready() -> void:
 		_life_potential_service,
 		_proto_biosphere_service,
 		_biosphere_scale_service,
-		_orbit_readout_service
+		_orbit_readout_service,
+		_native_species_service
 	)
 	_configure_root_inspector()
 	_refresh_snapshot_interest_ids()
@@ -224,6 +234,9 @@ func _exit_tree() -> void:
 	if _biosphere_scale_service != null:
 		_biosphere_scale_service.free()
 		_biosphere_scale_service = null
+	if _native_species_service != null:
+		_native_species_service.free()
+		_native_species_service = null
 	if _planetary_year_sampler != null:
 		_planetary_year_sampler.free()
 		_planetary_year_sampler = null
@@ -328,6 +341,7 @@ func _update_hud() -> void:
 	var thermal_desc: Dictionary = _derived_snapshot_cache.get_focus_thermal_desc()
 	var planetary_state_desc: Dictionary = _derived_snapshot_cache.get_focus_planetary_state_desc()
 	var biosphere_scale_desc: Dictionary = _derived_snapshot_cache.get_focus_biosphere_scale_desc()
+	var native_species_desc: Dictionary = _derived_snapshot_cache.get_focus_native_species_desc()
 	var life_potential_desc: Dictionary = _derived_snapshot_cache.get_focus_life_potential_desc()
 	var orbit_readout_desc: Dictionary = _derived_snapshot_cache.get_focus_orbit_readout_desc()
 
@@ -347,6 +361,12 @@ func _update_hud() -> void:
 	_biomass_value.visible = _world_value.visible
 	if _biomass_value.visible:
 		_biomass_value.text = OrbitHudFormatterScript.format_biomass(biosphere_scale_desc)
+	_species_value.visible = _world_value.visible and bool(native_species_desc.get(
+		NativeSpeciesServiceScript.KEY_HAS_NATIVE_SPECIES_BASIS,
+		false
+	))
+	if _species_value.visible:
+		_species_value.text = OrbitHudFormatterScript.format_species(native_species_desc)
 	_life_potential_value.visible = _world_value.visible
 	if _life_potential_value.visible:
 		_life_potential_value.text = OrbitHudFormatterScript.format_life_potential(life_potential_desc)

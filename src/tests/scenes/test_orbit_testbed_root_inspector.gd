@@ -274,6 +274,9 @@ static func _destroy_testbed_probe(testbed) -> void:
 		if testbed._biosphere_scale_service != null:
 			testbed._biosphere_scale_service.free()
 			testbed._biosphere_scale_service = null
+		if testbed._native_species_service != null:
+			testbed._native_species_service.free()
+			testbed._native_species_service = null
 		if testbed._orbit_readout_service != null:
 			testbed._orbit_readout_service.free()
 			testbed._orbit_readout_service = null

@@ -11,6 +11,7 @@ static func run(ctx) -> void:
 	_test_world_formatter_uses_fixed_axis_order(ctx)
 	_test_life_formatter_handles_track_and_none_cases(ctx)
 	_test_biomass_formatter_shows_quantitative_index(ctx)
+	_test_species_formatter_reuses_caps_style(ctx)
 	_test_life_potential_formatter_uses_track_and_class(ctx)
 	_test_inspector_world_line_hides_low_seasonality(ctx)
 	_test_inspector_life_line_reuses_hud_language(ctx)
@@ -132,6 +133,23 @@ static func _test_biomass_formatter_shows_quantitative_index(ctx) -> void:
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_biomass({}) == "Biomass: n/a",
 		"HUD formatter zeigt ohne Biosphere-Scale-Basis explizit Biomass: n/a"
+	)
+
+
+static func _test_species_formatter_reuses_caps_style(ctx) -> void:
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_species({
+			"has_native_species_basis": true,
+			"species_complexity_class": 0,
+			"metabolism_class": 0,
+			"habitat_class": 0,
+			"mobility_class": 0,
+		}) == "Species: EARLY_MACRO / PHOTOTROPHIC / TEMPERATE_SURFACE / SESSILE",
+		"HUD formatter rendert die Species-Zeile im bestehenden CAPS/CAPS/CAPS-Stil"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_species({}) == "Species: n/a",
+		"HUD formatter zeigt ohne Species-Basis explizit Species: n/a"
 	)
 
 

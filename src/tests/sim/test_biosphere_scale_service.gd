@@ -136,6 +136,18 @@ static func _test_band_carrying_capacity_uses_thermal_gate_and_progress_squared(
 		is_equal_approx(water_biomass_index, 0.1875),
 		"Biomass-Index ist die flaechengwichtete Summe aus Carrying Capacity und progress^2"
 	)
+	ctx.assert_true(
+		StringName(desc.get(BiosphereScaleServiceScript.KEY_DOMINANT_BAND_ID, StringName("")))
+			== BiosphereScaleServiceScript.BAND_EQUATOR,
+		"Bei Biomass-Gleichstand gewinnt in Life v2 das Equator-Band als dominantes Band"
+	)
+	ctx.assert_true(
+		int(desc.get(
+			BiosphereScaleServiceScript.KEY_DOMINANT_BAND_THERMAL_CLASS,
+			PlanetaryStateServiceScript.ThermalExtremityClass.FROZEN
+		)) == PlanetaryStateServiceScript.ThermalExtremityClass.TEMPERATE,
+		"Der dominante Band-Thermalwert folgt derselben Band-Thermik wie die Carrying-Capacity-Math"
+	)
 
 	service.free()
 	proto_biosphere_probe.free()

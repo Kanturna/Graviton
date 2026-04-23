@@ -26,6 +26,8 @@ const KEY_DOMINANT_TRACK_ID: StringName = &"dominant_track_id"
 const KEY_BIOSPHERE_STAGE: StringName = &"biosphere_stage"
 const KEY_DOMINANT_POTENTIAL_CLASS: StringName = &"dominant_potential_class"
 const KEY_DOMINANT_BIOMASS_INDEX: StringName = &"dominant_biomass_index"
+const KEY_DOMINANT_BAND_ID: StringName = &"dominant_band_id"
+const KEY_DOMINANT_BAND_THERMAL_CLASS: StringName = &"dominant_band_thermal_class"
 
 const BAND_SOUTH: StringName = &"south_band"
 const BAND_EQUATOR: StringName = &"equator_band"
@@ -197,6 +199,10 @@ static func evaluate_from_descriptions(
 		)
 	))
 	var dominant_biomass_index: float = float(biomass_index_by_track.get(dominant_track_id, 0.0))
+	var dominant_band_id: StringName = _dominant_band_id_for_track(
+		dominant_track_id,
+		biomass_by_track_by_band
+	)
 	description[KEY_CARRYING_CAPACITY_BY_TRACK_BY_BAND] = carrying_capacity_by_track_by_band
 	description[KEY_BIOMASS_BY_TRACK_BY_BAND] = biomass_by_track_by_band
 	description[KEY_CARRYING_CAPACITY_INDEX_BY_TRACK] = carrying_capacity_index_by_track
@@ -205,6 +211,11 @@ static func evaluate_from_descriptions(
 	description[KEY_BIOSPHERE_STAGE] = _stage_for_biomass_index(dominant_biomass_index)
 	description[KEY_DOMINANT_POTENTIAL_CLASS] = dominant_potential_class
 	description[KEY_DOMINANT_BIOMASS_INDEX] = dominant_biomass_index
+	description[KEY_DOMINANT_BAND_ID] = dominant_band_id
+	description[KEY_DOMINANT_BAND_THERMAL_CLASS] = int(band_thermal_class_by_band.get(
+		dominant_band_id,
+		PlanetaryStateServiceScript.ThermalExtremityClass.FROZEN
+	))
 	return description
 
 
@@ -299,6 +310,18 @@ static func _dominant_positive_biomass_track_id(biomass_index_by_track: Dictiona
 	return best_track_id
 
 
+static func _dominant_band_id_for_track(track_id: int, biomass_by_track_by_band: Dictionary) -> StringName:
+	var biomass_by_band: Dictionary = biomass_by_track_by_band.get(track_id, {})
+	var best_band_id: StringName = BAND_EQUATOR
+	var best_biomass: float = -1.0
+	for band_id in [BAND_EQUATOR, BAND_SOUTH, BAND_NORTH]:
+		var biomass: float = float(biomass_by_band.get(band_id, 0.0))
+		if biomass > best_biomass:
+			best_biomass = biomass
+			best_band_id = band_id
+	return best_band_id
+
+
 static func _stage_for_biomass_index(biomass_index: float) -> int:
 	if biomass_index < 0.02:
 		return Stage.STERILE
@@ -333,6 +356,8 @@ static func _default_description(id: StringName) -> Dictionary:
 		KEY_BIOSPHERE_STAGE: Stage.STERILE,
 		KEY_DOMINANT_POTENTIAL_CLASS: LifePotentialServiceScript.PotentialClass.NONE,
 		KEY_DOMINANT_BIOMASS_INDEX: 0.0,
+		KEY_DOMINANT_BAND_ID: BAND_EQUATOR,
+		KEY_DOMINANT_BAND_THERMAL_CLASS: PlanetaryStateServiceScript.ThermalExtremityClass.FROZEN,
 	}
 
 

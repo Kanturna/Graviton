@@ -1,5 +1,41 @@
 # Graviton - Decisions
 
+## 2026-04-23 - Zwischen Life v2 und Population kommt zuerst ein kleiner read-only Species-Layer
+
+Der naechste Schritt Richtung spaeterer Population wird bewusst **nicht**
+direkt als `PopulationState` oder Settlement-Unterbau gebaut.
+Stattdessen landet zuerst ein kleiner read-only Species-Layer zwischen
+`Life v2` und `Population Foundation v1`.
+
+Konsequenz:
+
+- `NativeSpeciesService` landet als weiterer kleiner read-only Service
+  im `sim/life/`-Layer
+- v1 modelliert genau **einen dominanten nativen Species-Archetyp pro
+  `PLANET`/`MOON`**
+- Species starten bewusst erst ab
+  `BiosphereScaleService.Stage.COMPLEX_MULTICELLULAR`; `MICROBIAL`,
+  `PREBIOTIC` und `STERILE` bleiben ohne konkrete Species-Aussage
+- `LifePotentialService` bleibt die normative Track-Identitaet,
+  `BiosphereScaleService` bleibt die normative Band-/Biomass-Wahrheit;
+  `NativeSpeciesService` erfindet keine zweite Chemie- oder Band-Math
+- `BiosphereScaleService` exponiert dafuer zusaetzlich
+  `dominant_band_id` und `dominant_band_thermal_class`, damit der
+  Species-Layer seine Habitat-Ableitung auf derselben lokalen
+  Thermal-Wahrheit aufbauen kann
+- `species_richness_class` basiert bewusst auf Carrying Capacity und
+  nicht auf Biomasse; Evolutionsfortschritt (`complexity`) und
+  Nischenbreite (`richness`) bleiben damit getrennte Achsen
+- `mobility_class` koppelt bewusst an `complexity + richness` und nicht
+  direkt an Biomasse; `MOTILE` wird erst fuer
+  `DIVERSE_MACRO + DIVERSE` freigeschaltet
+- das Fokus-HUD bekommt dafuer eine neue optionale `Species:`-Zeile im
+  bestehenden CAPS-/Slash-Stil; `Root Inspector` bleibt bewusst
+  unveraendert kompakt
+- der direkte Folgeblock danach bleibt
+  `Population Foundation v1` auf Basis von
+  `World + Life Potential + Life v2 + Native Species`
+
 ## 2026-04-23 - Orbit Readout v1 bleibt ein reiner Readout-/HUD-Block und retuned keine Welten
 
 Das aktuelle Missverstaendnis um "zu schnelle" Planetenbewegung wird
@@ -94,7 +130,8 @@ Konsequenz:
   `COMPLEX_ECOSYSTEM` tragen kann
 
 Der naechste logische Folgeblock ist damit nicht mehr ein weiterer
-Life-Klassifikator, sondern `Population Foundation v1`.
+abstrakter Life-Klassifikator, sondern zuerst ein kleiner konkreter
+Species-Layer vor `Population Foundation v1`.
 
 ## 2026-04-23 - Proto-Biosphaere v1b landet als deterministischer Background-State, nicht als aktiver Tick-Loop
 

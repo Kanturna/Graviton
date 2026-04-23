@@ -24,6 +24,7 @@ var _life_potential_service: Node = null
 var _proto_biosphere_service: Node = null
 var _biosphere_scale_service: Node = null
 var _orbit_readout_service: Node = null
+var _native_species_service: Node = null
 
 var _focus_id: StringName = &""
 var _focus_thermal_desc: Dictionary = {}
@@ -33,6 +34,7 @@ var _focus_life_potential_desc: Dictionary = {}
 var _focus_biosphere_desc: Dictionary = {}
 var _focus_biosphere_scale_desc: Dictionary = {}
 var _focus_orbit_readout_desc: Dictionary = {}
+var _focus_native_species_desc: Dictionary = {}
 var _thermal_desc_by_id: Dictionary = {}
 var _environment_desc_by_id: Dictionary = {}
 var _planetary_state_desc_by_id: Dictionary = {}
@@ -40,6 +42,7 @@ var _life_potential_desc_by_id: Dictionary = {}
 var _biosphere_desc_by_id: Dictionary = {}
 var _biosphere_scale_desc_by_id: Dictionary = {}
 var _orbit_readout_desc_by_id: Dictionary = {}
+var _native_species_desc_by_id: Dictionary = {}
 var _explicit_interest_ids: Dictionary = {}
 var _dirty_interest_ids: Dictionary = {}
 var _dirty_all_interest: bool = true
@@ -63,7 +66,8 @@ func configure(
 		life_potential_service: Node = null,
 		proto_biosphere_service: Node = null,
 		biosphere_scale_service: Node = null,
-		orbit_readout_service: Node = null
+		orbit_readout_service: Node = null,
+		native_species_service: Node = null
 	) -> void:
 	assert(registry != null, "DerivedSnapshotCache.configure: registry is null")
 	assert(time_service != null, "DerivedSnapshotCache.configure: time_service is null")
@@ -84,6 +88,7 @@ func configure(
 	_proto_biosphere_service = proto_biosphere_service
 	_biosphere_scale_service = biosphere_scale_service
 	_orbit_readout_service = orbit_readout_service
+	_native_species_service = native_species_service
 	if _orbit_service != null and _orbit_service.has_signal("bodies_updated"):
 		if not _orbit_service.bodies_updated.is_connected(_on_bodies_updated):
 			_orbit_service.bodies_updated.connect(_on_bodies_updated)
@@ -118,6 +123,7 @@ func dispose() -> void:
 	_proto_biosphere_service = null
 	_biosphere_scale_service = null
 	_orbit_readout_service = null
+	_native_species_service = null
 	_focus_id = StringName("")
 	_focus_thermal_desc.clear()
 	_focus_environment_desc.clear()
@@ -126,6 +132,7 @@ func dispose() -> void:
 	_focus_biosphere_desc.clear()
 	_focus_biosphere_scale_desc.clear()
 	_focus_orbit_readout_desc.clear()
+	_focus_native_species_desc.clear()
 	_thermal_desc_by_id.clear()
 	_environment_desc_by_id.clear()
 	_planetary_state_desc_by_id.clear()
@@ -133,6 +140,7 @@ func dispose() -> void:
 	_biosphere_desc_by_id.clear()
 	_biosphere_scale_desc_by_id.clear()
 	_orbit_readout_desc_by_id.clear()
+	_native_species_desc_by_id.clear()
 	_explicit_interest_ids.clear()
 	_dirty_interest_ids.clear()
 	_dirty_all_interest = true
@@ -173,6 +181,7 @@ func refresh(reason: StringName = REASON_MANUAL) -> void:
 			_biosphere_desc_by_id.erase(id)
 			_biosphere_scale_desc_by_id.erase(id)
 			_orbit_readout_desc_by_id.erase(id)
+			_native_species_desc_by_id.erase(id)
 			continue
 		_thermal_desc_by_id[id] = _thermal_service.describe_body(id)
 		_environment_desc_by_id[id] = _environment_service.describe_body(id)
@@ -196,6 +205,10 @@ func refresh(reason: StringName = REASON_MANUAL) -> void:
 			_orbit_readout_desc_by_id[id] = _orbit_readout_service.describe_body(id)
 		else:
 			_orbit_readout_desc_by_id.erase(id)
+		if _native_species_service != null:
+			_native_species_desc_by_id[id] = _native_species_service.describe_body(id)
+		else:
+			_native_species_desc_by_id.erase(id)
 		_last_refreshed_body_count += 1
 
 	_prune_uninterested_entries(effective_interest)
@@ -206,6 +219,7 @@ func refresh(reason: StringName = REASON_MANUAL) -> void:
 	_focus_biosphere_desc = _biosphere_desc_by_id.get(_focus_id, {})
 	_focus_biosphere_scale_desc = _biosphere_scale_desc_by_id.get(_focus_id, {})
 	_focus_orbit_readout_desc = _orbit_readout_desc_by_id.get(_focus_id, {})
+	_focus_native_species_desc = _native_species_desc_by_id.get(_focus_id, {})
 	_dirty_interest_ids.clear()
 	_dirty_all_interest = false
 	_revision += 1
@@ -281,6 +295,10 @@ func get_focus_orbit_readout_desc() -> Dictionary:
 	return _focus_orbit_readout_desc
 
 
+func get_focus_native_species_desc() -> Dictionary:
+	return _focus_native_species_desc
+
+
 func get_thermal_desc(id: StringName) -> Dictionary:
 	return _thermal_desc_by_id.get(id, {})
 
@@ -307,6 +325,10 @@ func get_biosphere_scale_desc(id: StringName) -> Dictionary:
 
 func get_orbit_readout_desc(id: StringName) -> Dictionary:
 	return _orbit_readout_desc_by_id.get(id, {})
+
+
+func get_native_species_desc(id: StringName) -> Dictionary:
+	return _native_species_desc_by_id.get(id, {})
 
 
 func _effective_interest_set() -> Dictionary:
@@ -338,6 +360,9 @@ func _prune_uninterested_entries(effective_interest: Dictionary) -> void:
 	for id in _orbit_readout_desc_by_id.keys():
 		if not effective_interest.has(id):
 			_orbit_readout_desc_by_id.erase(id)
+	for id in _native_species_desc_by_id.keys():
+		if not effective_interest.has(id):
+			_native_species_desc_by_id.erase(id)
 
 
 func _on_bodies_updated(ids: Array[StringName], reason: StringName) -> void:

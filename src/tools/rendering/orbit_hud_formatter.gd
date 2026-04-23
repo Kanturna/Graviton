@@ -7,6 +7,7 @@ const PlanetaryStateServiceScript = preload("res://src/sim/planetary/planetary_s
 const LifePotentialServiceScript = preload("res://src/sim/life/life_potential_service.gd")
 const ProtoBiosphereSimulationServiceScript = preload("res://src/sim/life/proto_biosphere_simulation_service.gd")
 const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_service.gd")
+const NativeSpeciesServiceScript = preload("res://src/sim/life/native_species_service.gd")
 const OrbitReadoutServiceScript = preload("res://src/sim/orbit/orbit_readout_service.gd")
 
 const MINUTE_S: float = 60.0
@@ -77,6 +78,17 @@ static func format_biomass(biosphere_scale_desc: Dictionary) -> String:
 		BiosphereScaleServiceScript.KEY_DOMINANT_BIOMASS_INDEX,
 		0.0
 	))
+
+
+static func format_species(native_species_desc: Dictionary) -> String:
+	if not bool(native_species_desc.get(NativeSpeciesServiceScript.KEY_HAS_NATIVE_SPECIES_BASIS, false)):
+		return "Species: n/a"
+	return "Species: %s / %s / %s / %s" % [
+		_native_species_complexity_text(native_species_desc),
+		_native_species_metabolism_text(native_species_desc),
+		_native_species_habitat_text(native_species_desc),
+		_native_species_mobility_text(native_species_desc),
+	]
 
 
 static func format_season(thermal_desc: Dictionary) -> String:
@@ -383,3 +395,39 @@ static func _biosphere_has_no_track(biosphere_desc: Dictionary) -> bool:
 			0.0
 		)))
 	return false
+
+
+static func _native_species_complexity_text(native_species_desc: Dictionary) -> String:
+	return NativeSpeciesServiceScript.to_string_complexity_class(
+		int(native_species_desc.get(
+			NativeSpeciesServiceScript.KEY_SPECIES_COMPLEXITY_CLASS,
+			NativeSpeciesServiceScript.ComplexityClass.EARLY_MACRO
+		))
+	)
+
+
+static func _native_species_habitat_text(native_species_desc: Dictionary) -> String:
+	return NativeSpeciesServiceScript.to_string_habitat_class(
+		int(native_species_desc.get(
+			NativeSpeciesServiceScript.KEY_HABITAT_CLASS,
+			NativeSpeciesServiceScript.HabitatClass.SHELTERED_SUBSURFACE
+		))
+	)
+
+
+static func _native_species_metabolism_text(native_species_desc: Dictionary) -> String:
+	return NativeSpeciesServiceScript.to_string_metabolism_class(
+		int(native_species_desc.get(
+			NativeSpeciesServiceScript.KEY_METABOLISM_CLASS,
+			NativeSpeciesServiceScript.MetabolismClass.CHEMOTROPHIC
+		))
+	)
+
+
+static func _native_species_mobility_text(native_species_desc: Dictionary) -> String:
+	return NativeSpeciesServiceScript.to_string_mobility_class(
+		int(native_species_desc.get(
+			NativeSpeciesServiceScript.KEY_MOBILITY_CLASS,
+			NativeSpeciesServiceScript.MobilityClass.SESSILE
+		))
+	)
