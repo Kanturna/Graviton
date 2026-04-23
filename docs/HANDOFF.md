@@ -1,6 +1,13 @@
 # Graviton - Handoff
 
-> Aktueller Stand (2026-04-18):
+> Historischer Snapshot.
+> Diese Datei spiegelt einen fruehen Stand vom 2026-04-18 und ist
+> **nicht** kanonisch fuer den aktuellen Repo-Zustand.
+> Fuer den realen aktuellen Stand zuerst `AGENTS.md`,
+> `docs/STATUS.md`, `docs/NEXT_STEPS.md`, `docs/DECISIONS.md` und
+> `docs/ARCHITEKTUR.md` lesen.
+
+> Historischer Stand (2026-04-18):
 > Die Praesentationsschicht ist ein stilisiertes 2D-Orbit-Testbed.
 > Foundation-Schritte 2-4 sind implementiert, und das Testbed laedt
 > Welten jetzt explizit ueber `WorldLoader` statt direkt aus der

@@ -110,12 +110,13 @@ Wenn du ueberlegst, der Registry Funktionalitaet hinzuzufuegen, pruefe:
 ## Composition Root
 
 Hinweis:
-Das folgende Snippet beschreibt den aktuellen Composition-Root-Stand
-nach dem Snapshot-/Generator-Cleanup. Der aktuelle Code in
-`scenes/testbeds/orbit_testbed.gd` nutzt bereits einen expliziten
-`WorldLoader`, ein verdrahtetes `BubbleActivationSet`, den gelebten
-`request_numeric_local_candidates(...)`-Pfad sowie einen kleinen
-read-only `DerivedSnapshotCache` fuer HUD und planetaren Render-Input.
+Das folgende Snippet ist bewusst schematisch fuer den Single-World-Pfad.
+Der aktuelle Code in `scenes/testbeds/orbit_testbed.gd` verdrahtet
+zusaetzlich `OrbitReadoutService`, `NativeSpeciesService`,
+`RootInspectorOverlay` und `PlanetBadgeOverlay`; im Large-World-Pfad
+laedt dieselbe Szene ueber `load_named_galaxy(...)` und den
+`GalaxyStreamingController`. Der im Repo eingecheckte Szenen-Override startet
+derzeit mit `scaleup_galaxy_100`.
 
 Die Verdrahtung passiert pro Szene in deren Root-Script:
 
@@ -159,6 +160,13 @@ _ready():
         LifePotentialService,
         ProtoBiosphereSimulationService
     )
+    NativeSpeciesService.configure(
+        UniverseRegistry,
+        PlanetaryStateService,
+        LifePotentialService,
+        BiosphereScaleService
+    )
+    OrbitReadoutService.configure(UniverseRegistry)
     DerivedSnapshotCache.configure(
         UniverseRegistry,
         TimeService,
@@ -170,7 +178,9 @@ _ready():
         PlanetaryStateService,
         LifePotentialService,
         ProtoBiosphereSimulationService,
-        BiosphereScaleService
+        BiosphereScaleService,
+        OrbitReadoutService,
+        NativeSpeciesService
     )
     OrbitViewRenderer.set_derived_snapshot_cache(DerivedSnapshotCache)
     OrbitService.bodies_updated.connect(

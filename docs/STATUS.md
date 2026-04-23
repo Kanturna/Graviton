@@ -683,14 +683,16 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   beim Herauszoomen darf genau ein Nachbar-Root zusaetzlich resident
   werden.
 - Das Testbed unterstuetzt jetzt zusaetzlich auch
-  `scaleup_galaxy_10` als zweite produktive Large-World-Welt; der
-  Default bleibt bewusst `starter_world`.
+  `scaleup_galaxy_10` als zweite produktive Large-World-Welt.
 - Das Testbed unterstuetzt jetzt zusaetzlich auch
-  `scaleup_galaxy_30` als dritte produktive Large-World-Welt; der
-  Default bleibt bewusst `starter_world`.
+  `scaleup_galaxy_30` als dritte produktive Large-World-Welt.
 - Das Testbed unterstuetzt jetzt zusaetzlich auch
-  `scaleup_galaxy_100` als vierte produktive Large-World-Welt; der
-  Default bleibt bewusst `starter_world`.
+  `scaleup_galaxy_100` als vierte produktive Large-World-Welt.
+- Der im Repo eingecheckte Szenen-Override von
+  `scenes/testbeds/orbit_testbed.tscn`
+  startet aktuell mit `initial_world_id = "scaleup_galaxy_100"`;
+  `starter_world`, `sample_system` und die anderen Weltpfade bleiben
+  ueber denselben `initial_world_id`-Pfad explizit umschaltbar.
 - Dieser Large-World-Pfad entlaedt den bestehenden Fokus-Root dabei
   nicht mehr bei jedem Neighbor-Wechsel: Delta-Materialisierung und
   Streaming-Keepalive halten unveraenderte Root-Slices stabil resident,
@@ -1112,4 +1114,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   oder planetare Derived-Folgearbeit ausbauen, nicht ueber noch mehr
   Root-Anzahl ohne echten Editor-/Feel-Playtest
 - Headless-Basis nach `Orbit Readout v1`:
-  `./run_tests.bat` laeuft gruen mit `7427` Passed, `0` Failed
+  `./run_tests.bat` laeuft gruen mit `7505` Passed, `0` Failed;
+  der reale Lauf meldet am Prozessende aber weiter generische
+  `ObjectDB instances leaked`- und
+  `resources still in use`-Hinweise

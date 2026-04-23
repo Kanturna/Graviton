@@ -11,19 +11,23 @@ Die kanonischen Kurz-Dokumente fuer den aktuellen Projektstand sind:
 - `docs/STATUS.md`
 - `docs/NEXT_STEPS.md`
 - `docs/DECISIONS.md`
+- `docs/ARCHITEKTUR.md`
 
-Wenn aeltere Detaildokumente davon abweichen, gelten die vier Dateien
+Wenn aeltere Detaildokumente davon abweichen, gelten die fuenf Dateien
 oben als aktueller.
 
 ## Aktueller Stand
 
-- Foundation-Schritte 1-4 sind vorhanden
-- Simulationsschichten bleiben strikt getrennt:
+- Die Foundation-Architektur ist vorhanden und bleibt strikt getrennt:
   `core/` -> `sim/` -> `runtime/` -> `scenes/`
+- Auf dieser Basis liegen inzwischen planetare Derived-Services,
+  `Life v2`, ein read-only Species-Layer, `Survey UX v2` und produktive
+  Large-World-Welten bis `scaleup_galaxy_100`
 - Das fruehere minimalistische 3D-Testbed wurde durch eine stilisierte
   2D-Orbit-Ansicht ersetzt
-- Die aktuelle View ist bewusst naeher am Look von `Atraxis`, ohne die
-  `Graviton`-Architektur aufzuweichen
+- Die Bootstrap-Szene leitet in das aktuelle Orbit-Testbed; der
+  im Repo eingecheckte Szenen-Override startet dort derzeit mit
+  `scaleup_galaxy_100`
 
 ## Verzeichnisueberblick
 
@@ -44,7 +48,9 @@ Im Godot-Editor:
 
 1. Projekt in Godot 4.6+ oeffnen.
 2. Starten.
-3. Die Bootstrap-Szene leitet in das aktuelle Orbit-Testbed weiter.
+3. Die Bootstrap-Szene leitet in das aktuelle Orbit-Testbed weiter;
+   der im Repo eingecheckte Start-Override der Szene liegt aktuell auf
+   `scaleup_galaxy_100`.
 
 ## Tests
 
@@ -54,12 +60,14 @@ Beispiel ueber die Konsole:
 godot_console.exe --headless --path . --script res://src/tests/test_runner.gd --quit
 ```
 
+Im Repo ist dafuer ausserdem `run_tests.bat` als lokaler Testpfad
+vorhanden.
+
 ## Historische Detaildokumente
 
 Die folgenden Dateien enthalten weiter nuetzlichen Hintergrund, sind aber
 nicht automatisch die aktuellste Kurz-Zusammenfassung:
 
-- `docs/ARCHITEKTUR.md`
 - `docs/HANDOFF.md`
 - `docs/AI_KONTEXT.md`
 - `docs/SIMULATIONSREGELN.md`

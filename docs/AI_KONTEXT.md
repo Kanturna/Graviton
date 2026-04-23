@@ -1,6 +1,9 @@
 # Graviton - KI-Kontext
 
-Lies das als erstes, wenn du als KI-Agent hier hilfst.
+Lies das nur als historischen Hintergrund.
+Fuer den realen aktuellen Stand zuerst `AGENTS.md`,
+`docs/STATUS.md`, `docs/NEXT_STEPS.md`, `docs/DECISIONS.md` und
+`docs/ARCHITEKTUR.md` lesen.
 
 ## Was Graviton ist
 
@@ -9,7 +12,7 @@ Orbit-Mechanik, mehreren Referenzrahmen und einer lokal detaillierten
 Bubble. Das Projekt ist bewusst als mehrschichtige Simulation
 aufgesetzt, nicht als Arcade-Spiel und nicht als Tutorial-Scaffold.
 
-Aktueller Stand:
+Historischer Stand dieses Snapshots:
 - Foundation-Schritte 1-5 sind implementiert
 - Weltladen laeuft jetzt explizit ueber `WorldLoader`
 - `BodyDef` enthaelt jetzt erste statische Weltmodell-Felder
@@ -91,5 +94,6 @@ Aktueller Stand:
   und einem expliziten Design-Gate
 
 Wenn ein Nutzer fragt, warum etwas fehlt, schlage zuerst in
-`docs/HANDOFF.md` und `docs/NEXT_STEPS.md` nach. Meist ist es ein
-bewusster Folgeschritt.
+`docs/STATUS.md`, `docs/NEXT_STEPS.md`, `docs/DECISIONS.md` und
+`docs/ARCHITEKTUR.md` nach. `docs/HANDOFF.md` ist nur noch
+historischer Hintergrund.

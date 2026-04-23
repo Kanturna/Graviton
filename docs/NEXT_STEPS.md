@@ -2,6 +2,12 @@
 
 Stand: 2026-04-23
 
+Hinweis:
+Die aktuell im Repo eingecheckte `orbit_testbed.tscn` startet derzeit mit
+`initial_world_id = "scaleup_galaxy_100"`.
+Fuer Acceptance-Runs auf `starter_world` oder `sample_system` den
+Szenen-Override vor dem Editor-Run bewusst umstellen.
+
 ## Prioritaet 0 - Survey-UX-v2 Acceptance Gate
 
 Ziel:
@@ -1039,7 +1045,8 @@ Erledigt:
 - sieben Zusatz-Roots laufen jetzt ueber einen produktiven Shared-
   Helper in `src/sim/world/`; `StressGalaxyFactory` ist nur noch Wrapper
 - `WorldLoader` und `orbit_testbed.gd` kennen jetzt
-  `scaleup_galaxy_10`, ohne den Default von `starter_world` zu aendern
+  `scaleup_galaxy_10`; der heute im Repo eingecheckte Szenen-Override auf
+  `scaleup_galaxy_100` kam spaeter separat dazu
 - `OrbitViewRenderer` schneidet Cross-Root-Detailvisuals schon vor
   `compose_view_position_m()` ab, damit residenter Neighbor-Churn kein
   Warning-Spam mehr im Detail-Layer erzeugt
@@ -1066,7 +1073,8 @@ Erledigt:
 - deterministischer Spacing-Guard mit radialem Auto-Relax nur fuer
   generierte Zusatz-Roots und hartem Fehler nach `16` Versuchen
 - `WorldLoader` und `orbit_testbed.gd` kennen jetzt
-  `scaleup_galaxy_30`, ohne den Default von `starter_world` zu aendern
+  `scaleup_galaxy_30`; der heute im Repo eingecheckte Szenen-Override auf
+  `scaleup_galaxy_100` kam spaeter separat dazu
 - neue Tests pinnen die 10-Root-Content-Signatur, die 30-Root-
   Produkt-/Stress-Paritaet, den Spacing-Guard inklusive Forced-
   Collision- und Hard-Fail-Pfad sowie explizit versteckte Cross-Root-
