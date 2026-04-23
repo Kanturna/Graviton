@@ -81,12 +81,12 @@ static func _test_model_builder_builds_hierarchy_and_summary_for_starter_root(ct
 	)
 	var gamma_iv_row: Dictionary = _row_by_body_id(rows, &"gamma_iv")
 	ctx.assert_true(
-		String(gamma_iv_row.get("world_text", "")) == "World: LIMITED / MODERATE / WINDOWED / TEMPERATE / SEASONAL",
-		"ModelBuilder haengt fuer planetare Bodies die neue kompakte World-Zeile an"
+		String(gamma_iv_row.get("life_badge_text", "")) == "PREBIOTIC",
+		"ModelBuilder legt fuer planetare Bodies nur noch das kompakte Life-Badge in der Navigator-Row ab"
 	)
 	ctx.assert_true(
-		String(gamma_iv_row.get("life_text", "")) == "Life: PREBIOTIC / WATER_CARBON / MEDIUM",
-		"ModelBuilder haengt fuer planetare Bodies zusaetzlich die kompakte Life-Zeile an"
+		String(gamma_iv_row.get("detail_text", "")) == "",
+		"Ohne Species-Basis gibt der ModelBuilder fuer fokussierte PLANET-Rows keine Fallback-Detailzeile aus"
 	)
 
 	var summary: Dictionary = model.get("summary", {})
@@ -130,12 +130,20 @@ static func _test_overlay_formats_navigation_first_rows(ctx) -> void:
 		_row_by_body_id(model_with_alpha_focus_rows, &"gamma_iv")
 	)
 	ctx.assert_true(
-		non_focused_gamma_iv_text.find("Life: PREBIOTIC / WATER_CARBON / MEDIUM") != -1,
-		"Nicht fokussierte PLANET-Rows behalten die kompakte Life-Zeile"
+		non_focused_gamma_iv_text.find("Gamma IV   PLANET") == 0,
+		"Nicht fokussierte PLANET-Rows behalten Name und Kind an erster Stelle"
 	)
 	ctx.assert_true(
 		non_focused_gamma_iv_text.find("World:") == -1,
 		"Nicht fokussierte PLANET-Rows blenden die World-Zeile im Navigator aus"
+	)
+	ctx.assert_true(
+		non_focused_gamma_iv_text.find("\n") == -1,
+		"Nicht fokussierte PLANET-Rows bleiben strikt einzeilig"
+	)
+	ctx.assert_true(
+		non_focused_gamma_iv_text.find("PREBIOTIC") != -1 and non_focused_gamma_iv_text.find("0 moons") != -1,
+		"Nicht fokussierte PLANET-Rows tragen nur noch das kompakte Life-Badge und die Moon-Note"
 	)
 
 	var model_with_gamma_iv_focus: Dictionary = builder.build(&"obsidian", &"gamma_iv")
@@ -143,16 +151,23 @@ static func _test_overlay_formats_navigation_first_rows(ctx) -> void:
 		_row_by_body_id(model_with_gamma_iv_focus.get("rows", []), &"gamma_iv")
 	)
 	ctx.assert_true(
-		focused_gamma_iv_text.find("Life: PREBIOTIC / WATER_CARBON / MEDIUM") != -1,
-		"Fokussierte PLANET-Rows behalten die Life-Zeile"
+		focused_gamma_iv_text.find("Gamma IV   PLANET") == 0,
+		"Fokussierte PLANET-Rows ohne Species-Basis bleiben ebenfalls navigator-first"
 	)
 	ctx.assert_true(
-		focused_gamma_iv_text.find("World: LIMITED / MODERATE / WINDOWED / TEMPERATE / SEASONAL") != -1,
-		"Fokussierte PLANET-Rows zeigen zusaetzlich die World-Zeile"
+		focused_gamma_iv_text.find("\n") == -1,
+		"Ohne Species-Basis gibt es fuer fokussierte PLANET-Rows keine Fallback-Zeile"
 	)
 	ctx.assert_true(
-		focused_gamma_iv_text.find("Life:") < focused_gamma_iv_text.find("World:"),
-		"Im kompakten Navigator steht Life vor World"
+		RootInspectorOverlayScript._format_row_text({
+			"name_text": "Gamma III",
+			"kind_text": "PLANET",
+			"badge_text": "HABITABLE / COLD",
+			"life_badge_text": "ECOSYSTEM",
+			"note_text": "0 moons",
+			"detail_text": "Species: CRYO / ABUNDANT",
+		}) == "Gamma III   PLANET   HABITABLE / COLD   ECOSYSTEM   0 moons\nSpecies: CRYO / ABUNDANT",
+		"Fokussierte Species-Rows bekommen nur die definierte kompakte Zusatzzeile"
 	)
 
 	_teardown_starter_root_context(context)

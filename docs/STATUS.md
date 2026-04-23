@@ -58,6 +58,13 @@ kleiner read-only Species-Layer:
 aus `World + Life Potential + Life v2` wird erstmals ein konkreter
 nativer Species-Archetyp pro `PLANET`/`MOON` abgeleitet; das Fokus-HUD
 zeigt dafuer jetzt optional `Species:` im bestehenden CAPS-Stil.
+Darauf sitzt jetzt zusaetzlich `Survey UX v2` als reiner
+Readout-/HUD-Block:
+das linke Fokuspanel ist jetzt standardmaessig `Summary` statt
+datenreich, der rechte Root-Inspector liest wieder klar als Navigator
+und planetennahe `LIFE`-Badges machen biologische Aktivitaet in
+Detailansichten direkt am Body scanbar, ohne schon echte Population zu
+behaupten.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -256,6 +263,38 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `complexity`, `richness`, `habitat`, `metabolism` und `mobility`
   werden als feste Klassen ausgegeben; es gibt noch keine
   Species-Listen, keine Oekologie und keine Populationen.
+- `OrbitHudFormatter` fuehrt jetzt zusaetzlich eine kleine gemeinsame
+  Survey-Sprache fuer `Summary`-HUD, Root-Inspector und planetennahe
+  Badges:
+  kurze Life-Stages (`COMPLEX`, `ECOSYSTEM`), kurze Species-Texte
+  (`PHOTO`, `CHEMO`, `SULFUR`, `CRYO`) und eine qualitative
+  `Density:`-Lesart (`SPARSE`, `THRIVING`, `ABUNDANT`), die bewusst nur
+  an die bestehende `Life v2`-Stage gekoppelt ist.
+- Das linke Fokus-HUD des `orbit_testbed` hat jetzt zwei explizite
+  Modi:
+  `Summary` als Default und `Details` als Expertenmodus.
+  `Summary` zeigt nur die Kernlesart (`Life`, `Species`, `Density`,
+  `Cycle`, `T+`, `Rate`, `Cadence`), waehrend `Details` die
+  bestehenden tieferen Analysewerte (`Bands`, `World`, `Biomass`,
+  `Life Potential`, `Season / Primary source`, `Rotation`, `Orbit`)
+  sichtbar macht.
+- Der Root-Inspector liest jetzt wieder klar navigator-first:
+  nicht-fokussierte `PLANET`-/`MOON`-Rows sind kompakte Einzeiler aus
+  `name`, `kind`, Environment-Badge, Life-Badge und `note`;
+  `World`, `Biomass`, `Life Potential` und `Species` verschwinden dort
+  bewusst.
+  Nur die fokussierte Planet-/Moon-Row darf optional eine zweite
+  kompakte `Species: <short> / <density>`-Zeile tragen, und auch nur
+  bei echter Species-Basis.
+- `PlanetBadgeOverlay` landet als neuer view-only Overlay-Pfad zwischen
+  Welt und HUD:
+  ausserhalb des `ROOT_OVERVIEW` duerfen sichtbare `PLANET`-/`MOON`-
+  Bodies mit ausreichender projected size kleine zweizeilige
+  `LIFE ...`-Badges tragen.
+  Der Pfad bleibt bewusst einfach:
+  kein Overlap-Handling, kein neuer visible-body-specific
+  Interest-Hydration-Pfad, maximal 24 Badges, Badge-Readouts nur ueber
+  den bereits bestehenden per-root-Interest-Pfad.
 - `species_richness_class` basiert bewusst auf dem dominanten
   `carrying_capacity_index` statt auf Biomasse; damit bleiben
   Evolutionsfortschritt (`complexity`) und Nischenbreite (`richness`)

@@ -12,6 +12,10 @@ static func run(ctx) -> void:
 	_test_life_formatter_handles_track_and_none_cases(ctx)
 	_test_biomass_formatter_shows_quantitative_index(ctx)
 	_test_species_formatter_reuses_caps_style(ctx)
+	_test_summary_formatters_use_compact_survey_language(ctx)
+	_test_density_formatter_maps_life_stages_without_extra_thresholds(ctx)
+	_test_compact_badge_helpers_reuse_short_stage_density_and_species_text(ctx)
+	_test_cycle_formatter_uses_explicit_rotation_and_orbit_labels(ctx)
 	_test_life_potential_formatter_uses_track_and_class(ctx)
 	_test_inspector_world_line_hides_low_seasonality(ctx)
 	_test_inspector_life_line_reuses_hud_language(ctx)
@@ -150,6 +154,103 @@ static func _test_species_formatter_reuses_caps_style(ctx) -> void:
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_species({}) == "Species: n/a",
 		"HUD formatter zeigt ohne Species-Basis explizit Species: n/a"
+	)
+
+
+static func _test_summary_formatters_use_compact_survey_language(ctx) -> void:
+	var biosphere_desc: Dictionary = {
+		"has_biosphere_scale_basis": true,
+		"biosphere_stage": 3,
+		"dominant_track_id": 2,
+		"dominant_potential_class": 3,
+		"dominant_biomass_index": 0.57,
+	}
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_life_summary(biosphere_desc) == "Life: COMPLEX / CRYOGENIC_SOLVENT",
+		"Summary-Lesart kuerzt nur die Stage, behaelt aber den Track sichtbar"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_species_summary({
+			"has_native_species_basis": true,
+			"metabolism_class": 3,
+			"mobility_class": 2,
+		}) == "Species: CRYO / MOTILE",
+		"Summary-Lesart kuerzt die Species-Zeile auf die spielrelevante Kurzform"
+	)
+
+
+static func _test_density_formatter_maps_life_stages_without_extra_thresholds(ctx) -> void:
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_density({
+			"has_biosphere_scale_basis": true,
+			"biosphere_stage": 2,
+		}) == "Density: SPARSE",
+		"MICROBIAL mappt direkt auf SPARSE"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_density({
+			"has_biosphere_scale_basis": true,
+			"biosphere_stage": 3,
+		}) == "Density: THRIVING",
+		"COMPLEX_MULTICELLULAR mappt direkt auf THRIVING"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_density({
+			"has_biosphere_scale_basis": true,
+			"biosphere_stage": 4,
+		}) == "Density: ABUNDANT",
+		"COMPLEX_ECOSYSTEM mappt direkt auf ABUNDANT"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_density({
+			"has_biosphere_scale_basis": true,
+			"biosphere_stage": 1,
+		}) == "Density: n/a",
+		"PREBIOTIC bekommt bewusst keine pseudo-dichte Anzeige"
+	)
+
+
+static func _test_compact_badge_helpers_reuse_short_stage_density_and_species_text(ctx) -> void:
+	ctx.assert_true(
+		OrbitHudFormatterScript.compact_life_stage_text({
+			"has_biosphere_scale_basis": true,
+			"biosphere_stage": 4,
+		}) == "ECOSYSTEM",
+		"Badge-Stage-Texte kuerzen nur auf die freigegebene Survey-Sprache"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.compact_density_text({
+			"has_biosphere_scale_basis": true,
+			"biosphere_stage": 3,
+		}) == "THRIVING",
+		"Badge-Density-Texte kommen direkt aus der Life-Stage"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.compact_species_text({
+			"has_native_species_basis": true,
+			"metabolism_class": 2,
+		}) == "SULFUR",
+		"Badge-Species-Texte kuerzen Metabolismus auf die freigegebene Kurzform"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.compact_species_text({}) == "",
+		"Ohne Species-Basis bleibt die Badge-Species-Zeile leer"
+	)
+
+
+static func _test_cycle_formatter_uses_explicit_rotation_and_orbit_labels(ctx) -> void:
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_cycle({
+			"has_rotation_basis": true,
+			"rotation_period_s": 25.0 * UnitSystem.DAY_S,
+			"has_orbital_period_basis": true,
+			"orbital_period_s": UnitSystem.YEAR_S,
+		}) == "Cycle: rot 25.0 d / orb 1.0 y",
+		"Cycle-Readout benennt Rotation und Orbit explizit statt zweier ambiger Zahlen"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_cycle({}) == "Cycle: n/a",
+		"Cycle-Readout bleibt ohne jede Periodenbasis explizit n/a"
 	)
 
 

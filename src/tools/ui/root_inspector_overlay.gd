@@ -264,24 +264,17 @@ static func _format_row_text(row: Dictionary) -> String:
 		String(row.get("name_text", "")),
 		String(row.get("kind_text", "")),
 		String(row.get("badge_text", "")),
+		String(row.get("life_badge_text", "")),
+		String(row.get("note_text", "")),
 	]:
 		var part_text: String = String(part_variant)
 		if part_text != "":
 			parts.append(part_text)
-	var note_text: String = String(row.get("note_text", ""))
-	if note_text != "":
-		parts.append(note_text)
 	var line_one: String = "   ".join(parts)
-	var world_text: String = String(row.get("world_text", ""))
-	var life_text: String = String(row.get("life_text", ""))
-	var extra_lines: Array[String] = []
-	if life_text != "":
-		extra_lines.append(life_text)
-	if world_text != "" and bool(row.get("is_focused", false)):
-		extra_lines.append(world_text)
-	if extra_lines.is_empty():
+	var detail_text: String = String(row.get("detail_text", ""))
+	if detail_text == "":
 		return line_one
-	return "%s\n%s" % [line_one, "\n".join(extra_lines)]
+	return "%s\n%s" % [line_one, detail_text]
 
 
 func _on_row_pressed(body_id: StringName) -> void:

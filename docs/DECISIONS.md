@@ -1,5 +1,33 @@
 # Graviton - Decisions
 
+## 2026-04-23 - Survey-Oberflaechen bleiben bis Population bewusst summary-first und navigator-first
+
+Bevor `Population Foundation v1` echte Counts einfuehrt, wird die
+Survey-Oberflaeche bewusst ueber einen reinen Readout-/UX-Block
+spielbarer gemacht und **nicht** ueber Pseudo-Populationszahlen.
+
+Konsequenz:
+
+- das linke Fokus-HUD ist ab jetzt standardmaessig `Summary`; tiefere
+  Werte bleiben hinter einem expliziten `Details`-Modus
+- der rechte Root-Inspector bleibt bewusst Navigator statt Datenblatt:
+  nicht-fokussierte `PLANET`-/`MOON`-Rows werden auf kompakte Einzeiler
+  reduziert, `World`, `Biomass`, `Life Potential` und `Species`
+  verschwinden dort
+- qualitative `Density` bleibt in diesem Block nur eine UI-Lesart aus
+  den bestehenden `Life v2`-Stages:
+  `MICROBIAL -> SPARSE`,
+  `COMPLEX_MULTICELLULAR -> THRIVING`,
+  `COMPLEX_ECOSYSTEM -> ABUNDANT`
+- es gibt in diesem Block bewusst **keine** Pseudo-Counts wie
+  `~12M` und keine neue Population-API
+- planetennahe `LIFE`-Badges duerfen ausserhalb des `ROOT_OVERVIEW`
+  sichtbar werden, bleiben aber view-only, klein und cache-seitig auf
+  den bestehenden per-root-Interest-Pfad begrenzt
+- wenn die UX danach noch kippt, werden die drei Slices
+  `v2a` / `v2b` / `v2c` getrennt nachgezogen; Population bleibt ein
+  eigener Folgeblock
+
 ## 2026-04-23 - Zwischen Life v2 und Population kommt zuerst ein kleiner read-only Species-Layer
 
 Der naechste Schritt Richtung spaeterer Population wird bewusst **nicht**

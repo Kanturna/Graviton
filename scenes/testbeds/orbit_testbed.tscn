@@ -13,6 +13,7 @@
 [ext_resource type="Script" uid="uid://qm1pdtq6eb1n" path="res://src/sim/atmosphere/atmosphere_service.gd" id="11_atmosphere"]
 [ext_resource type="Script" uid="uid://dcxf2ukdedoa1" path="res://src/tools/rendering/galaxy_proxy_renderer.gd" id="12_galaxyproxy"]
 [ext_resource type="Script" uid="uid://m5gpk778h2dd" path="res://src/tools/ui/root_inspector_overlay.gd" id="13_rootinspector"]
+[ext_resource type="Script" uid="uid://do3ooy83ggnrb" path="res://src/tools/rendering/planet_badge_overlay.gd" id="14_planetbadge"]
 
 [sub_resource type="StyleBoxFlat" id="1_panel_style"]
 bg_color = Color(0.0352941, 0.0509804, 0.0941176, 0.811765)
@@ -98,6 +99,10 @@ script = ExtResource("4_renderer")
 [node name="GalaxyProxyRoot" type="Node2D" parent="." unique_id=1964328916]
 script = ExtResource("12_galaxyproxy")
 
+[node name="PlanetBadgeOverlay" type="CanvasLayer" parent="." unique_id=2094198668]
+layer = 10
+script = ExtResource("14_planetbadge")
+
 [node name="HudLayer" type="CanvasLayer" parent="." unique_id=1193541704]
 layer = 20
 
@@ -105,7 +110,7 @@ layer = 20
 offset_left = 24.0
 offset_top = 24.0
 offset_right = 476.0
-offset_bottom = 462.0
+offset_bottom = 546.0
 theme_override_styles/panel = SubResource("1_panel_style")
 
 [node name="Margin" type="MarginContainer" parent="HudLayer/TopPanel" unique_id=398651009]
@@ -130,6 +135,20 @@ visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.654902, 0.772549, 0.937255, 0.784314)
 text = "Stylized Orbit View"
+
+[node name="HudModeRow" type="HBoxContainer" parent="HudLayer/TopPanel/Margin/VBox" unique_id=1372100231]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SummaryButton" type="Button" parent="HudLayer/TopPanel/Margin/VBox/HudModeRow" unique_id=635410255]
+layout_mode = 2
+focus_mode = 0
+text = "Summary"
+
+[node name="DetailsButton" type="Button" parent="HudLayer/TopPanel/Margin/VBox/HudModeRow" unique_id=103218228]
+layout_mode = 2
+focus_mode = 0
+text = "Details"
 
 [node name="FocusValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=292892084]
 layout_mode = 2
@@ -167,6 +186,11 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 text = "Species: n/a"
 
+[node name="DensityValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=45655917]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
+text = "Density: n/a"
+
 [node name="LifePotentialValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=901245113]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
@@ -191,6 +215,11 @@ text = "Rotation: n/a"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 text = "Orbit: n/a"
+
+[node name="CycleValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=597955306]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
+text = "Cycle: n/a"
 
 [node name="ScaleValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=1123534186]
 layout_mode = 2

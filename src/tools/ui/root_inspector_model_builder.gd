@@ -91,16 +91,20 @@ func _append_rows(
 	if def == null:
 		return
 	var environment_desc: Dictionary = _snapshot_cache.get_environment_desc(body_id)
-	var planetary_state_desc: Dictionary = _snapshot_cache.get_planetary_state_desc(body_id)
 	rows.append({
 		"body_id": body_id,
 		"depth": depth,
 		"name_text": _display_name(def),
 		"kind_text": BodyType.to_string_kind(def.kind),
 		"badge_text": _badge_text_for_body(def, environment_desc),
+		"life_badge_text": _life_badge_text_for_body(def, _snapshot_cache.get_biosphere_scale_desc(body_id)),
 		"note_text": _note_text_for_body(body_id, def, children_by_parent),
-		"world_text": _world_text_for_body(def, planetary_state_desc),
-		"life_text": _life_text_for_body(def, _snapshot_cache.get_biosphere_scale_desc(body_id)),
+		"detail_text": _detail_text_for_body(
+			def,
+			_snapshot_cache.get_native_species_desc(body_id),
+			_snapshot_cache.get_biosphere_scale_desc(body_id),
+			body_id == focused_body_id
+		),
 		"is_focused": body_id == focused_body_id,
 	})
 
@@ -144,21 +148,20 @@ static func _badge_text_for_body(def: BodyDef, environment_desc: Dictionary) -> 
 		return ""
 	return OrbitHudFormatterScript.format_inspector_environment_badge(environment_desc)
 
-
-static func _world_text_for_body(def: BodyDef, planetary_state_desc: Dictionary) -> String:
+static func _life_badge_text_for_body(def: BodyDef, biosphere_desc: Dictionary) -> String:
 	if def == null:
 		return ""
 	if def.kind != BodyType.Kind.PLANET and def.kind != BodyType.Kind.MOON:
 		return ""
-	return OrbitHudFormatterScript.format_inspector_world_line(planetary_state_desc)
+	return OrbitHudFormatterScript.format_inspector_life_badge(biosphere_desc)
 
 
-static func _life_text_for_body(def: BodyDef, biosphere_desc: Dictionary) -> String:
-	if def == null:
+static func _detail_text_for_body(def: BodyDef, native_species_desc: Dictionary, biosphere_desc: Dictionary, is_focused: bool) -> String:
+	if def == null or not is_focused:
 		return ""
 	if def.kind != BodyType.Kind.PLANET and def.kind != BodyType.Kind.MOON:
 		return ""
-	return OrbitHudFormatterScript.format_inspector_life_line(biosphere_desc)
+	return OrbitHudFormatterScript.format_inspector_species_line(native_species_desc, biosphere_desc)
 
 
 static func _display_name(def: BodyDef) -> String:

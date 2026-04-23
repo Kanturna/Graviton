@@ -2,6 +2,49 @@
 
 Stand: 2026-04-23
 
+## Prioritaet 0 - Survey-UX-v2 Acceptance Gate
+
+Ziel:
+Den neuen `Survey UX v2`-Readout-Block im echten Editor-/Playtest-Lauf
+validieren, bevor der erste echte Population-Block geplant oder weitere
+Content-Kalibrierung begonnen wird.
+
+Konkreter Ablauf:
+
+- `orbit_testbed.tscn` im Editor oeffnen
+- dieselben Welten bewusst in drei Modi pruefen:
+  - `starter_world`
+  - `sample_system`
+  - `scaleup_galaxy_30`
+  - `scaleup_galaxy_100`
+- dabei fuer jede Welt explizit pruefen:
+  - `Summary` ist der Default und liest links sichtbar kompakter als
+    das alte Fokus-Datenblatt
+  - `Details` blendet die tieferen Analysewerte sauber wieder ein
+  - `Cycle:` liest explizit als
+    `rot ... / orb ...` statt als ambiges Zahlenpaar
+  - `Density:` erscheint nur fuer `MICROBIAL`, `COMPLEX` und
+    `ECOSYSTEM`, nie fuer `PREBIOTIC`
+  - der rechte Inspector fuehlt sich wieder als Navigator statt als
+    Mini-Datenblatt an
+  - nicht-fokussierte `PLANET`-/`MOON`-Rows bleiben kompakte Einzeiler
+  - fokussierte `PLANET`-/`MOON`-Rows zeigen nur bei Species-Basis die
+    definierte kompakte Zusatzzeile
+  - planetennahe `LIFE`-Badges helfen beim Scannen in Detailansichten,
+    ohne den Screen zuzumuelen
+  - `ROOT_OVERVIEW` bleibt badge-frei
+  - `scaleup_galaxy_100` bleibt in der Detail-/Fokusansicht trotz
+    aktivem Badge-Overlay interaktiv; Zielwert fuer den Run:
+    `>= 100 FPS`
+
+Wenn dieser Gate kippt:
+
+- keinen Population-Block anfangen
+- nur den konkreten Slice nachziehen, der wirklich kippt:
+  - `v2a` Summary/Details
+  - `v2b` kompakter Navigator-Inspector
+  - `v2c` planetennahe Badges
+
 ## Prioritaet 0 - Orbit-Readout-v1 Acceptance Gate
 
 Ziel:
@@ -203,11 +246,12 @@ Wenn dieser Gate kippt:
 - stattdessen einen kleinen Korrekturblock direkt aus Inspector-,
   Snapshot- oder Derived-Interest-Befunden schneiden
 
-## Prioritaet 2 - Naechster Simulationsblock: Population Foundation v1
+## Prioritaet 1 - Naechster Simulationsblock: Population Foundation v1
 
 Ziel:
-Nach einem sauberen `Life v2`- und `Native Species v1`-Acceptance-Run
-den ersten echten Population-/Settlement-Unterbau schneiden.
+Nach einem sauberen `Life v2`-, `Native Species v1`- und
+`Survey UX v2`-Acceptance-Run den ersten echten
+Population-/Settlement-Unterbau schneiden.
 
 Bevorzugte Richtung:
 

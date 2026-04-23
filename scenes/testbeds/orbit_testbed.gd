@@ -4,6 +4,7 @@ const OrbitCameraControllerScript = preload("res://src/tools/rendering/orbit_cam
 const OrbitCameraFramingScript = preload("res://src/tools/rendering/orbit_camera_framing.gd")
 const OrbitHudFormatterScript = preload("res://src/tools/rendering/orbit_hud_formatter.gd")
 const OrbitTimeScaleControllerScript = preload("res://src/tools/rendering/orbit_time_scale_controller.gd")
+const PlanetBadgeOverlayScript = preload("res://src/tools/rendering/planet_badge_overlay.gd")
 const UniverseTopologyScript = preload("res://src/sim/topology/universe_topology.gd")
 const DerivedSnapshotCacheScript = preload("res://src/runtime/derived/derived_snapshot_cache.gd")
 const GalaxyStreamingControllerScript = preload("res://src/runtime/streaming/galaxy_streaming_controller.gd")
@@ -28,21 +29,26 @@ const ZOOM_FACTOR_STEP: float = 1.12
 @onready var _activation_set = $BubbleActivationSet
 @onready var _renderer: OrbitViewRenderer = $WorldRoot
 @onready var _galaxy_proxy_renderer = $GalaxyProxyRoot
+@onready var _planet_badge_overlay = $PlanetBadgeOverlay
 @onready var _debug_overlay: DebugOverlay = $DebugOverlay
 @onready var _backdrop: Control = $BackdropLayer/Backdrop
 
 @onready var _focus_value: Label = $HudLayer/TopPanel/Margin/VBox/FocusValue
+@onready var _summary_button: Button = $HudLayer/TopPanel/Margin/VBox/HudModeRow/SummaryButton
+@onready var _details_button: Button = $HudLayer/TopPanel/Margin/VBox/HudModeRow/DetailsButton
 @onready var _environment_value: Label = $HudLayer/TopPanel/Margin/VBox/EnvironmentValue
 @onready var _climate_value: Label = $HudLayer/TopPanel/Margin/VBox/ClimateValue
 @onready var _world_value: Label = $HudLayer/TopPanel/Margin/VBox/WorldValue
 @onready var _life_value: Label = $HudLayer/TopPanel/Margin/VBox/LifeValue
 @onready var _biomass_value: Label = $HudLayer/TopPanel/Margin/VBox/BiomassValue
 @onready var _species_value: Label = $HudLayer/TopPanel/Margin/VBox/SpeciesValue
+@onready var _density_value: Label = $HudLayer/TopPanel/Margin/VBox/DensityValue
 @onready var _life_potential_value: Label = $HudLayer/TopPanel/Margin/VBox/LifePotentialValue
 @onready var _season_value: Label = $HudLayer/TopPanel/Margin/VBox/SeasonValue
 @onready var _time_value: Label = $HudLayer/TopPanel/Margin/VBox/TimeValue
 @onready var _day_value: Label = $HudLayer/TopPanel/Margin/VBox/DayValue
 @onready var _year_value: Label = $HudLayer/TopPanel/Margin/VBox/YearValue
+@onready var _cycle_value: Label = $HudLayer/TopPanel/Margin/VBox/CycleValue
 @onready var _scale_value: Label = $HudLayer/TopPanel/Margin/VBox/ScaleValue
 @onready var _cadence_value: Label = $HudLayer/TopPanel/Margin/VBox/CadenceValue
 @onready var _speed_slider: HSlider = $HudLayer/TopPanel/Margin/VBox/SpeedSlider
@@ -68,6 +74,7 @@ var _current_galaxy = null
 var _is_large_world: bool = false
 var _last_frame_label: StringName = StringName("")
 var _active_world_scope_id: StringName = StringName("")
+var _hud_details_enabled: bool = false
 
 
 func _ready() -> void:
@@ -181,6 +188,19 @@ func _ready() -> void:
 	_refresh_snapshot_interest_ids()
 	_renderer.set_derived_snapshot_cache(_derived_snapshot_cache)
 	_camera_controller.configure(_renderer, _bubble, UniverseRegistry, _topology)
+	if _planet_badge_overlay != null:
+		_planet_badge_overlay.configure(
+			UniverseRegistry,
+			_topology,
+			_bubble,
+			_derived_snapshot_cache,
+			_renderer
+		)
+	if _summary_button != null and not _summary_button.pressed.is_connected(_on_summary_button_pressed):
+		_summary_button.pressed.connect(_on_summary_button_pressed)
+	if _details_button != null and not _details_button.pressed.is_connected(_on_details_button_pressed):
+		_details_button.pressed.connect(_on_details_button_pressed)
+	_sync_hud_mode_buttons()
 
 	if _is_large_world:
 		_galaxy_proxy_renderer.visible = true
@@ -213,6 +233,8 @@ func _ready() -> void:
 	_camera_controller.step(0.0, get_viewport_rect().size)
 	_sync_view_lod_state(true, false)
 	_sync_galaxy_proxy_transform()
+	if _planet_badge_overlay != null:
+		_planet_badge_overlay.refresh()
 	_update_hud()
 
 
@@ -251,6 +273,8 @@ func _process(delta: float) -> void:
 		_streaming_controller.update(delta, _camera_controller.get_zoom_factor())
 	_sync_view_lod_state(false, false)
 	_sync_galaxy_proxy_transform()
+	if _planet_badge_overlay != null:
+		_planet_badge_overlay.refresh()
 	_update_hud()
 
 
@@ -344,43 +368,28 @@ func _update_hud() -> void:
 	var native_species_desc: Dictionary = _derived_snapshot_cache.get_focus_native_species_desc()
 	var life_potential_desc: Dictionary = _derived_snapshot_cache.get_focus_life_potential_desc()
 	var orbit_readout_desc: Dictionary = _derived_snapshot_cache.get_focus_orbit_readout_desc()
+	var is_planetary_focus: bool = focus_def != null and (
+		focus_def.kind == BodyType.Kind.PLANET or focus_def.kind == BodyType.Kind.MOON
+	)
+	var has_species_basis: bool = bool(native_species_desc.get(
+		NativeSpeciesServiceScript.KEY_HAS_NATIVE_SPECIES_BASIS,
+		false
+	))
+	var density_text: String = OrbitHudFormatterScript.compact_density_text(biosphere_scale_desc)
+	var has_density: bool = density_text != ""
+	var has_cycle_basis: bool = bool(orbit_readout_desc.get(
+		OrbitReadoutServiceScript.KEY_HAS_ROTATION_BASIS,
+		false
+	)) or bool(orbit_readout_desc.get(
+		OrbitReadoutServiceScript.KEY_HAS_ORBITAL_PERIOD_BASIS,
+		false
+	))
 
 	var fps: int = Engine.get_frames_per_second()
 	var speed_step_label: String = _time_scale_controller.get_step_label()
 	_focus_value.text = OrbitHudFormatterScript.format_focus(focus_name)
 	_environment_value.text = OrbitHudFormatterScript.format_environment(environment_desc)
-	_climate_value.text = OrbitHudFormatterScript.format_bands(environment_desc)
-	_world_value.visible = focus_def != null and (
-		focus_def.kind == BodyType.Kind.PLANET or focus_def.kind == BodyType.Kind.MOON
-	)
-	if _world_value.visible:
-		_world_value.text = OrbitHudFormatterScript.format_world(planetary_state_desc)
-	_life_value.visible = _world_value.visible
-	if _life_value.visible:
-		_life_value.text = OrbitHudFormatterScript.format_life(biosphere_scale_desc)
-	_biomass_value.visible = _world_value.visible
-	if _biomass_value.visible:
-		_biomass_value.text = OrbitHudFormatterScript.format_biomass(biosphere_scale_desc)
-	_species_value.visible = _world_value.visible and bool(native_species_desc.get(
-		NativeSpeciesServiceScript.KEY_HAS_NATIVE_SPECIES_BASIS,
-		false
-	))
-	if _species_value.visible:
-		_species_value.text = OrbitHudFormatterScript.format_species(native_species_desc)
-	_life_potential_value.visible = _world_value.visible
-	if _life_potential_value.visible:
-		_life_potential_value.text = OrbitHudFormatterScript.format_life_potential(life_potential_desc)
-	_season_value.text = "%s   %s" % [
-		OrbitHudFormatterScript.format_season(thermal_desc),
-		OrbitHudFormatterScript.format_primary_source(thermal_desc)
-	]
 	_time_value.text = OrbitHudFormatterScript.format_time(TimeService.sim_time_s, TimeService.tick_count, fps)
-	_day_value.visible = bool(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_HAS_ROTATION_BASIS, false))
-	if _day_value.visible:
-		_day_value.text = OrbitHudFormatterScript.format_rotation(orbit_readout_desc)
-	_year_value.visible = bool(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_HAS_ORBITAL_PERIOD_BASIS, false))
-	if _year_value.visible:
-		_year_value.text = OrbitHudFormatterScript.format_orbit(orbit_readout_desc)
 	_scale_value.text = OrbitHudFormatterScript.format_scale(
 		TimeService.time_scale,
 		speed_step_label,
@@ -390,6 +399,59 @@ func _update_hud() -> void:
 	)
 	_cadence_value.text = OrbitHudFormatterScript.format_cadence(TimeService.time_scale)
 	_mode_value.text = OrbitHudFormatterScript.format_mode(UniverseRegistry.body_count(), TimeService.paused)
+
+	if _hud_details_enabled:
+		_climate_value.visible = true
+		_climate_value.text = OrbitHudFormatterScript.format_bands(environment_desc)
+		_world_value.visible = is_planetary_focus
+		if _world_value.visible:
+			_world_value.text = OrbitHudFormatterScript.format_world(planetary_state_desc)
+		_life_value.visible = is_planetary_focus
+		if _life_value.visible:
+			_life_value.text = OrbitHudFormatterScript.format_life(biosphere_scale_desc)
+		_biomass_value.visible = is_planetary_focus
+		if _biomass_value.visible:
+			_biomass_value.text = OrbitHudFormatterScript.format_biomass(biosphere_scale_desc)
+		_species_value.visible = is_planetary_focus and has_species_basis
+		if _species_value.visible:
+			_species_value.text = OrbitHudFormatterScript.format_species(native_species_desc)
+		_density_value.visible = false
+		_life_potential_value.visible = is_planetary_focus
+		if _life_potential_value.visible:
+			_life_potential_value.text = OrbitHudFormatterScript.format_life_potential(life_potential_desc)
+		_season_value.visible = true
+		_season_value.text = "%s   %s" % [
+			OrbitHudFormatterScript.format_season(thermal_desc),
+			OrbitHudFormatterScript.format_primary_source(thermal_desc)
+		]
+		_day_value.visible = bool(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_HAS_ROTATION_BASIS, false))
+		if _day_value.visible:
+			_day_value.text = OrbitHudFormatterScript.format_rotation(orbit_readout_desc)
+		_year_value.visible = bool(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_HAS_ORBITAL_PERIOD_BASIS, false))
+		if _year_value.visible:
+			_year_value.text = OrbitHudFormatterScript.format_orbit(orbit_readout_desc)
+		_cycle_value.visible = false
+	else:
+		_climate_value.visible = false
+		_world_value.visible = false
+		_life_value.visible = is_planetary_focus
+		if _life_value.visible:
+			_life_value.text = OrbitHudFormatterScript.format_life_summary(biosphere_scale_desc)
+		_biomass_value.visible = false
+		_species_value.visible = is_planetary_focus and has_species_basis
+		if _species_value.visible:
+			_species_value.text = OrbitHudFormatterScript.format_species_summary(native_species_desc)
+		_density_value.visible = is_planetary_focus and has_density
+		if _density_value.visible:
+			_density_value.text = OrbitHudFormatterScript.format_density(biosphere_scale_desc)
+		_life_potential_value.visible = false
+		_season_value.visible = false
+		_day_value.visible = false
+		_year_value.visible = false
+		_cycle_value.visible = is_planetary_focus and has_cycle_basis
+		if _cycle_value.visible:
+			_cycle_value.text = OrbitHudFormatterScript.format_cycle(orbit_readout_desc)
+
 	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Home root overview   Q/E or PgUp/PgDn speed   HUD slider speed   WASD pan   Wheel zoom (0.5%-10000%)   Backspace fit focus   Space pause   F3 debug"
 
 
@@ -466,6 +528,8 @@ static func _is_large_world_id(world_id: StringName) -> bool:
 func _sync_view_lod_state(force_interest_refresh: bool, immediate_debug_refresh: bool) -> void:
 	var frame_label: StringName = _camera_controller.get_frame_label()
 	_renderer.set_frame_label(frame_label)
+	if _planet_badge_overlay != null:
+		_planet_badge_overlay.set_frame_label(frame_label)
 	_debug_overlay.set_view_context(_is_large_world, frame_label)
 	var frame_changed: bool = frame_label != _last_frame_label
 	if force_interest_refresh or frame_changed:
@@ -550,3 +614,26 @@ func _on_world_loader_world_loaded(world_id: StringName) -> void:
 		_root_inspector.clear_state()
 	_refresh_snapshot_interest_ids()
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
+
+
+func _on_summary_button_pressed() -> void:
+	_set_hud_details_enabled(false)
+
+
+func _on_details_button_pressed() -> void:
+	_set_hud_details_enabled(true)
+
+
+func _set_hud_details_enabled(value: bool) -> void:
+	if _hud_details_enabled == value:
+		return
+	_hud_details_enabled = value
+	_sync_hud_mode_buttons()
+	_update_hud()
+
+
+func _sync_hud_mode_buttons() -> void:
+	if _summary_button == null or _details_button == null:
+		return
+	_summary_button.disabled = not _hud_details_enabled
+	_details_button.disabled = _hud_details_enabled

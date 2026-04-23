@@ -132,6 +132,27 @@ func get_body_view_position_ru(id: StringName) -> Vector2:
 	return _compute_body_view_position_ru(id, false)
 
 
+func is_body_visually_visible(id: StringName) -> bool:
+	var visual: OrbitBodyVisual = _body_visuals.get(id, null)
+	return visual != null and visual.visible and bool(_body_view_is_finite.get(id, false))
+
+
+func get_body_screen_center_px(id: StringName) -> Vector2:
+	var visual: OrbitBodyVisual = _body_visuals.get(id, null)
+	if visual == null or not visual.visible:
+		return Vector2(INF, INF)
+	return visual.get_global_transform_with_canvas().origin
+
+
+func get_body_projected_radius_px(id: StringName) -> float:
+	var visual: OrbitBodyVisual = _body_visuals.get(id, null)
+	var def: BodyDef = null if _registry == null else _registry.get_def(id)
+	if visual == null or def == null or not visual.visible:
+		return 0.0
+	var canvas_xform: Transform2D = visual.get_global_transform_with_canvas()
+	return _pick_radius_local(def.kind) * canvas_xform.x.length()
+
+
 func get_scope_frame(focus_id: StringName) -> Dictionary:
 	return OrbitCameraScopeScript.get_scope_frame(
 		_registry,

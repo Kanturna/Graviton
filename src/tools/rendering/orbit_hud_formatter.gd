@@ -71,6 +71,17 @@ static func format_life(biosphere_desc: Dictionary) -> String:
 	]
 
 
+static func format_life_summary(biosphere_desc: Dictionary) -> String:
+	if not _biosphere_has_basis(biosphere_desc):
+		return "Life: n/a"
+	if _biosphere_has_no_track(biosphere_desc):
+		return "Life: %s" % _biosphere_stage_short_text(biosphere_desc)
+	return "Life: %s / %s" % [
+		_biosphere_stage_short_text(biosphere_desc),
+		_biosphere_track_text(biosphere_desc),
+	]
+
+
 static func format_biomass(biosphere_scale_desc: Dictionary) -> String:
 	if not bool(biosphere_scale_desc.get(BiosphereScaleServiceScript.KEY_HAS_BIOSPHERE_SCALE_BASIS, false)):
 		return "Biomass: n/a"
@@ -89,6 +100,38 @@ static func format_species(native_species_desc: Dictionary) -> String:
 		_native_species_habitat_text(native_species_desc),
 		_native_species_mobility_text(native_species_desc),
 	]
+
+
+static func format_species_summary(native_species_desc: Dictionary) -> String:
+	if not bool(native_species_desc.get(NativeSpeciesServiceScript.KEY_HAS_NATIVE_SPECIES_BASIS, false)):
+		return "Species: n/a"
+	return "Species: %s / %s" % [
+		_native_species_metabolism_short_text(native_species_desc),
+		_native_species_mobility_text(native_species_desc),
+	]
+
+
+static func format_density(biosphere_desc: Dictionary) -> String:
+	var density_text: String = _density_class_text(biosphere_desc)
+	if density_text == "":
+		return "Density: n/a"
+	return "Density: %s" % density_text
+
+
+static func compact_life_stage_text(biosphere_desc: Dictionary) -> String:
+	if not _biosphere_has_basis(biosphere_desc):
+		return ""
+	return _biosphere_stage_short_text(biosphere_desc)
+
+
+static func compact_density_text(biosphere_desc: Dictionary) -> String:
+	return _density_class_text(biosphere_desc)
+
+
+static func compact_species_text(native_species_desc: Dictionary) -> String:
+	if not bool(native_species_desc.get(NativeSpeciesServiceScript.KEY_HAS_NATIVE_SPECIES_BASIS, false)):
+		return ""
+	return _native_species_metabolism_short_text(native_species_desc)
 
 
 static func format_season(thermal_desc: Dictionary) -> String:
@@ -141,8 +184,41 @@ static func format_inspector_life_line(biosphere_desc: Dictionary) -> String:
 	]
 
 
+static func format_inspector_life_badge(biosphere_desc: Dictionary) -> String:
+	if not _biosphere_has_basis(biosphere_desc):
+		return ""
+	return _biosphere_stage_short_text(biosphere_desc)
+
+
+static func format_inspector_species_line(native_species_desc: Dictionary, biosphere_desc: Dictionary) -> String:
+	if not bool(native_species_desc.get(NativeSpeciesServiceScript.KEY_HAS_NATIVE_SPECIES_BASIS, false)):
+		return ""
+	var density_text: String = _density_class_text(biosphere_desc)
+	if density_text == "":
+		return "Species: %s" % _native_species_metabolism_short_text(native_species_desc)
+	return "Species: %s / %s" % [
+		_native_species_metabolism_short_text(native_species_desc),
+		density_text,
+	]
+
+
 static func format_time(sim_time_s: float, tick_count: int, fps: int) -> String:
 	return "T+ %s   steps %d   FPS %d" % [_elapsed_time_text(sim_time_s), tick_count, fps]
+
+
+static func format_cycle(orbit_readout_desc: Dictionary) -> String:
+	var parts: Array[String] = []
+	if bool(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_HAS_ROTATION_BASIS, false)):
+		parts.append("rot %s" % _period_text(
+			float(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_ROTATION_PERIOD_S, 0.0))
+		))
+	if bool(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_HAS_ORBITAL_PERIOD_BASIS, false)):
+		parts.append("orb %s" % _period_text(
+			float(orbit_readout_desc.get(OrbitReadoutServiceScript.KEY_ORBITAL_PERIOD_S, 0.0))
+		))
+	if parts.is_empty():
+		return "Cycle: n/a"
+	return "Cycle: %s" % " / ".join(parts)
 
 
 static func format_rotation(orbit_readout_desc: Dictionary) -> String:
@@ -350,6 +426,17 @@ static func _biosphere_stage_text(biosphere_desc: Dictionary) -> String:
 	)
 
 
+static func _biosphere_stage_short_text(biosphere_desc: Dictionary) -> String:
+	var stage_text: String = _biosphere_stage_text(biosphere_desc)
+	match stage_text:
+		"COMPLEX_MULTICELLULAR":
+			return "COMPLEX"
+		"COMPLEX_ECOSYSTEM":
+			return "ECOSYSTEM"
+		_:
+			return stage_text
+
+
 static func _biosphere_track_text(biosphere_desc: Dictionary) -> String:
 	var dominant_track_key: StringName = ProtoBiosphereSimulationServiceScript.KEY_DOMINANT_TRACK_ID
 	if bool(biosphere_desc.get(BiosphereScaleServiceScript.KEY_HAS_BIOSPHERE_SCALE_BASIS, false)):
@@ -424,6 +511,19 @@ static func _native_species_metabolism_text(native_species_desc: Dictionary) -> 
 	)
 
 
+static func _native_species_metabolism_short_text(native_species_desc: Dictionary) -> String:
+	match _native_species_metabolism_text(native_species_desc):
+		"PHOTOTROPHIC":
+			return "PHOTO"
+		"CHEMOTROPHIC":
+			return "CHEMO"
+		"SULFUR_CHEMOSYNTHETIC":
+			return "SULFUR"
+		"CRYOCHEMICAL":
+			return "CRYO"
+	return "UNKNOWN"
+
+
 static func _native_species_mobility_text(native_species_desc: Dictionary) -> String:
 	return NativeSpeciesServiceScript.to_string_mobility_class(
 		int(native_species_desc.get(
@@ -431,3 +531,19 @@ static func _native_species_mobility_text(native_species_desc: Dictionary) -> St
 			NativeSpeciesServiceScript.MobilityClass.SESSILE
 		))
 	)
+
+
+static func _density_class_text(biosphere_desc: Dictionary) -> String:
+	if not bool(biosphere_desc.get(BiosphereScaleServiceScript.KEY_HAS_BIOSPHERE_SCALE_BASIS, false)):
+		return ""
+	match int(biosphere_desc.get(
+		BiosphereScaleServiceScript.KEY_BIOSPHERE_STAGE,
+		BiosphereScaleServiceScript.Stage.STERILE
+	)):
+		BiosphereScaleServiceScript.Stage.MICROBIAL:
+			return "SPARSE"
+		BiosphereScaleServiceScript.Stage.COMPLEX_MULTICELLULAR:
+			return "THRIVING"
+		BiosphereScaleServiceScript.Stage.COMPLEX_ECOSYSTEM:
+			return "ABUNDANT"
+	return ""
