@@ -942,8 +942,10 @@ static func _test_root_overview_trail_resume_avoids_bridge_and_rebuild_clears_pa
 	renderer.set_focus(&"obsidian")
 	renderer.set_frame_label(OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK)
 	renderer._clear_trail(&"alpha_i")
+	registry.get_state(&"alpha_i").position_parent_frame_m = Vector3(1.0e10, 0.0, 0.0)
 	renderer._sync_visual_positions(true)
 	bubble_probe.positions_by_id[&"alpha_i"] = Vector3(2.5e10, 0.0, 0.0)
+	registry.get_state(&"alpha_i").position_parent_frame_m = Vector3(2.5e10, 0.0, 0.0)
 	renderer._sync_visual_positions(false)
 
 	var alpha_planet_trail: AntialiasedLine2D = renderer._trail_visuals.get(&"alpha_i", null)
@@ -954,6 +956,7 @@ static func _test_root_overview_trail_resume_avoids_bridge_and_rebuild_clears_pa
 	ctx.assert_true(renderer._paused_trail_histories.has(&"alpha_i"), "ROOT_OVERVIEW pausiert planetare Trails body-scoped")
 
 	bubble_probe.positions_by_id[&"alpha_i"] = Vector3(4.5e10, 0.0, 0.0)
+	registry.get_state(&"alpha_i").position_parent_frame_m = Vector3(4.5e10, 0.0, 0.0)
 	renderer.set_frame_label(OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK)
 	renderer._sync_visual_positions(false)
 	alpha_planet_trail = renderer._trail_visuals.get(&"alpha_i", null)

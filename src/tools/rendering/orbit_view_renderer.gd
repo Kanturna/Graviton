@@ -303,11 +303,11 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 				if not _is_finite_vec2(trail_parent_pos):
 					trail_parent_pos = _compute_body_view_position_ru(def.parent_id, true)
 					positions_by_id[def.parent_id] = trail_parent_pos
-				if _is_finite_vec2(trail_parent_pos):
+				var parent_frame_pos_ru: Vector2 = _body_parent_frame_position_ru(id)
+				if _is_finite_vec2(trail_parent_pos) and _is_finite_vec2(parent_frame_pos_ru):
 					trail_line.position = trail_parent_pos
-					var relative_pos: Vector2 = pos - trail_parent_pos
-					_resume_trail_if_paused(id, relative_pos)
-					_update_trail(id, relative_pos, reset_trails)
+					_resume_trail_if_paused(id, parent_frame_pos_ru)
+					_update_trail(id, parent_frame_pos_ru, reset_trails)
 				else:
 					_pause_trail(id)
 			else:
@@ -404,12 +404,9 @@ func _update_trail(id: StringName, pos: Vector2, reset_trails: bool) -> void:
 	if reset_trails or history.is_empty():
 		history = [pos]
 	else:
-		var threshold: float = MIN_TRAIL_STEP_PX / _world_scale
 		var last_pos: Vector2 = history[history.size() - 1]
-		if last_pos.distance_to(pos) >= threshold:
+		if not last_pos.is_equal_approx(pos):
 			history.append(pos)
-		else:
-			history[history.size() - 1] = pos
 
 		var def: BodyDef = _registry.get_def(id)
 		var max_points: int = _trail_point_budget(def.kind if def != null else BodyType.Kind.PLANET)
@@ -597,6 +594,18 @@ func _should_hide_in_root_overview(id: StringName, def: BodyDef) -> bool:
 
 func _is_visible_root_overview_star(def: BodyDef) -> bool:
 	return def != null and def.kind == BodyType.Kind.STAR and def.parent_id == _focus_id
+
+
+func _body_parent_frame_position_ru(id: StringName) -> Vector2:
+	if _registry == null:
+		return Vector2(INF, INF)
+	var state: BodyState = _registry.get_state(id)
+	if state == null:
+		return Vector2(INF, INF)
+	var pos_m: Vector3 = state.position_parent_frame_m
+	if not _is_finite_vec3(pos_m):
+		return Vector2(INF, INF)
+	return Vector2(pos_m.x, pos_m.y) / UnitSystem.RENDER_SCALE_M_PER_UNIT
 
 
 func _should_show_orbit_in_root_overview(def: BodyDef) -> bool:
