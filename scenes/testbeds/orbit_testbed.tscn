@@ -105,7 +105,7 @@ layer = 20
 offset_left = 24.0
 offset_top = 24.0
 offset_right = 476.0
-offset_bottom = 360.0
+offset_bottom = 388.0
 theme_override_styles/panel = SubResource("1_panel_style")
 
 [node name="Margin" type="MarginContainer" parent="HudLayer/TopPanel" unique_id=398651009]
@@ -157,7 +157,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 text = "Life: n/a"
 
-[node name="BiomassValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox"]
+[node name="BiomassValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=1040235376]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 text = "Biomass: n/a"
@@ -180,7 +180,12 @@ text = "T+ 0.00 d"
 [node name="ScaleValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=1123534186]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
-text = "Speed x1"
+text = "Rate: 1 s/s"
+
+[node name="CadenceValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=361783535]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
+text = "Cadence: Bio tick ~ 10 d"
 
 [node name="SpeedSlider" type="HSlider" parent="HudLayer/TopPanel/Margin/VBox" unique_id=992072737]
 custom_minimum_size = Vector2(0, 18)

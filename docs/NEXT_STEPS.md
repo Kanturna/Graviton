@@ -2,6 +2,39 @@
 
 Stand: 2026-04-23
 
+## Prioritaet 0 - Time-UX Acceptance Gate
+
+Ziel:
+Die neue Zeit-UX im echten Editor-/Playtest-Lauf validieren, bevor ein
+spaeterer view-only Motion-Warp ueberhaupt erwogen wird.
+
+Konkreter Ablauf:
+
+- `orbit_testbed.tscn` im Editor oeffnen
+- HUD explizit fuer dieselben Faelle pruefen:
+  - `sample_system`
+  - `starter_world`
+  - `scaleup_galaxy_30`
+  - `scaleup_galaxy_100`
+- dabei dieselben Punkte bestaetigen:
+  - normale HUD-Sprache zeigt `Rate:` statt `Speed x...`
+  - Default startet auf `1 h/s`
+  - `Q/E` und `PgUp/PgDn` laufen nur ueber spielbare Presets
+    von `10 s/s` bis `7 d/s`
+  - der Slider erreicht weiter bewusst `1 s/s` als Feinmodus
+  - `Cadence: Bio tick ~ ...` liest sofort als echte Sim-Kontextinfo
+    und nicht als technischer Debug-Wert
+  - `sample_system` und `starter_world` lesen bei Default sofort
+    sichtbar lebendiger, ohne staendig manuell hochzuschalten
+  - `scaleup_galaxy_100` bleibt trotz hoeherer Rate im normalen
+    Editor-Playtest ruhig und lesbar
+
+Wenn dieser Gate kippt:
+
+- nicht sofort Orbitperioden oder Life-Math aendern
+- stattdessen nur aus den echten UX-Befunden einen kleinen Folgeblock
+  `Orbit Presentation v2` schneiden
+
 ## Prioritaet 0 - Life-v2 Acceptance Gate
 
 Ziel:
@@ -104,6 +137,9 @@ Bevorzugte Richtung:
 
 Fallback-Reihenfolge:
 
+- wenn der neue Time-UX-Block trotz Acceptance noch zu traege bleibt,
+  zuerst einen kleinen view-only `Orbit Presentation v2`-Block fuer
+  Survey-/Overview-Bewegung schneiden
 - wenn Mehrstern-Faelle die neue `Life v2`-Lesart sichtbar verziehen,
   zuerst einen expliziten `Mehrquellenstrahlung`-Block vorziehen
 - wenn der Editor-Run sauber ist, danach direkt `Population Foundation v1`

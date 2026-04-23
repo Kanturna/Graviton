@@ -21,7 +21,8 @@
       "PowerShell(git diff HEAD -- src/sim/life/life_potential_service.gd src/sim/planetary/planetary_state_service.gd 2>&1 | Select-Object -First 250)",
       "PowerShell(git diff HEAD -- src/sim/planetary/planetary_state_service.gd 2>&1 | Select-Object -Last 40)",
       "PowerShell(git diff HEAD -- scenes/testbeds/orbit_testbed.gd scenes/testbeds/orbit_testbed.tscn src/tools/rendering/orbit_hud_formatter.gd src/tools/ui/root_inspector_model_builder.gd 2>&1 | Select-Object -First 200)",
-      "PowerShell(git diff HEAD -- src/tools/ui/root_inspector_model_builder.gd 2>&1 | Select-Object -First 30)"
+      "PowerShell(git diff HEAD -- src/tools/ui/root_inspector_model_builder.gd 2>&1 | Select-Object -First 30)",
+      "PowerShell(git diff HEAD -- src/tools/rendering/orbit_hud_formatter.gd scenes/testbeds/orbit_testbed.tscn scenes/testbeds/orbit_testbed.gd 2>&1 | Select-Object -First 200)"
     ]
   }
 }

@@ -8,6 +8,7 @@ static func run(ctx) -> void:
 	ctx.current_suite = "test_orbit_time_scale_controller"
 	_test_configure_sets_default_preset_and_slider(ctx)
 	_test_adjacent_preset_controls_step_through_presets(ctx)
+	_test_slider_range_is_wider_than_preset_range(ctx)
 	_test_slider_input_sets_custom_time_scale(ctx)
 	_test_external_time_scale_change_resyncs_slider(ctx)
 
@@ -56,12 +57,31 @@ static func _test_adjacent_preset_controls_step_through_presets(ctx) -> void:
 	var setup := _make_setup()
 	var controller = setup["controller"]
 	controller.apply_previous_preset()
-	ctx.assert_almost(TimeService.time_scale, 250.0, 1.0e-9, "previous springt auf das naechste kleinere Preset")
-	ctx.assert_true(controller.get_step_label() == "6/10", "Preset-Label folgt dem kleineren Schritt")
+	ctx.assert_almost(TimeService.time_scale, 1800.0, 1.0e-9, "previous springt auf das naechste kleinere Preset")
+	ctx.assert_true(controller.get_step_label() == "4/8", "Preset-Label folgt dem kleineren Schritt")
 	controller.apply_next_preset()
-	ctx.assert_almost(TimeService.time_scale, 500.0, 1.0e-9, "next springt auf das naechste groessere Preset")
-	ctx.assert_true(controller.get_step_label() == "7/10", "Preset-Label folgt dem groesseren Schritt")
+	ctx.assert_almost(TimeService.time_scale, 3600.0, 1.0e-9, "next springt auf das naechste groessere Preset")
+	ctx.assert_true(controller.get_step_label() == "5/8", "Preset-Label folgt dem groesseren Schritt")
 	_teardown_setup(setup)
+
+
+static func _test_slider_range_is_wider_than_preset_range(ctx) -> void:
+	ctx.assert_true(
+		not OrbitTimeScaleControllerScript.TIME_SCALE_PRESETS.has(1.0),
+		"1 s/s bleibt aus dem regulaeren Preset-Flow herausgenommen"
+	)
+	ctx.assert_almost(
+		OrbitTimeScaleControllerScript.slider_value_to_time_scale(0.0),
+		OrbitTimeScaleControllerScript.SLIDER_MIN_TIME_SCALE,
+		1.0e-9,
+		"Slider-Minimum bleibt der Feinmodus bei 1 s/s"
+	)
+	ctx.assert_almost(
+		OrbitTimeScaleControllerScript.slider_value_to_time_scale(1.0),
+		OrbitTimeScaleControllerScript.SLIDER_MAX_TIME_SCALE,
+		1.0e-6,
+		"Slider-Maximum deckt weiter den gesamten 7-d/s-Bereich ab"
+	)
 
 
 static func _test_slider_input_sets_custom_time_scale(ctx) -> void:
@@ -88,5 +108,5 @@ static func _test_external_time_scale_change_resyncs_slider(ctx) -> void:
 		1.0e-3,
 		"extern gesetzte time_scale synchronisiert den Slider nach"
 	)
-	ctx.assert_true(controller.get_step_label() == "8/10", "Preset-Label bleibt bei externen Preset-Werten stabil")
+	ctx.assert_true(controller.get_step_label() == "Custom", "extern gesetzte Nicht-Preset-Werte bleiben als Custom markiert")
 	_teardown_setup(setup)

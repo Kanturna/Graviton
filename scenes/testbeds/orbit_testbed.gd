@@ -39,6 +39,7 @@ const ZOOM_FACTOR_STEP: float = 1.12
 @onready var _season_value: Label = $HudLayer/TopPanel/Margin/VBox/SeasonValue
 @onready var _time_value: Label = $HudLayer/TopPanel/Margin/VBox/TimeValue
 @onready var _scale_value: Label = $HudLayer/TopPanel/Margin/VBox/ScaleValue
+@onready var _cadence_value: Label = $HudLayer/TopPanel/Margin/VBox/CadenceValue
 @onready var _speed_slider: HSlider = $HudLayer/TopPanel/Margin/VBox/SpeedSlider
 @onready var _mode_value: Label = $HudLayer/TopPanel/Margin/VBox/ModeValue
 @onready var _hint_label: Label = $HudLayer/BottomPanel/Margin/Hints
@@ -351,6 +352,7 @@ func _update_hud() -> void:
 		String(_camera_controller.get_zoom_mode()),
 		String(_camera_controller.get_frame_label())
 	)
+	_cadence_value.text = OrbitHudFormatterScript.format_cadence(TimeService.time_scale)
 	_mode_value.text = OrbitHudFormatterScript.format_mode(UniverseRegistry.body_count(), TimeService.paused)
 	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Home root overview   Q/E or PgUp/PgDn speed   HUD slider speed   WASD pan   Wheel zoom (0.5%-10000%)   Backspace fit focus   Space pause   F3 debug"
 

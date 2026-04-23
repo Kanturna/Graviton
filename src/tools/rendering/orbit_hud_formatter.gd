@@ -8,6 +8,9 @@ const LifePotentialServiceScript = preload("res://src/sim/life/life_potential_se
 const ProtoBiosphereSimulationServiceScript = preload("res://src/sim/life/proto_biosphere_simulation_service.gd")
 const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_service.gd")
 
+const MINUTE_S: float = 60.0
+const HOUR_S: float = 60.0 * MINUTE_S
+
 
 static func format_focus(focus_name: String) -> String:
 	return "Focus: %s" % focus_name
@@ -133,12 +136,18 @@ static func format_scale(time_scale: float, preset_label: String, zoom_factor: f
 	var mode_segment: String = zoom_mode
 	if frame_label != "":
 		mode_segment = "%s (%s)" % [zoom_mode, frame_label]
-	return "Speed x%s   Preset %s   Zoom %s %s" % [
-		_stripped_float(time_scale),
+	return "Rate: %s   Preset %s   Zoom %s %s" % [
+		_time_rate_text(time_scale),
 		preset_label,
 		_zoom_percent_text(zoom_factor),
 		mode_segment,
 	]
+
+
+static func format_cadence(time_scale: float) -> String:
+	var safe_time_scale: float = maxf(time_scale, 0.0001)
+	var cadence_seconds: float = ProtoBiosphereSimulationServiceScript.BIO_TICK_STEP_S / safe_time_scale
+	return "Cadence: Bio tick ~ %s" % _duration_text(cadence_seconds)
 
 
 static func format_mode(body_count: int, paused: bool) -> String:
@@ -158,6 +167,47 @@ static func _zoom_percent_text(zoom_factor: float) -> String:
 	if is_equal_approx(percent, rounded):
 		return "%d%%" % int(rounded)
 	return "%.1f%%" % percent
+
+
+static func _time_rate_text(time_scale: float) -> String:
+	var safe_time_scale: float = maxf(time_scale, 0.0)
+	if safe_time_scale >= UnitSystem.DAY_S:
+		return "%s d/s" % _rounded_quantity_text(safe_time_scale / UnitSystem.DAY_S)
+	if safe_time_scale >= HOUR_S:
+		return "%s h/s" % _rounded_quantity_text(safe_time_scale / HOUR_S)
+	if safe_time_scale >= MINUTE_S:
+		return "%s min/s" % _rounded_quantity_text(safe_time_scale / MINUTE_S)
+	return "%s s/s" % _rounded_quantity_text(safe_time_scale)
+
+
+static func _rounded_quantity_text(value: float) -> String:
+	var rounded: float = roundf(value)
+	if is_equal_approx(value, rounded):
+		return str(int(rounded))
+	if value < 10.0:
+		return "%.1f" % value
+	return str(int(roundf(value)))
+
+
+static func _duration_text(seconds: float) -> String:
+	var total_seconds: int = maxi(int(round(seconds)), 0)
+	if total_seconds < 60:
+		return "%d s" % total_seconds
+	if total_seconds < int(HOUR_S):
+		return "%d min" % int(roundf(float(total_seconds) / MINUTE_S))
+	if total_seconds < int(UnitSystem.DAY_S):
+		var total_minutes: int = int(roundf(float(total_seconds) / MINUTE_S))
+		var hours: int = total_minutes / 60
+		var minutes: int = total_minutes % 60
+		if minutes == 0:
+			return "%d h" % hours
+		return "%d h %d min" % [hours, minutes]
+	var total_hours: int = int(roundf(float(total_seconds) / HOUR_S))
+	var days: int = total_hours / 24
+	var hours_remainder: int = total_hours % 24
+	if hours_remainder == 0:
+		return "%d d" % days
+	return "%d d %d h" % [days, hours_remainder]
 
 
 static func _environment_class_text(environment_desc: Dictionary) -> String:

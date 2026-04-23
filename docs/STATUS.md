@@ -42,6 +42,12 @@ Seed-/Progress-Substrat, waehrend ein neuer read-only
 `BiosphereScaleService` daraus bandweise Carrying Capacity, Biomasse und
 neue player-facing `Life`-Stages
 (`COMPLEX_MULTICELLULAR`, `COMPLEX_ECOSYSTEM`) ableitet.
+Darauf sitzt jetzt zusaetzlich `Time UX v1` als kleiner reiner
+Control-/HUD-Schritt:
+die normale HUD-Sprache zeigt lesbare Zeitraten statt roher
+`x...`-Multiplikatoren, der Preset-Flow und der Slider-Bereich sind
+bewusst getrennt und das HUD macht die bestehende Life-Cadence als
+`Bio tick ~ ...` direkt sichtbar.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -187,6 +193,22 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Profile pro Body jetzt lazy, weil diese in v1 nur von statischen
   `BodyDef`-/Orbit-Daten abhaengen; `DerivedSnapshotCache` cached davon
   nur noch die UI-konsumierbaren Desc-Copies.
+- `OrbitTimeScaleController` authored Zeitpresets jetzt bewusst als
+  lesbare Sim-Zeitraten statt als rohen Multiplikator-Teppich:
+  `10 s/s`, `1 min/s`, `10 min/s`, `30 min/s`, `1 h/s`, `6 h/s`,
+  `1 d/s`, `7 d/s`.
+- Der produktive Default liegt jetzt bei `1 h/s`; der regulaere
+  Preset-Flow startet bei `10 s/s`, waehrend der Slider davon getrennt
+  weiter bis `1 s/s` als bewussten Feinmodus herunterreichen darf.
+- `OrbitHudFormatter` rendert die normale Scale-Zeile jetzt als
+  `Rate: ...   Preset ...   Zoom ...` statt als `Speed x...`; rohe
+  Multiplikatoren sind damit keine primaere User-Sprache mehr.
+- Das Fokus-HUD zeigt jetzt zusaetzlich eine kompakte
+  `Cadence: Bio tick ~ ...`-Zeile.
+  Diese liest direkt aus
+  `ProtoBiosphereSimulationService.BIO_TICK_STEP_S / time_scale` und
+  macht damit die Simulationsgeschwindigkeit erstmals im Kontext der
+  bereits existierenden Life-/Biosphaeren-Dynamik sichtbar.
 - `LifePotentialService` bewertet diese World-Achsen bewusst nur ueber
   die fuenf Jahresklassen
   `Thermal Extremity`, `Volatiles`, `Buffering`, `Stability` und

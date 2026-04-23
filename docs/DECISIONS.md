@@ -1,5 +1,36 @@
 # Graviton - Decisions
 
+## 2026-04-23 - Time UX bleibt ein reiner Control-/HUD-Block und aendert nicht die Simulationszeit
+
+Das aktuelle Time-Problem wird bewusst zuerst als UX-/Control-Frage und
+nicht als Physik- oder Orbit-Reauthoring-Problem geloest.
+
+Konsequenz:
+
+- `TimeService.sim_time_s` bleibt die einzige autoritative
+  Simulationszeit; `sim_dt = delta * time_scale` bleibt unveraendert
+- Orbitperioden, `Life Potential`, Proto-Biosphaere und `Life v2`
+  bleiben mathematisch identisch; es gibt keine Rekalibrierung der
+  existierenden Anchor-Welten
+- die normale HUD-Sprache wechselt von rohen `x...`-Werten auf lesbare
+  Zeitraten wie `1 h/s` oder `1 d/s`
+- der reguläre Preset-Flow und der Slider-Bereich werden bewusst
+  getrennt:
+  Presets decken `10 s/s .. 7 d/s` ab, waehrend der Slider weiterhin
+  bis `1 s/s` als Feinmodus herunterreichen darf
+- der produktive Default liegt jetzt bewusst deutlich ueber dem alten
+  Survey-Komfortminimum:
+  `1 h/s`
+- der HUD-Kontext fuer diese Rate bleibt in v1 absichtlich global und
+  simpel:
+  statt fokusabhaengiger Orbitdauern wird nur die bestehende
+  `Bio tick`-Cadence aus
+  `ProtoBiosphereSimulationService.BIO_TICK_STEP_S / time_scale`
+  sichtbar gemacht
+- falls das danach noch nicht reicht, kommt als **separater** Folgeblock
+  ein view-only `Orbit Presentation v2` mit Bewegungs-Exaggeration;
+  nicht heimlich in `Time UX v1`
+
 ## 2026-04-23 - Life v2 bleibt ein quantitativer Read-Only-Layer auf dem v1b-Proto-Substrat
 
 Der erste Schritt in Richtung spaeterer Population fuehrt bewusst noch

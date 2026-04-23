@@ -14,6 +14,8 @@ static func run(ctx) -> void:
 	_test_life_potential_formatter_uses_track_and_class(ctx)
 	_test_inspector_world_line_hides_low_seasonality(ctx)
 	_test_inspector_life_line_reuses_hud_language(ctx)
+	_test_scale_formatter_uses_human_rate_language(ctx)
+	_test_cadence_formatter_humanizes_bio_tick_durations(ctx)
 
 
 static func _test_primary_source_formatter_uses_visible_label(ctx) -> void:
@@ -184,4 +186,36 @@ static func _test_inspector_life_line_reuses_hud_language(ctx) -> void:
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_inspector_life_line({}) == "Life: n/a",
 		"Inspector zeigt ohne Biosphaeren-Basis explizit Life: n/a"
+	)
+
+
+static func _test_scale_formatter_uses_human_rate_language(ctx) -> void:
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_scale(3600.0, "5/8", 0.5, "wide", "root-overview")
+			== "Rate: 1 h/s   Preset 5/8   Zoom 50% wide (root-overview)",
+		"HUD formatter beschreibt Zeit jetzt als lesbare Rate statt als rohen x-Multiplikator"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_scale(1380.0, "Custom", 1.0, "focus-lock")
+			== "Rate: 23 min/s   Preset Custom   Zoom 100% focus-lock",
+		"Zwischenwerte behalten die Custom-Semantik und rendern trotzdem eine lesbare Rate"
+	)
+
+
+static func _test_cadence_formatter_humanizes_bio_tick_durations(ctx) -> void:
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_cadence(86400.0) == "Cadence: Bio tick ~ 10 s",
+		"Hohe Raten verkuerzen die Life-Cadence bis in Sekunden"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_cadence(3600.0) == "Cadence: Bio tick ~ 4 min",
+		"Default-Rate rendert die Life-Cadence kompakt in Minuten"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_cadence(180.0) == "Cadence: Bio tick ~ 1 h 20 min",
+		"Mittlere Raten rendern die Life-Cadence mit Stunden- und Minutenanteil"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_cadence(1.0) == "Cadence: Bio tick ~ 10 d",
+		"Der Slider-Feinmodus bleibt bis in Tagesdauern sauber lesbar"
 	)

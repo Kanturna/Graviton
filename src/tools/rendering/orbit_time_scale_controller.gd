@@ -2,8 +2,10 @@ class_name OrbitTimeScaleController
 extends RefCounted
 
 
-const DEFAULT_PRESET_INDEX: int = 6
-const TIME_SCALE_PRESETS: Array[float] = [0.25, 1.0, 10.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0]
+const DEFAULT_PRESET_INDEX: int = 4
+const TIME_SCALE_PRESETS: Array[float] = [10.0, 60.0, 600.0, 1800.0, 3600.0, 21600.0, 86400.0, 604800.0]
+const SLIDER_MIN_TIME_SCALE: float = 1.0
+const SLIDER_MAX_TIME_SCALE: float = 604800.0
 
 var _slider: HSlider = null
 var _time_scale_index: int = DEFAULT_PRESET_INDEX
@@ -105,8 +107,8 @@ func _sync_slider(scale: float) -> void:
 
 
 static func _minimum_time_scale() -> float:
-	return maxf(TIME_SCALE_PRESETS[0], 0.001)
+	return maxf(SLIDER_MIN_TIME_SCALE, 0.001)
 
 
 static func _maximum_time_scale() -> float:
-	return maxf(TIME_SCALE_PRESETS[TIME_SCALE_PRESETS.size() - 1], _minimum_time_scale())
+	return maxf(SLIDER_MAX_TIME_SCALE, _minimum_time_scale())
