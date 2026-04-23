@@ -8,6 +8,8 @@ const HARNESS_KEY_ORBIT_SERVICE: StringName = &"orbit_service"
 const HARNESS_KEY_THERMAL_SERVICE: StringName = &"thermal_service"
 const HARNESS_KEY_ATMOSPHERE_SERVICE: StringName = &"atmosphere_service"
 const HARNESS_KEY_ENVIRONMENT_SERVICE: StringName = &"environment_service"
+const HARNESS_KEY_PLANETARY_YEAR_SAMPLER: StringName = &"planetary_year_sampler"
+const HARNESS_KEY_PLANETARY_STATE_SERVICE: StringName = &"planetary_state_service"
 
 
 static func build_named_world_context(world_id: StringName) -> Dictionary:
@@ -28,6 +30,15 @@ static func build_named_world_context(world_id: StringName) -> Dictionary:
 	atmosphere_service.configure(registry, thermal_service)
 	var environment_service = load("res://src/sim/environment/environment_service.gd").new()
 	environment_service.configure(registry, atmosphere_service)
+	var planetary_year_sampler = load("res://src/sim/planetary/planetary_year_sampler.gd").new()
+	planetary_year_sampler.configure(registry)
+	var planetary_state_service = load("res://src/sim/planetary/planetary_state_service.gd").new()
+	planetary_state_service.configure(
+		registry,
+		thermal_service,
+		atmosphere_service,
+		planetary_year_sampler
+	)
 
 	return {
 		HARNESS_KEY_LOADER: loader,
@@ -37,10 +48,14 @@ static func build_named_world_context(world_id: StringName) -> Dictionary:
 		HARNESS_KEY_THERMAL_SERVICE: thermal_service,
 		HARNESS_KEY_ATMOSPHERE_SERVICE: atmosphere_service,
 		HARNESS_KEY_ENVIRONMENT_SERVICE: environment_service,
+		HARNESS_KEY_PLANETARY_YEAR_SAMPLER: planetary_year_sampler,
+		HARNESS_KEY_PLANETARY_STATE_SERVICE: planetary_state_service,
 	}
 
 
 static func teardown_context(ctx: Dictionary) -> void:
+	_free_if_present(ctx.get(HARNESS_KEY_PLANETARY_STATE_SERVICE, null))
+	_free_if_present(ctx.get(HARNESS_KEY_PLANETARY_YEAR_SAMPLER, null))
 	_free_if_present(ctx.get(HARNESS_KEY_ENVIRONMENT_SERVICE, null))
 	_free_if_present(ctx.get(HARNESS_KEY_ATMOSPHERE_SERVICE, null))
 	_free_if_present(ctx.get(HARNESS_KEY_THERMAL_SERVICE, null))

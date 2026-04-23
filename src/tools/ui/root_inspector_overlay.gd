@@ -223,7 +223,7 @@ func _apply_model(model: Dictionary) -> void:
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.text = _format_row_text(row)
-		button.clip_text = true
+		button.clip_text = false
 		button.focus_mode = Control.FOCUS_NONE
 		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		button.add_theme_stylebox_override("normal", _row_style_active if bool(row.get("is_focused", false)) else _row_style_normal)
@@ -253,7 +253,11 @@ static func _format_row_text(row: Dictionary) -> String:
 	var note_text: String = String(row.get("note_text", ""))
 	if note_text != "":
 		parts.append(note_text)
-	return "   ".join(parts)
+	var line_one: String = "   ".join(parts)
+	var world_text: String = String(row.get("world_text", ""))
+	if world_text == "":
+		return line_one
+	return "%s\n%s" % [line_one, world_text]
 
 
 func _on_row_pressed(body_id: StringName) -> void:

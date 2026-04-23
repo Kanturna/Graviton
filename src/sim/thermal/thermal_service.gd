@@ -10,6 +10,11 @@ extends Node
 # Insolationsgeometrie im Parent-kompatiblen Frame. source_dir_hat meint
 # dabei immer den normierten Vektor von Body -> Quelle; ein fehlender
 # saisonaler Basis-Frame liefert bewusst nur 0.0-Werte.
+#
+# P-State-Foundation erweitert diesen Service um pure Helper, damit
+# der planetare Jahres-Sampler dieselbe Radiative-/Saison-Math nutzt,
+# ohne `BodyState` oder `OrbitService.recompute_all_at_time(...)`
+# anfassen zu muessen.
 
 const HALF_PI: float = PI * 0.5
 const POLAR_LATITUDE_EPSILON_RAD: float = 1.0e-6
@@ -58,13 +63,18 @@ func compute_subsolar_latitude_rad(id: StringName) -> float:
 func compute_daily_mean_insolation_wpm2(id: StringName, latitude_rad: float) -> float:
 	if not is_finite(latitude_rad):
 		return 0.0
-	var radiative_context: Dictionary = _evaluate_radiative_context(id)
+	var radiative_context: Dictionary = _evaluate_radiative_context_current(id)
 	if not bool(radiative_context.get(CTX_OK, false)):
 		return 0.0
-	var seasonal_context: Dictionary = _evaluate_seasonal_context(radiative_context)
+	var def: BodyDef = radiative_context.get(CTX_BODY_DEF, null) as BodyDef
+	var seasonal_context: Dictionary = evaluate_seasonal_from_context(
+		def,
+		def.orbit_profile if def != null else null,
+		radiative_context.get(CTX_BODY_TO_SOURCE_M, Vector3.ZERO)
+	)
 	if not bool(seasonal_context.get(CTX_OK, false)):
 		return 0.0
-	return _compute_daily_mean_insolation_from(
+	return compute_daily_mean_insolation_from_context(
 		float(radiative_context.get(KEY_INSOLATION_WPM2, 0.0)),
 		float(seasonal_context.get(KEY_SUBSOLAR_LATITUDE_RAD, 0.0)),
 		latitude_rad
@@ -73,7 +83,7 @@ func compute_daily_mean_insolation_wpm2(id: StringName, latitude_rad: float) -> 
 
 func describe_body(id: StringName) -> Dictionary:
 	var description: Dictionary = _default_description(id)
-	var radiative_context: Dictionary = _evaluate_radiative_context(id)
+	var radiative_context: Dictionary = _evaluate_radiative_context_current(id)
 	if not bool(radiative_context.get(CTX_OK, false)):
 		return description
 
@@ -85,23 +95,28 @@ func describe_body(id: StringName) -> Dictionary:
 	description[KEY_EQUILIBRIUM_TEMPERATURE_K] = float(radiative_context.get(KEY_EQUILIBRIUM_TEMPERATURE_K, 0.0))
 	description[KEY_HAS_LUMINOUS_ANCESTOR] = true
 
-	var seasonal_context: Dictionary = _evaluate_seasonal_context(radiative_context)
+	var def: BodyDef = radiative_context.get(CTX_BODY_DEF, null) as BodyDef
+	var seasonal_context: Dictionary = evaluate_seasonal_from_context(
+		def,
+		def.orbit_profile if def != null else null,
+		radiative_context.get(CTX_BODY_TO_SOURCE_M, Vector3.ZERO)
+	)
 	if not bool(seasonal_context.get(CTX_OK, false)):
 		return description
 
 	var subsolar_latitude_rad: float = float(seasonal_context.get(KEY_SUBSOLAR_LATITUDE_RAD, 0.0))
 	description[KEY_SUBSOLAR_LATITUDE_RAD] = subsolar_latitude_rad
-	description[KEY_EQUATOR_DAILY_MEAN_INSOLATION_WPM2] = _compute_daily_mean_insolation_from(
+	description[KEY_EQUATOR_DAILY_MEAN_INSOLATION_WPM2] = compute_daily_mean_insolation_from_context(
 		float(radiative_context.get(KEY_INSOLATION_WPM2, 0.0)),
 		subsolar_latitude_rad,
 		0.0
 	)
-	description[KEY_NORTH_POLE_DAILY_MEAN_INSOLATION_WPM2] = _compute_daily_mean_insolation_from(
+	description[KEY_NORTH_POLE_DAILY_MEAN_INSOLATION_WPM2] = compute_daily_mean_insolation_from_context(
 		float(radiative_context.get(KEY_INSOLATION_WPM2, 0.0)),
 		subsolar_latitude_rad,
 		HALF_PI
 	)
-	description[KEY_SOUTH_POLE_DAILY_MEAN_INSOLATION_WPM2] = _compute_daily_mean_insolation_from(
+	description[KEY_SOUTH_POLE_DAILY_MEAN_INSOLATION_WPM2] = compute_daily_mean_insolation_from_context(
 		float(radiative_context.get(KEY_INSOLATION_WPM2, 0.0)),
 		subsolar_latitude_rad,
 		-HALF_PI
@@ -125,21 +140,17 @@ func _find_luminous_ancestor_id(start_id: StringName) -> StringName:
 	return StringName("")
 
 
-func _evaluate_radiative_context(id: StringName) -> Dictionary:
+func _evaluate_radiative_context_current(id: StringName) -> Dictionary:
 	if _registry == null:
 		return {CTX_OK: false}
 
 	var def: BodyDef = _registry.get_def(id)
 	if def == null:
 		return {CTX_OK: false}
-	var albedo: float = def.albedo
-	if not is_finite(albedo) or albedo < 0.0:
-		return {CTX_OK: false}
 
 	var source_id: StringName = _find_luminous_ancestor_id(def.parent_id)
 	if source_id == StringName(""):
 		return {CTX_OK: false}
-
 	var source_def: BodyDef = _registry.get_def(source_id)
 	if source_def == null or source_def.luminosity_w <= 0.0 or not is_finite(source_def.luminosity_w):
 		return {CTX_OK: false}
@@ -149,27 +160,11 @@ func _evaluate_radiative_context(id: StringName) -> Dictionary:
 		return {CTX_OK: false}
 
 	var body_to_source_m: Vector3 = source_vector_info.get(CTX_BODY_TO_ANCESTOR_M, Vector3.ZERO)
-	var distance_to_source_m: float = body_to_source_m.length()
-	if distance_to_source_m <= 0.0 or not is_finite(distance_to_source_m):
+	var radiative_context: Dictionary = evaluate_radiative_from_vectors(def, source_def, body_to_source_m)
+	if not bool(radiative_context.get(CTX_OK, false)):
 		return {CTX_OK: false}
-
-	var insolation_wpm2: float = source_def.luminosity_w / (4.0 * PI * distance_to_source_m * distance_to_source_m)
-	if not is_finite(insolation_wpm2) or insolation_wpm2 < 0.0:
-		return {CTX_OK: false}
-
-	var absorbed_flux_wpm2: float = _compute_absorbed_flux_wpm2_from(insolation_wpm2, albedo)
-	var equilibrium_temperature_k: float = _compute_equilibrium_temperature_k_from(absorbed_flux_wpm2)
-	return {
-		CTX_OK: true,
-		CTX_BODY_DEF: def,
-		KEY_SOURCE_ID: source_id,
-		KEY_DISTANCE_TO_SOURCE_M: distance_to_source_m,
-		CTX_BODY_TO_SOURCE_M: body_to_source_m,
-		KEY_ALBEDO: albedo,
-		KEY_INSOLATION_WPM2: insolation_wpm2,
-		KEY_ABSORBED_FLUX_WPM2: absorbed_flux_wpm2,
-		KEY_EQUILIBRIUM_TEMPERATURE_K: equilibrium_temperature_k,
-	}
+	radiative_context[CTX_BODY_DEF] = def
+	return radiative_context
 
 
 func _body_to_ancestor_vector(body_id: StringName, ancestor_id: StringName) -> Dictionary:
@@ -220,24 +215,54 @@ func _default_description(id: StringName) -> Dictionary:
 	}
 
 
-func _evaluate_seasonal_context(radiative_context: Dictionary) -> Dictionary:
-	var def: BodyDef = radiative_context.get(CTX_BODY_DEF, null) as BodyDef
-	if def == null or def.is_root():
+static func evaluate_radiative_from_vectors(body_def: BodyDef, source_def: BodyDef,
+		body_to_source_m: Vector3) -> Dictionary:
+	if body_def == null or source_def == null:
 		return {CTX_OK: false}
-	var profile: OrbitProfile = def.orbit_profile
-	if profile == null:
+	var albedo: float = body_def.albedo
+	if not is_finite(albedo) or albedo < 0.0:
 		return {CTX_OK: false}
-	if not is_finite(def.axial_tilt_rad) or not is_finite(def.north_pole_orbit_frame_azimuth_rad):
+	if not is_finite(source_def.luminosity_w) or source_def.luminosity_w <= 0.0:
 		return {CTX_OK: false}
-
-	var body_to_source_m: Vector3 = radiative_context.get(CTX_BODY_TO_SOURCE_M, Vector3.ZERO)
 	if not _is_finite_vec3(body_to_source_m) or body_to_source_m.length_squared() <= 0.0:
 		return {CTX_OK: false}
 
-	var sin_tilt: float = sin(def.axial_tilt_rad)
-	var cos_tilt: float = cos(def.axial_tilt_rad)
-	var cos_azimuth: float = cos(def.north_pole_orbit_frame_azimuth_rad)
-	var sin_azimuth: float = sin(def.north_pole_orbit_frame_azimuth_rad)
+	var distance_to_source_m: float = body_to_source_m.length()
+	if distance_to_source_m <= 0.0 or not is_finite(distance_to_source_m):
+		return {CTX_OK: false}
+
+	var insolation_wpm2: float = source_def.luminosity_w / (4.0 * PI * distance_to_source_m * distance_to_source_m)
+	if not is_finite(insolation_wpm2) or insolation_wpm2 < 0.0:
+		return {CTX_OK: false}
+	var absorbed_flux_wpm2: float = compute_absorbed_flux_wpm2_from_context(insolation_wpm2, albedo)
+	var equilibrium_temperature_k: float = compute_equilibrium_temperature_k_from_context(absorbed_flux_wpm2)
+	return {
+		CTX_OK: true,
+		KEY_SOURCE_ID: source_def.id,
+		KEY_DISTANCE_TO_SOURCE_M: distance_to_source_m,
+		CTX_BODY_TO_SOURCE_M: body_to_source_m,
+		KEY_ALBEDO: albedo,
+		KEY_INSOLATION_WPM2: insolation_wpm2,
+		KEY_ABSORBED_FLUX_WPM2: absorbed_flux_wpm2,
+		KEY_EQUILIBRIUM_TEMPERATURE_K: equilibrium_temperature_k,
+	}
+
+
+static func evaluate_seasonal_from_context(body_def: BodyDef, orbit_profile: OrbitProfile,
+		body_to_source_m: Vector3) -> Dictionary:
+	if body_def == null or body_def.is_root():
+		return {CTX_OK: false}
+	if orbit_profile == null:
+		return {CTX_OK: false}
+	if not is_finite(body_def.axial_tilt_rad) or not is_finite(body_def.north_pole_orbit_frame_azimuth_rad):
+		return {CTX_OK: false}
+	if not _is_finite_vec3(body_to_source_m) or body_to_source_m.length_squared() <= 0.0:
+		return {CTX_OK: false}
+
+	var sin_tilt: float = sin(body_def.axial_tilt_rad)
+	var cos_tilt: float = cos(body_def.axial_tilt_rad)
+	var cos_azimuth: float = cos(body_def.north_pole_orbit_frame_azimuth_rad)
+	var sin_azimuth: float = sin(body_def.north_pole_orbit_frame_azimuth_rad)
 	var spin_axis_orbit_frame := Vector3(
 		sin_tilt * cos_azimuth,
 		sin_tilt * sin_azimuth,
@@ -246,7 +271,7 @@ func _evaluate_seasonal_context(radiative_context: Dictionary) -> Dictionary:
 	if not _is_finite_vec3(spin_axis_orbit_frame) or spin_axis_orbit_frame.length_squared() <= 0.0:
 		return {CTX_OK: false}
 
-	var spin_axis_parent_frame: Vector3 = _rotate_orbit_frame_vector_to_parent(spin_axis_orbit_frame, profile)
+	var spin_axis_parent_frame: Vector3 = _rotate_orbit_frame_vector_to_parent(spin_axis_orbit_frame, orbit_profile)
 	if not _is_finite_vec3(spin_axis_parent_frame) or spin_axis_parent_frame.length_squared() <= 0.0:
 		return {CTX_OK: false}
 
@@ -261,7 +286,7 @@ func _evaluate_seasonal_context(radiative_context: Dictionary) -> Dictionary:
 	}
 
 
-func _rotate_orbit_frame_vector_to_parent(vector_orbit_frame: Vector3, profile: OrbitProfile) -> Vector3:
+static func _rotate_orbit_frame_vector_to_parent(vector_orbit_frame: Vector3, profile: OrbitProfile) -> Vector3:
 	if profile == null:
 		return Vector3.ZERO
 	match profile.mode:
@@ -278,7 +303,7 @@ func _rotate_orbit_frame_vector_to_parent(vector_orbit_frame: Vector3, profile: 
 			return Vector3.ZERO
 
 
-static func _compute_absorbed_flux_wpm2_from(insolation_wpm2: float, albedo: float) -> float:
+static func compute_absorbed_flux_wpm2_from_context(insolation_wpm2: float, albedo: float) -> float:
 	if not is_finite(insolation_wpm2) or insolation_wpm2 <= 0.0:
 		return 0.0
 	if not is_finite(albedo) or albedo < 0.0:
@@ -291,7 +316,7 @@ static func _compute_absorbed_flux_wpm2_from(insolation_wpm2: float, albedo: flo
 	return absorbed_flux_wpm2
 
 
-static func _compute_equilibrium_temperature_k_from(absorbed_flux_wpm2: float) -> float:
+static func compute_equilibrium_temperature_k_from_context(absorbed_flux_wpm2: float) -> float:
 	if not is_finite(absorbed_flux_wpm2) or absorbed_flux_wpm2 <= 0.0:
 		return 0.0
 	var equilibrium_temperature_k: float = pow(
@@ -303,7 +328,7 @@ static func _compute_equilibrium_temperature_k_from(absorbed_flux_wpm2: float) -
 	return equilibrium_temperature_k
 
 
-static func _compute_daily_mean_insolation_from(insolation_wpm2: float,
+static func compute_daily_mean_insolation_from_context(insolation_wpm2: float,
 		subsolar_latitude_rad: float, latitude_rad: float) -> float:
 	if not is_finite(insolation_wpm2) or insolation_wpm2 <= 0.0:
 		return 0.0

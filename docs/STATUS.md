@@ -1,6 +1,6 @@
 # Graviton - Status
 
-Stand: 2026-04-22
+Stand: 2026-04-23
 
 ## Kurzfassung
 
@@ -14,7 +14,8 @@ ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und
 Catalog-Builder und inkrementellen Runtime-Hotpath-Fixes fuer Bubble-,
 Derived- und Proxy-/Neighbor-Arbeit. Darauf sitzt jetzt zusaetzlich
 ein erster fokussierter Survey-UX-Slice als Root-Inspector fuer
-residente BH-Systeme.
+residente BH-Systeme sowie eine erste read-only `Planetary State
+Foundation` fuer laengerfristige Weltprofile von Planeten und Monden.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -74,6 +75,35 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `HABITABLE`, `MARGINAL` oder `HOSTILE` und leitet zusaetzlich erste
   planetare Oekosystem-Typen (`FROZEN`, `TEMPERATE`, `SEASONAL`,
   `HOT`) ab.
+- `BodyDef` enthaelt jetzt zusaetzlich zwei erste chemie-agnostische
+  Weltmodellachsen fuer spaetere Welt-/Life-Folgepfade:
+  `volatile_inventory_ratio` und `climate_buffer_factor`.
+- `ThermalService` und `AtmosphereService` exponieren jetzt zusaetzlich
+  pure Helper fuer radiative, saisonale und latitudinale
+  Temperaturauswertung, damit dieselbe Math sowohl im Live-Pfad als
+  auch in spaeterer Jahresanalyse verwendet wird.
+- `PlanetaryYearSampler` wertet planetare und lunare Jahresprofile jetzt
+  analytisch und read-only ueber `AUTHORED_ORBIT` bzw. `KEPLER_APPROX`
+  aus, ohne `BodyState`, `TimeService` oder
+  `OrbitService.recompute_all_at_time(...)` fuer Analysezwecke
+  anzufassen.
+- `PlanetaryStateService` liegt jetzt als eigener read-only
+  Derived-Service neben `EnvironmentService`:
+  `Environment` bleibt die Aussage fuer den aktuellen Zustand, `World`
+  beschreibt den Charakter ueber das Jahr.
+- `PlanetaryStateService` cached seine annualisierten sampled-year-
+  Profile pro Body jetzt lazy, weil diese in v1 nur von statischen
+  `BodyDef`-/Orbit-Daten abhaengen; `DerivedSnapshotCache` cached davon
+  nur noch die UI-konsumierbaren Desc-Copies.
+- Die annuale `World`-Lesart arbeitet jetzt ueber fuenf explizite
+  Klassenachsen:
+  `Volatiles`, `Buffering`, `Seasonality`, `Stability` und
+  `Thermal Extremity`.
+- Handgebaute Referenzwelten und der generierte Root-System-Pfad
+  wurden fuer diese neuen Achsen bewusst backfilled:
+  `sample_system`, `starter_world` und generierte `shade_*`-Planeten
+  tragen jetzt explizite oder deterministisch korrelierte
+  Reservoir-/Buffer-Werte statt impliziter Defaults.
 - Neue Sim-/Thermal-Regressionen pinnen jetzt explizit, dass ein
   blocked `NUMERIC_LOCAL`-Exit numerisch weiterintegriert und
   `ThermalService` dabei keinen stillen analytischen Rueck-Snap sieht.
@@ -220,6 +250,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   den aktuell inspizierten Fokus-Root wieder root-lokales
   Planet-/Moon-Interest aktivieren, damit Planetentypen und Climate-
   Badges sofort sichtbar bleiben.
+- Der Fokus-HUD und der Root-Inspector zeigen fuer `PLANET`- und
+  `MOON`-Bodies jetzt zusaetzlich eine kompakte `World:`-Zeile aus den
+  neuen planetaren Zustandsachsen, ohne daraus schon eine versteckte
+  Life- oder Biosphaeren-Aussage abzuleiten.
 - `GalaxyProxyRenderer` arbeitet jetzt auch view-seitig mit Tiering:
   entfernte Roots sind erst BH-only-Proxies; Stern-Proxies kommen erst
   oberhalb einer projizierten Root-Groesse mit eigener 96/80-px-
@@ -777,27 +811,28 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- als naechsten grossen Playtest-Block jetzt `scaleup_galaxy_100` im
-  Editor und unter Bewegung/Zoom gegen `scaleup_galaxy_30` vergleichen
-- dabei besonders bestaetigen, dass sich auch die 100-Root-Welt weiter
-  ruhig liest:
-  Proxy-Culling, BH-only-/Stern-Proxy-Tiering, bounded Streaming,
-  Fokuswechsel zwischen mehreren `shade_*`-Roots, Kamera-Haptik und der
-  F3-Diagnosepfad fuer sichtbare/gecullte Roots
-- danach den produktiven Large-World-Pfad eher ueber weitere
-  Proxy-/Perf-Trim-Arbeit oder planetare Proxy-/Derived-Folgearbeit
-  weiterziehen statt ueber noch mehr Root-Anzahl ohne 100-Root-
-  Playtest-Grundlage
-- parallel die additive Mehrquellenstrahlung fuer Mehrstern-Faelle als
-  naechsten grossen `ThermalService`-Block vorbereiten
-- danach weiter bewusst in Richtung globaler planetarer Oekosystem-
-  Typen mit Wasser-/Volatile-Logik und spaeterer Jahresmittel-/
-  Stabilitaetslogik gehen
-- parallel den neuen per-root Generator spaeter um weitere Galaxy-
-  Layout-Regeln und Vergleichswelten ausbauen
-- erst auf dieser Basis eine read-only Survey-/Notebook-/Scanner-
-  Schicht ueber bestehender Sim-Wahrheit planen
-- parallel kleine nicht-kanonische Doku-Drift bereinigen, wenn sie
-  wieder sichtbar wird
+- zuerst die neue `Planetary State Foundation` im echten Editor-/HUD-
+  Lauf abnehmen:
+  `sample_system.planet_a`, `starter_world.gamma_iv` sowie je ein klar
+  heisses und kaltes Gegenbeispiel im Fokus-HUD und im Root-Inspector
+  lesen
+- dabei den neuen `World:`-Pfad explizit gegen den bestehenden
+  `Environment`-/`Climate`-Pfad pruefen:
+  `Environment` soll weiter "jetzt", `World` bewusst "ueber das Jahr"
+  bedeuten
+- denselben Acceptance-Run gleich mit den offenen Large-World-Gates
+  koppeln:
+  `scaleup_galaxy_30` und `scaleup_galaxy_100` mit offenem Inspector im
+  `ROOT_OVERVIEW` pruefen, damit die neue planetare Desc-Familie die
+  ruhige Large-World-Haptik nicht regressiert
+- wenn dieser Playtest sauber ist, als naechsten Simulationsblock
+  `Life Potential v1` auf Basis der neuen Weltachsen schneiden:
+  read-only, text-/statusbasiert, noch ohne Populationen oder Wesen
+- falls der Playtest stattdessen zeigt, dass
+  `has_primary_source_only_basis` fuer Mehrstern-Faelle zu stoerend
+  wird, zuerst einen expliziten `Mehrquellenstrahlung`-Block vorziehen
+- den produktiven Large-World-Pfad weiter nur ueber Proxy-/Perf-Trim
+  oder planetare Derived-Folgearbeit ausbauen, nicht ueber noch mehr
+  Root-Anzahl ohne echten Editor-/Feel-Playtest
 - Headless-Basis nach diesem Block:
-  `./run_tests.bat` laeuft gruen mit `7207` Passed, `0` Failed
+  `./run_tests.bat` laeuft gruen mit `7279` Passed, `0` Failed

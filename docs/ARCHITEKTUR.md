@@ -25,6 +25,7 @@ src/runtime/       LocalBubbleManager, BubbleActivationSet,
    v
 src/sim/           UniverseRegistry, WorldLoader, OrbitService, LocalOrbitIntegrator,
                    ThermalService, AtmosphereService, EnvironmentService,
+                   PlanetaryYearSampler, PlanetaryStateService,
                    GalaxyDef/RootSystemManifest/RootSystemGenerator,
                    BodyDef/State, OrbitProfile, OrbitMode
    |
@@ -132,6 +133,13 @@ _ready():
     ThermalService.configure(UniverseRegistry)
     AtmosphereService.configure(UniverseRegistry, ThermalService)
     EnvironmentService.configure(UniverseRegistry, AtmosphereService)
+    PlanetaryYearSampler.configure(UniverseRegistry)
+    PlanetaryStateService.configure(
+        UniverseRegistry,
+        ThermalService,
+        AtmosphereService,
+        PlanetaryYearSampler
+    )
     DerivedSnapshotCache.configure(
         UniverseRegistry,
         TimeService,
@@ -139,7 +147,8 @@ _ready():
         WorldLoader,
         ThermalService,
         EnvironmentService,
-        OrbitService
+        OrbitService,
+        PlanetaryStateService
     )
     OrbitViewRenderer.set_derived_snapshot_cache(DerivedSnapshotCache)
     OrbitService.bodies_updated.connect(
@@ -178,6 +187,12 @@ Auch Diagnosepfade wie `DebugOverlay` duerfen bei verdrahtetem
 `DerivedSnapshotCache` nicht live auf
 `ThermalService.describe_body(...)` zurueckfallen; Cache-Miss bleibt
 sichtbar als `n/a`.
+
+Jahresprofile fuer planetare Bodies werden bewusst nicht ueber
+temporale Mutation der Live-Registry erzeugt. `PlanetaryYearSampler`
+arbeitet analytisch und read-only auf `BodyDef`-/Orbitdaten und darf
+weder `BodyState` noch `TimeService` noch
+`OrbitService.recompute_all_at_time(...)` fuer Analysezwecke verwenden.
 
 Fuer grosse Multi-Root-Welten bleibt dieselbe Schichtung erhalten:
 

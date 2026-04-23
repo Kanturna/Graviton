@@ -3,6 +3,7 @@ extends RefCounted
 
 const EnvironmentServiceScript = preload("res://src/sim/environment/environment_service.gd")
 const ThermalServiceScript = preload("res://src/sim/thermal/thermal_service.gd")
+const PlanetaryStateServiceScript = preload("res://src/sim/planetary/planetary_state_service.gd")
 
 
 static func format_focus(focus_name: String) -> String:
@@ -30,6 +31,18 @@ static func format_bands(environment_desc: Dictionary) -> String:
 	]
 
 
+static func format_world(planetary_state_desc: Dictionary) -> String:
+	if not bool(planetary_state_desc.get(PlanetaryStateServiceScript.KEY_HAS_SAMPLED_YEAR_BASIS, false)):
+		return "World: n/a"
+	return "World: %s / %s / %s / %s / %s" % [
+		_volatile_inventory_text(planetary_state_desc),
+		_climate_buffer_text(planetary_state_desc),
+		_seasonality_text(planetary_state_desc),
+		_stability_text(planetary_state_desc),
+		_thermal_extremity_text(planetary_state_desc),
+	]
+
+
 static func format_season(thermal_desc: Dictionary) -> String:
 	if not bool(thermal_desc.get(ThermalServiceScript.KEY_HAS_SEASONAL_BASIS, false)):
 		return "Season: n/a"
@@ -51,6 +64,21 @@ static func format_inspector_environment_badge(environment_desc: Dictionary) -> 
 		_environment_class_text(environment_desc),
 		_ecosystem_text(environment_desc),
 	]
+
+
+static func format_inspector_world_line(planetary_state_desc: Dictionary) -> String:
+	if not bool(planetary_state_desc.get(PlanetaryStateServiceScript.KEY_HAS_SAMPLED_YEAR_BASIS, false)):
+		return "World: n/a"
+	var segments: Array[String] = [
+		_volatile_inventory_text(planetary_state_desc),
+		_climate_buffer_text(planetary_state_desc),
+		_stability_text(planetary_state_desc),
+		_thermal_extremity_text(planetary_state_desc),
+	]
+	var seasonality_text: String = _seasonality_text(planetary_state_desc)
+	if seasonality_text != "LOW":
+		segments.append(seasonality_text)
+	return "World: %s" % " / ".join(segments)
 
 
 static func format_time(sim_time_s: float, tick_count: int, fps: int) -> String:
@@ -97,4 +125,49 @@ static func _environment_class_text(environment_desc: Dictionary) -> String:
 static func _ecosystem_text(environment_desc: Dictionary) -> String:
 	return EnvironmentServiceScript.to_string_ecosystem(
 		int(environment_desc.get(EnvironmentServiceScript.KEY_ECOSYSTEM_TYPE, EnvironmentServiceScript.EcosystemType.FROZEN_WORLD))
+	)
+
+
+static func _volatile_inventory_text(planetary_state_desc: Dictionary) -> String:
+	return PlanetaryStateServiceScript.to_string_volatile_inventory_class(
+		int(planetary_state_desc.get(
+			PlanetaryStateServiceScript.KEY_VOLATILE_INVENTORY_CLASS,
+			PlanetaryStateServiceScript.VolatileInventoryClass.TRACE
+		))
+	)
+
+
+static func _climate_buffer_text(planetary_state_desc: Dictionary) -> String:
+	return PlanetaryStateServiceScript.to_string_climate_buffer_class(
+		int(planetary_state_desc.get(
+			PlanetaryStateServiceScript.KEY_CLIMATE_BUFFER_CLASS,
+			PlanetaryStateServiceScript.ClimateBufferClass.UNBUFFERED
+		))
+	)
+
+
+static func _thermal_extremity_text(planetary_state_desc: Dictionary) -> String:
+	return PlanetaryStateServiceScript.to_string_thermal_extremity_class(
+		int(planetary_state_desc.get(
+			PlanetaryStateServiceScript.KEY_THERMAL_EXTREMITY_CLASS,
+			PlanetaryStateServiceScript.ThermalExtremityClass.FROZEN
+		))
+	)
+
+
+static func _seasonality_text(planetary_state_desc: Dictionary) -> String:
+	return PlanetaryStateServiceScript.to_string_seasonality_class(
+		int(planetary_state_desc.get(
+			PlanetaryStateServiceScript.KEY_SEASONALITY_CLASS,
+			PlanetaryStateServiceScript.SeasonalityClass.LOW
+		))
+	)
+
+
+static func _stability_text(planetary_state_desc: Dictionary) -> String:
+	return PlanetaryStateServiceScript.to_string_stability_class(
+		int(planetary_state_desc.get(
+			PlanetaryStateServiceScript.KEY_STABILITY_CLASS,
+			PlanetaryStateServiceScript.StabilityClass.FRAGILE
+		))
 	)

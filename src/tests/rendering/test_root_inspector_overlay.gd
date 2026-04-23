@@ -77,6 +77,11 @@ static func _test_model_builder_builds_hierarchy_and_summary_for_starter_root(ct
 		],
 		"ModelBuilder baut die BH->Star->Planet->Moon-Hierarchie in stabiler Registry-Reihenfolge auf"
 	)
+	var gamma_iv_row: Dictionary = _row_by_body_id(rows, &"gamma_iv")
+	ctx.assert_true(
+		String(gamma_iv_row.get("world_text", "")) == "World: LIMITED / MODERATE / WINDOWED / TEMPERATE / SEASONAL",
+		"ModelBuilder haengt fuer planetare Bodies die neue kompakte World-Zeile an"
+	)
 
 	var summary: Dictionary = model.get("summary", {})
 	var expected_environment_counts: Dictionary = _environment_class_counts(context.get("snapshot_cache"), _planetary_interest_ids_for_root(context.get("registry"), context.get("topology"), &"obsidian"))
@@ -144,7 +149,8 @@ static func _build_starter_root_context() -> Dictionary:
 		setup.get(SimTestHarnessScript.HARNESS_KEY_LOADER),
 		setup.get(SimTestHarnessScript.HARNESS_KEY_THERMAL_SERVICE),
 		setup.get(SimTestHarnessScript.HARNESS_KEY_ENVIRONMENT_SERVICE),
-		setup.get(SimTestHarnessScript.HARNESS_KEY_ORBIT_SERVICE)
+		setup.get(SimTestHarnessScript.HARNESS_KEY_ORBIT_SERVICE),
+		setup.get(SimTestHarnessScript.HARNESS_KEY_PLANETARY_STATE_SERVICE)
 	)
 	snapshot_cache.set_interest_ids(
 		_planetary_interest_ids_for_root(
@@ -213,3 +219,11 @@ static func _row_body_ids(rows: Array) -> Array[StringName]:
 		var row: Dictionary = row_variant
 		out.append(row.get("body_id", StringName("")))
 	return out
+
+
+static func _row_by_body_id(rows: Array, body_id: StringName) -> Dictionary:
+	for row_variant in rows:
+		var row: Dictionary = row_variant
+		if row.get("body_id", StringName("")) == body_id:
+			return row
+	return {}

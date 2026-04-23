@@ -14,9 +14,9 @@ const GeneratedScaleupRootFactoryScript = preload("res://src/sim/world/generated
 const GeneratedRootManifestFactoryScript = preload("res://src/sim/world/generated_root_manifest_factory.gd")
 const RootSystemGeneratorScript = preload("res://src/sim/world/root_system_generator.gd")
 
-const SCALEUP_GALAXY_10_CONTENT_SIGNATURE_SHA256: String = "07f9964968d845d8cd684637c44c153b240a8408b35304396e9a83cb5252bd9d"
-const SCALEUP_GALAXY_30_CONTENT_SIGNATURE_SHA256: String = "d96aad5d466c1e1adadfffa9b3fdd7026d0c8d384fac3de1d2dd89d49a4fe06f"
-const SCALEUP_GALAXY_100_CONTENT_SIGNATURE_SHA256: String = "bcba99825e7e2331aa66081b6c565f0949b1a357b1fb37fbbc4b72d85ca4e5ac"
+const SCALEUP_GALAXY_10_CONTENT_SIGNATURE_SHA256: String = "65a2506f2bc55a77b49fbe21c47a5e27dbe6fcb96c2030211546ad6ea6d50f58"
+const SCALEUP_GALAXY_30_CONTENT_SIGNATURE_SHA256: String = "0fd01d3b0372ece1bafeacdc4ab987f59bb7a37aafd09cdb52a6af44a33944f9"
+const SCALEUP_GALAXY_100_CONTENT_SIGNATURE_SHA256: String = "807fba9d535b31b21c699bfa4260d761f2b3703da16bb15759996e28e694838b"
 
 
 class BubbleProbe:

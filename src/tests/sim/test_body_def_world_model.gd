@@ -14,6 +14,12 @@ static func run(ctx) -> void:
 	_test_albedo_boundary_values(ctx)
 	_test_albedo_out_of_range_is_invalid(ctx)
 	_test_non_finite_albedo_is_invalid(ctx)
+	_test_volatile_inventory_boundary_values_are_valid(ctx)
+	_test_volatile_inventory_out_of_range_is_invalid(ctx)
+	_test_non_finite_volatile_inventory_is_invalid(ctx)
+	_test_climate_buffer_boundary_values_are_valid(ctx)
+	_test_climate_buffer_out_of_range_is_invalid(ctx)
+	_test_non_finite_climate_buffer_is_invalid(ctx)
 	_test_greenhouse_boundary_value_is_valid(ctx)
 	_test_negative_greenhouse_is_invalid(ctx)
 	_test_greenhouse_above_sanity_limit_is_invalid(ctx)
@@ -123,6 +129,66 @@ static func _test_non_finite_albedo_is_invalid(ctx) -> void:
 	var nan_def := _make_valid_root()
 	nan_def.albedo = NAN
 	ctx.assert_true(not nan_def.is_valid(), "albedo = NaN ist invalid")
+
+
+static func _test_volatile_inventory_boundary_values_are_valid(ctx) -> void:
+	var zero_def := _make_valid_root()
+	zero_def.volatile_inventory_ratio = 0.0
+	ctx.assert_true(zero_def.is_valid(), "volatile_inventory_ratio = 0.0 ist valid")
+
+	var one_def := _make_valid_root()
+	one_def.volatile_inventory_ratio = 1.0
+	ctx.assert_true(one_def.is_valid(), "volatile_inventory_ratio = 1.0 ist valid")
+
+
+static func _test_volatile_inventory_out_of_range_is_invalid(ctx) -> void:
+	var below_def := _make_valid_root()
+	below_def.volatile_inventory_ratio = -0.0001
+	ctx.assert_true(not below_def.is_valid(), "volatile_inventory_ratio < 0.0 ist invalid")
+
+	var above_def := _make_valid_root()
+	above_def.volatile_inventory_ratio = 1.0001
+	ctx.assert_true(not above_def.is_valid(), "volatile_inventory_ratio > 1.0 ist invalid")
+
+
+static func _test_non_finite_volatile_inventory_is_invalid(ctx) -> void:
+	var inf_def := _make_valid_root()
+	inf_def.volatile_inventory_ratio = INF
+	ctx.assert_true(not inf_def.is_valid(), "volatile_inventory_ratio = INF ist invalid")
+
+	var nan_def := _make_valid_root()
+	nan_def.volatile_inventory_ratio = NAN
+	ctx.assert_true(not nan_def.is_valid(), "volatile_inventory_ratio = NaN ist invalid")
+
+
+static func _test_climate_buffer_boundary_values_are_valid(ctx) -> void:
+	var zero_def := _make_valid_root()
+	zero_def.climate_buffer_factor = 0.0
+	ctx.assert_true(zero_def.is_valid(), "climate_buffer_factor = 0.0 ist valid")
+
+	var one_def := _make_valid_root()
+	one_def.climate_buffer_factor = 1.0
+	ctx.assert_true(one_def.is_valid(), "climate_buffer_factor = 1.0 ist valid")
+
+
+static func _test_climate_buffer_out_of_range_is_invalid(ctx) -> void:
+	var below_def := _make_valid_root()
+	below_def.climate_buffer_factor = -0.0001
+	ctx.assert_true(not below_def.is_valid(), "climate_buffer_factor < 0.0 ist invalid")
+
+	var above_def := _make_valid_root()
+	above_def.climate_buffer_factor = 1.0001
+	ctx.assert_true(not above_def.is_valid(), "climate_buffer_factor > 1.0 ist invalid")
+
+
+static func _test_non_finite_climate_buffer_is_invalid(ctx) -> void:
+	var inf_def := _make_valid_root()
+	inf_def.climate_buffer_factor = INF
+	ctx.assert_true(not inf_def.is_valid(), "climate_buffer_factor = INF ist invalid")
+
+	var nan_def := _make_valid_root()
+	nan_def.climate_buffer_factor = NAN
+	ctx.assert_true(not nan_def.is_valid(), "climate_buffer_factor = NaN ist invalid")
 
 
 static func _test_greenhouse_boundary_value_is_valid(ctx) -> void:

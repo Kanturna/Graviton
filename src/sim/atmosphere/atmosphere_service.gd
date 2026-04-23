@@ -7,6 +7,10 @@ extends Node
 # Oberflaechenerwaermung auf Basis von `equilibrium_temperature_k`.
 # Caller-Contract wie bei ThermalService: Die States muessen nach dem
 # letzten OrbitService-Tick oder recompute_all_at_time() aktuell sein.
+#
+# P-State-Foundation extrahiert zusaetzlich pure Helper, damit der
+# planetare Jahres-Sampler dieselbe latitudinale Surface-Math ohne
+# `BodyState`-Mutation konsumieren kann.
 
 const ThermalServiceScript = preload("res://src/sim/thermal/thermal_service.gd")
 
@@ -68,29 +72,13 @@ func compute_surface_temperature_at_latitude_k(id: StringName, latitude_rad: flo
 	if not bool(thermal_desc.get(ThermalServiceScript.KEY_HAS_SEASONAL_BASIS, false)):
 		return 0.0
 
-	var clamped_latitude_rad: float = clampf(latitude_rad, -PI * 0.5, PI * 0.5)
-	var daily_mean_insolation_wpm2: float = _thermal_service.compute_daily_mean_insolation_wpm2(
-		id,
-		clamped_latitude_rad
+	return compute_surface_temperature_at_latitude_from_contexts(
+		float(thermal_desc.get(ThermalServiceScript.KEY_INSOLATION_WPM2, 0.0)),
+		float(thermal_desc.get(ThermalServiceScript.KEY_SUBSOLAR_LATITUDE_RAD, 0.0)),
+		latitude_rad,
+		albedo,
+		greenhouse_delta_k
 	)
-	if not is_finite(daily_mean_insolation_wpm2) or daily_mean_insolation_wpm2 <= 0.0:
-		return 0.0
-
-	var absorbed_lat_flux_wpm2: float = (1.0 - albedo) * daily_mean_insolation_wpm2
-	if not is_finite(absorbed_lat_flux_wpm2) or absorbed_lat_flux_wpm2 <= 0.0:
-		return 0.0
-
-	var lat_equilibrium_temperature_k: float = pow(
-		absorbed_lat_flux_wpm2 / UnitSystem.STEFAN_BOLTZMANN_WPM2K4,
-		0.25
-	)
-	if not is_finite(lat_equilibrium_temperature_k) or lat_equilibrium_temperature_k <= 0.0:
-		return 0.0
-
-	var surface_temperature_k: float = lat_equilibrium_temperature_k + greenhouse_delta_k
-	if not is_finite(surface_temperature_k) or surface_temperature_k < 0.0:
-		return 0.0
-	return surface_temperature_k
 
 
 func describe_body(id: StringName) -> Dictionary:
@@ -120,7 +108,10 @@ func describe_body(id: StringName) -> Dictionary:
 	if not is_finite(equilibrium_temperature_k) or equilibrium_temperature_k <= 0.0:
 		return description
 
-	var surface_temperature_k: float = equilibrium_temperature_k + greenhouse_delta_k
+	var surface_temperature_k: float = compute_surface_temperature_k_from_equilibrium(
+		equilibrium_temperature_k,
+		greenhouse_delta_k
+	)
 	if not is_finite(surface_temperature_k) or surface_temperature_k < 0.0:
 		return description
 
@@ -147,6 +138,51 @@ func describe_body(id: StringName) -> Dictionary:
 	description[KEY_NORTH_MIDLATITUDE_SURFACE_TEMPERATURE_K] = north_midlatitude_surface_temperature_k
 	description[KEY_HAS_LATITUDINAL_SURFACE_BASIS] = true
 	return description
+
+
+static func compute_surface_temperature_k_from_equilibrium(
+		equilibrium_temperature_k: float,
+		greenhouse_delta_k: float
+	) -> float:
+	if not is_finite(equilibrium_temperature_k) or equilibrium_temperature_k <= 0.0:
+		return 0.0
+	if not is_finite(greenhouse_delta_k) or greenhouse_delta_k < 0.0 or greenhouse_delta_k > MAX_GREENHOUSE_DELTA_K:
+		return 0.0
+	var surface_temperature_k: float = equilibrium_temperature_k + greenhouse_delta_k
+	if not is_finite(surface_temperature_k) or surface_temperature_k < 0.0:
+		return 0.0
+	return surface_temperature_k
+
+
+static func compute_surface_temperature_at_latitude_from_contexts(
+		insolation_wpm2: float,
+		subsolar_latitude_rad: float,
+		latitude_rad: float,
+		albedo: float,
+		greenhouse_delta_k: float
+	) -> float:
+	if not is_finite(latitude_rad):
+		return 0.0
+	if not is_finite(albedo) or albedo < 0.0 or albedo > 1.0:
+		return 0.0
+	if not is_finite(greenhouse_delta_k) or greenhouse_delta_k < 0.0 or greenhouse_delta_k > MAX_GREENHOUSE_DELTA_K:
+		return 0.0
+	var clamped_latitude_rad: float = clampf(latitude_rad, -PI * 0.5, PI * 0.5)
+	var daily_mean_insolation_wpm2: float = ThermalServiceScript.compute_daily_mean_insolation_from_context(
+		insolation_wpm2,
+		subsolar_latitude_rad,
+		clamped_latitude_rad
+	)
+	if not is_finite(daily_mean_insolation_wpm2) or daily_mean_insolation_wpm2 <= 0.0:
+		return 0.0
+
+	var absorbed_lat_flux_wpm2: float = (1.0 - albedo) * daily_mean_insolation_wpm2
+	var lat_equilibrium_temperature_k: float = ThermalServiceScript.compute_equilibrium_temperature_k_from_context(
+		absorbed_lat_flux_wpm2
+	)
+	if not is_finite(lat_equilibrium_temperature_k) or lat_equilibrium_temperature_k <= 0.0:
+		return 0.0
+	return compute_surface_temperature_k_from_equilibrium(lat_equilibrium_temperature_k, greenhouse_delta_k)
 
 
 func _default_description(id: StringName) -> Dictionary:

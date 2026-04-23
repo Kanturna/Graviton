@@ -58,6 +58,8 @@ static func _world_signature(defs: Array[BodyDef]) -> String:
 			str(def.mass_kg),
 			str(def.radius_m),
 			str(def.albedo),
+			str(def.volatile_inventory_ratio),
+			str(def.climate_buffer_factor),
 			str(def.greenhouse_delta_k),
 			str(def.axial_tilt_rad),
 			str(def.north_pole_orbit_frame_azimuth_rad),

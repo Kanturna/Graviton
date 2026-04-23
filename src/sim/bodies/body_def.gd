@@ -31,6 +31,12 @@ extends Resource
 @export var luminosity_w: float = 0.0
 # Dimensionsloser Reflexionswert im Bereich `0.0 .. 1.0`.
 @export var albedo: float = 0.0
+# Allgemeiner Proxy fuer verfuegbare Reservoirs / fluechtige Stoffe.
+# Bewusst chemie-agnostisch und im Bereich `0.0 .. 1.0`.
+@export var volatile_inventory_ratio: float = 0.0
+# Allgemeiner Proxy fuer thermische / klimatische Pufferung.
+# Bewusst aggregiert statt bereits ein Ozean-/Druck-/Chemie-Modell.
+@export var climate_buffer_factor: float = 0.0
 # Datengetriebener additiver Offset auf die Gleichgewichtstemperatur.
 # Toy-Greenhouse-Modell ohne Atmosphaeren-Chemie, Druck oder optische Tiefe.
 # `0.0` bedeutet: kein modellierter Greenhouse-Beitrag.
@@ -56,13 +62,21 @@ func is_valid() -> bool:
 		return false
 	if not is_finite(north_pole_orbit_frame_azimuth_rad):
 		return false
-	if not is_finite(luminosity_w) or not is_finite(albedo) or not is_finite(greenhouse_delta_k):
+	if not is_finite(luminosity_w) \
+			or not is_finite(albedo) \
+			or not is_finite(volatile_inventory_ratio) \
+			or not is_finite(climate_buffer_factor) \
+			or not is_finite(greenhouse_delta_k):
 		return false
 	if rotation_period_s < 0.0:
 		return false
 	if luminosity_w < 0.0:
 		return false
 	if albedo < 0.0 or albedo > 1.0:
+		return false
+	if volatile_inventory_ratio < 0.0 or volatile_inventory_ratio > 1.0:
+		return false
+	if climate_buffer_factor < 0.0 or climate_buffer_factor > 1.0:
 		return false
 	if greenhouse_delta_k < 0.0 or greenhouse_delta_k > 2000.0:
 		return false

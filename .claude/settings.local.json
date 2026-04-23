@@ -6,7 +6,12 @@
       "PowerShell(& \"D:\\\\Programme\\\\Godot\\\\godot_console.exe\" --path \"D:\\\\Projekte\\\\Godot\\\\Graviton\" --headless --script res://src/tests/test_runner.gd --quit 2>&1)",
       "PowerShell(& \"D:\\\\Programme\\\\Godot\\\\godot_console.exe\" --path \"d:\\\\Projekte\\\\Godot\\\\Graviton\" --headless --script res://src/tests/test_runner.gd --quit 2>$null)",
       "PowerShell(& \"d:\\\\Projekte\\\\Godot\\\\Graviton\\\\run_tests.bat\" 2>&1)",
-      "PowerShell(cmd.exe /c \"d:\\\\Projekte\\\\Godot\\\\Graviton\\\\run_tests.bat\" 2>&1)"
+      "PowerShell(cmd.exe /c \"d:\\\\Projekte\\\\Godot\\\\Graviton\\\\run_tests.bat\" 2>&1)",
+      "PowerShell(git diff HEAD -- src/tools/rendering/orbit_hud_formatter.gd src/tools/ui/root_inspector_model_builder.gd src/tools/ui/root_inspector_overlay.gd scenes/testbeds/orbit_testbed.gd)",
+      "PowerShell(git diff HEAD -- scenes/testbeds/orbit_testbed.tscn)",
+      "PowerShell(git diff HEAD -- data/sample_system.gd data/starter_world.gd src/sim/world/root_system_generator.gd)",
+      "PowerShell(& \"D:\\\\Programme\\\\Godot\\\\godot_console.exe\" --path . --headless --script res://src/tests/test_runner.gd --quit 2>&1)",
+      "PowerShell(git diff HEAD -- src/sim/world/world_loader.gd src/tests/helpers/sim_test_harness.gd)"
     ]
   }
 }

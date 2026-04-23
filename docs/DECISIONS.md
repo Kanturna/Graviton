@@ -1,5 +1,36 @@
 # Graviton - Decisions
 
+## 2026-04-23 - Planetare Zustandsbasis landet als eigener Jahres-Layer vor jeder Life-Simulation
+
+Der naechste planetare Simulationsschritt wird nicht als direkte
+Life-/Biosphaerenlogik gebaut. Stattdessen bekommt `Graviton` zuerst
+einen eigenen read-only Jahres-/Weltcharakter-Layer neben der
+bisherigen momentanen Thermal-/Environment-Aussage.
+
+Konsequenz:
+
+- `EnvironmentService` bleibt die Antwort auf den **aktuellen**
+  Zustand eines planetaren Bodies
+- `PlanetaryStateService` beschreibt den **Charakter ueber das Jahr**
+  und fuehrt dafuer eigene Achsen wie `Volatiles`, `Buffering`,
+  `Seasonality`, `Stability` und `Thermal Extremity` ein
+- die neuen Achsen bleiben bewusst chemie-agnostisch; sie sollen spaeter
+  unterschiedliche Biochemie- oder Life-Pfade tragen koennen, statt
+  frueh einen Earth-first-Pfad einzubetonieren
+- fuer sampled-year-Analysen wird kein Langzeit-State in
+  `BodyState`, `TimeService` oder `OrbitService` aufgebaut;
+  Jahresprofile entstehen read-only ueber einen analytischen
+  `PlanetaryYearSampler`
+- die dafuer benoetigte Thermal-/Atmosphere-Math wird als pure
+  Helper-Schicht extrahiert, damit Live-Pfad und Jahres-Sampler
+  dieselbe Math teilen und nicht still auseinanderdriften
+- annualisierte sampled-year-Profile werden pro Body lazy gecacht,
+  weil sie in v1 nur von statischen `BodyDef`-/Orbit-Daten abhaengen;
+  `DerivedSnapshotCache` bleibt darueber nur die View-/HUD-Glue-Schicht
+- HUD und Root-Inspector duerfen die neue `World:`-Lesart direkt
+  anzeigen, ohne daraus schon eine versteckte Life-Aussage zu machen
+  oder Simulationswahrheit in die View zu verschieben
+
 ## 2026-04-22 - Survey-UX startet als residenter Root-Inspector vor einem globalen Galaxy-Atlas
 
 Die erste Survey-/Navigationsoberflaeche fuer Large Worlds startet nicht

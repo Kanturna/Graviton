@@ -76,6 +76,22 @@ class EnvironmentStub:
 		}
 
 
+class PlanetaryStateStub:
+	extends Node
+
+	var describe_calls: int = 0
+	var describe_calls_by_id: Dictionary = {}
+
+	func describe_body(id: StringName) -> Dictionary:
+		describe_calls += 1
+		describe_calls_by_id[id] = int(describe_calls_by_id.get(id, 0)) + 1
+		return {
+			"body_id": id,
+			"has_sampled_year_basis": id != &"genesis",
+			"volatile_inventory_class": 1,
+		}
+
+
 static func run(ctx) -> void:
 	ctx.current_suite = "test_derived_snapshot_cache"
 	_test_cache_tracks_interest_and_dirty_updates(ctx)
@@ -90,6 +106,7 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	var orbit_service := OrbitServiceStub.new()
 	var thermal_service := ThermalStub.new()
 	var environment_service := EnvironmentStub.new()
+	var planetary_state_service := PlanetaryStateStub.new()
 	var cache = DerivedSnapshotCacheScript.new()
 
 	bubble.set_focus(&"planet_a")
@@ -100,7 +117,8 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 		world_loader,
 		thermal_service,
 		environment_service,
-		orbit_service
+		orbit_service,
+		planetary_state_service
 	)
 
 	ctx.assert_true(cache.get_revision() == 1, "configure baut den ersten Snapshot sofort")
@@ -110,6 +128,7 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	ctx.assert_true(environment_service.describe_calls == 1, "configure liest Environment-Werte nur fuer den Fokus")
 	ctx.assert_true(cache.get_focus_id() == &"planet_a", "configure uebernimmt den aktuellen Fokus")
 	ctx.assert_true(cache.get_focus_thermal_desc().get("body_id", &"") == &"planet_a", "Focus-Thermalsnapshot zeigt auf den Fokuskoerper")
+	ctx.assert_true(cache.get_focus_planetary_state_desc().get("body_id", &"") == &"planet_a", "configure baut auch den planetaren Focus-Snapshot")
 	ctx.assert_true(cache.get_environment_desc(&"moon_a").is_empty(), "nicht interessierte Bodies bleiben ungecacht")
 
 	cache.set_interest_ids([&"planet_a", &"moon_a"])
@@ -117,6 +136,7 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	ctx.assert_true(cache.get_last_refresh_reason() == DerivedSnapshotCacheScript.REASON_INTEREST_CHANGED, "interest change setzt den passenden Grund")
 	ctx.assert_true(cache.get_last_refreshed_body_count() == 2, "interest change refresht nur Fokus plus explizites Interesse")
 	ctx.assert_true(cache.get_thermal_desc(&"moon_a").get("body_id", &"") == &"moon_a", "interessierter Mond wird gecacht")
+	ctx.assert_true(cache.get_planetary_state_desc(&"moon_a").get("body_id", &"") == &"moon_a", "interessierter Mond bekommt auch einen planetaren Snapshot")
 
 	var revision_before_irrelevant_update: int = cache.get_revision()
 	var thermal_calls_before_irrelevant_update: int = thermal_service.describe_calls
@@ -149,6 +169,7 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	bubble.free()
 	thermal_service.free()
 	environment_service.free()
+	planetary_state_service.free()
 	world_loader.free()
 	time_service.free()
 	registry.free()

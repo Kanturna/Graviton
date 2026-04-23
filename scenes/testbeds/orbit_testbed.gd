@@ -7,6 +7,8 @@ const OrbitTimeScaleControllerScript = preload("res://src/tools/rendering/orbit_
 const UniverseTopologyScript = preload("res://src/sim/topology/universe_topology.gd")
 const DerivedSnapshotCacheScript = preload("res://src/runtime/derived/derived_snapshot_cache.gd")
 const GalaxyStreamingControllerScript = preload("res://src/runtime/streaming/galaxy_streaming_controller.gd")
+const PlanetaryYearSamplerScript = preload("res://src/sim/planetary/planetary_year_sampler.gd")
+const PlanetaryStateServiceScript = preload("res://src/sim/planetary/planetary_state_service.gd")
 
 const ZOOM_FACTOR_STEP: float = 1.12
 
@@ -27,6 +29,7 @@ const ZOOM_FACTOR_STEP: float = 1.12
 @onready var _focus_value: Label = $HudLayer/TopPanel/Margin/VBox/FocusValue
 @onready var _environment_value: Label = $HudLayer/TopPanel/Margin/VBox/EnvironmentValue
 @onready var _climate_value: Label = $HudLayer/TopPanel/Margin/VBox/ClimateValue
+@onready var _world_value: Label = $HudLayer/TopPanel/Margin/VBox/WorldValue
 @onready var _season_value: Label = $HudLayer/TopPanel/Margin/VBox/SeasonValue
 @onready var _time_value: Label = $HudLayer/TopPanel/Margin/VBox/TimeValue
 @onready var _scale_value: Label = $HudLayer/TopPanel/Margin/VBox/ScaleValue
@@ -39,6 +42,8 @@ var _camera_controller = OrbitCameraControllerScript.new()
 var _time_scale_controller = OrbitTimeScaleControllerScript.new()
 var _derived_snapshot_cache = DerivedSnapshotCacheScript.new()
 var _streaming_controller = GalaxyStreamingControllerScript.new()
+var _planetary_year_sampler = PlanetaryYearSamplerScript.new()
+var _planetary_state_service = PlanetaryStateServiceScript.new()
 var _focus_order: Array[StringName] = []
 var _topology = null
 var _focus_index: int = 0
@@ -101,6 +106,13 @@ func _ready() -> void:
 	_thermal_service.configure(UniverseRegistry)
 	_atmosphere_service.configure(UniverseRegistry, _thermal_service)
 	_environment_service.configure(UniverseRegistry, _atmosphere_service)
+	_planetary_year_sampler.configure(UniverseRegistry)
+	_planetary_state_service.configure(
+		UniverseRegistry,
+		_thermal_service,
+		_atmosphere_service,
+		_planetary_year_sampler
+	)
 
 	_renderer.configure(UniverseRegistry, _bubble, _topology)
 	_renderer.set_environment_service(_environment_service)
@@ -113,7 +125,8 @@ func _ready() -> void:
 		_world_loader,
 		_thermal_service,
 		_environment_service,
-		_orbit_service
+		_orbit_service,
+		_planetary_state_service
 	)
 	_configure_root_inspector()
 	_refresh_snapshot_interest_ids()
@@ -157,6 +170,12 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	_time_scale_controller.dispose()
 	_derived_snapshot_cache.dispose()
+	if _planetary_state_service != null:
+		_planetary_state_service.free()
+		_planetary_state_service = null
+	if _planetary_year_sampler != null:
+		_planetary_year_sampler.free()
+		_planetary_year_sampler = null
 
 
 func _process(delta: float) -> void:
@@ -256,12 +275,18 @@ func _update_hud() -> void:
 
 	var environment_desc: Dictionary = _derived_snapshot_cache.get_focus_environment_desc()
 	var thermal_desc: Dictionary = _derived_snapshot_cache.get_focus_thermal_desc()
+	var planetary_state_desc: Dictionary = _derived_snapshot_cache.get_focus_planetary_state_desc()
 
 	var fps: int = Engine.get_frames_per_second()
 	var speed_step_label: String = _time_scale_controller.get_step_label()
 	_focus_value.text = OrbitHudFormatterScript.format_focus(focus_name)
 	_environment_value.text = OrbitHudFormatterScript.format_environment(environment_desc)
 	_climate_value.text = OrbitHudFormatterScript.format_bands(environment_desc)
+	_world_value.visible = focus_def != null and (
+		focus_def.kind == BodyType.Kind.PLANET or focus_def.kind == BodyType.Kind.MOON
+	)
+	if _world_value.visible:
+		_world_value.text = OrbitHudFormatterScript.format_world(planetary_state_desc)
 	_season_value.text = "%s   %s" % [
 		OrbitHudFormatterScript.format_season(thermal_desc),
 		OrbitHudFormatterScript.format_primary_source(thermal_desc)

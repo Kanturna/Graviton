@@ -91,6 +91,7 @@ func _append_rows(
 	if def == null:
 		return
 	var environment_desc: Dictionary = _snapshot_cache.get_environment_desc(body_id)
+	var planetary_state_desc: Dictionary = _snapshot_cache.get_planetary_state_desc(body_id)
 	rows.append({
 		"body_id": body_id,
 		"depth": depth,
@@ -98,6 +99,7 @@ func _append_rows(
 		"kind_text": BodyType.to_string_kind(def.kind),
 		"badge_text": OrbitHudFormatterScript.format_inspector_environment_badge(environment_desc),
 		"note_text": _note_text_for_body(body_id, def, children_by_parent),
+		"world_text": _world_text_for_body(def, planetary_state_desc),
 		"is_focused": body_id == focused_body_id,
 	})
 
@@ -132,6 +134,14 @@ func _child_count_of_kind(parent_id: StringName, target_kind: int, children_by_p
 
 static func _count_label(count: int, singular: String, plural: String) -> String:
 	return "%d %s" % [count, singular if count == 1 else plural]
+
+
+static func _world_text_for_body(def: BodyDef, planetary_state_desc: Dictionary) -> String:
+	if def == null:
+		return ""
+	if def.kind != BodyType.Kind.PLANET and def.kind != BodyType.Kind.MOON:
+		return ""
+	return OrbitHudFormatterScript.format_inspector_world_line(planetary_state_desc)
 
 
 static func _display_name(def: BodyDef) -> String:

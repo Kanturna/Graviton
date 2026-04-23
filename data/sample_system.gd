@@ -57,6 +57,8 @@ static func _build_planet_a() -> BodyDef:
 	d.north_pole_orbit_frame_azimuth_rad = 0.0
 	d.luminosity_w = 0.0
 	d.albedo = 0.30
+	d.volatile_inventory_ratio = 0.78
+	d.climate_buffer_factor = 0.82
 	d.greenhouse_delta_k = 31.0
 	d.parent_id = &"sol"
 	d.orbit_profile = prof
@@ -76,6 +78,8 @@ static func _build_moon_a() -> BodyDef:
 	d.kind = BodyType.Kind.MOON
 	d.mass_kg = UnitSystem.LUNAR_MASS_KG
 	d.radius_m = 1.7374e6
+	d.volatile_inventory_ratio = 0.34
+	d.climate_buffer_factor = 0.28
 	d.parent_id = &"planet_a"
 	d.orbit_profile = prof
 	return d

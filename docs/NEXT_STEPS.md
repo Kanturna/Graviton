@@ -1,90 +1,84 @@
 # Graviton - Next Steps
 
-Stand: 2026-04-22
+Stand: 2026-04-23
 
-## Prioritaet 0 - Root-Inspector Acceptance Gate
+## Prioritaet 0 - Planetary-State Acceptance Gate
 
 Ziel:
-Den neuen `RootInspectorOverlay` im echten Editor-Lauf gegen
-`scaleup_galaxy_30` und `scaleup_galaxy_100` validieren, bevor ein
-groesserer Galaxy-Atlas oder weitere Survey-UX dazukommen.
+Die neue `Planetary State Foundation` im echten Editor-/Playtest-Lauf
+validieren, bevor daraus `Life Potential v1` oder eine groessere
+Survey-/Atlas-Schicht weitergezogen wird.
 
 Konkreter Ablauf:
 
 - `orbit_testbed.tscn` im Editor oeffnen
-- `initial_world_id` nacheinander auf `scaleup_galaxy_30` und
-  `scaleup_galaxy_100` setzen
-- in beiden Welten gezielt dieselben Faelle pruefen:
+- nacheinander diese Fokusfaelle pruefen:
+  - `sample_system` -> `planet_a`
+  - `starter_world` -> `gamma_iv`
+  - `starter_world` -> ein klar heisser Referenzplanet
+  - `starter_world` -> ein klar kalter Referenzplanet oder Mond
+- jeweils dieselben Dinge lesen:
+  - normales Fokus-HUD
+  - Root-Inspector-Zeile fuer denselben Body
+  - `Environment` / `Climate` gegen `World`
+- dabei bewusst auf diese Punkte achten:
+  - `Environment` bleibt die Aussage fuer **jetzt**
+  - `World` liest als **Jahrescharakter** statt als zweite
+    Momentaufnahme
+  - die `World:`-Zeile wirkt informativ, aber noch nicht wie heimlich
+    eingebaute Life- oder Biosphaeren-Logik
+  - `planet_a` liest weiter als reich/gut gepuffert, ohne die alte
+    `sample_system`-Umweltsemantik zu verlieren
+  - `gamma_iv` bleibt aktuell brauchbar, darf aber jahresweise klar nur
+    `WINDOWED`/saisonal lesen
+
+## Prioritaet 1 - Large-World Regression Gate mit offener World-Zeile
+
+Ziel:
+Sicherstellen, dass die neue planetare Desc-Familie den ruhigen
+Large-World-Pfad nicht regressiert.
+
+Konkreter Ablauf:
+
+- `scaleup_galaxy_30` und `scaleup_galaxy_100` im Editor vergleichen
+- in beiden Welten bewusst dieselben Faelle pruefen:
   - `ROOT_OVERVIEW`, Inspector zu
   - `ROOT_OVERVIEW`, Inspector offen
   - Detailblick nach Fokus auf Stern / Planet / Mond
-- dabei bewusst auf diese Punkte achten:
-  - BH-Proxy-Klick und BH-Body-Klick oeffnen den Inspector
-  - `Home`, `Tab`, `Backspace` und passive Residency-Wechsel oeffnen ihn
-    nicht
-  - der Inspector zeigt fuer den residenten Fokus-Root sauber
-    `BH -> stars -> planets -> moons`
-  - Planet-/Moon-Zeilen zeigen im offenen Inspector sofort
-    Environment-/Climate-Badges statt `n/a`, solange derselbe Root
-    inspiziert wird
-  - Klick auf eine Inspector-Zeile routed ueber den normalen Fokuspfad
-  - nach Close geht `ROOT_OVERVIEW` wieder auf den billigeren
-    fokus-only-Interest-Pfad zurueck
-  - speziell auf `scaleup_galaxy_100`: `ROOT_OVERVIEW + Inspector offen`
-    bleibt weiter ruhig und interaktiv
+- dabei besonders bestaetigen:
+  - `resident_root_ids` bleibt weiter `1..2`
+  - der Inspector zeigt fuer residente Planeten/Monde jetzt zusaetzlich
+    die kompakte `World:`-Lesart
+  - `ROOT_OVERVIEW + Inspector offen` bleibt auf `scaleup_galaxy_100`
+    weiter ruhig und interaktiv
+  - Proxy-Culling, BH-only-/Stern-Proxy-Tiering und Streaming-Hysterese
+    lesen weiter stabil
 
-Wenn der Playtest sauber ist:
+Wenn dieser Gate kippt:
 
-- danach als naechster UX-Block ein echter Galaxy-Atlas ueber leichte
-  Root-Summaries fuer nichtresidente Systeme
-- oder alternativ wieder Proxy-/Derived-Arbeit, falls der Inspector
-  noch keine groessere Survey-Oberflaeche braucht
-
-Wenn der Playtest kippt:
-
-- keinen Atlas-Block anfangen
+- keinen neuen Simulationsblock anfangen
 - stattdessen einen kleinen Korrekturblock direkt aus Inspector-,
-  Focus- oder Interest-Befunden schneiden
+  Snapshot- oder Derived-Interest-Befunden schneiden
 
-## Prioritaet 1 - 100-Root Playtest Gate
+## Prioritaet 2 - Naechster Simulationsblock: Life Potential v1 oder Mehrquellenstrahlung
 
 Ziel:
-Den neuen produktiven `scaleup_galaxy_100`-Pfad im Editor gegen den
-etablierten `scaleup_galaxy_30`-Pfad validieren, bevor weitere
-Root-Zahlen oder neue Proxy-Typen dazukommen.
+Nach einem sauberen Acceptance-Run den naechsten grossen planetaren
+Simulationsschritt bewusst waehlen.
 
-Konkreter Ablauf:
+Bevorzugte Richtung:
 
-- `orbit_testbed.tscn` im Editor oeffnen
-- `initial_world_id` temporaer auf `scaleup_galaxy_30` und danach auf
-  `scaleup_galaxy_100` setzen
-- dieselben Szenen jeweils in drei Zustaenden vergleichen:
-  - `F3 aus + ROOT_OVERVIEW`
-  - `F3 an + ROOT_OVERVIEW`
-  - Detailansicht
-- dabei bewusst auf Large-World-spezifische Diagnosepunkte achten:
-  - `resident_root_ids` bleibt immer `1..2`
-  - `desired_neighbor_root_id` / `resident_neighbor_root_id` lesen
-    weiter ruhig
-  - Proxy-Culling liest als reduzierte sichtbare Teilmenge, nicht als
-    Ausfall oder Chatter
-  - BH-only-/Stern-Proxy-Tiering bleibt an Zoom- und Pan-Kanten stabil
-  - Fokuswechsel ueber mehrere `shade_*`-Roots bleiben ohne spuerbare
-    Chunk-/Sektor-Haptik
-  - `F3` bleibt trotz 100 Roots noch diagnostisch brauchbar
+- `Life Potential v1` auf Basis der neuen `World`-Achsen
+- read-only und status-/textbasiert
+- noch keine Populationen, Wesen oder Zivilisation
+- unterschiedliche Chemiepfade bleiben moeglich, weil die Foundation
+  bewusst chemie-agnostisch gebaut ist
 
-Wenn der Playtest sauber ist:
+Fallback-Reihenfolge:
 
-- danach entweder ein weiterer kleiner Proxy-/Perf-Trim-Pass fuer noch
-  groessere Catalogs
-- oder wieder Sim-/Derived-Arbeit wie Mehrquellenstrahlung bzw.
-  planetare Proxy-/Derived-Folgepfade
-
-Wenn der Playtest kippt:
-
-- keinen weiteren Scale-up
-- stattdessen einen kleinen Korrekturblock direkt aus den beobachteten
-  F3-/Proxy-/Pan-Befunden schneiden
+- wenn im Playtest `has_primary_source_only_basis` fuer Mehrstern-Faelle
+  stoert, zuerst einen `Mehrquellenstrahlung`-Block vorziehen
+- erst danach einen Life-Potential-Pass darueberlegen
 
 ## Akut - Backdrop-Flicker im Editor beseitigen - erledigt
 

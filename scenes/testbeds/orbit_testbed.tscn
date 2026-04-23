@@ -105,7 +105,7 @@ layer = 20
 offset_left = 24.0
 offset_top = 24.0
 offset_right = 476.0
-offset_bottom = 286.0
+offset_bottom = 312.0
 theme_override_styles/panel = SubResource("1_panel_style")
 
 [node name="Margin" type="MarginContainer" parent="HudLayer/TopPanel" unique_id=398651009]
@@ -146,6 +146,11 @@ text = "Environment: n/a"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 text = "Bands: n/a"
+
+[node name="WorldValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=131402572]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
+text = "World: n/a"
 
 [node name="SeasonValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=715198920]
 layout_mode = 2

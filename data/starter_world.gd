@@ -204,6 +204,8 @@ static func _build_alpha_i() -> BodyDef:
 	d.axial_tilt_rad = 0.18
 	d.luminosity_w = 0.0
 	d.albedo = 0.28
+	d.volatile_inventory_ratio = 0.10
+	d.climate_buffer_factor = 0.18
 	d.parent_id = &"alpha"
 	d.orbit_profile = prof
 	return d
@@ -230,6 +232,8 @@ static func _build_alpha_ii() -> BodyDef:
 	d.axial_tilt_rad = 0.52
 	d.luminosity_w = 0.0
 	d.albedo = 0.36
+	d.volatile_inventory_ratio = 0.22
+	d.climate_buffer_factor = 0.28
 	d.parent_id = &"alpha"
 	d.orbit_profile = prof
 	return d
@@ -256,6 +260,8 @@ static func _build_alpha_iii() -> BodyDef:
 	d.axial_tilt_rad = 0.09
 	d.luminosity_w = 0.0
 	d.albedo = 0.48
+	d.volatile_inventory_ratio = 0.08
+	d.climate_buffer_factor = 0.12
 	d.parent_id = &"alpha"
 	d.orbit_profile = prof
 	return d
@@ -282,6 +288,8 @@ static func _build_beta_i() -> BodyDef:
 	d.axial_tilt_rad = 0.30
 	d.luminosity_w = 0.0
 	d.albedo = 0.34
+	d.volatile_inventory_ratio = 0.26
+	d.climate_buffer_factor = 0.34
 	d.parent_id = &"beta"
 	d.orbit_profile = prof
 	return d
@@ -308,6 +316,8 @@ static func _build_beta_ii() -> BodyDef:
 	d.axial_tilt_rad = 0.61
 	d.luminosity_w = 0.0
 	d.albedo = 0.42
+	d.volatile_inventory_ratio = 0.40
+	d.climate_buffer_factor = 0.46
 	d.parent_id = &"beta"
 	d.orbit_profile = prof
 	return d
@@ -334,6 +344,8 @@ static func _build_gamma_i() -> BodyDef:
 	d.axial_tilt_rad = 0.12
 	d.luminosity_w = 0.0
 	d.albedo = 0.19
+	d.volatile_inventory_ratio = 0.16
+	d.climate_buffer_factor = 0.20
 	d.parent_id = &"gamma"
 	d.orbit_profile = prof
 	return d
@@ -361,6 +373,8 @@ static func _build_gamma_ii() -> BodyDef:
 	d.north_pole_orbit_frame_azimuth_rad = PI / 3.0
 	d.luminosity_w = 0.0
 	d.albedo = 0.41
+	d.volatile_inventory_ratio = 0.48
+	d.climate_buffer_factor = 0.52
 	d.parent_id = &"gamma"
 	d.orbit_profile = prof
 	return d
@@ -387,6 +401,8 @@ static func _build_gamma_iii() -> BodyDef:
 	d.axial_tilt_rad = 0.08
 	d.luminosity_w = 0.0
 	d.albedo = 0.55
+	d.volatile_inventory_ratio = 0.72
+	d.climate_buffer_factor = 0.68
 	d.parent_id = &"gamma"
 	d.orbit_profile = prof
 	return d
@@ -416,6 +432,8 @@ static func _build_gamma_iv() -> BodyDef:
 	d.axial_tilt_rad = 0.26
 	d.luminosity_w = 0.0
 	d.albedo = 0.24
+	d.volatile_inventory_ratio = 0.42
+	d.climate_buffer_factor = 0.48
 	d.greenhouse_delta_k = 35.0
 	d.parent_id = &"gamma"
 	d.orbit_profile = prof
@@ -444,6 +462,8 @@ static func _build_delta_i() -> BodyDef:
 	d.north_pole_orbit_frame_azimuth_rad = -PI / 4.0
 	d.luminosity_w = 0.0
 	d.albedo = 0.12
+	d.volatile_inventory_ratio = 0.12
+	d.climate_buffer_factor = 0.18
 	d.parent_id = &"delta"
 	d.orbit_profile = prof
 	return d
@@ -467,6 +487,8 @@ static func _build_alpha_i_m() -> BodyDef:
 	d.kind = BodyType.Kind.MOON
 	d.mass_kg = UnitSystem.LUNAR_MASS_KG
 	d.radius_m = 1.7374e6
+	d.volatile_inventory_ratio = 0.18
+	d.climate_buffer_factor = 0.16
 	d.parent_id = &"alpha_i"
 	d.orbit_profile = prof
 	return d
@@ -485,6 +507,8 @@ static func _build_beta_i_m() -> BodyDef:
 	d.kind = BodyType.Kind.MOON
 	d.mass_kg = UnitSystem.LUNAR_MASS_KG
 	d.radius_m = 1.7374e6
+	d.volatile_inventory_ratio = 0.20
+	d.climate_buffer_factor = 0.22
 	d.parent_id = &"beta_i"
 	d.orbit_profile = prof
 	return d
@@ -505,6 +529,8 @@ static func _build_gamma_ii_m() -> BodyDef:
 	# ersten Planeten eines Sternsystems.
 	d.mass_kg = UnitSystem.LUNAR_MASS_KG * 1.3
 	d.radius_m = 1.96e6
+	d.volatile_inventory_ratio = 0.38
+	d.climate_buffer_factor = 0.32
 	d.parent_id = &"gamma_ii"
 	d.orbit_profile = prof
 	return d

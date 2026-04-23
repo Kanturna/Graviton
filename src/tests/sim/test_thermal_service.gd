@@ -27,6 +27,7 @@ static func run(ctx) -> void:
 	_test_unknown_and_non_finite_paths_return_zero(ctx)
 	_test_describe_body_matches_compute_and_reports_source(ctx)
 	_test_describe_body_unknown_returns_full_default_shape(ctx)
+	_test_pure_radiative_and_seasonal_helpers_match_live_path(ctx)
 
 
 static func _make_registry() -> Node:
@@ -678,6 +679,43 @@ static func _test_describe_body_unknown_returns_full_default_shape(ctx) -> void:
 	ctx.assert_almost(float(desc.get("equator_daily_mean_insolation_wpm2", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt equator daily mean auf 0.0")
 	ctx.assert_almost(float(desc.get("north_pole_daily_mean_insolation_wpm2", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt north pole daily mean auf 0.0")
 	ctx.assert_almost(float(desc.get("south_pole_daily_mean_insolation_wpm2", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt south pole daily mean auf 0.0")
+	_cleanup_setup(setup)
+
+
+static func _test_pure_radiative_and_seasonal_helpers_match_live_path(ctx) -> void:
+	var setup: Dictionary = _setup_named_world(&"sample_system")
+	var registry: Node = setup[HK_REGISTRY]
+	var thermal_service = setup[HK_THERMAL_SERVICE]
+	var planet_def: BodyDef = registry.get_def(&"planet_a")
+	var source_def: BodyDef = registry.get_def(&"sol")
+	var planet_state: BodyState = registry.get_state(&"planet_a")
+	var body_to_source_m: Vector3 = -planet_state.position_parent_frame_m
+
+	var radiative_context: Dictionary = thermal_service.evaluate_radiative_from_vectors(
+		planet_def,
+		source_def,
+		body_to_source_m
+	)
+	ctx.assert_true(bool(radiative_context.get("ok", false)), "pure radiative helper liefert fuer planet_a einen gueltigen Kontext")
+	ctx.assert_almost(
+		float(radiative_context.get("insolation_wpm2", 0.0)),
+		thermal_service.compute_insolation_wpm2(&"planet_a"),
+		maxf(thermal_service.compute_insolation_wpm2(&"planet_a") * 1.0e-9, 1.0e-9),
+		"pure radiative helper bleibt numerisch kompatibel zum Live-Pfad"
+	)
+
+	var seasonal_context: Dictionary = thermal_service.evaluate_seasonal_from_context(
+		planet_def,
+		planet_def.orbit_profile,
+		body_to_source_m
+	)
+	ctx.assert_true(bool(seasonal_context.get("ok", false)), "pure seasonal helper liefert fuer planet_a eine gueltige saisonale Basis")
+	ctx.assert_almost(
+		float(seasonal_context.get("subsolar_latitude_rad", 0.0)),
+		thermal_service.compute_subsolar_latitude_rad(&"planet_a"),
+		1.0e-9,
+		"pure seasonal helper bleibt numerisch kompatibel zum Live-Pfad"
+	)
 	_cleanup_setup(setup)
 
 

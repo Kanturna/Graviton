@@ -343,6 +343,8 @@ static func _serialize_body_def(def: BodyDef) -> String:
 		"north_pole_orbit_frame_azimuth_rad=%s" % _canonical_variant(def.north_pole_orbit_frame_azimuth_rad),
 		"luminosity_w=%s" % _canonical_variant(def.luminosity_w),
 		"albedo=%s" % _canonical_variant(def.albedo),
+		"volatile_inventory_ratio=%s" % _canonical_variant(def.volatile_inventory_ratio),
+		"climate_buffer_factor=%s" % _canonical_variant(def.climate_buffer_factor),
 		"greenhouse_delta_k=%s" % _canonical_variant(def.greenhouse_delta_k),
 		"parent_id=%s" % _canonical_variant(def.parent_id),
 		"orbit_profile=%s" % _serialize_orbit_profile(def.orbit_profile),

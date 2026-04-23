@@ -16,6 +16,7 @@ static func run(ctx) -> void:
 	_test_missing_luminous_source_keeps_greenhouse_but_zero_surface_temperature(ctx)
 	_test_describe_matches_compute(ctx)
 	_test_unknown_id_returns_full_default_shape(ctx)
+	_test_pure_surface_helpers_match_live_path(ctx)
 
 
 static func _make_registry() -> Node:
@@ -298,4 +299,36 @@ static func _test_unknown_id_returns_full_default_shape(ctx) -> void:
 	ctx.assert_almost(float(desc.get("equator_surface_temperature_k", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt aequatoriale surface temperature auf 0.0")
 	ctx.assert_almost(float(desc.get("north_midlatitude_surface_temperature_k", -1.0)), 0.0, 1.0e-9, "Default-Shape setzt N60 surface temperature auf 0.0")
 	ctx.assert_true(not bool(desc.get("has_luminous_ancestor", true)), "Default-Shape setzt has_luminous_ancestor auf false")
+	_cleanup_setup(setup)
+
+
+static func _test_pure_surface_helpers_match_live_path(ctx) -> void:
+	var setup: Dictionary = _setup_named_world(&"sample_system")
+	var registry: Node = setup[SimTestHarnessScript.HARNESS_KEY_REGISTRY]
+	var thermal_service = setup[SimTestHarnessScript.HARNESS_KEY_THERMAL_SERVICE]
+	var atmosphere_service = setup[HK_ATMOSPHERE_SERVICE]
+	var planet_def: BodyDef = registry.get_def(&"planet_a")
+	var thermal_desc: Dictionary = thermal_service.describe_body(&"planet_a")
+
+	ctx.assert_almost(
+		AtmosphereServiceScript.compute_surface_temperature_k_from_equilibrium(
+			float(thermal_desc.get("equilibrium_temperature_k", 0.0)),
+			planet_def.greenhouse_delta_k
+		),
+		atmosphere_service.compute_surface_temperature_k(&"planet_a"),
+		1.0e-6,
+		"pure equilibrium->surface helper bleibt numerisch kompatibel zum Live-Pfad"
+	)
+	ctx.assert_almost(
+		AtmosphereServiceScript.compute_surface_temperature_at_latitude_from_contexts(
+			float(thermal_desc.get("insolation_wpm2", 0.0)),
+			float(thermal_desc.get("subsolar_latitude_rad", 0.0)),
+			0.0,
+			planet_def.albedo,
+			planet_def.greenhouse_delta_k
+		),
+		atmosphere_service.compute_surface_temperature_at_latitude_k(&"planet_a", 0.0),
+		1.0e-6,
+		"pure latitudinale surface helper bleibt numerisch kompatibel zum Live-Pfad"
+	)
 	_cleanup_setup(setup)
