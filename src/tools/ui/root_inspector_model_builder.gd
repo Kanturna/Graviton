@@ -100,7 +100,7 @@ func _append_rows(
 		"badge_text": _badge_text_for_body(def, environment_desc),
 		"note_text": _note_text_for_body(body_id, def, children_by_parent),
 		"world_text": _world_text_for_body(def, planetary_state_desc),
-		"potential_text": _potential_text_for_body(def, _snapshot_cache.get_life_potential_desc(body_id)),
+		"life_text": _life_text_for_body(def, _snapshot_cache.get_biosphere_desc(body_id)),
 		"is_focused": body_id == focused_body_id,
 	})
 
@@ -153,12 +153,12 @@ static func _world_text_for_body(def: BodyDef, planetary_state_desc: Dictionary)
 	return OrbitHudFormatterScript.format_inspector_world_line(planetary_state_desc)
 
 
-static func _potential_text_for_body(def: BodyDef, life_potential_desc: Dictionary) -> String:
+static func _life_text_for_body(def: BodyDef, biosphere_desc: Dictionary) -> String:
 	if def == null:
 		return ""
 	if def.kind != BodyType.Kind.PLANET and def.kind != BodyType.Kind.MOON:
 		return ""
-	return OrbitHudFormatterScript.format_inspector_life_potential_line(life_potential_desc)
+	return OrbitHudFormatterScript.format_inspector_life_line(biosphere_desc)
 
 
 static func _display_name(def: BodyDef) -> String:

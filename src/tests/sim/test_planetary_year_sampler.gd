@@ -10,6 +10,7 @@ const HK_PLANETARY_YEAR_SAMPLER: StringName = SimTestHarnessScript.HARNESS_KEY_P
 static func run(ctx) -> void:
 	ctx.current_suite = "test_planetary_year_sampler"
 	_test_sampler_is_non_mutating_for_kepler_planet(ctx)
+	_test_pure_def_chain_helper_matches_registry_path(ctx)
 	_test_sampler_supports_authored_moon_profiles(ctx)
 	_test_numeric_local_bodies_report_no_sampled_year_basis(ctx)
 
@@ -35,6 +36,23 @@ static func _test_sampler_is_non_mutating_for_kepler_planet(ctx) -> void:
 		"planetary_year_sampler mutiert auch die Live-Velocity nicht"
 	)
 	ctx.assert_almost(time_service.sim_time_s, before_time_s, 1.0e-9, "planetary_year_sampler veraendert TimeService.sim_time_s nicht")
+	SimTestHarnessScript.teardown_context(setup)
+
+
+static func _test_pure_def_chain_helper_matches_registry_path(ctx) -> void:
+	var setup: Dictionary = SimTestHarnessScript.build_named_world_context(&"sample_system")
+	var registry: Node = setup[HK_REGISTRY]
+	var sampler = setup[HK_PLANETARY_YEAR_SAMPLER]
+	var body_def: BodyDef = registry.get_def(&"moon_a")
+	var registry_desc: Dictionary = sampler.sample_body(&"moon_a")
+	var chain_desc: Dictionary = sampler.sample_from_def_chain(
+		body_def,
+		_parent_chain_defs_for_body(registry, &"moon_a")
+	)
+	ctx.assert_true(
+		registry_desc == chain_desc,
+		"sample_from_def_chain liefert fuer denselben Mond exakt dieselben Jahresdaten wie der Registry-Pfad"
+	)
 	SimTestHarnessScript.teardown_context(setup)
 
 
@@ -79,3 +97,20 @@ static func _test_numeric_local_bodies_report_no_sampled_year_basis(ctx) -> void
 
 	sampler.free()
 	registry.free()
+
+
+static func _parent_chain_defs_for_body(registry: Node, body_id: StringName) -> Array[BodyDef]:
+	var chain: Array[BodyDef] = []
+	var def: BodyDef = registry.get_def(body_id)
+	if def == null:
+		return chain
+	var current_id: StringName = def.parent_id
+	var hop_limit: int = 64
+	while current_id != StringName("") and hop_limit > 0:
+		var current_def: BodyDef = registry.get_def(current_id)
+		if current_def == null:
+			return []
+		chain.append(current_def)
+		current_id = current_def.parent_id
+		hop_limit -= 1
+	return chain

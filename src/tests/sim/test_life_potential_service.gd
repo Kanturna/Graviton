@@ -29,6 +29,7 @@ class EnvironmentProbe:
 static func run(ctx) -> void:
 	ctx.current_suite = "test_life_potential_service"
 	_test_service_ignores_environment_as_weighted_axis(ctx)
+	_test_pure_helper_matches_live_describe_path(ctx)
 	_test_gamma_iv_anchor_matches_expected_scores(ctx)
 	_test_anchor_worlds_map_to_expected_tracks(ctx)
 	_test_contextual_tie_break_prefers_track_from_thermal_band(ctx)
@@ -57,6 +58,23 @@ static func _test_service_ignores_environment_as_weighted_axis(ctx) -> void:
 	environment_probe.free()
 	planetary_state_probe.free()
 	registry.free()
+
+
+static func _test_pure_helper_matches_live_describe_path(ctx) -> void:
+	var setup: Dictionary = SimTestHarnessScript.build_named_world_context(&"sample_system")
+	var planetary_state_service = setup[SimTestHarnessScript.HARNESS_KEY_PLANETARY_STATE_SERVICE]
+	var life_potential_service = setup[HK_LIFE_POTENTIAL_SERVICE]
+	var planetary_desc: Dictionary = planetary_state_service.describe_body(&"planet_a")
+	var live_desc: Dictionary = life_potential_service.describe_body(&"planet_a")
+	var pure_desc: Dictionary = LifePotentialServiceScript.evaluate_from_planetary_desc(
+		planetary_desc,
+		&"planet_a"
+	)
+	ctx.assert_true(
+		live_desc == pure_desc,
+		"evaluate_from_planetary_desc liefert fuer dieselbe Welt exakt denselben Life-Desc wie describe_body"
+	)
+	SimTestHarnessScript.teardown_context(setup)
 
 
 static func _test_gamma_iv_anchor_matches_expected_scores(ctx) -> void:

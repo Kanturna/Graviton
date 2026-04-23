@@ -38,25 +38,29 @@ func configure(registry: Node) -> void:
 
 
 func sample_body(id: StringName) -> Dictionary:
-	var description: Dictionary = _default_description()
 	if _registry == null:
-		return description
+		return _default_description()
 	var def: BodyDef = _registry.get_def(id)
 	if def == null:
+		return _default_description()
+	return sample_from_def_chain(def, _parent_chain_defs_for_body(id))
+
+
+static func sample_from_def_chain(body_def: BodyDef, parent_chain_defs: Array[BodyDef]) -> Dictionary:
+	var description: Dictionary = _default_description()
+	if body_def == null:
 		return description
-	if def.kind != BodyType.Kind.PLANET and def.kind != BodyType.Kind.MOON:
+	if body_def.kind != BodyType.Kind.PLANET and body_def.kind != BodyType.Kind.MOON:
 		return description
-	if def.orbit_profile == null:
+	if body_def.orbit_profile == null:
 		return description
 
-	var source_id: StringName = _find_luminous_ancestor_id(def.parent_id)
-	if source_id == StringName(""):
-		return description
-	var source_def: BodyDef = _registry.get_def(source_id)
+	var def_lookup: Dictionary = _def_lookup_from_chain(body_def, parent_chain_defs)
+	var source_def: BodyDef = _find_luminous_ancestor_def(parent_chain_defs)
 	if source_def == null or source_def.luminosity_w <= 0.0:
 		return description
 
-	var period_s: float = _orbital_period_s(def)
+	var period_s: float = _orbital_period_s_for_def(body_def, def_lookup)
 	if period_s <= 0.0 or not is_finite(period_s):
 		return description
 
@@ -65,21 +69,26 @@ func sample_body(id: StringName) -> Dictionary:
 	var north_samples_raw: Array[float] = []
 
 	for sample_index in range(SAMPLE_COUNT):
-		var t_s: float = _sample_time_s(def.orbit_profile, period_s, sample_index)
-		var body_to_source_m: Vector3 = _body_to_ancestor_vector_at(id, source_id, t_s)
+		var t_s: float = _sample_time_s(body_def.orbit_profile, period_s, sample_index)
+		var body_to_source_m: Vector3 = _body_to_ancestor_vector_at_from_lookup(
+			body_def.id,
+			source_def.id,
+			t_s,
+			def_lookup
+		)
 		if not _is_finite_vec3(body_to_source_m) or body_to_source_m.length_squared() <= 0.0:
 			return description
 
 		var radiative_context: Dictionary = ThermalServiceScript.evaluate_radiative_from_vectors(
-			def,
+			body_def,
 			source_def,
 			body_to_source_m
 		)
 		if not bool(radiative_context.get(ThermalServiceScript.CTX_OK, false)):
 			return description
 		var seasonal_context: Dictionary = ThermalServiceScript.evaluate_seasonal_from_context(
-			def,
-			def.orbit_profile,
+			body_def,
+			body_def.orbit_profile,
 			body_to_source_m
 		)
 		if not bool(seasonal_context.get(ThermalServiceScript.CTX_OK, false)):
@@ -91,22 +100,22 @@ func sample_body(id: StringName) -> Dictionary:
 			insolation_wpm2,
 			subsolar_latitude_rad,
 			SOUTH_MIDLATITUDE_RAD,
-			def.albedo,
-			def.greenhouse_delta_k
+			body_def.albedo,
+			body_def.greenhouse_delta_k
 		))
 		equator_samples_raw.append(AtmosphereServiceScript.compute_surface_temperature_at_latitude_from_contexts(
 			insolation_wpm2,
 			subsolar_latitude_rad,
 			EQUATOR_RAD,
-			def.albedo,
-			def.greenhouse_delta_k
+			body_def.albedo,
+			body_def.greenhouse_delta_k
 		))
 		north_samples_raw.append(AtmosphereServiceScript.compute_surface_temperature_at_latitude_from_contexts(
 			insolation_wpm2,
 			subsolar_latitude_rad,
 			NORTH_MIDLATITUDE_RAD,
-			def.albedo,
-			def.greenhouse_delta_k
+			body_def.albedo,
+			body_def.greenhouse_delta_k
 		))
 
 	if south_samples_raw.size() != SAMPLE_COUNT \
@@ -114,9 +123,9 @@ func sample_body(id: StringName) -> Dictionary:
 			or north_samples_raw.size() != SAMPLE_COUNT:
 		return description
 
-	var south_samples_k: Array[float] = _buffered_samples(def.climate_buffer_factor, south_samples_raw)
-	var equator_samples_k: Array[float] = _buffered_samples(def.climate_buffer_factor, equator_samples_raw)
-	var north_samples_k: Array[float] = _buffered_samples(def.climate_buffer_factor, north_samples_raw)
+	var south_samples_k: Array[float] = _buffered_samples(body_def.climate_buffer_factor, south_samples_raw)
+	var equator_samples_k: Array[float] = _buffered_samples(body_def.climate_buffer_factor, equator_samples_raw)
+	var north_samples_k: Array[float] = _buffered_samples(body_def.climate_buffer_factor, north_samples_raw)
 	if south_samples_k.is_empty() or equator_samples_k.is_empty() or north_samples_k.is_empty():
 		return description
 
@@ -160,21 +169,45 @@ func sample_body(id: StringName) -> Dictionary:
 	}
 
 
-func _find_luminous_ancestor_id(start_id: StringName) -> StringName:
+func _parent_chain_defs_for_body(body_id: StringName) -> Array[BodyDef]:
+	var chain: Array[BodyDef] = []
 	if _registry == null:
-		return StringName("")
-	var current_id: StringName = start_id
-	while current_id != StringName(""):
+		return chain
+	var def: BodyDef = _registry.get_def(body_id)
+	if def == null:
+		return chain
+	var current_id: StringName = def.parent_id
+	var hop_limit: int = 64
+	while current_id != StringName("") and hop_limit > 0:
 		var current_def: BodyDef = _registry.get_def(current_id)
 		if current_def == null:
-			return StringName("")
-		if current_def.luminosity_w > 0.0:
-			return current_id
+			return []
+		chain.append(current_def)
 		current_id = current_def.parent_id
-	return StringName("")
+		hop_limit -= 1
+	if current_id != StringName(""):
+		return []
+	return chain
 
 
-func _orbital_period_s(def: BodyDef) -> float:
+static func _find_luminous_ancestor_def(parent_chain_defs: Array[BodyDef]) -> BodyDef:
+	for def in parent_chain_defs:
+		if def != null and def.luminosity_w > 0.0:
+			return def
+	return null
+
+
+static func _def_lookup_from_chain(body_def: BodyDef, parent_chain_defs: Array[BodyDef]) -> Dictionary:
+	var lookup: Dictionary = {}
+	if body_def != null:
+		lookup[body_def.id] = body_def
+	for parent_def in parent_chain_defs:
+		if parent_def != null:
+			lookup[parent_def.id] = parent_def
+	return lookup
+
+
+static func _orbital_period_s_for_def(def: BodyDef, def_lookup: Dictionary) -> float:
 	if def == null or def.orbit_profile == null:
 		return 0.0
 	var profile: OrbitProfile = def.orbit_profile
@@ -182,7 +215,7 @@ func _orbital_period_s(def: BodyDef) -> float:
 		OrbitMode.Kind.AUTHORED_ORBIT:
 			return profile.authored_period_s if profile.authored_period_s > 0.0 else 0.0
 		OrbitMode.Kind.KEPLER_APPROX:
-			var parent_def: BodyDef = _registry.get_def(def.parent_id)
+			var parent_def: BodyDef = _lookup_def(def_lookup, def.parent_id)
 			if parent_def == null:
 				return 0.0
 			var mu_parent: float = UnitSystem.mu_from_mass(parent_def.mass_kg)
@@ -194,13 +227,18 @@ func _orbital_period_s(def: BodyDef) -> float:
 	return 0.0
 
 
-func _sample_time_s(profile: OrbitProfile, period_s: float, sample_index: int) -> float:
+static func _sample_time_s(profile: OrbitProfile, period_s: float, sample_index: int) -> float:
 	if profile != null and profile.mode == OrbitMode.Kind.KEPLER_APPROX:
 		return profile.epoch_s + period_s * (float(sample_index) / float(SAMPLE_COUNT))
 	return period_s * (float(sample_index) / float(SAMPLE_COUNT))
 
 
-func _body_to_ancestor_vector_at(body_id: StringName, ancestor_id: StringName, t_s: float) -> Vector3:
+static func _body_to_ancestor_vector_at_from_lookup(
+		body_id: StringName,
+		ancestor_id: StringName,
+		t_s: float,
+		def_lookup: Dictionary
+	) -> Vector3:
 	var current_id: StringName = body_id
 	var x_m: float = 0.0
 	var y_m: float = 0.0
@@ -210,10 +248,10 @@ func _body_to_ancestor_vector_at(body_id: StringName, ancestor_id: StringName, t
 	while current_id != ancestor_id and hop_limit > 0:
 		if current_id == StringName(""):
 			return Vector3.INF
-		var current_def: BodyDef = _registry.get_def(current_id)
+		var current_def: BodyDef = _lookup_def(def_lookup, current_id)
 		if current_def == null or current_def.orbit_profile == null:
 			return Vector3.INF
-		var offset_m: Vector3 = _position_relative_to_parent_at(current_def, t_s)
+		var offset_m: Vector3 = _position_relative_to_parent_at_from_lookup(current_def, t_s, def_lookup)
 		if not _is_finite_vec3(offset_m):
 			return Vector3.INF
 		x_m -= offset_m.x
@@ -227,7 +265,11 @@ func _body_to_ancestor_vector_at(body_id: StringName, ancestor_id: StringName, t
 	return Vector3(x_m, y_m, z_m)
 
 
-func _position_relative_to_parent_at(def: BodyDef, t_s: float) -> Vector3:
+static func _position_relative_to_parent_at_from_lookup(
+		def: BodyDef,
+		t_s: float,
+		def_lookup: Dictionary
+	) -> Vector3:
 	if def == null or def.orbit_profile == null:
 		return Vector3.INF
 	var profile: OrbitProfile = def.orbit_profile
@@ -240,7 +282,7 @@ func _position_relative_to_parent_at(def: BodyDef, t_s: float) -> Vector3:
 				t_s
 			)
 		OrbitMode.Kind.KEPLER_APPROX:
-			var parent_def: BodyDef = _registry.get_def(def.parent_id)
+			var parent_def: BodyDef = _lookup_def(def_lookup, def.parent_id)
 			if parent_def == null:
 				return Vector3.INF
 			return OrbitMath.kepler_position(
@@ -255,6 +297,10 @@ func _position_relative_to_parent_at(def: BodyDef, t_s: float) -> Vector3:
 				t_s
 			)
 	return Vector3.INF
+
+
+static func _lookup_def(def_lookup: Dictionary, id: StringName) -> BodyDef:
+	return def_lookup.get(id, null) as BodyDef
 
 
 static func _buffered_samples(climate_buffer_factor: float, raw_samples_k: Array[float]) -> Array[float]:

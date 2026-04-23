@@ -85,10 +85,21 @@ func clear_cache() -> void:
 
 
 func describe_body(id: StringName) -> Dictionary:
-	var description: Dictionary = _default_description(id)
 	if _registry == null:
-		return description
+		return _default_description(id)
 	var def: BodyDef = _registry.get_def(id)
+	if def == null:
+		return _default_description(id)
+	var annual_profile: Dictionary = _annual_profile_for(id)
+	return describe_from_def_and_annual_profile(id, def, annual_profile)
+
+
+static func describe_from_def_and_annual_profile(
+		id: StringName,
+		def: BodyDef,
+		annual_profile: Dictionary
+	) -> Dictionary:
+	var description: Dictionary = _default_description(id)
 	if def == null:
 		return description
 	if def.kind != BodyType.Kind.PLANET and def.kind != BodyType.Kind.MOON:
@@ -97,11 +108,8 @@ func describe_body(id: StringName) -> Dictionary:
 	description[KEY_IS_SUPPORTED_BODY_KIND] = true
 	description[KEY_VOLATILE_INVENTORY_CLASS] = _volatile_inventory_class_of(def.volatile_inventory_ratio)
 	description[KEY_CLIMATE_BUFFER_CLASS] = _climate_buffer_class_of(def.climate_buffer_factor)
-
-	var annual_profile: Dictionary = _annual_profile_for(id)
 	for key in annual_profile.keys():
 		description[key] = annual_profile[key]
-
 	if not bool(description.get(KEY_HAS_SAMPLED_YEAR_BASIS, false)):
 		return description
 
@@ -112,6 +120,7 @@ func describe_body(id: StringName) -> Dictionary:
 	description[KEY_SEASONALITY_CLASS] = _seasonality_class_of(annual_max_band_span_k)
 	description[KEY_STABILITY_CLASS] = _stability_class_of(annual_moderate_fraction, annual_max_band_span_k)
 	return description
+
 
 
 func _annual_profile_for(id: StringName) -> Dictionary:

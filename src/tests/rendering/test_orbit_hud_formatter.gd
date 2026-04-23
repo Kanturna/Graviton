@@ -9,9 +9,10 @@ static func run(ctx) -> void:
 	_test_primary_source_formatter_handles_missing_source(ctx)
 	_test_inspector_environment_badge_reuses_environment_and_climate_labels(ctx)
 	_test_world_formatter_uses_fixed_axis_order(ctx)
+	_test_life_formatter_handles_track_and_none_cases(ctx)
 	_test_life_potential_formatter_uses_track_and_class(ctx)
 	_test_inspector_world_line_hides_low_seasonality(ctx)
-	_test_inspector_life_potential_line_reuses_hud_language(ctx)
+	_test_inspector_life_line_reuses_hud_language(ctx)
 
 
 static func _test_primary_source_formatter_uses_visible_label(ctx) -> void:
@@ -87,6 +88,32 @@ static func _test_life_potential_formatter_uses_track_and_class(ctx) -> void:
 	)
 
 
+static func _test_life_formatter_handles_track_and_none_cases(ctx) -> void:
+	var biosphere_desc: Dictionary = {
+		"has_biosphere_basis": true,
+		"biosphere_stage": 1,
+		"dominant_track_id": 0,
+		"dominant_potential_class": 3,
+	}
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_life(biosphere_desc) == "Life: PREBIOTIC / WATER_CARBON",
+		"HUD formatter rendert die neue Life-Zeile mit Stage und Track"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_life({
+			"has_biosphere_basis": true,
+			"biosphere_stage": 0,
+			"dominant_track_id": 0,
+			"dominant_potential_class": 0,
+		}) == "Life: STERILE",
+		"HUD formatter blendet bei NONE bewusst jeden Default-Track aus"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_life({}) == "Life: n/a",
+		"HUD formatter zeigt ohne Biosphaeren-Basis explizit Life: n/a"
+	)
+
+
 static func _test_inspector_world_line_hides_low_seasonality(ctx) -> void:
 	var low_seasonality_desc: Dictionary = {
 		"has_sampled_year_basis": true,
@@ -115,17 +142,27 @@ static func _test_inspector_world_line_hides_low_seasonality(ctx) -> void:
 	)
 
 
-static func _test_inspector_life_potential_line_reuses_hud_language(ctx) -> void:
-	var life_potential_desc: Dictionary = {
-		"has_life_potential_basis": true,
+static func _test_inspector_life_line_reuses_hud_language(ctx) -> void:
+	var biosphere_desc: Dictionary = {
+		"has_biosphere_basis": true,
+		"biosphere_stage": 2,
 		"dominant_track_id": 2,
 		"dominant_potential_class": 3,
 	}
 	ctx.assert_true(
-		OrbitHudFormatterScript.format_inspector_life_potential_line(life_potential_desc) == "Potential: CRYOGENIC_SOLVENT / HIGH",
-		"Inspector rendert die kompakte Potenzialzeile in derselben Sprache wie das HUD"
+		OrbitHudFormatterScript.format_inspector_life_line(biosphere_desc) == "Life: MICROBIAL / CRYOGENIC_SOLVENT / HIGH",
+		"Inspector rendert die kompakte Life-Zeile im festgelegten Stage/Track/Class-Format"
 	)
 	ctx.assert_true(
-		OrbitHudFormatterScript.format_inspector_life_potential_line({}) == "Potential: n/a",
-		"Inspector zeigt ohne Life-Potential-Basis explizit Potential: n/a"
+		OrbitHudFormatterScript.format_inspector_life_line({
+			"has_biosphere_basis": true,
+			"biosphere_stage": 0,
+			"dominant_track_id": 0,
+			"dominant_potential_class": 0,
+		}) == "Life: STERILE",
+		"Inspector blendet bei NONE auch in der kompakten Life-Zeile den Track aus"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_inspector_life_line({}) == "Life: n/a",
+		"Inspector zeigt ohne Biosphaeren-Basis explizit Life: n/a"
 	)

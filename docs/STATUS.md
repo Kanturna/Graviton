@@ -29,7 +29,12 @@ geklickten Button nicht mehr mitten im `pressed`-Signal zerstoert.
 Da der Inspector unter laufender Sim regelmaessig rebuilt, feuern die
 Rows jetzt ausserdem bewusst schon auf Mouse-Down statt erst auf
 Mouse-Up; sonst konnte eine Row zwischen Press und Release bereits
-ersetzt sein und der Live-Klick ging still verloren.
+ersetzt sein und der Live-Klick ging still verloren. Darauf sitzt jetzt
+zusaetzlich `Life Potential v1b` als erste persistente
+Proto-Biosphaeren-Schicht:
+`Life Potential` bleibt der read-only Chemiepfad-Layer,
+`Life` beschreibt jetzt zusaetzlich den aktuellen
+Proto-Biosphaerenstand (`STERILE`, `PREBIOTIC`, `MICROBIAL`).
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -111,6 +116,33 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   keine Biosphaere, sondern nur den aktuell dominanten Chemiepfad
   (`WATER_CARBON`, `SULFUR_REACTIVE`, `CRYOGENIC_SOLVENT`) samt
   Potenzialklasse (`NONE`, `LOW`, `MEDIUM`, `HIGH`).
+- `PlanetaryYearSampler`, `PlanetaryStateService` und
+  `LifePotentialService` exponieren jetzt zusaetzlich registry-freie
+  Pure-Helper; dieselbe Jahres-, World- und Life-Math laeuft damit
+  sowohl fuer residente Bodies als auch fuer Galaxy-/Manifest-Defs,
+  ohne Temp-Registry oder Math-Duplikation.
+- `ProtoBiosphereSimulationService` fuehrt jetzt den ersten
+  persistenten Life-Layer ausserhalb von `BodyState` ein:
+  gespeichert werden nur stabile Seed-/Drift-Parameter pro
+  `PLANET`/`MOON`, waehrend aktueller `Life`-Fortschritt, Stage und
+  dominanter Track lazy aus `sim_time_s` berechnet werden.
+- Diese v1b-Proto-Biosphaere ist bewusst deterministisch und
+  monoton-konvergent:
+  `progress = clamp(seed + delta * ticks_elapsed, 0, 1)`.
+  Es gibt in diesem Block also noch keine emergenten Dynamiken, sondern
+  einen ehrlichen Background-State-Pfad fuer sichtbaren biologischen
+  Fortschritt ueber Sim-Zeit.
+- Die Seed-/Drift-Kalibrierung ist jetzt fest:
+  `HIGH -> 0.50 / +0.03`,
+  `MEDIUM -> 0.30 / +0.01`,
+  `LOW -> 0.10 / -0.01`,
+  `NONE -> 0.00 / -0.03`.
+  Dadurch startet `HIGH` bewusst noch nicht als `MICROBIAL`, sondern
+  erreicht den Cap erst nach vier Bio-Ticks a zehn Tagen.
+- `ProtoBiosphereSimulationService` initialisiert bei Named Worlds und
+  Galaxy-Catalogs jetzt Background-State fuer alle `PLANET`-/`MOON`-
+  Bodies, auch wenn ein Root nie resident wird; resident und offscreen
+  lesen bei gleichem `sim_time_s` denselben `Life`-Zustand.
 - `PlanetaryStateService` cached seine annualisierten sampled-year-
   Profile pro Body jetzt lazy, weil diese in v1 nur von statischen
   `BodyDef`-/Orbit-Daten abhaengen; `DerivedSnapshotCache` cached davon
@@ -144,6 +176,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   ein explizites Interest-Set und invalidiert bei verdrahtetem
   `OrbitService` nur dirty-abhaengige interessierte Bodies; ohne diesen
   Hook bleibt `TimeService.sim_tick` der Fallback.
+- `DerivedSnapshotCache` fuehrt jetzt zusaetzlich `biosphere_desc` als
+  weitere read-only Desc-Familie; HUD und Inspector lesen damit
+  `Life` aus demselben Snapshot-Pfad wie `Environment`, `World` und
+  `Life Potential`.
 - Das `F3`-Debug-Overlay konsumiert bei verdrahtetem
   `DerivedSnapshotCache` denselben read-only Snapshot jetzt strikt
   snapshot-only; Cache-Misses bleiben sichtbar als `n/a`, statt im
@@ -287,16 +323,16 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   neuen planetaren Zustandsachsen, ohne daraus schon eine versteckte
   Life- oder Biosphaeren-Aussage abzuleiten.
 - Der Fokus-HUD und der Root-Inspector zeigen fuer `PLANET`- und
-  `MOON`-Bodies jetzt zusaetzlich eine kompakte
-  `Life Potential:`-/`Potential:`-Zeile:
+  `MOON`-Bodies jetzt zusaetzlich getrennt `Life:` und
+  `Life Potential:`:
   derselbe Planet kann damit gleichzeitig als
-  `Environment` = jetzt, `World` = Jahrescharakter und
-  `Life Potential` = dominanter Chemiepfad lesbar werden, ohne dass
-  dieser Block schon persistenten Bio-State oder Ticking einfuehrt.
+  `Environment` = jetzt, `World` = Jahrescharakter,
+  `Life` = Proto-Biosphaerenstand und
+  `Life Potential` = dominanter Chemiepfad lesbar werden.
 - Der rechte Root-Inspector liest sich jetzt bewusster als Navigator:
   `BLACK_HOLE`- und `STAR`-Rows bleiben schlanke Einzeiler ohne
   unnoetiges `n/a`-Badge, nicht fokussierte `PLANET`-/`MOON`-Rows
-  zeigen nur noch `Potential: ...`, und `World:` erscheint dort nur
+  zeigen nur noch `Life: ...`, und `World:` erscheint dort nur
   noch fuer die aktuell fokussierte Zeile.
 - Klicks auf Root-Inspector-Zeilen bleiben im bestehenden
   `orbit_testbed.gd`-Fokuspfad, loesen jetzt aber bewusst einen
@@ -321,13 +357,14 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Dieselbe Overlay-/Inspector-Suite pinnt jetzt zusaetzlich die neue
   Navigator-Verdichtung mechanisch:
   `STAR` bleibt einzeilig, nicht fokussierte `PLANET`-/`MOON`-Rows
-  zeigen `Potential:` ohne `World:`, fokussierte Rows zeigen beide
-  Zeilen und behalten die Reihenfolge `Potential:` vor `World:`.
+  zeigen `Life:` ohne `World:`, fokussierte Rows zeigen beide
+  Zeilen und behalten die Reihenfolge `Life:` vor `World:`.
 - Neue Tests pinnen jetzt zusaetzlich den neuen Life-Layer ueber vier
   Ebenen:
   `LifePotentialService`-Anchor- und Tie-Break-Regressionen,
-  `DerivedSnapshotCache`-Glue, HUD-/Formatter-Ausgabe und die
-  Root-Inspector-Potenzialzeile.
+  `ProtoBiosphereSimulationService`-Seed-/Drift- und
+  All-Roots-Regressionen, `DerivedSnapshotCache`-Glue,
+  HUD-/Formatter-Ausgabe und die Root-Inspector-Life-Zeile.
 - `INACTIVE_NO_LCA` bleibt fuer legitime Cross-Root-Faelle sichtbar,
   loggt aber jetzt als Warning statt als Fehler.
 - `TimeService` und `UniverseRegistry` bleiben die einzigen
@@ -340,7 +377,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist weiter reproduzierbar: direkter
   `godot_console.exe --headless ...`-Aufruf und `run_tests.bat` laufen
-  nach `Life Potential v1a` jetzt mit `7308` erfolgreichen Assertions
+  nach `Life Potential v1b` jetzt mit `7350` erfolgreichen Assertions
   bei `0` Failures.
 
 ### Aktuelle Praesentation
@@ -877,20 +914,19 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   heisses und kaltes Gegenbeispiel im Fokus-HUD und im Root-Inspector
   lesen
 - dabei den neuen `World:`-Pfad explizit gegen den bestehenden
-  `Environment`-/`Climate`-Pfad pruefen und jetzt zusaetzlich die neue
-  `Life Potential:`-Lesart mitlesen:
-  `Environment` soll weiter "jetzt", `World` bewusst "ueber das Jahr"
-  und `Life Potential` bewusst "dominanter Chemiepfad" bedeuten
+  `Environment`-/`Climate`-Pfad pruefen und jetzt zusaetzlich die neuen
+  `Life:`- und `Life Potential:`-Lesarten mitlesen:
+  `Environment` soll weiter "jetzt", `World` bewusst "ueber das Jahr",
+  `Life` bewusst "Proto-Biosphaerenstand" und `Life Potential` bewusst
+  "dominanter Chemiepfad" bedeuten
 - denselben Acceptance-Run gleich mit den offenen Large-World-Gates
   koppeln:
   `scaleup_galaxy_30` und `scaleup_galaxy_100` mit offenem Inspector im
   `ROOT_OVERVIEW` pruefen, damit die neue planetare Desc-Familie die
   ruhige Large-World-Haptik nicht regressiert
 - wenn dieser Playtest sauber ist, als naechsten Simulationsblock
-  `Life Potential v1b` auf Basis der neuen read-only Potenzialschicht
-  schneiden:
-  persistenter Proto-Biosphaerenzustand, Seeding und Ticking, aber
-  weiterhin noch ohne Populationen oder Wesen
+  entweder `Mehrquellenstrahlung` oder ein `Life v2` oberhalb von
+  `MICROBIAL` schneiden
 - falls der Playtest stattdessen zeigt, dass
   `has_primary_source_only_basis` fuer Mehrstern-Faelle zu stoerend
   wird, zuerst einen expliziten `Mehrquellenstrahlung`-Block vorziehen

@@ -72,17 +72,32 @@ func configure(registry: Node, planetary_state_service: Node, environment_servic
 
 
 func describe_body(id: StringName) -> Dictionary:
-	var description: Dictionary = _default_description(id)
 	if _registry == null or _planetary_state_service == null:
-		return description
+		return _default_description(id)
 	var def: BodyDef = _registry.get_def(id)
 	if def == null:
-		return description
+		return _default_description(id)
 	if def.kind != BodyType.Kind.PLANET and def.kind != BodyType.Kind.MOON:
+		return _default_description(id)
+
+	var planetary_state_desc: Dictionary = _planetary_state_service.describe_body(id)
+	return evaluate_from_planetary_desc(planetary_state_desc, id)
+
+static func evaluate_from_planetary_desc(
+		planetary_state_desc: Dictionary,
+		body_id: StringName = StringName("")
+	) -> Dictionary:
+	var resolved_body_id: StringName = body_id
+	if resolved_body_id == StringName(""):
+		resolved_body_id = StringName(planetary_state_desc.get(
+			PlanetaryStateServiceScript.KEY_BODY_ID,
+			StringName("")
+		))
+	var description: Dictionary = _default_description(resolved_body_id)
+	if not bool(planetary_state_desc.get(PlanetaryStateServiceScript.KEY_IS_SUPPORTED_BODY_KIND, false)):
 		return description
 
 	description[KEY_IS_SUPPORTED_BODY_KIND] = true
-	var planetary_state_desc: Dictionary = _planetary_state_service.describe_body(id)
 	if not bool(planetary_state_desc.get(PlanetaryStateServiceScript.KEY_HAS_SAMPLED_YEAR_BASIS, false)):
 		return description
 
@@ -137,7 +152,7 @@ static func to_string_potential_class(value: int) -> String:
 	return "UNKNOWN"
 
 
-func _axis_contributions_for_track(track_id: int, planetary_state_desc: Dictionary) -> Dictionary:
+static func _axis_contributions_for_track(track_id: int, planetary_state_desc: Dictionary) -> Dictionary:
 	var thermal_class: int = int(planetary_state_desc.get(
 		PlanetaryStateServiceScript.KEY_THERMAL_EXTREMITY_CLASS,
 		PlanetaryStateServiceScript.ThermalExtremityClass.FROZEN
@@ -174,7 +189,7 @@ static func _sum_axis_contributions(contributions: Dictionary) -> float:
 	return total
 
 
-func _dominant_track_id(scores_by_track: Dictionary, planetary_state_desc: Dictionary) -> int:
+static func _dominant_track_id(scores_by_track: Dictionary, planetary_state_desc: Dictionary) -> int:
 	var best_score: float = -1.0
 	var tied_track_ids: Array[int] = []
 	for track_id in TRACK_IDS:
@@ -229,7 +244,7 @@ static func _tie_break_track_id_from_volatiles(volatile_class: int) -> int:
 	return Track.WATER_CARBON
 
 
-func _dominant_track_reasons(track_id: int, planetary_state_desc: Dictionary, contributions_by_track: Dictionary) -> Array[String]:
+static func _dominant_track_reasons(track_id: int, planetary_state_desc: Dictionary, contributions_by_track: Dictionary) -> Array[String]:
 	var reasons: Array[String] = []
 	var contributions: Dictionary = contributions_by_track.get(track_id, {})
 	var axes: Array = contributions.keys()

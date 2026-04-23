@@ -14,7 +14,10 @@
       "PowerShell(git diff HEAD -- src/sim/world/world_loader.gd src/tests/helpers/sim_test_harness.gd)",
       "PowerShell(git diff HEAD -- scenes/testbeds/orbit_testbed.gd scenes/testbeds/orbit_testbed.tscn src/tools/rendering/orbit_hud_formatter.gd src/tools/ui/root_inspector_model_builder.gd src/tools/ui/root_inspector_overlay.gd src/runtime/derived/derived_snapshot_cache.gd src/tests/helpers/sim_test_harness.gd)",
       "PowerShell(git diff HEAD -- src/tools/ui/root_inspector_overlay.gd src/tools/ui/root_inspector_model_builder.gd scenes/testbeds/orbit_testbed.gd)",
-      "PowerShell(git diff HEAD -- src/tests/rendering/test_root_inspector_overlay.gd src/tests/scenes/test_orbit_testbed_root_inspector.gd)"
+      "PowerShell(git diff HEAD -- src/tests/rendering/test_root_inspector_overlay.gd src/tests/scenes/test_orbit_testbed_root_inspector.gd)",
+      "PowerShell(git diff HEAD -- src/sim/planetary/planetary_year_sampler.gd src/sim/planetary/planetary_state_service.gd src/sim/life/life_potential_service.gd 2>&1 | Select-Object -First 300)",
+      "PowerShell(git diff HEAD -- scenes/testbeds/orbit_testbed.gd scenes/testbeds/orbit_testbed.tscn src/runtime/derived/derived_snapshot_cache.gd src/tools/rendering/orbit_hud_formatter.gd src/tools/ui/root_inspector_model_builder.gd src/tests/helpers/sim_test_harness.gd 2>&1 | Select-Object -First 500)",
+      "PowerShell(git diff HEAD -- src/tools/ui/root_inspector_overlay.gd src/tests/rendering/test_orbit_hud_formatter.gd src/tests/rendering/test_root_inspector_overlay.gd 2>&1 | Select-Object -First 300)"
     ]
   }
 }

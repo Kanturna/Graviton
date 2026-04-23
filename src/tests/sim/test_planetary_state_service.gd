@@ -25,6 +25,7 @@ class YearSamplerProbe:
 static func run(ctx) -> void:
 	ctx.current_suite = "test_planetary_state_service"
 	_test_service_uses_lazy_annual_cache(ctx)
+	_test_pure_helper_matches_live_describe_path(ctx)
 	_test_sample_system_planet_a_matches_anchor_profile(ctx)
 	_test_starter_world_gamma_iv_matches_anchor_profile(ctx)
 	_test_extreme_and_cold_references_keep_clear_world_readings(ctx)
@@ -96,6 +97,26 @@ static func _test_service_uses_lazy_annual_cache(ctx) -> void:
 	atmosphere_service.free()
 	sampler.free()
 	registry.free()
+
+
+static func _test_pure_helper_matches_live_describe_path(ctx) -> void:
+	var setup: Dictionary = SimTestHarnessScript.build_named_world_context(&"sample_system")
+	var registry: Node = setup[HK_REGISTRY]
+	var year_sampler = setup[SimTestHarnessScript.HARNESS_KEY_PLANETARY_YEAR_SAMPLER]
+	var service = setup[HK_PLANETARY_STATE_SERVICE]
+	var body_def: BodyDef = registry.get_def(&"planet_a")
+	var annual_profile: Dictionary = year_sampler.sample_body(&"planet_a")
+	var live_desc: Dictionary = service.describe_body(&"planet_a")
+	var pure_desc: Dictionary = PlanetaryStateServiceScript.describe_from_def_and_annual_profile(
+		&"planet_a",
+		body_def,
+		annual_profile
+	)
+	ctx.assert_true(
+		live_desc == pure_desc,
+		"describe_from_def_and_annual_profile liefert fuer dieselbe Welt exakt denselben State-Desc wie describe_body"
+	)
+	SimTestHarnessScript.teardown_context(setup)
 
 
 static func _test_sample_system_planet_a_matches_anchor_profile(ctx) -> void:

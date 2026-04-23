@@ -5,6 +5,7 @@ const EnvironmentServiceScript = preload("res://src/sim/environment/environment_
 const ThermalServiceScript = preload("res://src/sim/thermal/thermal_service.gd")
 const PlanetaryStateServiceScript = preload("res://src/sim/planetary/planetary_state_service.gd")
 const LifePotentialServiceScript = preload("res://src/sim/life/life_potential_service.gd")
+const ProtoBiosphereSimulationServiceScript = preload("res://src/sim/life/proto_biosphere_simulation_service.gd")
 
 
 static func format_focus(focus_name: String) -> String:
@@ -53,6 +54,17 @@ static func format_life_potential(life_potential_desc: Dictionary) -> String:
 	]
 
 
+static func format_life(biosphere_desc: Dictionary) -> String:
+	if not bool(biosphere_desc.get(ProtoBiosphereSimulationServiceScript.KEY_HAS_BIOSPHERE_BASIS, false)):
+		return "Life: n/a"
+	if _life_has_no_track(biosphere_desc):
+		return "Life: %s" % _biosphere_stage_text(biosphere_desc)
+	return "Life: %s / %s" % [
+		_biosphere_stage_text(biosphere_desc),
+		_biosphere_track_text(biosphere_desc),
+	]
+
+
 static func format_season(thermal_desc: Dictionary) -> String:
 	if not bool(thermal_desc.get(ThermalServiceScript.KEY_HAS_SEASONAL_BASIS, false)):
 		return "Season: n/a"
@@ -91,12 +103,15 @@ static func format_inspector_world_line(planetary_state_desc: Dictionary) -> Str
 	return "World: %s" % " / ".join(segments)
 
 
-static func format_inspector_life_potential_line(life_potential_desc: Dictionary) -> String:
-	if not bool(life_potential_desc.get(LifePotentialServiceScript.KEY_HAS_LIFE_POTENTIAL_BASIS, false)):
-		return "Potential: n/a"
-	return "Potential: %s / %s" % [
-		_track_text(life_potential_desc),
-		_potential_class_text(life_potential_desc),
+static func format_inspector_life_line(biosphere_desc: Dictionary) -> String:
+	if not bool(biosphere_desc.get(ProtoBiosphereSimulationServiceScript.KEY_HAS_BIOSPHERE_BASIS, false)):
+		return "Life: n/a"
+	if _life_has_no_track(biosphere_desc):
+		return "Life: %s" % _biosphere_stage_text(biosphere_desc)
+	return "Life: %s / %s / %s" % [
+		_biosphere_stage_text(biosphere_desc),
+		_biosphere_track_text(biosphere_desc),
+		_biosphere_potential_class_text(biosphere_desc),
 	]
 
 
@@ -208,3 +223,37 @@ static func _potential_class_text(life_potential_desc: Dictionary) -> String:
 			LifePotentialServiceScript.PotentialClass.NONE
 		))
 	)
+
+
+static func _biosphere_stage_text(biosphere_desc: Dictionary) -> String:
+	return ProtoBiosphereSimulationServiceScript.to_string_stage(
+		int(biosphere_desc.get(
+			ProtoBiosphereSimulationServiceScript.KEY_BIOSPHERE_STAGE,
+			ProtoBiosphereSimulationServiceScript.Stage.STERILE
+		))
+	)
+
+
+static func _biosphere_track_text(biosphere_desc: Dictionary) -> String:
+	return LifePotentialServiceScript.to_string_track(
+		int(biosphere_desc.get(
+			ProtoBiosphereSimulationServiceScript.KEY_DOMINANT_TRACK_ID,
+			LifePotentialServiceScript.Track.WATER_CARBON
+		))
+	)
+
+
+static func _biosphere_potential_class_text(biosphere_desc: Dictionary) -> String:
+	return LifePotentialServiceScript.to_string_potential_class(
+		int(biosphere_desc.get(
+			ProtoBiosphereSimulationServiceScript.KEY_DOMINANT_POTENTIAL_CLASS,
+			LifePotentialServiceScript.PotentialClass.NONE
+		))
+	)
+
+
+static func _life_has_no_track(biosphere_desc: Dictionary) -> bool:
+	return int(biosphere_desc.get(
+		ProtoBiosphereSimulationServiceScript.KEY_DOMINANT_POTENTIAL_CLASS,
+		LifePotentialServiceScript.PotentialClass.NONE
+	)) == LifePotentialServiceScript.PotentialClass.NONE

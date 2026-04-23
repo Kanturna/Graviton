@@ -84,8 +84,8 @@ static func _test_model_builder_builds_hierarchy_and_summary_for_starter_root(ct
 		"ModelBuilder haengt fuer planetare Bodies die neue kompakte World-Zeile an"
 	)
 	ctx.assert_true(
-		String(gamma_iv_row.get("potential_text", "")) == "Potential: WATER_CARBON / MEDIUM",
-		"ModelBuilder haengt fuer planetare Bodies zusaetzlich die kompakte Potenzialzeile an"
+		String(gamma_iv_row.get("life_text", "")) == "Life: PREBIOTIC / WATER_CARBON / MEDIUM",
+		"ModelBuilder haengt fuer planetare Bodies zusaetzlich die kompakte Life-Zeile an"
 	)
 
 	var summary: Dictionary = model.get("summary", {})
@@ -120,7 +120,7 @@ static func _test_overlay_formats_navigation_first_rows(ctx) -> void:
 		_row_by_body_id(model_with_alpha_focus.get("rows", []), &"alpha")
 	)
 	ctx.assert_true(alpha_row_text.find("\n") == -1, "STAR-Rows bleiben im kompakten Navigator einzeilig")
-	ctx.assert_true(alpha_row_text.find("Potential:") == -1, "STAR-Rows tragen keine Potenzialzeile")
+	ctx.assert_true(alpha_row_text.find("Life:") == -1, "STAR-Rows tragen keine Life-Zeile")
 	ctx.assert_true(alpha_row_text.find("World:") == -1, "STAR-Rows tragen keine World-Zeile")
 	ctx.assert_true(alpha_row_text.find("n/a") == -1, "STAR-Rows zeigen kein nutzloses n/a-Badge mehr")
 
@@ -129,8 +129,8 @@ static func _test_overlay_formats_navigation_first_rows(ctx) -> void:
 		_row_by_body_id(model_with_alpha_focus_rows, &"gamma_iv")
 	)
 	ctx.assert_true(
-		non_focused_gamma_iv_text.find("Potential: WATER_CARBON / MEDIUM") != -1,
-		"Nicht fokussierte PLANET-Rows behalten die kompakte Potenzialzeile"
+		non_focused_gamma_iv_text.find("Life: PREBIOTIC / WATER_CARBON / MEDIUM") != -1,
+		"Nicht fokussierte PLANET-Rows behalten die kompakte Life-Zeile"
 	)
 	ctx.assert_true(
 		non_focused_gamma_iv_text.find("World:") == -1,
@@ -142,16 +142,16 @@ static func _test_overlay_formats_navigation_first_rows(ctx) -> void:
 		_row_by_body_id(model_with_gamma_iv_focus.get("rows", []), &"gamma_iv")
 	)
 	ctx.assert_true(
-		focused_gamma_iv_text.find("Potential: WATER_CARBON / MEDIUM") != -1,
-		"Fokussierte PLANET-Rows behalten die Potenzialzeile"
+		focused_gamma_iv_text.find("Life: PREBIOTIC / WATER_CARBON / MEDIUM") != -1,
+		"Fokussierte PLANET-Rows behalten die Life-Zeile"
 	)
 	ctx.assert_true(
 		focused_gamma_iv_text.find("World: LIMITED / MODERATE / WINDOWED / TEMPERATE / SEASONAL") != -1,
 		"Fokussierte PLANET-Rows zeigen zusaetzlich die World-Zeile"
 	)
 	ctx.assert_true(
-		focused_gamma_iv_text.find("Potential:") < focused_gamma_iv_text.find("World:"),
-		"Im kompakten Navigator steht Potential vor World"
+		focused_gamma_iv_text.find("Life:") < focused_gamma_iv_text.find("World:"),
+		"Im kompakten Navigator steht Life vor World"
 	)
 
 	_teardown_starter_root_context(context)
@@ -226,7 +226,8 @@ static func _build_starter_root_context() -> Dictionary:
 		setup.get(SimTestHarnessScript.HARNESS_KEY_ENVIRONMENT_SERVICE),
 		setup.get(SimTestHarnessScript.HARNESS_KEY_ORBIT_SERVICE),
 		setup.get(SimTestHarnessScript.HARNESS_KEY_PLANETARY_STATE_SERVICE),
-		setup.get(SimTestHarnessScript.HARNESS_KEY_LIFE_POTENTIAL_SERVICE)
+		setup.get(SimTestHarnessScript.HARNESS_KEY_LIFE_POTENTIAL_SERVICE),
+		setup.get(SimTestHarnessScript.HARNESS_KEY_PROTO_BIOSPHERE_SERVICE)
 	)
 	snapshot_cache.set_interest_ids(
 		_planetary_interest_ids_for_root(

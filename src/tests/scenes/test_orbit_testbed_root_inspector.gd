@@ -268,6 +268,18 @@ static func _build_testbed_probe(is_large_world: bool):
 
 static func _destroy_testbed_probe(testbed) -> void:
 	if testbed != null:
+		if testbed._proto_biosphere_service != null:
+			testbed._proto_biosphere_service.free()
+			testbed._proto_biosphere_service = null
+		if testbed._life_potential_service != null:
+			testbed._life_potential_service.free()
+			testbed._life_potential_service = null
+		if testbed._planetary_state_service != null:
+			testbed._planetary_state_service.free()
+			testbed._planetary_state_service = null
+		if testbed._planetary_year_sampler != null:
+			testbed._planetary_year_sampler.free()
+			testbed._planetary_year_sampler = null
 		testbed.free()
 	UniverseRegistry.clear()
 

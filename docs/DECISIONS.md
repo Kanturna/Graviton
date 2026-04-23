@@ -1,5 +1,35 @@
 # Graviton - Decisions
 
+## 2026-04-23 - Proto-Biosphaere v1b landet als deterministischer Background-State, nicht als aktiver Tick-Loop
+
+Auf `Life Potential v1a` folgt jetzt bewusst **keine** aktiv tickende
+oder emergente Biosphaeren-Simulation. Stattdessen landet die erste
+persistente Proto-Biosphaere als deterministischer Background-State aus
+Seed + `sim_time_s`.
+
+Konsequenz:
+
+- `ProtoBiosphereSimulationService` lebt im `sim/`-Layer, aber
+  ausserhalb von `BodyState`
+- gespeichert werden nur stabile Seed-/Drift-Parameter pro
+  `PLANET`/`MOON`; `dominant_track_id`, `biosphere_stage` und aktueller
+  Progress werden lazy aus der aktuellen Sim-Zeit berechnet
+- die Implementierung ist bewusst **kein** aktiver Writer-/Tick-Loop pro
+  Body, weil die aktuelle v1b-Dynamik monoton-konvergent und damit
+  vollstaendig durch `seed + delta * ticks_elapsed` beschrieben ist
+- resident und offscreen nutzen dieselbe Math; Unterschiede gibt es in
+  v1b nur im Zugriffspfad, nicht in der Fidelity
+- fuer Galaxy-Catalogs wird kein Temp-Registry- oder Shadow-Registry-
+  Pfad aufgebaut; stattdessen werden die bereits bewaehrten
+  Pure-Helper-Muster aus `PlanetaryYearSampler` und
+  `LifePotentialService` fortgesetzt
+- `Life Potential` bleibt der read-only Pfad fuer den plausibelsten
+  Chemietrack, `Life` beschreibt davon getrennt den aktuell etablierten
+  Proto-Biosphaerenstand
+- falls spaeter echte resident/offscreen-Dynamik oder emergente
+  Lebenspfade gebraucht werden, kommt das als eigener Folgeblock und
+  nicht heimlich in `v1b`
+
 ## 2026-04-23 - Der rechte Root-Inspector wird bewusst navigation-first statt Mini-Datenblatt
 
 Der Large-World-Root-Inspector bleibt resident-root-only, verschiebt
@@ -12,7 +42,7 @@ Konsequenz:
 - der rechte Inspector zeigt fuer `BLACK_HOLE` und `STAR` nur noch
   schlanke Einzeiler statt bedeutungslosem `n/a`-Badge-Rauschen
 - `PLANET`- und `MOON`-Rows zeigen standardmaessig nur noch:
-  `Badge + Note` und darunter `Potential: ...`
+  `Badge + Note` und darunter kompakt `Life: ...`
 - `World:` bleibt im Inspector erhalten, wird aber nur noch fuer die
   **aktuell fokussierte** Planet-/Moon-Zeile angezeigt
 - Klicks auf Inspector-Zeilen bleiben im bestehenden
@@ -58,9 +88,10 @@ Konsequenz:
   Gleichstaende werden zuerst ueber `thermal_extremity_class`, dann ueber
   `volatile_inventory_class` aufgeloest; ein fixer Fallback ist nur der
   letzte technische Restpfad
-- HUD und Root-Inspector duerfen die neue
-  `Life Potential:`-/`Potential:`-Zeile direkt anzeigen, ohne daraus
-  schon biologische Persistenz oder Population abzuleiten
+- HUD und Root-Inspector duerfen die neue `Life Potential:`-Lesart
+  direkt anzeigen, ohne daraus schon biologische Persistenz oder
+  Population abzuleiten; spaetere `Life:`-Persistenz in `v1b` baut
+  darauf auf, ersetzt die Potenzialsemantik aber nicht
 
 ## 2026-04-23 - Planetare Zustandsbasis landet als eigener Jahres-Layer vor jeder Life-Simulation
 

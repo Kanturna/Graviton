@@ -2,13 +2,13 @@
 
 Stand: 2026-04-23
 
-## Prioritaet 0 - Life-Potential-v1a + Root-Inspector-v2.1 Acceptance Gate
+## Prioritaet 0 - Life-Potential-v1b Acceptance Gate
 
 Ziel:
-Die neue `Life Potential v1a`-Schicht zusammen mit dem jetzt
+Die neue `Life Potential v1b`-Schicht zusammen mit dem jetzt
 verdichteten `Root Inspector v2.1` im echten Editor-/Playtest-Lauf
-validieren, bevor daraus ein persistenter Proto-Biosphaeren-Block oder
-eine groessere Survey-/Atlas-Schicht weitergezogen wird.
+validieren, bevor danach ein weiterer Physik- oder Life-Folgeblock
+weitergezogen wird.
 
 Konkreter Ablauf:
 
@@ -21,10 +21,11 @@ Konkreter Ablauf:
 - jeweils dieselben Dinge lesen:
   - normales Fokus-HUD
   - Root-Inspector-Zeile fuer denselben Body
-  - `Environment` / `Climate` gegen `World` gegen `Life Potential`
+  - `Environment` / `Climate` gegen `World` gegen `Life` gegen
+    `Life Potential`
 - dabei beim Inspector zusaetzlich bewusst pruefen:
   - `BLACK_HOLE`- und `STAR`-Rows lesen sich als schlanke Einzeiler
-  - nicht fokussierte `PLANET`-/`MOON`-Rows zeigen `Potential:`, aber
+  - nicht fokussierte `PLANET`-/`MOON`-Rows zeigen `Life:`, aber
     kein `World:`
   - `World:` erscheint nur auf der aktuell fokussierten Zeile
   - Klick auf eine Inspector-Zeile fuehrt jetzt zu einem sofortigen
@@ -39,16 +40,18 @@ Konkreter Ablauf:
   - `Environment` bleibt die Aussage fuer **jetzt**
   - `World` liest als **Jahrescharakter** statt als zweite
     Momentaufnahme
-  - die neue `Life Potential:`-Zeile liest als dominanter Chemiepfad,
-    aber noch nicht wie eine versteckte Biosphaere
+  - `Life` liest als etablierter Proto-Biosphaerenstand ueber Sim-Zeit
+  - `Life Potential` bleibt der zugrunde liegende Chemiepfad und ist
+    nicht nur eine zweite `Life:`-Beschriftung
   - `planet_a` liest weiter als reich/gut gepuffert, ohne die alte
-    `sample_system`-Umweltsemantik zu verlieren, und zeigt jetzt klar
-    `WATER_CARBON / HIGH`
+    `sample_system`-Umweltsemantik zu verlieren, zeigt klar
+    `Life Potential: WATER_CARBON / HIGH`, startet aber erst
+    `PREBIOTIC`
   - `gamma_iv` bleibt aktuell brauchbar, darf aber jahresweise klar nur
     `WINDOWED`/saisonal lesen und soll life-seitig bewusst nur
     `WATER_CARBON / MEDIUM` bleiben
-  - `alpha_iii` liest klar sulfur-dominiert
-  - `gamma_iii` liest klar cryogen-dominiert statt als kalte
+  - `alpha_iii` liest life-seitig klar sulfur-dominiert
+  - `gamma_iii` liest life-seitig klar cryogen-dominiert statt als kalte
     Reservoir-Erdkopie
 
 ## Prioritaet 1 - Large-World Regression Gate mit kompaktem Navigator
@@ -68,11 +71,13 @@ Konkreter Ablauf:
   - `resident_root_ids` bleibt weiter `1..2`
   - der Inspector bleibt trotz kompakterer Rows fuer residente
     Planeten/Monde informativ:
-    `Potential:` immer sichtbar, `World:` focused-row-only
+    `Life:` immer sichtbar, `World:` focused-row-only
   - `ROOT_OVERVIEW + Inspector offen` bleibt auf `scaleup_galaxy_100`
     weiter ruhig und interaktiv
   - Inspector-Klicks auf Stern / Planet / Mond fuehren auch im
     Large-World-Pfad sofort zu sauberem Zentrieren/Fit
+  - nicht residente Roots zeigen nach spaeterem Resident-Werden keinen
+    Life-Reset, sondern denselben fortgeschriebenen Background-State
   - Proxy-Culling, BH-only-/Stern-Proxy-Tiering und Streaming-Hysterese
     lesen weiter stabil
 
@@ -82,7 +87,7 @@ Wenn dieser Gate kippt:
 - stattdessen einen kleinen Korrekturblock direkt aus Inspector-,
   Snapshot- oder Derived-Interest-Befunden schneiden
 
-## Prioritaet 2 - Naechster Simulationsblock: Life Potential v1b oder Mehrquellenstrahlung
+## Prioritaet 2 - Naechster Simulationsblock: Mehrquellenstrahlung oder Life v2
 
 Ziel:
 Nach einem sauberen Acceptance-Run den naechsten grossen planetaren
@@ -90,18 +95,18 @@ Simulationsschritt bewusst waehlen.
 
 Bevorzugte Richtung:
 
-- `Life Potential v1b` auf Basis der neuen read-only Potenzialschicht
-- persistenter Proto-Biosphaerenzustand pro Planet/Mond
-- Seeding aus den jetzt kalibrierten Chemiepfad-Klassen
-- erster langsamer Tick-/Progress-Pfad, aber weiterhin noch keine
-  Populationen, Wesen oder Zivilisation
+- `Mehrquellenstrahlung`, falls die bestehende
+  `has_primary_source_only_basis`-Vereinfachung fuer Mehrstern-Faelle
+  im Playtest jetzt stoert
+- alternativ direkt `Life v2`, wenn oberhalb von `MICROBIAL` die erste
+  echte Biosphaeren-Diversifizierung kommen soll
 
 Fallback-Reihenfolge:
 
-- wenn im Playtest `has_primary_source_only_basis` fuer Mehrstern-Faelle
-  stoert, zuerst einen `Mehrquellenstrahlung`-Block vorziehen
-- erst danach `Life Potential v1b` auf die verbesserte Thermalbasis
-  setzen
+- wenn Mehrquellenstrahlung visuell / semantisch noch nicht stoert,
+  zuerst `Life v2` planen
+- wenn Mehrstern-Faelle die neue `Life`-/`Life Potential`-Lesart
+  sichtbar verziehen, zuerst die Thermalbasis verbreitern
 
 ## Akut - Backdrop-Flicker im Editor beseitigen - erledigt
 

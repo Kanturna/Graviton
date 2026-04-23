@@ -26,7 +26,7 @@ src/runtime/       LocalBubbleManager, BubbleActivationSet,
 src/sim/           UniverseRegistry, WorldLoader, OrbitService, LocalOrbitIntegrator,
                    ThermalService, AtmosphereService, EnvironmentService,
                    PlanetaryYearSampler, PlanetaryStateService,
-                   LifePotentialService,
+                   LifePotentialService, ProtoBiosphereSimulationService,
                    GalaxyDef/RootSystemManifest/RootSystemGenerator,
                    BodyDef/State, OrbitProfile, OrbitMode
    |
@@ -146,6 +146,12 @@ _ready():
         PlanetaryStateService,
         EnvironmentService
     )
+    ProtoBiosphereSimulationService.configure(
+        UniverseRegistry,
+        TimeService,
+        WorldLoader
+    )
+    ProtoBiosphereSimulationService.initialize_for_named_world(...)
     DerivedSnapshotCache.configure(
         UniverseRegistry,
         TimeService,
@@ -155,7 +161,8 @@ _ready():
         EnvironmentService,
         OrbitService,
         PlanetaryStateService,
-        LifePotentialService
+        LifePotentialService,
+        ProtoBiosphereSimulationService
     )
     OrbitViewRenderer.set_derived_snapshot_cache(DerivedSnapshotCache)
     OrbitService.bodies_updated.connect(
@@ -190,10 +197,10 @@ treibt keine Zeit vorwaerts. Es stellt nur sicher, dass alle
 abhaengige interessierte Bodies; ohne dieses Signal bleibt
 `TimeService.sim_tick` der konservative Fallback. Im Frame-Loop werden
 nur bereits berechnete Snapshots konsumiert.
-Nach `PlanetaryStateService` und `LifePotentialService` fuehrt der
-Cache damit jetzt mehrere read-only Desc-Familien fuer dieselben
-Interessens-Bodies, ohne neue Simulationswahrheit in `runtime/`
-aufzubauen.
+Nach `PlanetaryStateService`, `LifePotentialService` und
+`ProtoBiosphereSimulationService` fuehrt der Cache damit jetzt mehrere
+read-only Desc-Familien fuer dieselben Interessens-Bodies, ohne neue
+Simulationswahrheit in `runtime/` aufzubauen.
 Auch Diagnosepfade wie `DebugOverlay` duerfen bei verdrahtetem
 `DerivedSnapshotCache` nicht live auf
 `ThermalService.describe_body(...)` zurueckfallen; Cache-Miss bleibt
@@ -204,6 +211,13 @@ temporale Mutation der Live-Registry erzeugt. `PlanetaryYearSampler`
 arbeitet analytisch und read-only auf `BodyDef`-/Orbitdaten und darf
 weder `BodyState` noch `TimeService` noch
 `OrbitService.recompute_all_at_time(...)` fuer Analysezwecke verwenden.
+
+Die v1b-Proto-Biosphaere folgt demselben Grundsatz: sie mutiert nicht
+frameweise fuer jeden Body, sondern berechnet den aktuellen
+Background-State lazy aus stabilen Seed-/Drift-Parametern und
+`TimeService.sim_time_s`. Offscreen-/All-Roots-Pfade duerfen dafuer
+dieselben Pure-Helper wie die residenten Live-Pfade nutzen, aber keine
+zweite Temp-Registry oder duplizierte Planetary-/Life-Math aufbauen.
 
 Fuer grosse Multi-Root-Welten bleibt dieselbe Schichtung erhalten:
 
