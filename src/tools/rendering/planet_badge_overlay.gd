@@ -1,6 +1,8 @@
 class_name PlanetBadgeOverlay
 extends CanvasLayer
 
+signal life_details_requested(body_id: StringName)
+
 const OrbitCameraFramingScript := preload("res://src/tools/rendering/orbit_camera_framing.gd")
 const OrbitHudFormatterScript := preload("res://src/tools/rendering/orbit_hud_formatter.gd")
 
@@ -41,6 +43,7 @@ func set_frame_label(frame_label: StringName) -> void:
 
 func refresh() -> void:
 	_ensure_ui()
+	_sync_root_rect()
 	_ensure_badge_pool()
 	if _registry == null or _topology == null or _bubble == null or _snapshot_cache == null or _renderer == null:
 		_hide_all_badges()
@@ -100,14 +103,20 @@ func refresh() -> void:
 
 func get_debug_snapshot() -> Dictionary:
 	var visible_count: int = 0
+	var visible_badges: Array[Dictionary] = []
 	for badge_variant in _badge_pool:
 		var badge: Dictionary = badge_variant
-		var panel: PanelContainer = badge.get("panel", null)
+		var panel: Control = badge.get("panel", null)
 		if panel != null and panel.visible:
 			visible_count += 1
+			visible_badges.append({
+				"body_id": badge.get("body_id", StringName("")),
+				"visible": true,
+			})
 	return {
 		"frame_label": _frame_label,
 		"visible_badge_count": visible_count,
+		"visible_badges": visible_badges,
 		"max_badges": MAX_BADGES,
 		"min_badge_radius_px": MIN_BADGE_RADIUS_PX,
 	}
@@ -140,26 +149,45 @@ func _ensure_ui() -> void:
 		return
 	_root = Control.new()
 	_root.name = "BadgeRoot"
-	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
+	_sync_root_rect()
+
+
+func _sync_root_rect() -> void:
+	if _root == null:
+		return
+	var viewport := get_viewport()
+	if viewport == null:
+		return
+	_root.position = Vector2.ZERO
+	_root.size = viewport.get_visible_rect().size
 
 
 func _ensure_badge_pool() -> void:
 	if _root == null:
 		return
 	while _badge_pool.size() < MAX_BADGES:
-		_badge_pool.append(_make_badge())
+		_badge_pool.append(_make_badge(_badge_pool.size()))
 
 
-func _make_badge() -> Dictionary:
-	var panel := PanelContainer.new()
+func _make_badge(index: int) -> Dictionary:
+	var panel := Button.new()
 	panel.visible = false
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_theme_stylebox_override("panel", _make_badge_style())
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+	panel.focus_mode = Control.FOCUS_NONE
+	panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	panel.add_theme_stylebox_override("normal", _make_badge_style())
+	panel.add_theme_stylebox_override("hover", _make_badge_style(Color(0.0509804, 0.0784314, 0.145098, 0.92), Color(0.501961, 0.705882, 1.0, 0.42)))
+	panel.add_theme_stylebox_override("pressed", _make_badge_style(Color(0.0313725, 0.0470588, 0.0862745, 0.94), Color(0.501961, 0.705882, 1.0, 0.52)))
+	panel.add_theme_stylebox_override("focus", _make_badge_style())
+	panel.pressed.connect(_on_badge_pressed.bind(index), CONNECT_DEFERRED)
 	_root.add_child(panel)
 
 	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_theme_constant_override("margin_left", 8)
 	margin.add_theme_constant_override("margin_top", 5)
 	margin.add_theme_constant_override("margin_right", 8)
@@ -167,15 +195,18 @@ func _make_badge() -> Dictionary:
 	panel.add_child(margin)
 
 	var vbox := VBoxContainer.new()
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_theme_constant_override("separation", 0)
 	margin.add_child(vbox)
 
 	var line_one := Label.new()
+	line_one.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	line_one.add_theme_color_override("font_color", Color(0.972549, 0.980392, 1.0, 0.96))
 	line_one.add_theme_font_size_override("font_size", 12)
 	vbox.add_child(line_one)
 
 	var line_two := Label.new()
+	line_two.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	line_two.add_theme_color_override("font_color", Color(0.819608, 0.886275, 0.984314, 0.90))
 	line_two.add_theme_font_size_override("font_size", 11)
 	vbox.add_child(line_two)
@@ -184,11 +215,12 @@ func _make_badge() -> Dictionary:
 		"panel": panel,
 		"line_one": line_one,
 		"line_two": line_two,
+		"body_id": StringName(""),
 	}
 
 
 func _apply_badge(badge: Dictionary, candidate: Dictionary, viewport_size: Vector2) -> void:
-	var panel: PanelContainer = badge.get("panel", null)
+	var panel: Control = badge.get("panel", null)
 	var line_one: Label = badge.get("line_one", null)
 	var line_two: Label = badge.get("line_two", null)
 	if panel == null or line_one == null or line_two == null:
@@ -197,14 +229,17 @@ func _apply_badge(badge: Dictionary, candidate: Dictionary, viewport_size: Vecto
 	line_one.text = lines[0] if not lines.is_empty() else ""
 	line_two.text = lines[1] if lines.size() > 1 else ""
 	line_two.visible = line_two.text != ""
+	badge["body_id"] = candidate.get("body_id", StringName(""))
 	panel.visible = true
+	var badge_size: Vector2 = panel.get_combined_minimum_size()
+	panel.custom_minimum_size = badge_size
+	panel.size = badge_size
 	var center_px: Vector2 = candidate.get("center_px", Vector2.ZERO)
 	var projected_radius_px: float = float(candidate.get("projected_radius_px", 0.0))
 	var desired_pos: Vector2 = center_px + Vector2(
 		projected_radius_px + BADGE_OFFSET_X_PX,
 		-(projected_radius_px + BADGE_OFFSET_Y_PX)
 	)
-	var badge_size: Vector2 = panel.get_combined_minimum_size()
 	panel.position = _clamp_badge_position(desired_pos, badge_size, viewport_size)
 
 
@@ -214,9 +249,11 @@ func _hide_all_badges() -> void:
 
 
 static func _set_badge_visible(badge: Dictionary, is_visible: bool) -> void:
-	var panel: PanelContainer = badge.get("panel", null)
+	var panel: Control = badge.get("panel", null)
 	if panel != null:
 		panel.visible = is_visible
+	if not is_visible:
+		badge["body_id"] = StringName("")
 
 
 static func _clamp_badge_position(pos: Vector2, badge_size: Vector2, viewport_size: Vector2) -> Vector2:
@@ -233,14 +270,27 @@ static func _is_offscreen(center_px: Vector2, projected_radius_px: float, viewpo
 		or center_px.y > viewport_size.y + projected_radius_px
 
 
-static func _make_badge_style() -> StyleBoxFlat:
+func _on_badge_pressed(index: int) -> void:
+	if index < 0 or index >= _badge_pool.size():
+		return
+	var badge: Dictionary = _badge_pool[index]
+	var body_id: StringName = badge.get("body_id", StringName(""))
+	if body_id == StringName(""):
+		return
+	life_details_requested.emit(body_id)
+
+
+static func _make_badge_style(
+		bg_color: Color = Color(0.0352941, 0.0509804, 0.0941176, 0.82),
+		border_color: Color = Color(0.388235, 0.592157, 0.87451, 0.28)
+	) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.0352941, 0.0509804, 0.0941176, 0.82)
+	style.bg_color = bg_color
 	style.border_width_left = 1
 	style.border_width_top = 1
 	style.border_width_right = 1
 	style.border_width_bottom = 1
-	style.border_color = Color(0.388235, 0.592157, 0.87451, 0.28)
+	style.border_color = border_color
 	style.corner_radius_top_left = 10
 	style.corner_radius_top_right = 10
 	style.corner_radius_bottom_right = 10

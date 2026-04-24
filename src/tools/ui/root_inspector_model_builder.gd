@@ -4,6 +4,7 @@ extends RefCounted
 
 const OrbitHudFormatterScript = preload("res://src/tools/rendering/orbit_hud_formatter.gd")
 const EnvironmentServiceScript = preload("res://src/sim/environment/environment_service.gd")
+const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_service.gd")
 
 var _registry: Node = null
 var _topology = null
@@ -91,18 +92,37 @@ func _append_rows(
 	if def == null:
 		return
 	var environment_desc: Dictionary = _snapshot_cache.get_environment_desc(body_id)
+	var biosphere_desc: Dictionary = _snapshot_cache.get_biosphere_scale_desc(body_id)
+	var native_species_desc: Dictionary = _snapshot_cache.get_native_species_desc(body_id)
+	var badge_text: String = _badge_text_for_body(def, environment_desc)
+	var life_badge_text: String = _life_badge_text_for_body(def, biosphere_desc)
 	rows.append({
 		"body_id": body_id,
 		"depth": depth,
+		"kind_id": def.kind,
 		"name_text": _display_name(def),
 		"kind_text": BodyType.to_string_kind(def.kind),
-		"badge_text": _badge_text_for_body(def, environment_desc),
-		"life_badge_text": _life_badge_text_for_body(def, _snapshot_cache.get_biosphere_scale_desc(body_id)),
+		"badge_text": badge_text,
+		"environment_class": int(environment_desc.get(
+			EnvironmentServiceScript.KEY_ENVIRONMENT_CLASS,
+			EnvironmentServiceScript.Class.HOSTILE
+		)),
+		"ecosystem_type": int(environment_desc.get(
+			EnvironmentServiceScript.KEY_ECOSYSTEM_TYPE,
+			EnvironmentServiceScript.EcosystemType.FROZEN_WORLD
+		)),
+		"has_environment_badge": _has_environment_badge(def, environment_desc),
+		"life_badge_text": life_badge_text,
+		"biosphere_stage": int(biosphere_desc.get(
+			BiosphereScaleServiceScript.KEY_BIOSPHERE_STAGE,
+			BiosphereScaleServiceScript.Stage.STERILE
+		)),
+		"has_life_badge": life_badge_text != "",
 		"note_text": _note_text_for_body(body_id, def, children_by_parent),
 		"detail_text": _detail_text_for_body(
 			def,
-			_snapshot_cache.get_native_species_desc(body_id),
-			_snapshot_cache.get_biosphere_scale_desc(body_id),
+			native_species_desc,
+			biosphere_desc,
 			body_id == focused_body_id
 		),
 		"is_focused": body_id == focused_body_id,
@@ -147,6 +167,14 @@ static func _badge_text_for_body(def: BodyDef, environment_desc: Dictionary) -> 
 	if def.kind != BodyType.Kind.PLANET and def.kind != BodyType.Kind.MOON:
 		return ""
 	return OrbitHudFormatterScript.format_inspector_environment_badge(environment_desc)
+
+
+static func _has_environment_badge(def: BodyDef, environment_desc: Dictionary) -> bool:
+	if def == null:
+		return false
+	if def.kind != BodyType.Kind.PLANET and def.kind != BodyType.Kind.MOON:
+		return false
+	return bool(environment_desc.get(EnvironmentServiceScript.KEY_IS_SUPPORTED_BODY_KIND, false))
 
 static func _life_badge_text_for_body(def: BodyDef, biosphere_desc: Dictionary) -> String:
 	if def == null:

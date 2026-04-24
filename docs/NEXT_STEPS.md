@@ -8,6 +8,44 @@ Die aktuell im Repo eingecheckte `orbit_testbed.tscn` startet derzeit mit
 Fuer Acceptance-Runs auf `starter_world` oder `sample_system` den
 Szenen-Override vor dem Editor-Run bewusst umstellen.
 
+## Prioritaet 0 - Survey Color v1 / Life Detail Panel v1 Acceptance Gate
+
+Ziel:
+Den jetzt headless-gruenen farbigen Root-Inspector und das neue
+read-only Life-Detail-Panel im echten Editor-/Playtest-Lauf validieren,
+bevor Population Foundation v1 oder echte Species-Visuals begonnen
+werden.
+
+Konkreter Ablauf:
+
+- vor dem Gate kurz verifizieren, ob `starter_world` die geplanten IDs
+  `alpha_i`, `gamma_iv` und `gamma_iii` enthaelt; falls nicht, auf die
+  vorhandenen Testbed-Foki ausweichen
+- `starter_world -> alpha_i`, `gamma_iv`, `gamma_iii` und einen
+  Detailplaneten in `scaleup_galaxy_100` pruefen
+- Root Inspector offen:
+  Farben lesbar, Environment und Climate als getrennte Chips, Row-
+  Fokusnavigation stabil, keine Text-Ueberladung
+- `scaleup_galaxy_100` mit offenem Inspector pruefen:
+  ruhig, scanbar und ohne spuerbare Badge-/Inspector-Chatterei
+- Inspector-Life-Chip anklicken:
+  `LifeDetailPanel` oeffnet, Row-Hintergrundklick fokussiert weiter
+- planetennahes `LIFE PREBIOTIC` oder anderes sichtbares `LIFE`-Badge
+  anklicken:
+  dasselbe Panel oeffnet
+- Klick neben Badge:
+  normales Welt-Picking bleibt aktiv
+- Panel-Regeln pruefen:
+  Body-Wechsel aktualisiert Inhalt, Same-Body-Klick toggelt zu,
+  Close und `ESC` schliessen, normaler Fokuswechsel schliesst nicht
+
+Wenn dieser Gate kippt:
+
+- keine Populationen oder generierten Lebensformbilder anfangen
+- zuerst nur den konkreten View-Slice korrigieren:
+  Farbe/Kontrast, Chip-Event-Trennung, Badge-Mouse-Filter oder
+  Panel-Lesbarkeit
+
 ## Prioritaet 0 - Planet-Summary-v1 Acceptance Gate
 
 Ziel:

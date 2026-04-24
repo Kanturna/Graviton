@@ -3,10 +3,13 @@ extends PanelContainer
 
 
 signal focus_requested(body_id: StringName)
+signal life_details_requested(body_id: StringName)
 signal closed
 
 const RootInspectorModelBuilderScript = preload("res://src/tools/ui/root_inspector_model_builder.gd")
 const DerivedSnapshotCacheScript = preload("res://src/runtime/derived/derived_snapshot_cache.gd")
+const EnvironmentServiceScript = preload("res://src/sim/environment/environment_service.gd")
+const SurveyVisualThemeScript = preload("res://src/tools/ui/survey_visual_theme.gd")
 
 const PANEL_MIN_WIDTH: float = 392.0
 const ROW_INDENT_PX: int = 18
@@ -224,30 +227,12 @@ func _apply_model(model: Dictionary) -> void:
 		_row_body_ids.append(body_id)
 
 		var indent := MarginContainer.new()
+		indent.name = "RowIndent_%s" % _node_name_fragment(body_id)
 		indent.add_theme_constant_override("margin_left", int(row.get("depth", 0)) * ROW_INDENT_PX)
 		indent.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_rows_vbox.add_child(indent)
 
-		var button := Button.new()
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.text = _format_row_text(row)
-		button.clip_text = false
-		# The inspector rebuilds while the sim runs, so release-based buttons can
-		# lose their click between mouse-down and mouse-up. Fire on press-down.
-		button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
-		button.focus_mode = Control.FOCUS_NONE
-		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		button.add_theme_stylebox_override("normal", _row_style_active if bool(row.get("is_focused", false)) else _row_style_normal)
-		button.add_theme_stylebox_override("hover", _row_style_hover)
-		button.add_theme_stylebox_override("pressed", _row_style_active)
-		button.add_theme_stylebox_override("focus", _row_style_active)
-		button.add_theme_color_override("font_color", Color(0.972549, 0.980392, 1.0, 1.0) if bool(row.get("is_focused", false)) else Color(0.890196, 0.92549, 0.988235, 0.94))
-		button.add_theme_font_size_override("font_size", 13)
-		# Inspector clicks rebuild the row list via snapshot refresh, so route the
-		# focus request deferred to avoid freeing the active button mid-signal.
-		button.pressed.connect(_on_row_pressed.bind(body_id), CONNECT_DEFERRED)
-		indent.add_child(button)
+		indent.add_child(_make_row_control(row, body_id))
 
 
 func _clear_rows() -> void:
@@ -277,8 +262,180 @@ static func _format_row_text(row: Dictionary) -> String:
 	return "%s\n%s" % [line_one, detail_text]
 
 
+func _make_row_control(row: Dictionary, body_id: StringName) -> PanelContainer:
+	var row_panel := PanelContainer.new()
+	row_panel.name = "Row_%s" % _node_name_fragment(body_id)
+	row_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	row_panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_set_row_style(row_panel, bool(row.get("is_focused", false)), false)
+	# Inspector rows can rebuild while the sim runs. Route the mouse-down focus
+	# request deferred so a rebuild never frees this row inside its own signal.
+	row_panel.gui_input.connect(_on_row_gui_input.bind(body_id), CONNECT_DEFERRED)
+	row_panel.mouse_entered.connect(_on_row_mouse_entered.bind(row_panel, bool(row.get("is_focused", false))))
+	row_panel.mouse_exited.connect(_on_row_mouse_exited.bind(row_panel, bool(row.get("is_focused", false))))
+
+	var row_vbox := VBoxContainer.new()
+	row_vbox.name = "RowVBox"
+	row_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row_vbox.add_theme_constant_override("separation", 4)
+	row_panel.add_child(row_vbox)
+
+	var hbox := HBoxContainer.new()
+	hbox.name = "RowContent"
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_theme_constant_override("separation", 7)
+	row_vbox.add_child(hbox)
+
+	hbox.add_child(_make_text_label(
+		"NameLabel",
+		String(row.get("name_text", "")),
+		SurveyVisualThemeScript.color_for_body_kind(int(row.get("kind_id", -1))),
+		_is_planetary_kind(int(row.get("kind_id", -1)))
+	))
+	hbox.add_child(_make_text_label(
+		"KindLabel",
+		String(row.get("kind_text", "")),
+		Color(0.772549, 0.835294, 0.952941, 0.86),
+		false
+	))
+
+	if bool(row.get("has_environment_badge", false)):
+		var environment_class: int = int(row.get(
+			"environment_class",
+			EnvironmentServiceScript.Class.HOSTILE
+		))
+		var ecosystem_type: int = int(row.get(
+			"ecosystem_type",
+			EnvironmentServiceScript.EcosystemType.FROZEN_WORLD
+		))
+		hbox.add_child(_make_chip_panel(
+			"EnvironmentChip",
+			EnvironmentServiceScript.to_string_class(environment_class),
+			SurveyVisualThemeScript.color_for_environment_class(environment_class)
+		))
+		hbox.add_child(_make_chip_panel(
+			"ClimateChip",
+			EnvironmentServiceScript.to_string_ecosystem(ecosystem_type),
+			SurveyVisualThemeScript.color_for_ecosystem_type(ecosystem_type)
+		))
+
+	if bool(row.get("has_life_badge", false)):
+		hbox.add_child(_make_life_chip_button(
+			String(row.get("life_badge_text", "")),
+			SurveyVisualThemeScript.color_for_life_stage(int(row.get("biosphere_stage", 0))),
+			body_id
+		))
+
+	var note_text: String = String(row.get("note_text", ""))
+	if note_text != "":
+		var note_label := _make_text_label("NoteLabel", note_text, Color(0.862745, 0.905882, 0.984314, 0.88), false)
+		note_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hbox.add_child(note_label)
+
+	var detail_text: String = String(row.get("detail_text", ""))
+	if detail_text != "":
+		row_vbox.add_child(_make_text_label("DetailLabel", detail_text, Color(0.764706, 0.843137, 0.976471, 0.88), false))
+
+	return row_panel
+
+
+func _make_text_label(node_name: String, label_text: String, color: Color, emphasize: bool) -> Label:
+	var label := Label.new()
+	label.name = node_name
+	label.text = label_text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.clip_text = false
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_font_size_override("font_size", 13)
+	if emphasize:
+		label.add_theme_font_size_override("font_size", 14)
+		label.add_theme_constant_override("outline_size", 1)
+		label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.72))
+	return label
+
+
+func _make_chip_panel(node_name: String, chip_text: String, accent_color: Color) -> PanelContainer:
+	var chip := PanelContainer.new()
+	chip.name = node_name
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.add_theme_stylebox_override("panel", _make_chip_style(accent_color))
+
+	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_theme_constant_override("margin_left", 7)
+	margin.add_theme_constant_override("margin_top", 2)
+	margin.add_theme_constant_override("margin_right", 7)
+	margin.add_theme_constant_override("margin_bottom", 2)
+	chip.add_child(margin)
+
+	var label := Label.new()
+	label.name = "Label"
+	label.text = chip_text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_color_override("font_color", accent_color)
+	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_constant_override("outline_size", 1)
+	label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.62))
+	margin.add_child(label)
+	return chip
+
+
+func _make_life_chip_button(chip_text: String, accent_color: Color, body_id: StringName) -> Button:
+	var button := Button.new()
+	button.name = "LifeChip"
+	button.text = chip_text
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.add_theme_stylebox_override("normal", _make_chip_style(accent_color))
+	button.add_theme_stylebox_override("hover", _make_chip_style(accent_color.lightened(0.10)))
+	button.add_theme_stylebox_override("pressed", _make_chip_style(accent_color.darkened(0.10)))
+	button.add_theme_stylebox_override("focus", _make_chip_style(accent_color))
+	button.add_theme_color_override("font_color", accent_color)
+	button.add_theme_font_size_override("font_size", 12)
+	button.add_theme_constant_override("outline_size", 1)
+	button.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.62))
+	button.pressed.connect(_on_life_chip_pressed.bind(body_id), CONNECT_DEFERRED)
+	return button
+
+
+func _on_row_gui_input(event: InputEvent, body_id: StringName) -> void:
+	if event is InputEventMouseButton:
+		var mouse_event: InputEventMouseButton = event
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			var viewport := get_viewport()
+			if viewport != null:
+				viewport.set_input_as_handled()
+			_on_row_pressed(body_id)
+
+
+func _on_row_mouse_entered(row_panel: PanelContainer, is_focused: bool) -> void:
+	_set_row_style(row_panel, is_focused, true)
+
+
+func _on_row_mouse_exited(row_panel: PanelContainer, is_focused: bool) -> void:
+	_set_row_style(row_panel, is_focused, false)
+
+
+func _set_row_style(row_panel: PanelContainer, is_focused: bool, is_hovered: bool) -> void:
+	if row_panel == null:
+		return
+	if is_focused:
+		row_panel.add_theme_stylebox_override("panel", _row_style_active)
+	elif is_hovered:
+		row_panel.add_theme_stylebox_override("panel", _row_style_hover)
+	else:
+		row_panel.add_theme_stylebox_override("panel", _row_style_normal)
+
+
 func _on_row_pressed(body_id: StringName) -> void:
 	focus_requested.emit(body_id)
+
+
+func _on_life_chip_pressed(body_id: StringName) -> void:
+	life_details_requested.emit(body_id)
 
 
 func _on_close_pressed() -> void:
@@ -330,3 +487,26 @@ static func _make_row_style(bg_color: Color, border_color: Color) -> StyleBoxFla
 	style.content_margin_right = 10.0
 	style.content_margin_bottom = 8.0
 	return style
+
+
+static func _make_chip_style(accent_color: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(accent_color.r * 0.22, accent_color.g * 0.22, accent_color.b * 0.22, 0.34)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.border_color = Color(accent_color.r, accent_color.g, accent_color.b, 0.34)
+	style.corner_radius_top_left = 6
+	style.corner_radius_top_right = 6
+	style.corner_radius_bottom_right = 6
+	style.corner_radius_bottom_left = 6
+	return style
+
+
+static func _is_planetary_kind(kind: int) -> bool:
+	return kind == BodyType.Kind.PLANET or kind == BodyType.Kind.MOON
+
+
+static func _node_name_fragment(body_id: StringName) -> String:
+	return String(body_id).replace(":", "_").replace(".", "_").replace("/", "_")

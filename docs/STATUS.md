@@ -73,6 +73,25 @@ zweizeilige Hauptaussage aus `Environment`/`Climate` plus
 Environment-, Life-, Species- und Density-Zeilen in diesem Modus
 bewusst verschwinden. `Details` bleibt der Expertenmodus fuer Track,
 Biomass, World, Life Potential und Rohwerte.
+Darauf sitzt jetzt zusaetzlich Stage 1 von `Survey Color v1`:
+der rechte Root-Inspector rendert Rows nicht mehr als einen langen
+Button-String, sondern als strukturierte `PanelContainer`-Rows mit
+Name-, Kind-, Environment-, Climate-, Life- und Note-Elementen. Farben
+kommen enum-basiert ueber einen reinen View-Helper und ergaenzen die
+weiterhin sichtbaren Textlabels; Environment und Climate sind getrennte
+Chips, Planeten-/Mondnamen lesen fetter, Sterne waermer und Schwarze
+Loecher kuehler.
+Stage 2 von `Survey Color v1 + Life Detail Panel v1` ist ebenfalls
+umgesetzt:
+Inspector-Life-Chips und planetennahe `LIFE`-Badges koennen jetzt ein
+read-only `LifeDetailPanel` oeffnen. Das Panel reusst fuer bestehende
+Readouts ausschliesslich `OrbitHudFormatter.format_*`, zeigt noch keine
+Populationen oder generierten Kreaturenbilder und fuehrt damit keine
+neue Simulationswahrheit ein.
+Ein direkter Follow-up hat dabei die planetennahen Badge-Hitboxen
+gehaertet: frei platzierte Badge-Buttons setzen ihre sichtbare
+Control-Groesse jetzt explizit auf die gemessene Badge-Groesse, damit
+der kleine `LIFE ...`-Text im Editor wirklich klickbar ist.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -1102,7 +1121,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
 - zuerst `Planet Summary v1` zusammen mit dem bestehenden
-  `Survey UX v2`-Pfad im echten Editor-/HUD-Lauf abnehmen:
+  `Survey UX v2`-Pfad und dem neuen Survey-Color-/Life-Detail-Slice im
+  echten Editor-/HUD-Lauf abnehmen:
   `sample_system.planet_a`, `starter_world.gamma_iv`,
   `starter_world.alpha_iii`, `starter_world.gamma_iii` und einen
   Detailplaneten in `scaleup_galaxy_100` im Fokus-HUD lesen
@@ -1122,6 +1142,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `scaleup_galaxy_30` und `scaleup_galaxy_100` mit offenem Inspector im
   `ROOT_OVERVIEW` pruefen, damit die neue planetare Desc-Familie die
   ruhige Large-World-Haptik nicht regressiert
+- dabei zusaetzlich die neuen Interaktionskanten pruefen:
+  Inspector-Life-Chip oeffnet das Panel ohne Row-Fokuswechsel,
+  planetennahe `LIFE`-Badges oeffnen dasselbe Panel, Klicks neben
+  Badges bleiben Welt-Picking, Same-Body-Klick toggelt zu und
+  `ESC`/Close schliessen
 - wenn dieser Playtest sauber ist, als naechsten Simulationsblock
   `Population Foundation v1` schneiden:
   erster echter Population-/Settlement-State auf Basis von

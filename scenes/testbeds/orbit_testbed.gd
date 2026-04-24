@@ -57,6 +57,7 @@ const ZOOM_FACTOR_STEP: float = 1.12
 @onready var _mode_value: Label = $HudLayer/TopPanel/Margin/VBox/ModeValue
 @onready var _hint_label: Label = $HudLayer/BottomPanel/Margin/Hints
 @onready var _root_inspector = $HudLayer/RootInspector
+@onready var _life_detail_panel = $HudLayer/LifeDetailPanel
 
 var _camera_controller = OrbitCameraControllerScript.new()
 var _time_scale_controller = OrbitTimeScaleControllerScript.new()
@@ -186,6 +187,7 @@ func _ready() -> void:
 		_orbit_readout_service,
 		_native_species_service
 	)
+	_configure_life_detail_panel()
 	_configure_root_inspector()
 	_refresh_snapshot_interest_ids()
 	_renderer.set_derived_snapshot_cache(_derived_snapshot_cache)
@@ -198,6 +200,8 @@ func _ready() -> void:
 			_derived_snapshot_cache,
 			_renderer
 		)
+		if not _planet_badge_overlay.life_details_requested.is_connected(_on_life_details_requested):
+			_planet_badge_overlay.life_details_requested.connect(_on_life_details_requested)
 	if _summary_button != null and not _summary_button.pressed.is_connected(_on_summary_button_pressed):
 		_summary_button.pressed.connect(_on_summary_button_pressed)
 	if _details_button != null and not _details_button.pressed.is_connected(_on_details_button_pressed):
@@ -556,8 +560,17 @@ func _configure_root_inspector() -> void:
 	_root_inspector.configure(UniverseRegistry, _topology, _derived_snapshot_cache)
 	if not _root_inspector.focus_requested.is_connected(_on_root_inspector_focus_requested):
 		_root_inspector.focus_requested.connect(_on_root_inspector_focus_requested)
+	if _root_inspector.has_signal("life_details_requested") and not _root_inspector.life_details_requested.is_connected(_on_life_details_requested):
+		_root_inspector.life_details_requested.connect(_on_life_details_requested)
 	if not _root_inspector.closed.is_connected(_on_root_inspector_closed):
 		_root_inspector.closed.connect(_on_root_inspector_closed)
+
+
+func _configure_life_detail_panel() -> void:
+	if _life_detail_panel == null:
+		return
+	_life_detail_panel.configure(UniverseRegistry, _derived_snapshot_cache)
+	_life_detail_panel.close_panel()
 
 
 func _sync_root_inspector_context(auto_open: bool = false) -> void:
@@ -603,6 +616,12 @@ func _on_root_inspector_focus_requested(body_id: StringName) -> void:
 	_set_focus(body_id, true, true)
 
 
+func _on_life_details_requested(body_id: StringName) -> void:
+	if _life_detail_panel == null:
+		return
+	_life_detail_panel.open_for_body(body_id)
+
+
 func _on_root_inspector_closed() -> void:
 	_refresh_snapshot_interest_ids()
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
@@ -619,6 +638,8 @@ func _on_world_loader_world_loaded(world_id: StringName) -> void:
 			_proto_biosphere_service.initialize_for_named_world(world_id)
 	if _root_inspector != null:
 		_root_inspector.clear_state()
+	if _life_detail_panel != null:
+		_life_detail_panel.close_panel()
 	_refresh_snapshot_interest_ids()
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
 
