@@ -66,6 +66,13 @@ Konkreter Ablauf:
   Detailfokus auf eine Sonne klicken:
   der Stern darf keinen einzelnen Frame als uebergrosser Closeup-Pop
   rendern, bevor die Kamera auf der korrekten Fokusstufe landet
+- denselben Fokuswechsel einmal per Weltklick und einmal ueber
+  Inspector-/Bookmark-Restore pruefen:
+  beide Pfade muessen ohne einen alten Body-Scale-/Detail-LOD-Frame
+  auskommen
+- mit `A/D` und `W/S` im Stern- und BH-Fokus pannen:
+  Manual-Pan soll im selben Frame wie der Renderer-Sync sichtbar werden
+  und keine zusaetzliche Ein-Frame-Nachlaufkante zeigen
 - im Detail-/Fokusblick pruefen:
   entfernte Galaxy-Proxies sind nicht sichtbar/pickbar und verursachen
   beim Reinzoomen keine weiteren Proxy-Redraw-Spikes

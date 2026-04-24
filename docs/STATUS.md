@@ -182,6 +182,14 @@ als neuen Shader-/Redraw-State schreibt. `OrbitViewRenderer` vermeidet
 zusaetzlich unveraenderte Scale-/Visibility-Property-Writes im
 per-frame Sync. Die Sim-Wahrheit und der OrbitService bleiben davon
 unberuehrt.
+Ein weiterer Fokus-/Pan-Follow-up schliesst danach die verbliebene
+Frame-Order-Kante: `orbit_testbed.gd` wendet Kamera, Zoom und
+Manual-Pan jetzt vor dem expliziten Renderer-Sync an, damit
+Body-Scale, Detail-LOD und Overlays im selben Frame den aktuellen
+Kamera-State lesen. Sofortige Fokus-/Bookmark-Restores duerfen den
+Renderer-Same-Frame-Guard gezielt uebersteuern, damit deferred
+UI-Klicks keinen alten Visual-State bis zum naechsten Frame behalten.
+Auch dieser Fix bleibt reine View-/Scene-Synchronisierung.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 

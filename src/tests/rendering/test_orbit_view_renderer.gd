@@ -16,9 +16,13 @@ class RendererProbe:
 	extends OrbitViewRendererScript
 
 	var line_width_apply_count: int = 0
+	var sync_visual_positions_count: int = 0
 
 	func _apply_line_widths() -> void:
 		line_width_apply_count += 1
+
+	func _sync_visual_positions(_reset_trails: bool = false) -> void:
+		sync_visual_positions_count += 1
 
 
 class RegistryProbe:
@@ -79,6 +83,7 @@ static func run(ctx) -> void:
 	_test_root_overview_sim_tick_does_not_write_trail_points(ctx)
 	_test_close_zoom_state_has_hysteresis(ctx)
 	_test_sync_visuals_now_skips_redundant_process_sync(ctx)
+	_test_forced_sync_visuals_now_overrides_same_frame_guard(ctx)
 
 
 static func _test_presentation_offset_uses_physics_interpolation_fraction(ctx) -> void:
@@ -300,9 +305,7 @@ static func _test_close_zoom_state_has_hysteresis(ctx) -> void:
 
 
 static func _test_sync_visuals_now_skips_redundant_process_sync(ctx) -> void:
-	var renderer = OrbitViewRendererScript.new()
-	renderer._registry = null
-	renderer._bubble = null
+	var renderer := RendererProbe.new()
 
 	# Explicit external sync markiert den aktuellen Frame als gesynced.
 	renderer.sync_visuals_now()
@@ -319,6 +322,29 @@ static func _test_sync_visuals_now_skips_redundant_process_sync(ctx) -> void:
 	ctx.assert_true(
 		renderer._synced_frame_number == guard_frame,
 		"_process im selben Frame syncet nicht doppelt, wenn bereits extern getriggert"
+	)
+	ctx.assert_true(
+		renderer.sync_visual_positions_count == 1,
+		"_process laesst den bereits extern gesyncten Frame unangetastet"
+	)
+
+	renderer.free()
+
+
+static func _test_forced_sync_visuals_now_overrides_same_frame_guard(ctx) -> void:
+	var renderer := RendererProbe.new()
+
+	renderer.sync_visuals_now()
+	renderer.sync_visuals_now()
+	ctx.assert_true(
+		renderer.sync_visual_positions_count == 1,
+		"normaler Sync bleibt im selben Frame idempotent"
+	)
+
+	renderer.sync_visuals_now(true)
+	ctx.assert_true(
+		renderer.sync_visual_positions_count == 2,
+		"erzwungener Sync kann nach einem sofortigen Fokus-/Kamerawechsel denselben Frame neu schreiben"
 	)
 
 	renderer.free()

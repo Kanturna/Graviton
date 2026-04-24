@@ -246,11 +246,11 @@ func _process(_delta: float) -> void:
 	_synced_frame_number = current_frame
 
 
-func sync_visuals_now() -> void:
+func sync_visuals_now(force: bool = false) -> void:
 	# Idempotent: falls der Szenen-Root versehentlich doppelt ruft oder
 	# _process bereits synchronisiert hat, wird nicht erneut gesynced.
 	var current_frame: int = Engine.get_process_frames()
-	if _synced_frame_number == current_frame:
+	if not force and _synced_frame_number == current_frame:
 		return
 	_sync_visual_positions()
 	_synced_frame_number = current_frame

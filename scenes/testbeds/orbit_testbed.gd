@@ -289,14 +289,13 @@ func _exit_tree() -> void:
 func _process(delta: float) -> void:
 	_activation_set.rebuild()
 	_orbit_service.request_numeric_local_candidates(_activation_set.get_active_ids())
-	# Renderer VOR Kamera syncen: Bodies, Kamera und Overlays lesen
-	# dieselbe interpolierte Frame-Pose. Sonst zeigt der Fokus-Body
-	# die Position aus Frame N-1, waehrend die Kamera bereits auf
-	# Frame N zentriert -> sichtbarer Jitter um zentrale Bodies.
-	if _renderer != null:
-		_renderer.sync_visuals_now()
 	_camera_controller.handle_pan_input(_pan_input_dir(), delta)
 	_camera_controller.step(delta, get_viewport_rect().size)
+	# Kamera zuerst anwenden, dann Visuals syncen: Fokuswechsel, Zoom und
+	# Manual-Pan muessen im selben Frame anliegen, bevor Body-Scale,
+	# Detail-LOD und Overlays aus dem Renderer gelesen werden.
+	if _renderer != null:
+		_renderer.sync_visuals_now()
 	if _is_large_world:
 		_streaming_controller.update(delta, _camera_controller.get_zoom_factor())
 	_sync_view_lod_state(false, false)
@@ -403,6 +402,8 @@ func _set_focus(body_id: StringName, immediate: bool = false, force_fit: bool = 
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
 	if immediate and is_inside_tree():
 		_camera_controller.step(0.0, get_viewport_rect().size)
+		if _renderer != null:
+			_renderer.sync_visuals_now(true)
 		_sync_view_lod_state(true, _debug_overlay.visible)
 		_sync_galaxy_proxy_transform()
 
@@ -603,6 +604,8 @@ func _restore_view_bookmark_slot(slot: int) -> void:
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
 	if is_inside_tree():
 		_camera_controller.step(0.0, get_viewport_rect().size)
+		if _renderer != null:
+			_renderer.sync_visuals_now(true)
 
 
 func _root_focus_id() -> StringName:
