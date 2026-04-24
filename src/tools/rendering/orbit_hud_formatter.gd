@@ -9,6 +9,7 @@ const ProtoBiosphereSimulationServiceScript = preload("res://src/sim/life/proto_
 const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_service.gd")
 const NativeSpeciesServiceScript = preload("res://src/sim/life/native_species_service.gd")
 const GeneticSpeciesServiceScript = preload("res://src/sim/life/genetic_species_service.gd")
+const LifeEcologyServiceScript = preload("res://src/sim/life/life_ecology_service.gd")
 const OrbitReadoutServiceScript = preload("res://src/sim/orbit/orbit_readout_service.gd")
 
 const MINUTE_S: float = 60.0
@@ -201,6 +202,26 @@ static func format_abundance(genetic_species_desc: Dictionary) -> String:
 	if profile.is_empty():
 		return "Abundance: n/a"
 	return "Abundance: %s" % _genetic_abundance_text(profile)
+
+
+static func format_population(life_ecology_desc: Dictionary) -> String:
+	if not bool(life_ecology_desc.get(LifeEcologyServiceScript.KEY_HAS_LIFE_ECOLOGY_BASIS, false)):
+		return "Population: not established"
+	var profiles: Array = life_ecology_desc.get(
+		LifeEcologyServiceScript.KEY_POPULATION_PROFILES,
+		[]
+	)
+	if profiles.is_empty():
+		return "Population: not established"
+	var parts: Array[String] = []
+	var visible_count: int = mini(profiles.size(), 3)
+	for index in range(visible_count):
+		var profile: Dictionary = profiles[index]
+		parts.append(_population_class_text(profile))
+	var hidden_count: int = profiles.size() - visible_count
+	if hidden_count > 0:
+		parts.append("+%d forms" % hidden_count)
+	return "Population: %s" % " | ".join(parts)
 
 
 static func format_visual_profile(genetic_species_desc: Dictionary) -> String:
@@ -729,6 +750,13 @@ static func _genetic_metabolism_text(profile: Dictionary) -> String:
 	return NativeSpeciesServiceScript.to_string_metabolism_class(int(trait_loci.get(
 		GeneticSpeciesServiceScript.KEY_METABOLISM_LOCUS,
 		NativeSpeciesServiceScript.MetabolismClass.CHEMOTROPHIC
+	)))
+
+
+static func _population_class_text(profile: Dictionary) -> String:
+	return LifeEcologyServiceScript.to_string_population_class(int(profile.get(
+		LifeEcologyServiceScript.KEY_POPULATION_CLASS,
+		LifeEcologyServiceScript.PopulationClass.NONE
 	)))
 
 

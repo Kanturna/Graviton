@@ -119,6 +119,15 @@ Richness koennen jetzt mehrere dominante Lebensformen zeigen; die
 `Dominant forms` rendert. Es gibt weiter keine Populationszahlen, keine
 zeitliche Evolution, keine Kriege, keine Katastrophen und keine neuen
 redundanten Niche-/Competition-/VisualPattern-Enums.
+Darauf sitzt jetzt zusaetzlich `Life Ecology Foundation v1`:
+`LifeEcologyService` leitet read-only aus `BiosphereScaleService` und
+`GeneticSpeciesService` eine qualitative `PopulationClass` pro
+stabiler Lifeform ab. `Population:` im `LifeDetailPanel` zeigt damit
+jetzt spielbare Praesenz wie `FLOURISHING`, `STABLE` oder `SPARSE`,
+aber keine Counts, Count-Ranges, Kriege, Katastrophen, Zivilisationen
+oder Settlement-Zahlen. Der neue `population_index` ist nur ein
+normalisierter Praesenz-Hook fuer spaetere echte Count-Slices und kein
+Census.
 Ein anschliessender Root-Overview-Performance-Fix macht den
 `GalaxyProxyRenderer` dirty-getrieben: der 100-Root-Proxy-Pfad queued
 nicht mehr jedes Render-Frame pauschal ein Redraw, sondern nur noch bei
@@ -695,7 +704,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist weiter reproduzierbar: `run_tests.bat`
-  laeuft nach den Architektur-Hygiene-Slices mit `7768`
+  laeuft nach `Life Ecology Foundation v1` mit `7822`
   erfolgreichen Assertions bei `0` Failures.
 
 ### Aktuelle Praesentation
@@ -1268,18 +1277,23 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   planetennahe `LIFE`-Badges oeffnen dasselbe Panel, Klicks neben
   Badges bleiben Welt-Picking, Same-Body-Klick toggelt zu und
   `ESC`/Close schliessen
-- wenn dieser Playtest sauber ist, als naechsten Simulationsblock
-  `Population Foundation v1` schneiden:
+- wenn dieser Playtest sauber ist, zunaechst `Life Ecology Foundation
+  v1` im Editor abnehmen:
+  `Population:` darf qualitative Klassen ausgeben, aber weiter keine
+  Counts, Count-Ranges, Kriege, Katastrophen, Zivilisationen oder
+  Settlement-Zahlen behaupten
+- danach als naechsten Simulationsblock `Population Counts v1`
+  schneiden:
   erster echter Population-/Settlement-State auf Basis von
-  `World + Life Potential + Life v2`
+  `World + Life Potential + Life v2 + GeneticSpecies + LifeEcology`
 - falls der Playtest stattdessen zeigt, dass
   `has_primary_source_only_basis` fuer Mehrstern-Faelle zu stoerend
   wird, zuerst einen expliziten `Mehrquellenstrahlung`-Block vorziehen
 - den produktiven Large-World-Pfad weiter nur ueber Proxy-/Perf-Trim
   oder planetare Derived-Folgearbeit ausbauen, nicht ueber noch mehr
   Root-Anzahl ohne echten Editor-/Feel-Playtest
-- Headless-Basis nach den Architektur-Hygiene-Slices:
-  `./run_tests.bat` laeuft gruen mit `7768` Passed, `0` Failed;
+- Headless-Basis nach `Life Ecology Foundation v1`:
+  `./run_tests.bat` laeuft gruen mit `7822` Passed, `0` Failed;
   der reale Lauf meldet am Prozessende aber weiter generische
   `ObjectDB instances leaked`- und
   `resources still in use`-Hinweise

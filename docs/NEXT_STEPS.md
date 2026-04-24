@@ -49,7 +49,7 @@ Konkreter Ablauf:
   `ROLE ABUNDANCE/PRESSURE` und bleibt als eine kompakte Zeile lesbar
 - `sample_system -> planet_a` nach laengerer Bio-Zeit pruefen:
   `Native forms` zeigt qualitative Pressure, `Population:` bleibt
-  `not established`
+  qualitativ und ohne Counts
 - ein `COMPLEX_ECOSYSTEM`-/Diverse-Detailplanet pruefen:
   mehrere dominante Profile werden als Co-Dominanz lesbar und
   `Dominant forms:` rendert plural statt eine einzige Gewinnerform zu
@@ -65,6 +65,41 @@ Wenn dieser Gate kippt:
 - zuerst nur den kleinen Pressure-Slice korrigieren:
   Selection-Pressure-Mapping, Co-Dominanz-Regel, Formatter-Sprache oder
   Panel-Lesbarkeit
+
+## Prioritaet 0 - Life Ecology Foundation v1 Acceptance Gate
+
+Ziel:
+Den headless-gruenen qualitativen Population-Layer im echten Editor
+validieren, bevor daraus echte Counts, PopulationState, Kriege,
+Katastrophen oder Zivilisationen abgeleitet werden.
+
+Konkreter Ablauf:
+
+- `starter_world -> gamma_iv` pruefen:
+  Prebiotic bleibt ohne stabile Population; `Population:` liest weiter
+  `not established`
+- `starter_world -> gamma_iii` oder ein anderer vorhandener
+  Microbial-Planet pruefen:
+  `Population:` zeigt qualitative Klassen aus den vorhandenen
+  Genetic-Profilen, waehrend `Species:` bei Microbial weiterhin `n/a`
+  bleiben darf
+- `sample_system -> planet_a` nach laengerer Bio-Zeit pruefen:
+  `Population:` zeigt qualitative Lifeform-Praesenz in derselben
+  Reihenfolge wie `Native forms`, aber keine Zahlen
+- ein `COMPLEX_ECOSYSTEM`-/Diverse-Detailplanet pruefen:
+  mehrere Lifeforms bleiben vergleichbar; maximal drei Population-
+  Klassen werden sichtbar, weitere Profile laufen ueber `+N forms`
+- dabei explizit pruefen:
+  keine numerischen Bevoelkerungszahlen, keine Count-Ranges, keine
+  War-/Catastrophe-/Civilization-Texte, keine Settlement-Zahlen und
+  keine neuen Bilder
+
+Wenn dieser Gate kippt:
+
+- keinen echten Count- oder PopulationState-Block anfangen
+- zuerst nur den kleinen Ecology-Slice korrigieren:
+  `LifeEcologyService`-Mapping, `DerivedSnapshotCache`-Verdrahtung,
+  Formatter-Sprache oder Panel-Lesbarkeit
 
 ## Prioritaet 0 - Unlocked-FPS / Focus-Smoothing Acceptance Gate
 
@@ -171,7 +206,7 @@ Wenn dieser Gate kippt:
 Ziel:
 Den jetzt headless-gruenen `GeneticSpeciesService` und die neuen
 `Native forms`-/`Visual profile`-Zeilen im echten Editor-/Playtest-Lauf
-validieren, bevor `Population Foundation v1`, Kriege/Katastrophen oder
+validieren, bevor `Population Counts v1`, Kriege/Katastrophen oder
 echte Species-Visuals begonnen werden.
 
 Konkreter Ablauf:
@@ -192,8 +227,9 @@ Konkreter Ablauf:
   rollen-spezifische Trait-/Visual-Varianz, damit Profile derselben Welt
   nicht dauerhaft dieselbe Farbe/Bewegung teilen
 - dabei explizit pruefen:
-  `Population:` bleibt `not established`, es erscheinen keine Counts,
-  keine War-/Catastrophe-/Civilization-Texte und keine generierten Bilder
+  `Population:` darf nach `Life Ecology Foundation v1` qualitative
+  Klassen zeigen, es erscheinen aber keine Counts, keine
+  War-/Catastrophe-/Civilization-Texte und keine generierten Bilder
 
 Wenn dieser Gate kippt:
 
@@ -207,7 +243,7 @@ Wenn dieser Gate kippt:
 Ziel:
 Den jetzt headless-gruenen farbigen Root-Inspector und das neue
 read-only Life-Detail-Panel im echten Editor-/Playtest-Lauf validieren,
-bevor Population Foundation v1 oder echte Species-Visuals begonnen
+bevor `Population Counts v1` oder echte Species-Visuals begonnen
 werden.
 
 Konkreter Ablauf:
@@ -244,7 +280,7 @@ Wenn dieser Gate kippt:
 
 Ziel:
 Den neuen zweizeiligen Planet-Summary-Readout im echten Editor-/
-Playtest-Lauf validieren, bevor `Population Foundation v1` oder weitere
+Playtest-Lauf validieren, bevor `Population Counts v1` oder weitere
 HUD-Politur begonnen wird.
 
 Konkreter Ablauf:
@@ -531,18 +567,18 @@ Wenn dieser Gate kippt:
 - stattdessen einen kleinen Korrekturblock direkt aus Inspector-,
   Snapshot- oder Derived-Interest-Befunden schneiden
 
-## Prioritaet 1 - Naechster Simulationsblock: Population Foundation v1
+## Prioritaet 1 - Naechster Simulationsblock: Population Counts v1
 
 Ziel:
-Nach einem sauberen `Life v2`-, `Native Species v1`- und
-`Survey UX v2`-Acceptance-Run den ersten echten
+Nach einem sauberen `Life v2`-, `GeneticSpecies`-, `LifeEcology`- und
+`Survey UX v2`-Acceptance-Run den ersten echten Count-/
 Population-/Settlement-Unterbau schneiden.
 
 Bevorzugte Richtung:
 
 - eigener `PopulationState` / `SettlementState`
-- erste planetare Population-Counts auf Basis von
-  `World + Life Potential + Life v2 + Native Species`
+- erste ungefaehre planetare Population-Counts auf Basis von
+  `World + Life Potential + Life v2 + GeneticSpecies + LifeEcology`
 - noch keine Civics, keine Factions, keine Makropolitik
 
 Fallback-Reihenfolge:
@@ -556,7 +592,7 @@ Fallback-Reihenfolge:
   Survey-/Overview-Bewegung schneiden
 - wenn Mehrstern-Faelle die neue `Life v2`-Lesart sichtbar verziehen,
   zuerst einen expliziten `Mehrquellenstrahlung`-Block vorziehen
-- wenn der Editor-Run sauber ist, danach direkt `Population Foundation v1`
+- wenn der Editor-Run sauber ist, danach direkt `Population Counts v1`
 
 ## Akut - Backdrop-Flicker im Editor beseitigen - erledigt
 

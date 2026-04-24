@@ -1,5 +1,27 @@
 # Graviton - Decisions
 
+## 2026-04-24 - Qualitative Life-Ecology kommt vor echten Counts
+
+Nach `Lifeform Pressure v1` wird Population bewusst nur als
+qualitative oekologische Praesenz eingefuehrt. `LifeEcologyService`
+leitet read-only aus `BiosphereScaleService` und
+`GeneticSpeciesService` pro Lifeform eine `PopulationClass` und einen
+normalisierten `population_index` ab.
+
+Konsequenz:
+
+- `population_index` ist ein Praesenz-Hook fuer spaetere Count-Slices,
+  kein Census und keine echte Biomasse dieses Lifeforms
+- `PopulationClass` beschreibt in v1 Etablierung in der planetaren
+  Oekologie, nicht absolute Individuenzahlen
+- es gibt kein `CountEstimateBasis` und keine Count-Ranges, solange es
+  noch keinen zweiten realen Zustand neben qualitativem Readout gibt
+- `Population:` folgt der Reihenfolge von `Native forms`, damit beide
+  Zeilen direkt vergleichbar bleiben, wiederholt aber keine Rollen
+- echte Counts, PopulationState, SettlementState, Kriege,
+  Katastrophen, Zivilisationen und dynamische Hysterese gegen
+  Klassengrenzen-Flattern bleiben eigene Folgeentscheidungen
+
 ## 2026-04-24 - BubbleActivationSet-Hysterese ist Relevanzklassifikation, keine Regime-Policy
 
 Die vorhandene `BubbleActivationSet`-Exit-Hysterese wird legalisiert,

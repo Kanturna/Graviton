@@ -4,6 +4,7 @@ const OrbitHudFormatterScript = preload("res://src/tools/rendering/orbit_hud_for
 const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_service.gd")
 const NativeSpeciesServiceScript = preload("res://src/sim/life/native_species_service.gd")
 const GeneticSpeciesServiceScript = preload("res://src/sim/life/genetic_species_service.gd")
+const LifeEcologyServiceScript = preload("res://src/sim/life/life_ecology_service.gd")
 
 
 static func run(ctx) -> void:
@@ -19,6 +20,7 @@ static func run(ctx) -> void:
 	_test_biomass_formatter_shows_quantitative_index(ctx)
 	_test_species_formatter_reuses_caps_style(ctx)
 	_test_genetic_species_formatters_render_native_forms_and_visual_profile(ctx)
+	_test_life_ecology_formatter_renders_population_without_counts(ctx)
 	_test_life_detail_species_line_switches_to_dominant_form_only_for_ecosystems(ctx)
 	_test_summary_formatters_use_compact_survey_language(ctx)
 	_test_density_formatter_maps_life_stages_without_extra_thresholds(ctx)
@@ -256,6 +258,23 @@ static func _test_genetic_species_formatters_render_native_forms_and_visual_prof
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_visual_profile({}) == "Visual profile: n/a",
 		"Ohne Genetic-Species-Basis bleibt Visual profile explizit n/a"
+	)
+
+
+static func _test_life_ecology_formatter_renders_population_without_counts(ctx) -> void:
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_population(_sample_life_ecology_desc())
+			== "Population: FLOURISHING | STABLE | SPARSE | +2 forms",
+		"Population-Formatter rendert qualitative Klassen in Genetic-Profil-Reihenfolge und capped lange Listen"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_population({}) == "Population: not established",
+		"Ohne Life-Ecology-Basis bleibt Population ausdruecklich nicht etabliert"
+	)
+	var formatted: String = OrbitHudFormatterScript.format_population(_sample_life_ecology_desc())
+	ctx.assert_true(
+		not formatted.contains("M") and not formatted.contains("~") and not formatted.contains("0."),
+		"Population-Formatter zeigt keine Pseudo-Counts oder numerische Population-Indizes"
 	)
 
 
@@ -572,3 +591,70 @@ static func _sample_co_dominant_genetic_species_desc() -> Dictionary:
 	profiles.insert(1, grazer_profile)
 	desc[GeneticSpeciesServiceScript.KEY_LIFEFORM_PROFILES] = profiles
 	return desc
+
+
+static func _sample_life_ecology_desc() -> Dictionary:
+	return {
+		LifeEcologyServiceScript.KEY_HAS_LIFE_ECOLOGY_BASIS: true,
+		LifeEcologyServiceScript.KEY_DOMINANT_LIFEFORM_ID: &"planet_a_producer",
+		LifeEcologyServiceScript.KEY_POPULATION_PROFILES: [
+			_population_profile(
+				&"planet_a_producer",
+				GeneticSpeciesServiceScript.RoleClass.PRODUCER,
+				GeneticSpeciesServiceScript.AbundanceClass.DOMINANT,
+				GeneticSpeciesServiceScript.SelectionPressureClass.LOW,
+				0.80,
+				LifeEcologyServiceScript.PopulationClass.FLOURISHING
+			),
+			_population_profile(
+				&"planet_a_grazer_filter",
+				GeneticSpeciesServiceScript.RoleClass.GRAZER_FILTER,
+				GeneticSpeciesServiceScript.AbundanceClass.DOMINANT,
+				GeneticSpeciesServiceScript.SelectionPressureClass.MODERATE,
+				0.24,
+				LifeEcologyServiceScript.PopulationClass.STABLE
+			),
+			_population_profile(
+				&"planet_a_decomposer",
+				GeneticSpeciesServiceScript.RoleClass.DECOMPOSER,
+				GeneticSpeciesServiceScript.AbundanceClass.LOCAL,
+				GeneticSpeciesServiceScript.SelectionPressureClass.MODERATE,
+				0.08,
+				LifeEcologyServiceScript.PopulationClass.SPARSE
+			),
+			_population_profile(
+				&"planet_a_predator",
+				GeneticSpeciesServiceScript.RoleClass.PREDATOR,
+				GeneticSpeciesServiceScript.AbundanceClass.LOCAL,
+				GeneticSpeciesServiceScript.SelectionPressureClass.EXTREME,
+				0.01,
+				LifeEcologyServiceScript.PopulationClass.EMERGING
+			),
+			_population_profile(
+				&"planet_a_parasite_symbiont",
+				GeneticSpeciesServiceScript.RoleClass.PARASITE_SYMBIONT,
+				GeneticSpeciesServiceScript.AbundanceClass.TRACE,
+				GeneticSpeciesServiceScript.SelectionPressureClass.EXTREME,
+				0.01,
+				LifeEcologyServiceScript.PopulationClass.EMERGING
+			),
+		],
+	}
+
+
+static func _population_profile(
+		lifeform_id: StringName,
+		role_class: int,
+		abundance_class: int,
+		selection_pressure_class: int,
+		population_index: float,
+		population_class: int
+	) -> Dictionary:
+	return {
+		LifeEcologyServiceScript.KEY_LIFEFORM_ID: lifeform_id,
+		LifeEcologyServiceScript.KEY_ROLE_CLASS: role_class,
+		LifeEcologyServiceScript.KEY_ABUNDANCE_CLASS: abundance_class,
+		LifeEcologyServiceScript.KEY_SELECTION_PRESSURE_CLASS: selection_pressure_class,
+		LifeEcologyServiceScript.KEY_POPULATION_INDEX: population_index,
+		LifeEcologyServiceScript.KEY_POPULATION_CLASS: population_class,
+	}

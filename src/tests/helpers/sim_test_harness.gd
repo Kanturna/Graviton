@@ -15,6 +15,7 @@ const HARNESS_KEY_PROTO_BIOSPHERE_SERVICE: StringName = &"proto_biosphere_servic
 const HARNESS_KEY_BIOSPHERE_SCALE_SERVICE: StringName = &"biosphere_scale_service"
 const HARNESS_KEY_NATIVE_SPECIES_SERVICE: StringName = &"native_species_service"
 const HARNESS_KEY_GENETIC_SPECIES_SERVICE: StringName = &"genetic_species_service"
+const HARNESS_KEY_LIFE_ECOLOGY_SERVICE: StringName = &"life_ecology_service"
 const HARNESS_KEY_ORBIT_READOUT_SERVICE: StringName = &"orbit_readout_service"
 
 
@@ -80,6 +81,12 @@ static func build_named_world_context(world_id: StringName) -> Dictionary:
 		biosphere_scale_service,
 		native_species_service
 	)
+	var life_ecology_service = load("res://src/sim/life/life_ecology_service.gd").new()
+	life_ecology_service.configure(
+		registry,
+		biosphere_scale_service,
+		genetic_species_service
+	)
 	var orbit_readout_service = load("res://src/sim/orbit/orbit_readout_service.gd").new()
 	orbit_readout_service.configure(registry)
 
@@ -98,12 +105,14 @@ static func build_named_world_context(world_id: StringName) -> Dictionary:
 		HARNESS_KEY_BIOSPHERE_SCALE_SERVICE: biosphere_scale_service,
 		HARNESS_KEY_NATIVE_SPECIES_SERVICE: native_species_service,
 		HARNESS_KEY_GENETIC_SPECIES_SERVICE: genetic_species_service,
+		HARNESS_KEY_LIFE_ECOLOGY_SERVICE: life_ecology_service,
 		HARNESS_KEY_ORBIT_READOUT_SERVICE: orbit_readout_service,
 	}
 
 
 static func teardown_context(ctx: Dictionary) -> void:
 	_free_if_present(ctx.get(HARNESS_KEY_PROTO_BIOSPHERE_SERVICE, null))
+	_free_if_present(ctx.get(HARNESS_KEY_LIFE_ECOLOGY_SERVICE, null))
 	_free_if_present(ctx.get(HARNESS_KEY_BIOSPHERE_SCALE_SERVICE, null))
 	_free_if_present(ctx.get(HARNESS_KEY_GENETIC_SPECIES_SERVICE, null))
 	_free_if_present(ctx.get(HARNESS_KEY_NATIVE_SPECIES_SERVICE, null))

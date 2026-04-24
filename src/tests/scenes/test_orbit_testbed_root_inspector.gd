@@ -103,6 +103,9 @@ class DerivedSnapshotCacheProbe:
 	func get_environment_desc(id: StringName) -> Dictionary:
 		return {"present": true} if last_interest_ids.has(id) else {}
 
+	func get_life_ecology_desc(id: StringName) -> Dictionary:
+		return {"present": true} if last_interest_ids.has(id) else {}
+
 
 class DebugOverlayProbe:
 	extends DebugOverlayScript
@@ -384,6 +387,9 @@ static func _destroy_testbed_probe(testbed) -> void:
 		if testbed._native_species_service != null:
 			testbed._native_species_service.free()
 			testbed._native_species_service = null
+		if testbed._life_ecology_service != null:
+			testbed._life_ecology_service.free()
+			testbed._life_ecology_service = null
 		if testbed._genetic_species_service != null:
 			testbed._genetic_species_service.free()
 			testbed._genetic_species_service = null

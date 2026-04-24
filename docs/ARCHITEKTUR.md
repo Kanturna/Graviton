@@ -27,7 +27,8 @@ src/sim/           UniverseRegistry, WorldLoader, OrbitService, LocalOrbitIntegr
                    ThermalService, AtmosphereService, EnvironmentService,
                    PlanetaryYearSampler, PlanetaryStateService,
                    LifePotentialService, ProtoBiosphereSimulationService,
-                   BiosphereScaleService,
+                   BiosphereScaleService, NativeSpeciesService,
+                   GeneticSpeciesService, LifeEcologyService,
                    GalaxyDef/RootSystemManifest/RootSystemGenerator,
                    BodyDef/State, OrbitProfile, OrbitMode
    |
@@ -132,7 +133,8 @@ Hinweis:
 Das folgende Snippet ist bewusst schematisch fuer den Single-World-Pfad.
 Der aktuelle Code in `scenes/testbeds/orbit_testbed.gd` verdrahtet
 zusaetzlich `OrbitReadoutService`, `NativeSpeciesService`,
-`RootInspectorOverlay` und `PlanetBadgeOverlay`; im Large-World-Pfad
+`GeneticSpeciesService`, `LifeEcologyService`, `RootInspectorOverlay`
+und `PlanetBadgeOverlay`; im Large-World-Pfad
 laedt dieselbe Szene ueber `load_named_galaxy(...)` und den
 `GalaxyStreamingController`. Der im Repo eingecheckte Szenen-Override startet
 derzeit mit `scaleup_galaxy_100`.
@@ -185,6 +187,18 @@ _ready():
         LifePotentialService,
         BiosphereScaleService
     )
+    GeneticSpeciesService.configure(
+        UniverseRegistry,
+        PlanetaryStateService,
+        LifePotentialService,
+        BiosphereScaleService,
+        NativeSpeciesService
+    )
+    LifeEcologyService.configure(
+        UniverseRegistry,
+        BiosphereScaleService,
+        GeneticSpeciesService
+    )
     OrbitReadoutService.configure(UniverseRegistry)
     DerivedSnapshotCache.configure(
         UniverseRegistry,
@@ -199,7 +213,9 @@ _ready():
         ProtoBiosphereSimulationService,
         BiosphereScaleService,
         OrbitReadoutService,
-        NativeSpeciesService
+        NativeSpeciesService,
+        GeneticSpeciesService,
+        LifeEcologyService
     )
     OrbitViewRenderer.set_derived_snapshot_cache(DerivedSnapshotCache)
     OrbitService.bodies_updated.connect(
@@ -235,12 +251,16 @@ abhaengige interessierte Bodies; ohne dieses Signal bleibt
 `TimeService.sim_tick` der konservative Fallback. Im Frame-Loop werden
 nur bereits berechnete Snapshots konsumiert.
 Nach `PlanetaryStateService`, `LifePotentialService`,
-`ProtoBiosphereSimulationService` und `BiosphereScaleService` fuehrt
-der Cache damit jetzt mehrere read-only Desc-Familien fuer dieselben
-Interessens-Bodies, ohne neue Simulationswahrheit in `runtime/`
-aufzubauen. Der proto-biosphere-Desc bleibt dabei internes
-Substrat/Debug, waehrend `biosphere_scale_desc` die player-facing
-`Life:`-Wahrheit fuer HUD und Inspector liefert.
+`ProtoBiosphereSimulationService`, `BiosphereScaleService`,
+`NativeSpeciesService`, `GeneticSpeciesService` und
+`LifeEcologyService` fuehrt der Cache damit jetzt mehrere read-only
+Desc-Familien fuer dieselben Interessens-Bodies, ohne neue
+Simulationswahrheit in `runtime/` aufzubauen. Der proto-biosphere-Desc
+bleibt dabei internes Substrat/Debug, waehrend
+`biosphere_scale_desc` die player-facing `Life:`-Wahrheit fuer HUD und
+Inspector liefert. `life_ecology_desc` ist nur qualitative
+oekologische Praesenz; der darin enthaltene `population_index` ist
+kein Census und keine absolute Biomasse dieses Lifeforms.
 Auch Diagnosepfade wie `DebugOverlay` duerfen bei verdrahtetem
 `DerivedSnapshotCache` nicht live auf
 `ThermalService.describe_body(...)` zurueckfallen; Cache-Miss bleibt
