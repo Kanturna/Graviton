@@ -1,12 +1,51 @@
 # Graviton - Next Steps
 
-Stand: 2026-04-23
+Stand: 2026-04-24
 
 Hinweis:
 Die aktuell im Repo eingecheckte `orbit_testbed.tscn` startet derzeit mit
 `initial_world_id = "scaleup_galaxy_100"`.
 Fuer Acceptance-Runs auf `starter_world` oder `sample_system` den
 Szenen-Override vor dem Editor-Run bewusst umstellen.
+
+## Prioritaet 0 - Planet-Summary-v1 Acceptance Gate
+
+Ziel:
+Den neuen zweizeiligen Planet-Summary-Readout im echten Editor-/
+Playtest-Lauf validieren, bevor `Population Foundation v1` oder weitere
+HUD-Politur begonnen wird.
+
+Konkreter Ablauf:
+
+- `orbit_testbed.tscn` im Editor oeffnen
+- nacheinander diese Fokusfaelle pruefen:
+  - `sample_system -> planet_a`
+  - `starter_world -> gamma_iv`
+  - `starter_world -> gamma_iii`
+  - ein `PLANET`-/`MOON`-Detailfokus in `scaleup_galaxy_100`
+- dabei im `Summary`-Modus bestaetigen:
+  - fokussierte `PLANET`-/`MOON`-Bodies zeigen zwei Zeilen:
+    `Summary: <Environment> / <Climate>` und
+    `Life: <Stage>   Density: <...>   Species: <...>`
+  - `Environment`, alte `Life`, alte `Species` und alte `Density`
+    erscheinen dort nicht zusaetzlich als separate Zeilen
+  - `Cycle: rot ... / orb ...`, `T+`, `Rate` und `Cadence` bleiben
+    sichtbar und lesbar
+  - `Life` zeigt im Summary bewusst keinen Chemie-Track; Track bleibt
+    in `Details` ueber volle `Life`, `Life Potential` und Species-
+    Kontext pruefbar
+  - nicht-planetare Foki zeigen keine `Summary: n/a`-Planetzeile
+- danach in `Details` bestaetigen:
+  - die neuen Planet-Summary-Zeilen verschwinden
+  - `Environment`, `Bands`, `World`, volle `Life`, `Biomass`, volle
+    `Species`, `Life Potential`, `Season`, `Rotation` und `Orbit`
+    bleiben sichtbar
+
+Wenn dieser Gate kippt:
+
+- keinen Population-Block anfangen
+- zuerst nur die konkrete HUD-Lesbarkeit korrigieren:
+  Textlaenge, Zeilenumbruch oder Summary-/Details-Sichtbarkeit
 
 ## Prioritaet 0 - Survey-UX-v2 Acceptance Gate
 
@@ -26,6 +65,9 @@ Konkreter Ablauf:
 - dabei fuer jede Welt explizit pruefen:
   - `Summary` ist der Default und liest links sichtbar kompakter als
     das alte Fokus-Datenblatt
+  - `Summary` zeigt fuer planetare Foki die neue zweizeilige
+    Hauptaussage statt separater `Environment`-/`Life`-/`Species`-/
+    `Density`-Zeilen
   - `Details` blendet die tieferen Analysewerte sauber wieder ein
   - `Cycle:` liest explizit als
     `rot ... / orb ...` statt als ambiges Zahlenpaar

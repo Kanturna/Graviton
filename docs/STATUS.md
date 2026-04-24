@@ -1,6 +1,6 @@
 # Graviton - Status
 
-Stand: 2026-04-23
+Stand: 2026-04-24
 
 ## Kurzfassung
 
@@ -65,6 +65,14 @@ datenreich, der rechte Root-Inspector liest wieder klar als Navigator
 und planetennahe `LIFE`-Badges machen biologische Aktivitaet in
 Detailansichten direkt am Body scanbar, ohne schon echte Population zu
 behaupten.
+Darauf sitzt jetzt zusaetzlich `Planet Summary v1` als kleiner
+Summary-HUD-Slice:
+fokussierte `PLANET`-/`MOON`-Bodies zeigen im Summary-Modus jetzt eine
+zweizeilige Hauptaussage aus `Environment`/`Climate` plus
+`Life`/`Density`/`Species`, waehrend die bisherigen separaten
+Environment-, Life-, Species- und Density-Zeilen in diesem Modus
+bewusst verschwinden. `Details` bleibt der Expertenmodus fuer Track,
+Biomass, World, Life Potential und Rohwerte.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -273,11 +281,16 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Das linke Fokus-HUD des `orbit_testbed` hat jetzt zwei explizite
   Modi:
   `Summary` als Default und `Details` als Expertenmodus.
-  `Summary` zeigt nur die Kernlesart (`Life`, `Species`, `Density`,
-  `Cycle`, `T+`, `Rate`, `Cadence`), waehrend `Details` die
-  bestehenden tieferen Analysewerte (`Bands`, `World`, `Biomass`,
-  `Life Potential`, `Season / Primary source`, `Rotation`, `Orbit`)
-  sichtbar macht.
+  `Summary` zeigt fuer `PLANET`/`MOON` jetzt zwei kompakte
+  Hauptaussage-Zeilen:
+  `Summary: <Environment> / <Climate>` und
+  `Life: <Stage>   Density: <...>   Species: <...>`.
+  Die frueheren separaten `Environment`-, `Life`-, `Species`- und
+  `Density`-Zeilen sind dort bewusst ausgeblendet; `Cycle`, `T+`,
+  `Rate` und `Cadence` bleiben erhalten.
+  `Details` zeigt weiter die tieferen Analysewerte (`Environment`,
+  `Bands`, `World`, `Life`, `Biomass`, `Species`, `Life Potential`,
+  `Season / Primary source`, `Rotation`, `Orbit`).
 - Der Root-Inspector liest jetzt wieder klar navigator-first:
   nicht-fokussierte `PLANET`-/`MOON`-Rows sind kompakte Einzeiler aus
   `name`, `kind`, Environment-Badge, Life-Badge und `note`;
@@ -955,6 +968,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tools/rendering/galaxy_proxy_renderer.gd`
 - `src/tests/rendering/test_debug_overlay.gd`
 - `src/tests/rendering/test_orbit_hud_formatter.gd`
+- `src/tests/scenes/test_orbit_testbed_hud_modes.gd`
 - `src/sim/orbit/orbit_period_helper.gd`
 - `src/sim/orbit/orbit_readout_service.gd`
 - `src/tests/sim/test_orbit_readout_service.gd`
@@ -1087,10 +1101,15 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- zuerst den neuen `Life v2`-Pfad im echten Editor-/HUD-Lauf abnehmen:
+- zuerst `Planet Summary v1` zusammen mit dem bestehenden
+  `Survey UX v2`-Pfad im echten Editor-/HUD-Lauf abnehmen:
   `sample_system.planet_a`, `starter_world.gamma_iv`,
-  `starter_world.alpha_iii` und `starter_world.gamma_iii`
-  im Fokus-HUD und im Root-Inspector lesen
+  `starter_world.alpha_iii`, `starter_world.gamma_iii` und einen
+  Detailplaneten in `scaleup_galaxy_100` im Fokus-HUD lesen
+- dabei im Summary-Modus explizit pruefen, dass die neue zweizeilige
+  Hauptaussage die alten separaten `Environment`-/`Life`-/`Species`-/
+  `Density`-Zeilen ersetzt, waehrend `Details` diese Informationen
+  weiter als Expertenwerte anzeigt
 - dabei den neuen `World:`-Pfad explizit gegen den bestehenden
   `Environment`-/`Climate`-Pfad pruefen und jetzt zusaetzlich die neuen
   `Life:`-, `Biomass:`- und `Life Potential:`-Lesarten mitlesen:

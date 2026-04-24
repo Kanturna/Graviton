@@ -156,6 +156,18 @@ theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
 theme_override_font_sizes/font_size = 16
 text = "Focus:"
 
+[node name="PlanetSummaryValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=2118073086]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
+text = "Summary: n/a"
+
+[node name="PlanetLifeSummaryValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=564950073]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)
+text = "Life: n/a"
+
 [node name="EnvironmentValue" type="Label" parent="HudLayer/TopPanel/Margin/VBox" unique_id=555378987]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.960784, 0.988235, 1)

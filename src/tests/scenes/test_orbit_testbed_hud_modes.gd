@@ -88,9 +88,12 @@ static func _test_summary_mode_is_default_and_compact(ctx) -> void:
 	ctx.assert_true(not testbed._hud_details_enabled, "HUD startet im Summary-Modus")
 	ctx.assert_true(testbed._summary_button.disabled, "Summary-Button spiegelt den aktiven Default-Modus")
 	ctx.assert_true(not testbed._details_button.disabled, "Details-Button bleibt im Summary-Modus waehbar")
-	ctx.assert_true(testbed._life_value.visible, "Summary zeigt die Life-Zeile")
-	ctx.assert_true(testbed._species_value.visible, "Summary zeigt Species bei vorhandener Species-Basis")
-	ctx.assert_true(testbed._density_value.visible, "Summary zeigt Density bei post-prebiotic Life-Stages")
+	ctx.assert_true(testbed._planet_summary_value.visible, "Summary zeigt die planetare Hauptaussage")
+	ctx.assert_true(testbed._planet_life_summary_value.visible, "Summary zeigt die gebuendelte Life-Hauptaussage")
+	ctx.assert_true(not testbed._environment_value.visible, "Summary blendet die alte Environment-Zeile aus")
+	ctx.assert_true(not testbed._life_value.visible, "Summary blendet die alte Life-Einzelzeile aus")
+	ctx.assert_true(not testbed._species_value.visible, "Summary blendet die alte Species-Einzelzeile aus")
+	ctx.assert_true(not testbed._density_value.visible, "Summary blendet die alte Density-Einzelzeile aus")
 	ctx.assert_true(testbed._cycle_value.visible, "Summary ersetzt Rotation/Orbit durch die kompakte Cycle-Zeile")
 	ctx.assert_true(not testbed._climate_value.visible, "Summary blendet Bands aus")
 	ctx.assert_true(not testbed._world_value.visible, "Summary blendet World aus")
@@ -100,16 +103,12 @@ static func _test_summary_mode_is_default_and_compact(ctx) -> void:
 	ctx.assert_true(not testbed._day_value.visible, "Summary blendet Rotation aus")
 	ctx.assert_true(not testbed._year_value.visible, "Summary blendet Orbit aus")
 	ctx.assert_true(
-		testbed._life_value.text == "Life: ECOSYSTEM / CRYOGENIC_SOLVENT",
-		"Summary nutzt die kompakte Life-Lesart"
+		testbed._planet_summary_value.text == "Summary: HABITABLE / FROZEN",
+		"Summary buendelt Environment und Climate in die Hauptaussage"
 	)
 	ctx.assert_true(
-		testbed._species_value.text == "Species: CRYO / MOTILE",
-		"Summary nutzt die kompakte Species-Lesart"
-	)
-	ctx.assert_true(
-		testbed._density_value.text == "Density: ABUNDANT",
-		"Summary mappt die Dichte direkt aus der Life-Stage"
+		testbed._planet_life_summary_value.text == "Life: ECOSYSTEM   Density: ABUNDANT   Species: CRYO",
+		"Summary buendelt Life, Density und Species ohne Track-Duplizierung"
 	)
 	ctx.assert_true(
 		testbed._cycle_value.text == "Cycle: rot 43.2 h / orb 8.6 d",
@@ -126,6 +125,9 @@ static func _test_details_mode_restores_expert_readouts(ctx) -> void:
 	ctx.assert_true(testbed._hud_details_enabled, "Details-Toggle aktiviert den Expertenmodus")
 	ctx.assert_true(not testbed._summary_button.disabled, "Summary bleibt im Expertenmodus wieder waehlbar")
 	ctx.assert_true(testbed._details_button.disabled, "Details-Button spiegelt den aktiven Expertenmodus")
+	ctx.assert_true(not testbed._planet_summary_value.visible, "Details blendet die Summary-Hauptaussage aus")
+	ctx.assert_true(not testbed._planet_life_summary_value.visible, "Details blendet die Summary-Life-Hauptaussage aus")
+	ctx.assert_true(testbed._environment_value.visible, "Details zeigt Environment wieder an")
 	ctx.assert_true(testbed._climate_value.visible, "Details zeigt Bands wieder an")
 	ctx.assert_true(testbed._world_value.visible, "Details zeigt World wieder an")
 	ctx.assert_true(testbed._biomass_value.visible, "Details zeigt Biomass wieder an")
@@ -214,6 +216,8 @@ static func _build_testbed_probe():
 	testbed._summary_button = Button.new()
 	testbed._details_button = Button.new()
 	testbed._focus_value = Label.new()
+	testbed._planet_summary_value = Label.new()
+	testbed._planet_life_summary_value = Label.new()
 	testbed._environment_value = Label.new()
 	testbed._climate_value = Label.new()
 	testbed._world_value = Label.new()
@@ -236,6 +240,8 @@ static func _build_testbed_probe():
 		testbed._summary_button,
 		testbed._details_button,
 		testbed._focus_value,
+		testbed._planet_summary_value,
+		testbed._planet_life_summary_value,
 		testbed._environment_value,
 		testbed._climate_value,
 		testbed._world_value,

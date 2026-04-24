@@ -36,6 +36,8 @@ const ZOOM_FACTOR_STEP: float = 1.12
 @onready var _focus_value: Label = $HudLayer/TopPanel/Margin/VBox/FocusValue
 @onready var _summary_button: Button = $HudLayer/TopPanel/Margin/VBox/HudModeRow/SummaryButton
 @onready var _details_button: Button = $HudLayer/TopPanel/Margin/VBox/HudModeRow/DetailsButton
+@onready var _planet_summary_value: Label = $HudLayer/TopPanel/Margin/VBox/PlanetSummaryValue
+@onready var _planet_life_summary_value: Label = $HudLayer/TopPanel/Margin/VBox/PlanetLifeSummaryValue
 @onready var _environment_value: Label = $HudLayer/TopPanel/Margin/VBox/EnvironmentValue
 @onready var _climate_value: Label = $HudLayer/TopPanel/Margin/VBox/ClimateValue
 @onready var _world_value: Label = $HudLayer/TopPanel/Margin/VBox/WorldValue
@@ -375,8 +377,6 @@ func _update_hud() -> void:
 		NativeSpeciesServiceScript.KEY_HAS_NATIVE_SPECIES_BASIS,
 		false
 	))
-	var density_text: String = OrbitHudFormatterScript.compact_density_text(biosphere_scale_desc)
-	var has_density: bool = density_text != ""
 	var has_cycle_basis: bool = bool(orbit_readout_desc.get(
 		OrbitReadoutServiceScript.KEY_HAS_ROTATION_BASIS,
 		false
@@ -401,6 +401,9 @@ func _update_hud() -> void:
 	_mode_value.text = OrbitHudFormatterScript.format_mode(UniverseRegistry.body_count(), TimeService.paused)
 
 	if _hud_details_enabled:
+		_planet_summary_value.visible = false
+		_planet_life_summary_value.visible = false
+		_environment_value.visible = true
 		_climate_value.visible = true
 		_climate_value.text = OrbitHudFormatterScript.format_bands(environment_desc)
 		_world_value.visible = is_planetary_focus
@@ -432,18 +435,22 @@ func _update_hud() -> void:
 			_year_value.text = OrbitHudFormatterScript.format_orbit(orbit_readout_desc)
 		_cycle_value.visible = false
 	else:
+		_planet_summary_value.visible = is_planetary_focus
+		if _planet_summary_value.visible:
+			_planet_summary_value.text = OrbitHudFormatterScript.format_planet_summary(environment_desc)
+		_planet_life_summary_value.visible = is_planetary_focus
+		if _planet_life_summary_value.visible:
+			_planet_life_summary_value.text = OrbitHudFormatterScript.format_planet_life_summary(
+				biosphere_scale_desc,
+				native_species_desc
+			)
+		_environment_value.visible = false
 		_climate_value.visible = false
 		_world_value.visible = false
-		_life_value.visible = is_planetary_focus
-		if _life_value.visible:
-			_life_value.text = OrbitHudFormatterScript.format_life_summary(biosphere_scale_desc)
+		_life_value.visible = false
 		_biomass_value.visible = false
-		_species_value.visible = is_planetary_focus and has_species_basis
-		if _species_value.visible:
-			_species_value.text = OrbitHudFormatterScript.format_species_summary(native_species_desc)
-		_density_value.visible = is_planetary_focus and has_density
-		if _density_value.visible:
-			_density_value.text = OrbitHudFormatterScript.format_density(biosphere_scale_desc)
+		_species_value.visible = false
+		_density_value.visible = false
 		_life_potential_value.visible = false
 		_season_value.visible = false
 		_day_value.visible = false

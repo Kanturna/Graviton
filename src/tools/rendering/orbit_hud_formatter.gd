@@ -27,6 +27,30 @@ static func format_environment(environment_desc: Dictionary) -> String:
 	]
 
 
+static func format_planet_summary(environment_desc: Dictionary) -> String:
+	if not bool(environment_desc.get(EnvironmentServiceScript.KEY_IS_SUPPORTED_BODY_KIND, false)):
+		return "Summary: n/a"
+	return "Summary: %s / %s" % [
+		_environment_class_text(environment_desc),
+		_ecosystem_text(environment_desc),
+	]
+
+
+static func format_planet_life_summary(biosphere_desc: Dictionary, native_species_desc: Dictionary) -> String:
+	if not _biosphere_has_basis(biosphere_desc):
+		return "Life: n/a"
+	var segments: Array[String] = [
+		"Life: %s" % compact_life_stage_text(biosphere_desc),
+	]
+	var density_text: String = compact_density_text(biosphere_desc)
+	if density_text != "":
+		segments.append("Density: %s" % density_text)
+	var species_text: String = compact_species_text(native_species_desc)
+	if species_text != "":
+		segments.append("Species: %s" % species_text)
+	return "   ".join(segments)
+
+
 static func format_bands(environment_desc: Dictionary) -> String:
 	if not bool(environment_desc.get(EnvironmentServiceScript.KEY_IS_SUPPORTED_BODY_KIND, false)):
 		return "Bands: n/a"

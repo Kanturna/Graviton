@@ -8,6 +8,9 @@ static func run(ctx) -> void:
 	_test_primary_source_formatter_uses_visible_label(ctx)
 	_test_primary_source_formatter_handles_missing_source(ctx)
 	_test_inspector_environment_badge_reuses_environment_and_climate_labels(ctx)
+	_test_planet_summary_formatter_uses_environment_and_climate(ctx)
+	_test_planet_life_summary_formatter_collapses_life_density_and_species(ctx)
+	_test_planet_life_summary_formatter_handles_sparse_basis(ctx)
 	_test_world_formatter_uses_fixed_axis_order(ctx)
 	_test_life_formatter_handles_track_and_none_cases(ctx)
 	_test_biomass_formatter_shows_quantitative_index(ctx)
@@ -60,6 +63,60 @@ static func _test_inspector_environment_badge_reuses_environment_and_climate_lab
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_inspector_environment_badge({}) == "n/a",
 		"Inspector-Badges zeigen ohne unterstuetzten Environment-Snapshot explizit n/a"
+	)
+
+
+static func _test_planet_summary_formatter_uses_environment_and_climate(ctx) -> void:
+	var environment_desc: Dictionary = {
+		"is_supported_body_kind": true,
+		"environment_class": 0,
+		"ecosystem_type": 1,
+	}
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_planet_summary(environment_desc) == "Summary: HABITABLE / TEMPERATE",
+		"Planet Summary verdichtet Environment und Climate in eine Hauptaussage"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_planet_summary({}) == "Summary: n/a",
+		"Planet Summary bleibt bei fehlender Environment-Basis sichtbar, aber explizit n/a"
+	)
+
+
+static func _test_planet_life_summary_formatter_collapses_life_density_and_species(ctx) -> void:
+	var biosphere_desc: Dictionary = {
+		"has_biosphere_scale_basis": true,
+		"biosphere_stage": 3,
+		"dominant_track_id": 2,
+		"dominant_potential_class": 3,
+		"dominant_biomass_index": 0.57,
+	}
+	var native_species_desc: Dictionary = {
+		"has_native_species_basis": true,
+		"metabolism_class": 0,
+	}
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_planet_life_summary(biosphere_desc, native_species_desc)
+			== "Life: COMPLEX   Density: THRIVING   Species: PHOTO",
+		"Planet Life Summary buendelt Life/Density/Species und laesst den Track bewusst fuer Details weg"
+	)
+
+
+static func _test_planet_life_summary_formatter_handles_sparse_basis(ctx) -> void:
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_planet_life_summary({
+			"has_biosphere_scale_basis": true,
+			"biosphere_stage": 1,
+			"dominant_track_id": 0,
+			"dominant_potential_class": 3,
+			"dominant_biomass_index": 0.0,
+		}, {}) == "Life: PREBIOTIC",
+		"PREBIOTIC bekommt in der neuen Hauptaussage keine pseudo-Density und keine Species"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_planet_life_summary({},
+			{"has_native_species_basis": true, "metabolism_class": 0}
+		) == "Life: n/a",
+		"Ohne Life-Basis bleibt die Life-Hauptaussage explizit n/a"
 	)
 
 
