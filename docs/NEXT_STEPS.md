@@ -22,12 +22,13 @@ Erledigt:
   `.gitignore` vom geteilten Repo-Vertrag getrennt
 - `run_tests.bat` nutzt jetzt `GODOT_BIN` oder `godot_console.exe` aus
   `PATH` statt eines fest verdrahteten lokalen Godot-Pfads
+- `OrbitService` haengt nicht mehr direkt von
+  `src/tools/debug/perf_probe.gd` ab; er exponiert read-only
+  Perf-Counter-Snapshots, und `orbit_testbed.gd` sampelt diese Werte
+  in die bestehende `PerfProbe`-CSV-Diagnose
 
 Offen als separate Architektur-Slices:
 
-- `OrbitService` darf nicht dauerhaft direkt von
-  `src/tools/debug/perf_probe.gd` abhaengen; Perf-Sampling soll aus
-  `sim` herausgezogen werden
 - die bereits implementierte `BubbleActivationSet`-Exit-Hysterese muss
   bewusst in `ARCHITEKTUR.md`, `SIMULATIONSREGELN.md` und
   `DECISIONS.md` legalisiert oder als Codepfad zurueckgebaut werden

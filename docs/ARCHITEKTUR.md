@@ -56,6 +56,25 @@ Niemals autoritativ:
 Visuals im Testbed, Debug-Overlay-Anzeigen,
 `GalaxyStreamingController.get_debug_snapshot()`.
 
+## Diagnose / Perf-Probes - ADR
+
+**Entscheidung:** Diagnose- und Performance-Sampling lebt ausserhalb
+der autoritativen Sim-Schicht. `sim/`-Services duerfen read-only
+Counter oder Snapshots exponieren, aber keine `scenes/`- oder
+`src/tools/`-Skripte laden.
+
+**Aktueller Stand:** `OrbitService.get_perf_counter_snapshot()`
+liefert kumulative Diagnosezaehler fuer `NUMERIC_LOCAL`,
+Substeps, Cap-Hits und Sim-Ticks. `orbit_testbed.gd` sampelt diese
+Werte in `PerfProbe` und uebersetzt kumulative Service-Counter dort in
+per-frame Diagnose-Counter.
+
+**Konsequenz:** `PerfProbe` ist CSV-/Playtest-Diagnostik, keine
+Simulationswahrheit. Neue Messpunkte duerfen die Schichten nicht
+umdrehen: autoritative Schichten stellen hoechstens read-only Werte
+bereit; Sampling, Ringbuffer, Dumping und Hotkey-Bedienung bleiben im
+Composition Root oder in `src/tools/`.
+
 ## Autoloads - ADR
 
 **Entscheidung:** Genau zwei projekt-eigene Autoloads -

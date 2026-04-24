@@ -83,6 +83,7 @@ var _is_large_world: bool = false
 var _last_frame_label: StringName = StringName("")
 var _active_world_scope_id: StringName = StringName("")
 var _hud_details_enabled: bool = false
+var _last_orbit_perf_counter_snapshot: Dictionary = {}
 
 
 func _ready() -> void:
@@ -307,6 +308,7 @@ func _process(delta: float) -> void:
 
 
 func _sample_perf_probe() -> void:
+	_sample_orbit_service_perf_probe()
 	if _activation_set != null:
 		PerfProbeScript.sample(&"active_ids", _activation_set.get_active_ids().size())
 	if _camera_controller != null:
@@ -316,6 +318,30 @@ func _sample_perf_probe() -> void:
 	if _planet_badge_overlay != null:
 		var badge_snapshot: Dictionary = _planet_badge_overlay.get_debug_snapshot()
 		PerfProbeScript.sample(&"visible_badges", int(badge_snapshot.get("visible_badge_count", 0)))
+
+
+func _sample_orbit_service_perf_probe() -> void:
+	if _orbit_service == null:
+		return
+	var snapshot: Dictionary = _orbit_service.get_perf_counter_snapshot()
+	PerfProbeScript.sample(
+		OrbitService.PERF_KEY_NUMERIC_LOCAL_COUNT,
+		int(snapshot.get(OrbitService.PERF_KEY_NUMERIC_LOCAL_COUNT, 0))
+	)
+	_bump_perf_counter_delta(snapshot, OrbitService.PERF_KEY_ORBIT_SIM_TICKS)
+	_bump_perf_counter_delta(snapshot, OrbitService.PERF_KEY_REGIME_ENTER_NUMERIC)
+	_bump_perf_counter_delta(snapshot, OrbitService.PERF_KEY_NUMERIC_SUBSTEP_TOTAL)
+	_bump_perf_counter_delta(snapshot, OrbitService.PERF_KEY_SUBSTEP_CAP_HITS)
+	_bump_perf_counter_delta(snapshot, OrbitService.PERF_KEY_REGIME_EXIT_NUMERIC)
+	_last_orbit_perf_counter_snapshot = snapshot.duplicate()
+
+
+func _bump_perf_counter_delta(snapshot: Dictionary, key: StringName) -> void:
+	var current: int = int(snapshot.get(key, 0))
+	var previous: int = int(_last_orbit_perf_counter_snapshot.get(key, 0))
+	var delta: int = current - previous
+	if delta > 0:
+		PerfProbeScript.bump(key, delta)
 
 
 func _unhandled_input(event: InputEvent) -> void:

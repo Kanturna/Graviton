@@ -10,6 +10,7 @@ static func run(ctx) -> void:
 	_test_numeric_local_integrates_on_next_step(ctx)
 	_test_numeric_local_substeps_large_dt(ctx)
 	_test_capped_numeric_local_keeps_mode_and_sets_warning_flag(ctx)
+	_test_perf_counter_snapshot_tracks_numeric_work(ctx)
 	_test_empty_request_exits_back_to_kepler_after_grace(ctx)
 	_test_exit_budget_block_keeps_numeric_and_integrates(ctx)
 	_test_request_return_during_grace_avoids_reseed(ctx)
@@ -278,6 +279,68 @@ static func _test_capped_numeric_local_keeps_mode_and_sets_warning_flag(ctx) -> 
 	_emit_sim_tick(time_service, 1.0)
 	ctx.assert_true(not service._substep_cap_warning_active_by_id.has(&"planet_a"),
 		"ein uncapped Tick setzt das Cap-Warning-Flag wieder zurueck")
+
+	service.free()
+	time_service.free()
+	reg.free()
+
+
+static func _test_perf_counter_snapshot_tracks_numeric_work(ctx) -> void:
+	var reg := _make_registry()
+	var time_service := _make_time_service()
+	var service = _make_orbit_service(reg, time_service)
+
+	var initial: Dictionary = service.get_perf_counter_snapshot()
+	ctx.assert_true(initial.has(OrbitService.PERF_KEY_NUMERIC_LOCAL_COUNT),
+		"Perf-Counter-Snapshot enthaelt numeric_local_count")
+	ctx.assert_true(initial.has(OrbitService.PERF_KEY_ORBIT_SIM_TICKS),
+		"Perf-Counter-Snapshot enthaelt orbit_sim_ticks")
+	ctx.assert_true(initial.has(OrbitService.PERF_KEY_REGIME_ENTER_NUMERIC),
+		"Perf-Counter-Snapshot enthaelt regime_enter_numeric")
+	ctx.assert_true(initial.has(OrbitService.PERF_KEY_NUMERIC_SUBSTEP_TOTAL),
+		"Perf-Counter-Snapshot enthaelt numeric_substep_total")
+	ctx.assert_true(initial.has(OrbitService.PERF_KEY_SUBSTEP_CAP_HITS),
+		"Perf-Counter-Snapshot enthaelt substep_cap_hits")
+	ctx.assert_true(initial.has(OrbitService.PERF_KEY_REGIME_EXIT_NUMERIC),
+		"Perf-Counter-Snapshot enthaelt regime_exit_numeric")
+	ctx.assert_true(int(initial.get(OrbitService.PERF_KEY_NUMERIC_LOCAL_COUNT, -1)) == 0,
+		"Perf-Counter-Snapshot startet ohne numerische Bodies")
+	ctx.assert_true(int(initial.get(OrbitService.PERF_KEY_ORBIT_SIM_TICKS, -1)) == 0,
+		"Perf-Counter-Snapshot startet ohne Sim-Ticks")
+
+	service.request_numeric_local_candidates(_ids([&"planet_a"]))
+	service.recompute_all_at_time(0.0)
+
+	var after_entry: Dictionary = service.get_perf_counter_snapshot()
+	ctx.assert_true(int(after_entry.get(OrbitService.PERF_KEY_NUMERIC_LOCAL_COUNT, 0)) == 1,
+		"Perf-Counter-Snapshot meldet aktuellen NUMERIC_LOCAL-Bestand")
+	ctx.assert_true(int(after_entry.get(OrbitService.PERF_KEY_REGIME_ENTER_NUMERIC, 0)) == 1,
+		"Perf-Counter-Snapshot zaehlt numerische Eintritte")
+	ctx.assert_true(int(after_entry.get(OrbitService.PERF_KEY_ORBIT_SIM_TICKS, -1)) == 0,
+		"recompute_all_at_time zaehlt nicht als Sim-Tick")
+
+	_emit_sim_tick(time_service, 40.0)
+
+	var after_tick: Dictionary = service.get_perf_counter_snapshot()
+	ctx.assert_true(int(after_tick.get(OrbitService.PERF_KEY_ORBIT_SIM_TICKS, 0)) == 1,
+		"Perf-Counter-Snapshot zaehlt echte Sim-Ticks")
+	ctx.assert_true(int(after_tick.get(OrbitService.PERF_KEY_NUMERIC_SUBSTEP_TOTAL, 0)) > 0,
+		"Perf-Counter-Snapshot zaehlt numerische Substeps")
+	ctx.assert_true(int(after_tick.get(OrbitService.PERF_KEY_SUBSTEP_CAP_HITS, -1)) == 0,
+		"uncapped NUMERIC_LOCAL-Tick zaehlt keinen Cap-Hit")
+
+	service.request_numeric_local_candidates(_ids([&"planet_a"]))
+	service.request_numeric_local_candidates(_ids([]))
+	_emit_sim_tick(time_service, 1.0)
+	_emit_sim_tick(time_service, 1.0)
+
+	var after_exit: Dictionary = service.get_perf_counter_snapshot()
+	ctx.assert_true(int(after_exit.get(OrbitService.PERF_KEY_ORBIT_SIM_TICKS, 0)) == 3,
+		"Perf-Counter-Snapshot fuehrt Sim-Ticks kumulativ weiter")
+	ctx.assert_true(int(after_exit.get(OrbitService.PERF_KEY_REGIME_EXIT_NUMERIC, 0)) == 1,
+		"Perf-Counter-Snapshot zaehlt numerische Exits")
+	ctx.assert_true(int(after_exit.get(OrbitService.PERF_KEY_NUMERIC_LOCAL_COUNT, -1)) == 0,
+		"Perf-Counter-Snapshot meldet aktuellen Bestand nach Exit")
 
 	service.free()
 	time_service.free()

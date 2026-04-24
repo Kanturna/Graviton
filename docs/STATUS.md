@@ -197,6 +197,11 @@ Doku-Sync, Review-Uebergabe und Commit-Vorschlagspflicht explizit,
 `CLAUDE.md` verweist Claude Code auf die Reviewer-Rolle, lokale
 Claude-State-Dateien werden nicht mehr geteilt und `run_tests.bat`
 nutzt `GODOT_BIN` statt eines fest verdrahteten lokalen Godot-Pfads.
+Ein direkter Architektur-Hygiene-Follow-up entkoppelt danach
+`OrbitService` von `PerfProbe`: der Sim-Service exponiert nur noch
+read-only Perf-Counter-Snapshots, waehrend `orbit_testbed.gd` diese
+Werte in die bestehenden `PerfProbe`-Spalten sampelt. Damit zeigt keine
+Abhaengigkeit mehr aus `src/sim/` nach `src/tools/debug/`.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -683,10 +688,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `OrbitService` schreibt autoritativ die `BodyState`-Positionsdaten.
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
-- Die Headless-Testbasis ist weiter reproduzierbar: direkter
-  `godot_console.exe --headless ...`-Aufruf und `run_tests.bat` laufen
-  nach `Life Potential v1b` jetzt mit `7350` erfolgreichen Assertions
-  bei `0` Failures.
+- Die Headless-Testbasis ist weiter reproduzierbar: `run_tests.bat`
+  laeuft nach dem PerfProbe-Entkopplungs-Slice mit `7768`
+  erfolgreichen Assertions bei `0` Failures.
 
 ### Aktuelle Praesentation
 
@@ -1019,6 +1023,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/runtime/streaming/galaxy_proxy_math.gd`
 - `src/tests/runtime/test_bubble_activation_set.gd`
 - `src/tests/runtime/test_large_world_streaming.gd`
+- `src/sim/orbit/orbit_service.gd`
 - `src/sim/orbit/local_orbit_integrator.gd`
 - `src/tests/orbit/test_local_orbit_integrator.gd`
 - `src/tests/sim/test_orbit_service_numeric_local.gd`
@@ -1037,6 +1042,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tests/sim/test_biosphere_scale_service.gd`
 - `docs/SIMULATIONSREGELN.md`
 - `docs/STARTER_WORLD.md`
+- `docs/ARCHITEKTUR.md`
 - `docs/NEXT_STEPS.md`
 - `docs/DECISIONS.md`
 - `src/runtime/local_bubble/local_bubble_manager.gd`
@@ -1265,8 +1271,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - den produktiven Large-World-Pfad weiter nur ueber Proxy-/Perf-Trim
   oder planetare Derived-Folgearbeit ausbauen, nicht ueber noch mehr
   Root-Anzahl ohne echten Editor-/Feel-Playtest
-- Headless-Basis nach `Orbit Readout v1`:
-  `./run_tests.bat` laeuft gruen mit `7505` Passed, `0` Failed;
+- Headless-Basis nach dem PerfProbe-Entkopplungs-Slice:
+  `./run_tests.bat` laeuft gruen mit `7768` Passed, `0` Failed;
   der reale Lauf meldet am Prozessende aber weiter generische
   `ObjectDB instances leaked`- und
   `resources still in use`-Hinweise

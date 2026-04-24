@@ -1,5 +1,25 @@
 # Graviton - Decisions
 
+## 2026-04-24 - Perf-Diagnostik bleibt ausserhalb der Sim-Schicht
+
+`OrbitService` darf fuer Diagnosezwecke read-only Counter anbieten,
+haengt aber nicht von `PerfProbe`, `scenes/` oder `src/tools/` ab.
+Das konkrete Sampling, Dumping und CSV-Format lebt in der Testbed-/
+Tool-Schicht.
+
+Konsequenz:
+
+- `src/sim/` bleibt frei von `src/tools/debug/perf_probe.gd`-
+  Abhaengigkeiten
+- `OrbitService.get_perf_counter_snapshot()` ist Diagnoseoberflaeche,
+  keine neue Simulationswahrheit und kein Steuerpfad
+- `orbit_testbed.gd` uebersetzt die kumulativen Service-Counter in die
+  bestehenden per-frame `PerfProbe`-Counter, damit die bisherigen
+  Spaltennamen fuer Playtest-Dumps erhalten bleiben
+- neue Performance-Metriken folgen demselben Muster:
+  autoritative Schichten duerfen read-only Werte exponieren, aber
+  Sampling und Ausgabe bleiben im Composition Root oder in `src/tools/`
+
 ## 2026-04-24 - Agentenvertrag und Review-Handoff werden explizit im Repo verankert
 
 Der wiederkehrende Codex-/Claude-Code-Workflow wird nicht mehr nur im
@@ -20,8 +40,9 @@ Konsequenz:
 - `run_tests.bat` darf lokal ueber `GODOT_BIN` verdrahtet werden, statt
   einen maschinenspezifischen Godot-Pfad im Repo festzuschreiben
 - Architektur-Drifts bleiben eigene Slices:
-  insbesondere PerfProbe-Entkopplung aus `sim/` und die bewusste
-  Entscheidung zur `BubbleActivationSet`-Exit-Hysterese
+  die PerfProbe-Entkopplung aus `sim/` ist inzwischen abgeschlossen;
+  offen bleibt die bewusste Entscheidung zur
+  `BubbleActivationSet`-Exit-Hysterese
 
 ## 2026-04-24 - Qualitative Pressure und Co-Dominanz kommen vor zeitlicher Evolution
 
