@@ -173,17 +173,12 @@ func _ensure_badge_pool() -> void:
 
 
 func _make_badge(index: int) -> Dictionary:
-	var panel := Button.new()
+	var panel := PanelContainer.new()
 	panel.visible = false
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
-	panel.focus_mode = Control.FOCUS_NONE
 	panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	panel.add_theme_stylebox_override("normal", _make_badge_style())
-	panel.add_theme_stylebox_override("hover", _make_badge_style(Color(0.0509804, 0.0784314, 0.145098, 0.92), Color(0.501961, 0.705882, 1.0, 0.42)))
-	panel.add_theme_stylebox_override("pressed", _make_badge_style(Color(0.0313725, 0.0470588, 0.0862745, 0.94), Color(0.501961, 0.705882, 1.0, 0.52)))
-	panel.add_theme_stylebox_override("focus", _make_badge_style())
-	panel.pressed.connect(_on_badge_pressed.bind(index), CONNECT_DEFERRED)
+	panel.add_theme_stylebox_override("panel", _make_badge_style())
+	panel.gui_input.connect(_on_badge_gui_input.bind(index), CONNECT_DEFERRED)
 	_root.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -199,16 +194,10 @@ func _make_badge(index: int) -> Dictionary:
 	vbox.add_theme_constant_override("separation", 0)
 	margin.add_child(vbox)
 
-	var line_one := Label.new()
-	line_one.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	line_one.add_theme_color_override("font_color", Color(0.972549, 0.980392, 1.0, 0.96))
-	line_one.add_theme_font_size_override("font_size", 12)
+	var line_one := _make_badge_line_button(index, Color(0.972549, 0.980392, 1.0, 0.96), 12)
 	vbox.add_child(line_one)
 
-	var line_two := Label.new()
-	line_two.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	line_two.add_theme_color_override("font_color", Color(0.819608, 0.886275, 0.984314, 0.90))
-	line_two.add_theme_font_size_override("font_size", 11)
+	var line_two := _make_badge_line_button(index, Color(0.819608, 0.886275, 0.984314, 0.90), 11)
 	vbox.add_child(line_two)
 
 	return {
@@ -221,14 +210,16 @@ func _make_badge(index: int) -> Dictionary:
 
 func _apply_badge(badge: Dictionary, candidate: Dictionary, viewport_size: Vector2) -> void:
 	var panel: Control = badge.get("panel", null)
-	var line_one: Label = badge.get("line_one", null)
-	var line_two: Label = badge.get("line_two", null)
+	var line_one: Button = badge.get("line_one", null)
+	var line_two: Button = badge.get("line_two", null)
 	if panel == null or line_one == null or line_two == null:
 		return
 	var lines: PackedStringArray = candidate.get("lines", PackedStringArray())
 	line_one.text = lines[0] if not lines.is_empty() else ""
 	line_two.text = lines[1] if lines.size() > 1 else ""
 	line_two.visible = line_two.text != ""
+	line_one.custom_minimum_size = line_one.get_combined_minimum_size()
+	line_two.custom_minimum_size = line_two.get_combined_minimum_size() if line_two.visible else Vector2.ZERO
 	badge["body_id"] = candidate.get("body_id", StringName(""))
 	panel.visible = true
 	var badge_size: Vector2 = panel.get_combined_minimum_size()
@@ -278,6 +269,36 @@ func _on_badge_pressed(index: int) -> void:
 	if body_id == StringName(""):
 		return
 	life_details_requested.emit(body_id)
+
+
+func _on_badge_gui_input(event: InputEvent, index: int) -> void:
+	if event is InputEventMouseButton:
+		var mouse_event: InputEventMouseButton = event
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			var viewport := get_viewport()
+			if viewport != null:
+				viewport.set_input_as_handled()
+			_on_badge_pressed(index)
+
+
+func _make_badge_line_button(index: int, text_color: Color, font_size: int) -> Button:
+	var button := Button.new()
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.flat = true
+	button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.add_theme_color_override("font_color", text_color)
+	button.add_theme_color_override("font_hover_color", text_color.lightened(0.12))
+	button.add_theme_color_override("font_pressed_color", text_color.darkened(0.08))
+	button.add_theme_font_size_override("font_size", font_size)
+	button.pressed.connect(_on_badge_pressed.bind(index), CONNECT_DEFERRED)
+	return button
 
 
 static func _make_badge_style(

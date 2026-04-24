@@ -92,6 +92,10 @@ Ein direkter Follow-up hat dabei die planetennahen Badge-Hitboxen
 gehaertet: frei platzierte Badge-Buttons setzen ihre sichtbare
 Control-Groesse jetzt explizit auf die gemessene Badge-Groesse, damit
 der kleine `LIFE ...`-Text im Editor wirklich klickbar ist.
+Der anschliessende Praxis-Fix macht zusaetzlich die sichtbaren
+Badge-Textzeilen selbst zu transparenten Buttons, damit Klicks direkt
+auf `LIFE MICROBIAL` oder die zweite Zeile wie `SPARSE` sicher im
+Life-Detail-Pfad landen.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 

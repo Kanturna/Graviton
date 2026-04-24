@@ -71,21 +71,28 @@ static func _test_badge_click_contract_and_debug_snapshot(ctx) -> void:
 		"body_id": &"alpha_ii",
 		"center_px": Vector2(100.0, 100.0),
 		"projected_radius_px": 16.0,
-		"lines": PackedStringArray(["LIFE PREBIOTIC"]),
+		"lines": PackedStringArray(["LIFE MICROBIAL", "SPARSE"]),
 	}, Vector2(800.0, 600.0))
 
-	var panel: Button = badge.get("panel", null) as Button
-	ctx.assert_true(panel != null and panel.visible, "Badge-Panel wird als klickbarer Button sichtbar")
-	ctx.assert_true(panel.size.x > 0.0 and panel.size.y > 0.0, "Sichtbare Badge-Buttons bekommen eine echte klickbare Control-Groesse")
+	var panel: PanelContainer = badge.get("panel", null) as PanelContainer
+	var line_one: Button = badge.get("line_one", null) as Button
+	var line_two: Button = badge.get("line_two", null) as Button
+	ctx.assert_true(panel != null and panel.visible, "Badge-Panel wird als sichtbarer Klickbereich gerendert")
+	ctx.assert_true(panel.size.x > 0.0 and panel.size.y > 0.0, "Sichtbare Badge-Panels bekommen eine echte klickbare Control-Groesse")
 	ctx.assert_true(panel.mouse_filter == Control.MOUSE_FILTER_STOP, "Sichtbare Badge-Buttons stoppen Klicks auf dem Badge")
-	ctx.assert_true(panel.action_mode == BaseButton.ACTION_MODE_BUTTON_PRESS, "Badge-Buttons feuern auf Mouse-Down")
+	ctx.assert_true(line_one != null and line_one.text == "LIFE MICROBIAL", "Die sichtbare erste Badge-Zeile ist selbst ein Button")
+	ctx.assert_true(line_one.size.x >= 0.0 and line_one.get_combined_minimum_size().x > 0.0, "Die Textzeile hat eine eigene Button-Hitbox")
+	ctx.assert_true(line_one.mouse_filter == Control.MOUSE_FILTER_STOP, "Badge-Textbuttons stoppen Klicks direkt auf dem Text")
+	ctx.assert_true(line_one.action_mode == BaseButton.ACTION_MODE_BUTTON_PRESS, "Badge-Textbuttons feuern auf Mouse-Down")
+	ctx.assert_true(line_two != null and line_two.visible and line_two.text == "SPARSE", "Auch die zweite sichtbare Badge-Zeile ist klickbarer Text")
+	ctx.assert_true(line_two.get_combined_minimum_size().x > 0.0, "Die zweite Textzeile hat eine eigene Button-Hitbox")
 	var uses_deferred_click_routing: bool = false
-	for connection_variant in panel.get_signal_connection_list("pressed"):
+	for connection_variant in line_one.get_signal_connection_list("pressed"):
 		var connection: Dictionary = connection_variant
 		if int(connection.get("flags", 0)) & CONNECT_DEFERRED:
 			uses_deferred_click_routing = true
 			break
-	ctx.assert_true(uses_deferred_click_routing, "Badge-Buttons routen Detailsignale deferred")
+	ctx.assert_true(uses_deferred_click_routing, "Badge-Textbuttons routen Detailsignale deferred")
 
 	var snapshot: Dictionary = overlay.get_debug_snapshot()
 	var visible_badges: Array = snapshot.get("visible_badges", [])
