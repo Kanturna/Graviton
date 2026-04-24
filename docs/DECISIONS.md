@@ -64,8 +64,8 @@ Konsequenz:
   einen maschinenspezifischen Godot-Pfad im Repo festzuschreiben
 - Architektur-Drifts bleiben eigene Slices:
   die PerfProbe-Entkopplung aus `sim/` ist inzwischen abgeschlossen;
-  offen bleibt die bewusste Entscheidung zur
-  `BubbleActivationSet`-Exit-Hysterese
+  die `BubbleActivationSet`-Exit-Hysterese ist inzwischen als
+  read-only Relevanzklassifikation legalisiert
 
 ## 2026-04-24 - Qualitative Pressure und Co-Dominanz kommen vor zeitlicher Evolution
 
