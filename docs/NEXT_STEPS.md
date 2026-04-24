@@ -30,12 +30,21 @@ Konkreter Ablauf:
 - im Detail-/Fokusblick pruefen:
   entfernte Galaxy-Proxies sind nicht sichtbar/pickbar und verursachen
   beim Reinzoomen keine weiteren Proxy-Redraw-Spikes
+- mit offenem rechten Root-Inspector gegen geschlossen vergleichen:
+  die FPS duerfen durch die sichtbaren Rows fallen, aber nicht mehr um
+  hunderte Punkte durch wiederholten identischen Row-Neuaufbau; der
+  Debug-Snapshot `model_apply_count` soll im ruhigen Zustand nicht mit
+  jedem Refresh weiterlaufen
+- planetennahe `LIFE`-Badges im Detailblick pruefen:
+  Badges bleiben klickbar, folgen den Bodies und erzeugen keine
+  auffaellige Transform-Query-Chatterei beim stabilen Fokus
 - Time-Scale variieren:
   niedrige Rate, mittlere Rate und hoher Preset; Pause und `time_scale`
   0 muessen ohne visuelles Nachziehen stehen bleiben
 - Trails pruefen:
-  keine explosionsartig wachsenden Trail-Punkte oder sichtbares Trail-
-  Flimmern; Trails duerfen weiterhin tick-basiert wirken
+  keine explosionsartig wachsenden Trail-Punkte, kein sichtbares Trail-
+  Flimmern und keine Line-Punkte-Schreibarbeit bei unveraenderter
+  History; Trails duerfen weiterhin tick-basiert wirken
 
 Wenn dieser Gate kippt:
 

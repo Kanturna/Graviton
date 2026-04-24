@@ -128,6 +128,16 @@ Sonnen-/Planeten-/Mond-Foki muessen beim Reinzoomen dadurch nicht mehr
 parallel den 100-Root-Proxy-Pfad pruefen oder redrawen. Zusaetzlich
 schreibt `OrbitViewRenderer.set_world_scale(...)` Orbit-/Trail-
 Line-Widths nur noch, wenn sich der Scale wirklich geaendert hat.
+Ein weiterer Follow-up adressiert den gemeldeten FPS-Einbruch mit
+offenem rechtem Root-Inspector und sichtbaren Life-Badges:
+`RootInspectorOverlay` baut seine Row-Nodes bei identischem
+Inspector-Modell nicht mehr neu auf und exponiert dafuer einen
+`model_apply_count` im Debug-Snapshot. `OrbitViewRenderer` schreibt
+Trail-Line-Punkte nur noch bei echter History-Aenderung, statt jedes
+Render-Frame ein neues `PackedVector2Array` zu setzen. Das
+`PlanetBadgeOverlay` liest Body-Sichtbarkeit, Screen-Center und
+projizierten Radius jetzt ueber einen gemeinsamen Renderer-Metrics-Call
+statt ueber drei separate Transform-Abfragen pro Body.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 

@@ -70,12 +70,13 @@ func refresh() -> void:
 			continue
 		if _topology.root_id_of(id) != focus_root_id:
 			continue
-		if not _renderer.is_body_visually_visible(id):
+		var screen_metrics: Dictionary = _renderer.get_body_screen_metrics(id)
+		if not bool(screen_metrics.get("visible", false)):
 			continue
-		var projected_radius_px: float = _renderer.get_body_projected_radius_px(id)
+		var projected_radius_px: float = float(screen_metrics.get("projected_radius_px", 0.0))
 		if projected_radius_px < MIN_BADGE_RADIUS_PX:
 			continue
-		var center_px: Vector2 = _renderer.get_body_screen_center_px(id)
+		var center_px: Vector2 = screen_metrics.get("center_px", Vector2(INF, INF))
 		if not _is_finite_vec2(center_px):
 			continue
 		if _is_offscreen(center_px, projected_radius_px, viewport_size):

@@ -49,6 +49,7 @@ static func run(ctx) -> void:
 	_test_overlay_starts_closed_and_emits_focus_requests(ctx)
 	_test_overlay_life_chip_emits_details_without_focus_request(ctx)
 	_test_overlay_throttles_sim_tick_rebuilds_but_not_user_events(ctx)
+	_test_overlay_skips_identical_model_apply(ctx)
 
 
 static func _test_model_builder_builds_hierarchy_and_summary_for_starter_root(ctx) -> void:
@@ -335,6 +336,37 @@ static func _test_overlay_throttles_sim_tick_rebuilds_but_not_user_events(ctx) -
 	ctx.assert_true(
 		int(overlay.get_debug_snapshot().get("rebuild_count", -1)) == after_close,
 		"Geschlossenes Overlay rebuildet auch bei sim_tick gar nicht"
+	)
+
+	overlay.free()
+	_teardown_starter_root_context(context)
+
+
+static func _test_overlay_skips_identical_model_apply(ctx) -> void:
+	var context: Dictionary = _build_starter_root_context()
+	var overlay = RootInspectorOverlayScript.new()
+	overlay.configure(context.get("registry"), context.get("topology"), context.get("snapshot_cache"))
+	overlay._ready()
+	overlay.set_root_context(&"obsidian", &"alpha", true)
+
+	var baseline_snapshot: Dictionary = overlay.get_debug_snapshot()
+	var baseline_rebuild_count: int = int(baseline_snapshot.get("rebuild_count", -1))
+	var baseline_apply_count: int = int(baseline_snapshot.get("model_apply_count", -1))
+	overlay._on_snapshot_refreshed(DerivedSnapshotCacheScript.REASON_FOCUS_CHANGED)
+	var unchanged_snapshot: Dictionary = overlay.get_debug_snapshot()
+	ctx.assert_true(
+		int(unchanged_snapshot.get("rebuild_count", -1)) == baseline_rebuild_count + 1,
+		"Identische User-Refreshes laufen weiter durch den Rebuild-Pfad"
+	)
+	ctx.assert_true(
+		int(unchanged_snapshot.get("model_apply_count", -1)) == baseline_apply_count,
+		"Identische Inspector-Modelle werden nicht erneut auf Rows angewendet"
+	)
+
+	overlay.set_root_context(&"obsidian", &"gamma_iv", false)
+	ctx.assert_true(
+		int(overlay.get_debug_snapshot().get("model_apply_count", -1)) == baseline_apply_count + 1,
+		"Fokuswechsel aendert die Model-Signatur und aktualisiert die Row-Fokusmarkierung weiterhin"
 	)
 
 	overlay.free()

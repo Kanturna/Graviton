@@ -14,6 +14,7 @@ const SurveyVisualThemeScript = preload("res://src/tools/ui/survey_visual_theme.
 const PANEL_MIN_WIDTH: float = 392.0
 const ROW_INDENT_PX: int = 18
 const SIM_TICK_REBUILD_COOLDOWN_USEC: int = 100_000
+const EMPTY_MODEL_SIGNATURE: String = "<empty>"
 
 var _registry: Node = null
 var _topology = null
@@ -26,6 +27,8 @@ var _current_model: Dictionary = {}
 var _row_body_ids: Array[StringName] = []
 var _last_sim_tick_rebuild_usec: int = 0
 var _rebuild_count: int = 0
+var _model_apply_count: int = 0
+var _last_model_signature: String = ""
 
 var _title_label: Label = null
 var _type_label: Label = null
@@ -83,6 +86,7 @@ func clear_state() -> void:
 	_current_model.clear()
 	_row_body_ids.clear()
 	_last_sim_tick_rebuild_usec = 0
+	_last_model_signature = ""
 	_apply_empty_model()
 
 
@@ -102,6 +106,8 @@ func get_debug_snapshot() -> Dictionary:
 		"row_body_ids": _row_body_ids.duplicate(),
 		"summary": _current_model.get("summary", {}).duplicate(),
 		"rebuild_count": _rebuild_count,
+		"model_apply_count": _model_apply_count,
+		"model_signature": _last_model_signature,
 	}
 
 
@@ -192,10 +198,20 @@ func _rebuild() -> void:
 	if _current_model.is_empty():
 		_apply_empty_model()
 		return
+	var next_signature: String = _model_signature(_current_model)
+	if next_signature == _last_model_signature:
+		return
+	_last_model_signature = next_signature
 	_apply_model(_current_model)
 
 
 func _apply_empty_model() -> void:
+	if _last_model_signature == EMPTY_MODEL_SIGNATURE:
+		return
+	_last_model_signature = EMPTY_MODEL_SIGNATURE
+	_model_apply_count += 1
+	_current_model.clear()
+	_row_body_ids.clear()
 	_clear_rows()
 	if _title_label != null:
 		_title_label.text = "Root Inspector"
@@ -206,6 +222,7 @@ func _apply_empty_model() -> void:
 
 
 func _apply_model(model: Dictionary) -> void:
+	_model_apply_count += 1
 	_clear_rows()
 	_row_body_ids.clear()
 	_title_label.text = String(model.get("root_name", "Root Inspector"))
@@ -260,6 +277,40 @@ static func _format_row_text(row: Dictionary) -> String:
 	if detail_text == "":
 		return line_one
 	return "%s\n%s" % [line_one, detail_text]
+
+
+static func _model_signature(model: Dictionary) -> String:
+	var parts: Array[String] = [
+		"root",
+		String(model.get("root_id", StringName(""))),
+		String(model.get("root_name", "")),
+		String(model.get("root_kind_text", "")),
+	]
+	var summary: Dictionary = model.get("summary", {})
+	for key in ["stars", "planets", "moons", "habitable", "harsh", "hostile"]:
+		parts.append("%s=%s" % [key, int(summary.get(key, 0))])
+	for row_variant in model.get("rows", []):
+		var row: Dictionary = row_variant
+		parts.append("row")
+		parts.append(String(row.get("body_id", StringName(""))))
+		parts.append(str(int(row.get("depth", 0))))
+		parts.append(str(int(row.get("kind_id", -1))))
+		parts.append(String(row.get("name_text", "")))
+		parts.append(String(row.get("kind_text", "")))
+		parts.append(_bool_signature(bool(row.get("has_environment_badge", false))))
+		parts.append(str(int(row.get("environment_class", -1))))
+		parts.append(str(int(row.get("ecosystem_type", -1))))
+		parts.append(_bool_signature(bool(row.get("has_life_badge", false))))
+		parts.append(String(row.get("life_badge_text", "")))
+		parts.append(str(int(row.get("biosphere_stage", -1))))
+		parts.append(String(row.get("note_text", "")))
+		parts.append(String(row.get("detail_text", "")))
+		parts.append(_bool_signature(bool(row.get("is_focused", false))))
+	return "|".join(parts)
+
+
+static func _bool_signature(value: bool) -> String:
+	return "1" if value else "0"
 
 
 func _make_row_control(row: Dictionary, body_id: StringName) -> PanelContainer:

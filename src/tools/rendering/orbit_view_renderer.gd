@@ -148,20 +148,29 @@ func is_body_visually_visible(id: StringName) -> bool:
 	return visual != null and visual.visible and bool(_body_view_is_finite.get(id, false))
 
 
-func get_body_screen_center_px(id: StringName) -> Vector2:
+func get_body_screen_metrics(id: StringName) -> Dictionary:
 	var visual: OrbitBodyVisual = _body_visuals.get(id, null)
-	if visual == null or not visual.visible:
-		return Vector2(INF, INF)
-	return visual.get_global_transform_with_canvas().origin
+	var def: BodyDef = null if _registry == null else _registry.get_def(id)
+	if visual == null or def == null or not visual.visible or not bool(_body_view_is_finite.get(id, false)):
+		return {
+			"visible": false,
+			"center_px": Vector2(INF, INF),
+			"projected_radius_px": 0.0,
+		}
+	var canvas_xform: Transform2D = visual.get_global_transform_with_canvas()
+	return {
+		"visible": true,
+		"center_px": canvas_xform.origin,
+		"projected_radius_px": _pick_radius_local(def.kind) * canvas_xform.x.length(),
+	}
+
+
+func get_body_screen_center_px(id: StringName) -> Vector2:
+	return get_body_screen_metrics(id).get("center_px", Vector2(INF, INF))
 
 
 func get_body_projected_radius_px(id: StringName) -> float:
-	var visual: OrbitBodyVisual = _body_visuals.get(id, null)
-	var def: BodyDef = null if _registry == null else _registry.get_def(id)
-	if visual == null or def == null or not visual.visible:
-		return 0.0
-	var canvas_xform: Transform2D = visual.get_global_transform_with_canvas()
-	return _pick_radius_local(def.kind) * canvas_xform.x.length()
+	return float(get_body_screen_metrics(id).get("projected_radius_px", 0.0))
 
 
 func get_scope_frame(focus_id: StringName) -> Dictionary:
@@ -432,21 +441,27 @@ func _update_trail(id: StringName, pos: Vector2, reset_trails: bool) -> void:
 	var line: AntialiasedLine2D = _trail_visuals.get(id, null)
 	if line == null:
 		return
-	_trail_update_body_ids[id] = true
 
 	var history: Array = _trail_histories.get(id, [])
+	var history_changed: bool = false
 	if reset_trails or history.is_empty():
 		history = [pos]
+		history_changed = true
 	else:
 		var last_pos: Vector2 = history[history.size() - 1]
 		if not last_pos.is_equal_approx(pos):
 			history.append(pos)
+			history_changed = true
 
-		var def: BodyDef = _registry.get_def(id)
+		var def: BodyDef = null if _registry == null else _registry.get_def(id)
 		var max_points: int = _trail_point_budget(def.kind if def != null else BodyType.Kind.PLANET)
 		while history.size() > max_points:
 			history.pop_front()
+			history_changed = true
 
+	if not history_changed:
+		return
+	_trail_update_body_ids[id] = true
 	_trail_histories[id] = history
 	line.points = PackedVector2Array(history)
 

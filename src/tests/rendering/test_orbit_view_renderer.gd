@@ -26,6 +26,7 @@ static func run(ctx) -> void:
 	_test_presentation_offset_is_disabled_when_time_stops(ctx)
 	_test_engine_interpolation_fraction_is_safe(ctx)
 	_test_world_scale_does_not_reapply_line_widths_when_unchanged(ctx)
+	_test_trail_points_update_only_when_history_changes(ctx)
 
 
 static func _test_presentation_offset_uses_physics_interpolation_fraction(ctx) -> void:
@@ -88,4 +89,33 @@ static func _test_world_scale_does_not_reapply_line_widths_when_unchanged(ctx) -
 		renderer.line_width_apply_count == 1,
 		"veraenderter World-Scale aktualisiert Orbit-/Trail-Line-Widths weiterhin"
 	)
+	renderer.free()
+
+
+static func _test_trail_points_update_only_when_history_changes(ctx) -> void:
+	var renderer = OrbitViewRendererScript.new()
+	var line := AntialiasedLine2D.new()
+	renderer._trail_visuals[&"planet"] = line
+	renderer._trail_histories[&"planet"] = []
+
+	renderer._update_trail(&"planet", Vector2(1.0, 2.0), false)
+	ctx.assert_true(
+		renderer._trail_update_body_ids.has(&"planet"),
+		"Erster Trail-Punkt schreibt die Line-Punkte"
+	)
+
+	renderer._trail_update_body_ids.clear()
+	renderer._update_trail(&"planet", Vector2(1.0, 2.0), false)
+	ctx.assert_true(
+		renderer._trail_update_body_ids.is_empty(),
+		"Unveraenderte Trail-Position schreibt kein neues PackedVector2Array"
+	)
+
+	renderer._update_trail(&"planet", Vector2(2.0, 2.0), false)
+	ctx.assert_true(
+		renderer._trail_update_body_ids.has(&"planet"),
+		"Neue Trail-Position aktualisiert die Line-Punkte weiterhin"
+	)
+
+	line.free()
 	renderer.free()
