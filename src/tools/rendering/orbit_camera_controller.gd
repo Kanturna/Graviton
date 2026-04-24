@@ -17,7 +17,7 @@ var _topology = null
 var _absolute_zoom_factor: float = OrbitZoomModelScript.FIT_ZOOM_FACTOR
 var _target_view_scale: float = 1.0
 var _current_view_scale: float = 1.0
-var _manual_pan_ru: Vector2 = Vector2.ZERO
+var _manual_pan_px: Vector2 = Vector2.ZERO
 var _current_scope_radius_ru: float = 1.0
 var _current_zoom_mode: StringName = OrbitCameraFramingScript.ZOOM_MODE_FIT
 var _current_frame_label: StringName = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
@@ -66,13 +66,15 @@ func handle_zoom_multiplier(factor: float) -> void:
 func handle_pan_input(input_dir: Vector2, delta: float) -> void:
 	if input_dir == Vector2.ZERO:
 		return
-	_manual_pan_ru += input_dir.normalized() * ((PAN_SPEED_PX_PER_S * delta) / maxf(_current_view_scale, 0.001))
+	# Pan wird im Screen-Space akkumuliert, damit das Pan-Tempo in Pixeln
+	# konstant bleibt, auch waehrend _current_view_scale noch zum Zielzoom lerpt.
+	_manual_pan_px += input_dir.normalized() * PAN_SPEED_PX_PER_S * delta
 
 
 func fit_current_focus() -> void:
 	if _bubble == null:
 		return
-	_manual_pan_ru = Vector2.ZERO
+	_manual_pan_px = Vector2.ZERO
 	_refresh_scope_radius(_bubble.get_focus())
 	_absolute_zoom_factor = OrbitZoomModelScript.FIT_ZOOM_FACTOR
 
@@ -82,7 +84,11 @@ func get_zoom_factor() -> float:
 
 
 func get_manual_pan_ru() -> Vector2:
-	return _manual_pan_ru
+	return _manual_pan_px / maxf(_current_view_scale, 0.001)
+
+
+func get_manual_pan_px() -> Vector2:
+	return _manual_pan_px
 
 
 func get_current_view_scale() -> float:
@@ -103,7 +109,8 @@ func capture_view_state() -> Dictionary:
 	return {
 		"focus_id": _bubble.get_focus(),
 		"zoom_factor": _absolute_zoom_factor,
-		"manual_pan_ru": _manual_pan_ru,
+		"manual_pan_px": _manual_pan_px,
+		"manual_pan_ru": _manual_pan_px / maxf(_current_view_scale, 0.001),
 	}
 
 
@@ -112,14 +119,20 @@ func restore_view_state(state: Dictionary, immediate := false) -> void:
 	if focus_id == StringName(""):
 		return
 	var zoom_factor: float = float(state.get("zoom_factor", OrbitZoomModelScript.FIT_ZOOM_FACTOR))
-	var manual_pan_ru: Vector2 = _validated_pan(state.get("manual_pan_ru", Vector2.ZERO))
-	_apply_view_state(focus_id, zoom_factor, manual_pan_ru, immediate, false)
+	var manual_pan_px: Vector2
+	if state.has("manual_pan_px"):
+		manual_pan_px = _validated_pan(state.get("manual_pan_px", Vector2.ZERO))
+	else:
+		# Legacy-Fallback: RU-basierte Altwerte mit aktueller View-Skala konvertieren.
+		var legacy_ru: Vector2 = _validated_pan(state.get("manual_pan_ru", Vector2.ZERO))
+		manual_pan_px = legacy_ru * maxf(_current_view_scale, 0.001)
+	_apply_view_state(focus_id, zoom_factor, manual_pan_px, immediate, false)
 
 
 func _apply_view_state(
 	body_id: StringName,
 	zoom_factor: float,
-	manual_pan_ru: Vector2,
+	manual_pan_px: Vector2,
 	immediate: bool,
 	force_fit: bool
 ) -> void:
@@ -127,7 +140,7 @@ func _apply_view_state(
 		return
 	_bubble.set_focus(body_id)
 	_renderer.set_focus(body_id)
-	_manual_pan_ru = _validated_pan(manual_pan_ru)
+	_manual_pan_px = _validated_pan(manual_pan_px)
 	_absolute_zoom_factor = clampf(
 		zoom_factor,
 		MIN_ABSOLUTE_ZOOM_FACTOR,
@@ -180,7 +193,9 @@ func _apply_view_transform(immediate: bool, delta: float, viewport_size: Vector2
 		var weight: float = 1.0 - exp(-VIEW_SMOOTHNESS * delta)
 		_current_view_scale = lerpf(_current_view_scale, _target_view_scale, weight)
 
-	var anchor_ru: Vector2 = _current_base_anchor_ru + _manual_pan_ru
+	# Manual-Pan wird in Pixeln gefuehrt und erst hier in RU konvertiert,
+	# damit der Screen-Effekt nicht vom laufenden View-Scale-Lerp abhaengt.
+	var anchor_ru: Vector2 = _current_base_anchor_ru + _manual_pan_px / maxf(_current_view_scale, 0.001)
 	var world_offset: Vector2 = viewport_size * 0.5 - anchor_ru * _current_view_scale
 
 	_renderer.scale = Vector2.ONE * _current_view_scale

@@ -87,6 +87,7 @@ static func run(ctx) -> void:
 	_test_visibility_transition_is_continuous(ctx)
 	_test_lock_label_uses_hysteresis(ctx)
 	_test_manual_pan_is_additive_and_keeps_lock_state(ctx)
+	_test_manual_pan_keeps_constant_screen_speed_during_zoom_smoothing(ctx)
 	_test_view_state_restore_preserves_focus_zoom_and_pan(ctx)
 	_test_focus_follow_tracks_world_motion_without_drift(ctx)
 	_test_root_lock_tracks_world_motion_without_drift(ctx)
@@ -442,6 +443,53 @@ static func _test_manual_pan_is_additive_and_keeps_lock_state(ctx) -> void:
 	ctx.assert_true(
 		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_ROOT_LOCK,
 		"Manual Pan veraendert den Lock-Zustand nicht"
+	)
+	_teardown_controller_setup(setup)
+
+
+static func _test_manual_pan_keeps_constant_screen_speed_during_zoom_smoothing(ctx) -> void:
+	# Regression: Pan wurde frueher in RU akkumuliert und durch
+	# _current_view_scale geteilt. Waehrend eines Zoom-Lerps schwankte dadurch
+	# die sichtbare Pan-Geschwindigkeit pro Frame. Jetzt wird in Pixeln
+	# akkumuliert, erst beim Apply in RU konvertiert.
+	var setup := _make_controller()
+	var controller = setup["controller"]
+	var renderer: RendererStub = setup["renderer"]
+	var viewport: Vector2 = Vector2(400.0, 200.0)
+	controller.set_focus(&"planet", false, true)
+	controller.step(0.0, viewport)
+	var baseline_x: float = renderer.position.x
+	var scale_before_zoom: float = controller.get_current_view_scale()
+
+	controller.handle_zoom_multiplier(8.0)
+
+	var dt: float = 0.016
+	controller.handle_pan_input(Vector2.RIGHT, dt)
+	controller.step(dt, viewport)
+	var pos_after_frame1_x: float = renderer.position.x
+	var frame1_dx: float = pos_after_frame1_x - baseline_x
+
+	controller.handle_pan_input(Vector2.RIGHT, dt)
+	controller.step(dt, viewport)
+	var frame2_dx: float = renderer.position.x - pos_after_frame1_x
+
+	var expected_dx: float = -OrbitCameraControllerScript.PAN_SPEED_PX_PER_S * dt
+	ctx.assert_almost(
+		frame1_dx,
+		expected_dx,
+		1.0e-3,
+		"Manual-Pan verschiebt die Kamera pro Frame um exakt PAN_SPEED_PX_PER_S * delta in Pixeln"
+	)
+	ctx.assert_almost(
+		frame2_dx,
+		expected_dx,
+		1.0e-3,
+		"Pan-Effekt bleibt konstant, auch waehrend _current_view_scale mitten im Zoom-Lerp liegt"
+	)
+	var scale_during_pan: float = controller.get_current_view_scale()
+	ctx.assert_true(
+		scale_during_pan > scale_before_zoom * 1.2 and scale_during_pan < scale_before_zoom * 7.5,
+		"Setup-Gueltigkeit: Zoom-Lerp ist in der Messphase tatsaechlich noch nicht abgeschlossen"
 	)
 	_teardown_controller_setup(setup)
 
