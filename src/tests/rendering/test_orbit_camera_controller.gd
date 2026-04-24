@@ -86,6 +86,7 @@ static func run(ctx) -> void:
 	_test_visibility_transition_is_continuous(ctx)
 	_test_lock_label_uses_hysteresis(ctx)
 	_test_manual_pan_is_additive_and_keeps_lock_state(ctx)
+	_test_view_state_restore_preserves_focus_zoom_and_pan(ctx)
 	_test_focus_follow_tracks_world_motion_without_drift(ctx)
 	_test_root_lock_tracks_world_motion_without_drift(ctx)
 
@@ -415,6 +416,32 @@ static func _test_manual_pan_is_additive_and_keeps_lock_state(ctx) -> void:
 	ctx.assert_true(
 		controller.get_frame_label() == OrbitCameraFramingScript.FRAME_LABEL_ROOT_LOCK,
 		"Manual Pan veraendert den Lock-Zustand nicht"
+	)
+	_teardown_controller_setup(setup)
+
+
+static func _test_view_state_restore_preserves_focus_zoom_and_pan(ctx) -> void:
+	var setup := _make_controller()
+	var controller = setup["controller"]
+	var renderer: RendererStub = setup["renderer"]
+	var bubble: BubbleStub = setup["bubble"]
+	var viewport: Vector2 = Vector2(400.0, 200.0)
+	controller.set_focus(&"planet", false, true)
+	controller.handle_zoom_multiplier(3.0)
+	controller.handle_pan_input(Vector2.RIGHT, 0.5)
+	controller.step(0.0, viewport)
+	var saved_state: Dictionary = controller.capture_view_state()
+
+	controller.set_focus(&"root", false, true)
+	controller.step(0.0, viewport)
+	controller.restore_view_state(saved_state, true)
+
+	ctx.assert_true(bubble.get_focus() == &"planet", "Restore setzt den gespeicherten Fokus")
+	ctx.assert_true(renderer.focused_id == &"planet", "Restore setzt auch den Renderer-Fokus")
+	ctx.assert_almost(controller.get_zoom_factor(), 3.0, 1.0e-9, "Restore erhaelt den gespeicherten Zoom")
+	ctx.assert_true(
+		controller.get_manual_pan_ru().length() > 1.0,
+		"Restore erhaelt den gespeicherten manuellen Pan"
 	)
 	_teardown_controller_setup(setup)
 

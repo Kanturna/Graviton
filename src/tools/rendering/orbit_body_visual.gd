@@ -31,6 +31,8 @@ const _BLACK_HOLE_RING_RADIUS_PX: float = 13.0
 const _BLACK_HOLE_RING_WIDTH_PX: float = 2.4
 const _BLACK_HOLE_CORE_RADIUS_PX: float = 8.2
 const _BLACK_HOLE_CENTER_GLOW_RADIUS_PX: float = 3.0
+const DETAIL_FACTOR_REDRAW_EPSILON: float = 0.015
+const STAR_CLOSEUP_PHASE_REDRAW_EPSILON: float = 0.008
 static var _TEXTURE_CACHE: Dictionary = {}
 static var _WHITE_PIXEL_TEXTURE: Texture2D = null
 static var _TRANSPARENT_PIXEL_TEXTURE: Texture2D = null
@@ -68,7 +70,7 @@ func set_focused(value: bool) -> void:
 
 func set_detail_factor(value: float) -> void:
 	var clamped: float = maxf(value, 1.0)
-	if is_equal_approx(clamped, _detail_factor):
+	if absf(clamped - _detail_factor) < DETAIL_FACTOR_REDRAW_EPSILON:
 		return
 	_detail_factor = clamped
 	var df_t: float = clampf((_detail_factor - 1.0) / 2.5, 0.0, 1.0)
@@ -81,7 +83,7 @@ func set_detail_factor(value: float) -> void:
 
 func set_star_closeup_phase(value: float) -> void:
 	var clamped: float = clampf(value, 0.0, 1.0)
-	if is_equal_approx(clamped, _star_closeup_phase):
+	if absf(clamped - _star_closeup_phase) < STAR_CLOSEUP_PHASE_REDRAW_EPSILON:
 		return
 	_star_closeup_phase = clamped
 	if _sphere != null and _sphere.material != null and _kind == BodyType.Kind.STAR:

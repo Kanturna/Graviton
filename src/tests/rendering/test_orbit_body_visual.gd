@@ -14,6 +14,7 @@ static func run(ctx) -> void:
 	_test_frozen_theme_enables_hybrid_reference(ctx)
 	_test_hot_theme_enables_hybrid_reference(ctx)
 	_test_identical_theme_apply_is_idempotent(ctx)
+	_test_detail_redraw_ignores_tiny_focus_jitter(ctx)
 
 
 static func _test_star_material_keeps_detailmap_active(ctx) -> void:
@@ -184,6 +185,38 @@ static func _test_identical_theme_apply_is_idempotent(ctx) -> void:
 		"identische Theme-Werte loesen kein zweites Material-Apply aus"
 	)
 	_free_visual(visual)
+
+
+static func _test_detail_redraw_ignores_tiny_focus_jitter(ctx) -> void:
+	var planet_visual = _make_visual(BodyType.Kind.PLANET)
+	planet_visual.set_detail_factor(1.0 + OrbitBodyVisualScript.DETAIL_FACTOR_REDRAW_EPSILON * 0.5)
+	ctx.assert_almost(
+		planet_visual._detail_factor,
+		1.0,
+		0.000001,
+		"Sub-Epsilon Detail-Jitter schreibt keinen neuen Redraw-/Shader-State"
+	)
+	planet_visual.set_detail_factor(1.0 + OrbitBodyVisualScript.DETAIL_FACTOR_REDRAW_EPSILON * 2.0)
+	ctx.assert_true(
+		planet_visual._detail_factor > 1.0,
+		"Groessere Detail-Aenderungen aktualisieren den Visual-State weiterhin"
+	)
+	_free_visual(planet_visual)
+
+	var star_visual = _make_visual(BodyType.Kind.STAR)
+	star_visual.set_star_closeup_phase(OrbitBodyVisualScript.STAR_CLOSEUP_PHASE_REDRAW_EPSILON * 0.5)
+	ctx.assert_almost(
+		star_visual._star_closeup_phase,
+		0.0,
+		0.000001,
+		"Sub-Epsilon Star-Closeup-Jitter schreibt keinen neuen Redraw-/Shader-State"
+	)
+	star_visual.set_star_closeup_phase(OrbitBodyVisualScript.STAR_CLOSEUP_PHASE_REDRAW_EPSILON * 2.0)
+	ctx.assert_true(
+		star_visual._star_closeup_phase > 0.0,
+		"Groessere Star-Closeup-Aenderungen aktualisieren den Visual-State weiterhin"
+	)
+	_free_visual(star_visual)
 
 
 static func _make_visual(kind: int):

@@ -346,7 +346,9 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 				_focus_closeup_ratio
 			)
 			var star_scale: float = OrbitEmphasisRulesScript.star_focus_scale(star_phase)
-			visual.scale = Vector2.ONE * ((detail_factor / _world_scale) * star_scale)
+			var visual_scale: Vector2 = Vector2.ONE * ((detail_factor / _world_scale) * star_scale)
+			if not visual.scale.is_equal_approx(visual_scale):
+				visual.scale = visual_scale
 			visual.set_detail_factor(detail_factor)
 			visual.set_star_closeup_phase(star_phase)
 
@@ -357,7 +359,8 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 			var parent_id: StringName = orbit_entry.get("parent_id", &"")
 			if orbit_line != null:
 				var orbit_visible: bool = not root_overview_active or _should_show_orbit_in_root_overview(def)
-				orbit_line.visible = orbit_visible
+				if orbit_line.visible != orbit_visible:
+					orbit_line.visible = orbit_visible
 				if orbit_visible:
 					var parent_pos: Vector2 = positions_by_id.get(parent_id, Vector2(INF, INF))
 					if not _is_finite_vec2(parent_pos):
@@ -367,7 +370,8 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 
 		if trail_line != null:
 			var show_trail: bool = not root_overview_active
-			trail_line.visible = show_trail
+			if trail_line.visible != show_trail:
+				trail_line.visible = show_trail
 			if show_trail:
 				var trail_parent_pos: Vector2 = positions_by_id.get(def.parent_id, Vector2(INF, INF))
 				if not _is_finite_vec2(trail_parent_pos):

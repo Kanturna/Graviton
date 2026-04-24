@@ -36,21 +36,13 @@ func configure(renderer, bubble, registry: Node, topology) -> void:
 
 
 func set_focus(body_id: StringName, immediate := false, force_fit := false) -> void:
-	if body_id == StringName("") or _bubble == null or _renderer == null:
-		return
-	_bubble.set_focus(body_id)
-	_renderer.set_focus(body_id)
-	_manual_pan_ru = Vector2.ZERO
-	_absolute_zoom_factor = OrbitZoomModelScript.FIT_ZOOM_FACTOR
-	_refresh_scope_radius(body_id)
-	_has_non_overview_frame_label = false
-	_last_non_overview_frame_label = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
-	if force_fit:
-		fit_current_focus()
-	if _last_viewport_size != Vector2.ZERO:
-		_refresh_target_view(_last_viewport_size, 0.0)
-		if immediate:
-			_apply_view_transform(true, 0.0, _last_viewport_size)
+	_apply_view_state(
+		body_id,
+		OrbitZoomModelScript.FIT_ZOOM_FACTOR,
+		Vector2.ZERO,
+		immediate,
+		force_fit
+	)
 
 
 func step(delta: float, viewport_size: Vector2) -> void:
@@ -89,6 +81,10 @@ func get_zoom_factor() -> float:
 	return _absolute_zoom_factor
 
 
+func get_manual_pan_ru() -> Vector2:
+	return _manual_pan_ru
+
+
 func get_current_view_scale() -> float:
 	return _current_view_scale
 
@@ -99,6 +95,53 @@ func get_zoom_mode() -> StringName:
 
 func get_frame_label() -> StringName:
 	return _current_frame_label
+
+
+func capture_view_state() -> Dictionary:
+	if _bubble == null:
+		return {}
+	return {
+		"focus_id": _bubble.get_focus(),
+		"zoom_factor": _absolute_zoom_factor,
+		"manual_pan_ru": _manual_pan_ru,
+	}
+
+
+func restore_view_state(state: Dictionary, immediate := false) -> void:
+	var focus_id: StringName = StringName(state.get("focus_id", StringName("")))
+	if focus_id == StringName(""):
+		return
+	var zoom_factor: float = float(state.get("zoom_factor", OrbitZoomModelScript.FIT_ZOOM_FACTOR))
+	var manual_pan_ru: Vector2 = _validated_pan(state.get("manual_pan_ru", Vector2.ZERO))
+	_apply_view_state(focus_id, zoom_factor, manual_pan_ru, immediate, false)
+
+
+func _apply_view_state(
+	body_id: StringName,
+	zoom_factor: float,
+	manual_pan_ru: Vector2,
+	immediate: bool,
+	force_fit: bool
+) -> void:
+	if body_id == StringName("") or _bubble == null or _renderer == null:
+		return
+	_bubble.set_focus(body_id)
+	_renderer.set_focus(body_id)
+	_manual_pan_ru = _validated_pan(manual_pan_ru)
+	_absolute_zoom_factor = clampf(
+		zoom_factor,
+		MIN_ABSOLUTE_ZOOM_FACTOR,
+		MAX_ABSOLUTE_ZOOM_FACTOR
+	)
+	_refresh_scope_radius(body_id)
+	_has_non_overview_frame_label = false
+	_last_non_overview_frame_label = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
+	if force_fit:
+		fit_current_focus()
+	if _last_viewport_size != Vector2.ZERO:
+		_refresh_target_view(_last_viewport_size, 0.0)
+		if immediate:
+			_apply_view_transform(true, 0.0, _last_viewport_size)
 
 
 func _refresh_target_view(viewport_size: Vector2, _delta: float) -> void:
@@ -181,6 +224,14 @@ func _remember_non_overview_frame_label(label: StringName) -> StringName:
 
 static func _is_finite_vec2(value: Vector2) -> bool:
 	return is_finite(value.x) and is_finite(value.y)
+
+
+static func _validated_pan(value) -> Vector2:
+	if typeof(value) != TYPE_VECTOR2:
+		return Vector2.ZERO
+	if not _is_finite_vec2(value):
+		return Vector2.ZERO
+	return value
 
 
 func _focus_fit_scale(viewport_size: Vector2) -> float:

@@ -21,6 +21,7 @@ static func run(ctx) -> void:
 	_test_badge_lines_show_density_without_species_for_microbial_worlds(ctx)
 	_test_badge_lines_show_density_and_species_for_complex_worlds(ctx)
 	_test_badge_click_contract_and_debug_snapshot(ctx)
+	_test_badge_text_layout_is_cached_for_stable_lines(ctx)
 
 
 static func _test_badge_lines_hide_second_row_for_prebiotic_worlds(ctx) -> void:
@@ -104,4 +105,42 @@ static func _test_badge_click_contract_and_debug_snapshot(ctx) -> void:
 	ctx.assert_true(probe.requested_id == &"alpha_ii", "Badge-Klick emittiert life_details_requested fuer den sichtbaren Body")
 	PlanetBadgeOverlayScript._set_badge_visible(badge, false)
 	ctx.assert_true(badge.get("body_id", &"sentinel") == StringName(""), "Versteckte Badges verlieren ihre alte Body-ID")
+	overlay.free()
+
+
+static func _test_badge_text_layout_is_cached_for_stable_lines(ctx) -> void:
+	var overlay = PlanetBadgeOverlayScript.new()
+	overlay._ensure_ui()
+	overlay._ensure_badge_pool()
+	var badge: Dictionary = overlay._badge_pool[0]
+	var first_candidate: Dictionary = {
+		"body_id": &"alpha_ii",
+		"center_px": Vector2(100.0, 100.0),
+		"projected_radius_px": 16.0,
+		"lines": PackedStringArray(["LIFE MICROBIAL", "SPARSE"]),
+	}
+	overlay._apply_badge(badge, first_candidate, Vector2(800.0, 600.0))
+	var first_apply_count: int = int(overlay.get_debug_snapshot().get("badge_text_apply_count", -1))
+	var panel: PanelContainer = badge.get("panel", null) as PanelContainer
+	var first_position: Vector2 = panel.position
+
+	var moved_candidate: Dictionary = first_candidate.duplicate(true)
+	moved_candidate["center_px"] = Vector2(180.0, 140.0)
+	overlay._apply_badge(badge, moved_candidate, Vector2(800.0, 600.0))
+	ctx.assert_true(
+		int(overlay.get_debug_snapshot().get("badge_text_apply_count", -1)) == first_apply_count,
+		"Stabile Badge-Zeilen recyceln Text/Layout statt jedes Render-Refresh neu zu messen"
+	)
+	ctx.assert_true(
+		not panel.position.is_equal_approx(first_position),
+		"Stabile Badge-Zeilen duerfen trotzdem weiter ihrer Body-Position folgen"
+	)
+
+	var changed_candidate: Dictionary = moved_candidate.duplicate(true)
+	changed_candidate["lines"] = PackedStringArray(["LIFE COMPLEX", "THRIVING PHOTO"])
+	overlay._apply_badge(badge, changed_candidate, Vector2(800.0, 600.0))
+	ctx.assert_true(
+		int(overlay.get_debug_snapshot().get("badge_text_apply_count", -1)) == first_apply_count + 1,
+		"Geaenderte Badge-Zeilen erneuern Text/Layout weiterhin"
+	)
 	overlay.free()

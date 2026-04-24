@@ -18,6 +18,7 @@ const GeneticSpeciesServiceScript = preload("res://src/sim/life/genetic_species_
 const OrbitReadoutServiceScript = preload("res://src/sim/orbit/orbit_readout_service.gd")
 
 const ZOOM_FACTOR_STEP: float = 1.12
+const VIEW_BOOKMARK_SLOT_COUNT: int = 5
 
 @export_enum("starter_world", "sample_system", "generated_system", "pilot_galaxy", "scaleup_galaxy_10", "scaleup_galaxy_30", "scaleup_galaxy_100") var initial_world_id: String = "starter_world"
 
@@ -75,6 +76,7 @@ var _orbit_readout_service = OrbitReadoutServiceScript.new()
 var _focus_order: Array[StringName] = []
 var _topology = null
 var _focus_index: int = 0
+var _view_bookmarks: Dictionary = {}
 var _current_galaxy = null
 var _is_large_world: bool = false
 var _last_frame_label: StringName = StringName("")
@@ -299,6 +301,9 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		if _handle_view_bookmark_key_event(event):
+			get_viewport().set_input_as_handled()
+			return
 		match event.keycode:
 			KEY_TAB:
 				_cycle_focus(-1 if event.shift_pressed else 1)
@@ -476,7 +481,7 @@ func _update_hud() -> void:
 		if _cycle_value.visible:
 			_cycle_value.text = OrbitHudFormatterScript.format_cycle(orbit_readout_desc)
 
-	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Home root overview   Q/E or PgUp/PgDn speed   HUD slider speed   WASD pan   Wheel zoom (0.5%-10000%)   Backspace fit focus   Space pause   F3 debug"
+	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Home root overview   Ctrl+1-5 save view   1-5 recall view   Q/E or PgUp/PgDn speed   WASD pan   Wheel zoom   Backspace fit focus   Space pause   F3 debug"
 
 
 func _pan_input_dir() -> Vector2:
@@ -490,6 +495,85 @@ func _pan_input_dir() -> Vector2:
 	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
 		pan_input.y += 1.0
 	return pan_input
+
+
+func _handle_view_bookmark_key_event(event: InputEventKey) -> bool:
+	var slot: int = _bookmark_slot_for_key_event(event)
+	if slot < 1:
+		return false
+	if event.alt_pressed or event.meta_pressed:
+		return false
+	if event.ctrl_pressed:
+		_store_view_bookmark_slot(slot)
+		return true
+	if event.shift_pressed:
+		return false
+	_restore_view_bookmark_slot(slot)
+	return true
+
+
+func _bookmark_slot_for_key_event(event: InputEventKey) -> int:
+	var key_slot: int = _bookmark_slot_for_keycode(event.keycode)
+	if key_slot > 0:
+		return key_slot
+	return _bookmark_slot_for_keycode(event.physical_keycode)
+
+
+func _bookmark_slot_for_keycode(keycode: int) -> int:
+	match keycode:
+		KEY_1, KEY_KP_1:
+			return 1
+		KEY_2, KEY_KP_2:
+			return 2
+		KEY_3, KEY_KP_3:
+			return 3
+		KEY_4, KEY_KP_4:
+			return 4
+		KEY_5, KEY_KP_5:
+			return 5
+		_:
+			return -1
+
+
+func _store_view_bookmark_slot(slot: int) -> void:
+	if slot < 1 or slot > VIEW_BOOKMARK_SLOT_COUNT:
+		return
+	if _camera_controller == null or _bubble == null:
+		return
+	if not _camera_controller.has_method("capture_view_state"):
+		return
+	var focus_id: StringName = _bubble.get_focus()
+	if focus_id == StringName("") or not UniverseRegistry.has_body(focus_id):
+		return
+	var state: Dictionary = _camera_controller.capture_view_state()
+	if state.is_empty():
+		return
+	state["slot"] = slot
+	state["world_scope_id"] = _active_world_scope_id
+	_view_bookmarks[slot] = state
+
+
+func _restore_view_bookmark_slot(slot: int) -> void:
+	if slot < 1 or slot > VIEW_BOOKMARK_SLOT_COUNT:
+		return
+	if not _view_bookmarks.has(slot):
+		return
+	if _camera_controller == null or not _camera_controller.has_method("restore_view_state"):
+		return
+	var state: Dictionary = _view_bookmarks.get(slot, {})
+	var focus_id: StringName = StringName(state.get("focus_id", StringName("")))
+	if focus_id == StringName("") or not UniverseRegistry.has_body(focus_id):
+		return
+	var bookmark_world_scope_id: StringName = StringName(state.get("world_scope_id", _active_world_scope_id))
+	if bookmark_world_scope_id != _active_world_scope_id:
+		return
+	_focus_index = maxi(_focus_order.find(focus_id), 0)
+	_camera_controller.restore_view_state(state, true)
+	_sync_root_inspector_context(false)
+	_refresh_snapshot_interest_ids()
+	_debug_overlay.mark_dirty(_debug_overlay.visible)
+	if is_inside_tree():
+		_camera_controller.step(0.0, get_viewport_rect().size)
 
 
 func _root_focus_id() -> StringName:
@@ -648,6 +732,7 @@ func _on_world_loader_world_loaded(world_id: StringName) -> void:
 	if world_id == StringName("") or world_id == _active_world_scope_id:
 		return
 	_active_world_scope_id = world_id
+	_view_bookmarks.clear()
 	if _proto_biosphere_service != null and _proto_biosphere_service.is_configured():
 		if _is_large_world and _current_galaxy != null and world_id == _current_galaxy.galaxy_id:
 			_proto_biosphere_service.initialize_for_galaxy(_current_galaxy)

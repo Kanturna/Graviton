@@ -149,6 +149,23 @@ jedes Frame neu; die Sternscheibe bleibt ueber den bestehenden
 `body_star.gdshader`/`TIME`-Pfad animiert. Bewusst akzeptiert: Trails
 sind in v2 sim-tick-proportional und koennen bei hohem `time_scale`
 eckiger wirken.
+Darauf sitzt jetzt zusaetzlich `View Bookmarks v1` als kleiner
+session-only QoL-Slice:
+`Ctrl+1..5` speichert den aktuellen Fokus samt Zoom-Faktor und
+manuellem Pan, `1..5` stellt denselben View-State wieder her. Der
+Bookmark-State lebt nur im Testbed-Composition-Root, wird bei
+World-Scope-Wechsel geloescht und ignoriert stale Body-IDs sauber;
+es gibt kein Savegame, keine Streaming-Sonderlogik und keine neue
+Simulationswahrheit.
+Ein direkt danach eingeschobener Focus-/Badge-Performance-Follow-up
+reduziert weiteren View-Churn: planetennahe `LIFE`-Badges cachen ihre
+Text-/Layout-Messung bei stabilen Zeilen und bewegen nur noch ihre
+Position pro Refresh, waehrend `OrbitBodyVisual` winzige
+Detail-/Star-Closeup-Jitter unterhalb einer kleinen Schwelle nicht mehr
+als neuen Shader-/Redraw-State schreibt. `OrbitViewRenderer` vermeidet
+zusaetzlich unveraenderte Scale-/Visibility-Property-Writes im
+per-frame Sync. Die Sim-Wahrheit und der OrbitService bleiben davon
+unberuehrt.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 

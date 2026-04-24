@@ -20,6 +20,7 @@ var _renderer = null
 var _frame_label: StringName = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
 var _root: Control = null
 var _badge_pool: Array[Dictionary] = []
+var _badge_text_apply_count: int = 0
 
 
 func _ready() -> void:
@@ -120,6 +121,7 @@ func get_debug_snapshot() -> Dictionary:
 		"visible_badges": visible_badges,
 		"max_badges": MAX_BADGES,
 		"min_badge_radius_px": MIN_BADGE_RADIUS_PX,
+		"badge_text_apply_count": _badge_text_apply_count,
 	}
 
 
@@ -206,6 +208,8 @@ func _make_badge(index: int) -> Dictionary:
 		"line_one": line_one,
 		"line_two": line_two,
 		"body_id": StringName(""),
+		"lines_signature": "",
+		"cached_size": Vector2.ZERO,
 	}
 
 
@@ -216,16 +220,30 @@ func _apply_badge(badge: Dictionary, candidate: Dictionary, viewport_size: Vecto
 	if panel == null or line_one == null or line_two == null:
 		return
 	var lines: PackedStringArray = candidate.get("lines", PackedStringArray())
-	line_one.text = lines[0] if not lines.is_empty() else ""
-	line_two.text = lines[1] if lines.size() > 1 else ""
-	line_two.visible = line_two.text != ""
-	line_one.custom_minimum_size = line_one.get_combined_minimum_size()
-	line_two.custom_minimum_size = line_two.get_combined_minimum_size() if line_two.visible else Vector2.ZERO
+	var line_one_text: String = lines[0] if not lines.is_empty() else ""
+	var line_two_text: String = lines[1] if lines.size() > 1 else ""
+	var lines_signature: String = "%s\n%s" % [line_one_text, line_two_text]
+	var badge_size: Vector2 = badge.get("cached_size", Vector2.ZERO)
+	if String(badge.get("lines_signature", "")) != lines_signature:
+		line_one.text = line_one_text
+		line_two.text = line_two_text
+		line_two.visible = line_two.text != ""
+		line_one.custom_minimum_size = line_one.get_combined_minimum_size()
+		line_two.custom_minimum_size = line_two.get_combined_minimum_size() if line_two.visible else Vector2.ZERO
+		badge_size = panel.get_combined_minimum_size()
+		panel.custom_minimum_size = badge_size
+		panel.size = badge_size
+		badge["lines_signature"] = lines_signature
+		badge["cached_size"] = badge_size
+		_badge_text_apply_count += 1
 	badge["body_id"] = candidate.get("body_id", StringName(""))
-	panel.visible = true
-	var badge_size: Vector2 = panel.get_combined_minimum_size()
-	panel.custom_minimum_size = badge_size
-	panel.size = badge_size
+	if not panel.visible:
+		panel.visible = true
+	if badge_size == Vector2.ZERO:
+		badge_size = panel.get_combined_minimum_size()
+		badge["cached_size"] = badge_size
+	if not panel.size.is_equal_approx(badge_size):
+		panel.size = badge_size
 	var center_px: Vector2 = candidate.get("center_px", Vector2.ZERO)
 	var projected_radius_px: float = float(candidate.get("projected_radius_px", 0.0))
 	var desired_pos: Vector2 = center_px + Vector2(
@@ -242,7 +260,7 @@ func _hide_all_badges() -> void:
 
 static func _set_badge_visible(badge: Dictionary, is_visible: bool) -> void:
 	var panel: Control = badge.get("panel", null)
-	if panel != null:
+	if panel != null and panel.visible != is_visible:
 		panel.visible = is_visible
 	if not is_visible:
 		badge["body_id"] = StringName("")

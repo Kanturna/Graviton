@@ -38,7 +38,13 @@ Konkreter Ablauf:
   jedem Refresh weiterlaufen
 - planetennahe `LIFE`-Badges im Detailblick pruefen:
   Badges bleiben klickbar, folgen den Bodies und erzeugen keine
-  auffaellige Transform-Query-Chatterei beim stabilen Fokus
+  auffaellige Transform-Query- oder Textlayout-Chatterei beim stabilen
+  Fokus; `badge_text_apply_count` darf bei unveraenderten Badge-Zeilen
+  nicht pro Frame weiterlaufen
+- Zoom in Detailfoki pruefen:
+  Planeten-/Stern-Detail wirkt weiter kontinuierlich, aber winziger
+  Closeup-Jitter soll keine staendige CPU-Redraw-/Shader-State-Arbeit
+  mehr erzeugen
 - Time-Scale variieren:
   niedrige Rate, mittlere Rate und hoher Preset; Pause und `time_scale`
   0 muessen ohne visuelles Nachziehen stehen bleiben
@@ -61,6 +67,35 @@ Wenn dieser Gate kippt:
   Interpolationsrichtung, Presentation-Offset-Clamping,
   Camera-Controller-Readout, Trail-Update-Pfad, Badge-Overlay oder
   Detail-Visual-Shaderkosten
+
+## Prioritaet 0 - View Bookmarks v1 Acceptance Gate
+
+Ziel:
+Den headless-gruenen session-only Kamerabookmark-Pfad im echten Editor
+pruefen, bevor daraus Persistenz, UI-Slots oder ein Galaxy-Atlas
+abgeleitet werden.
+
+Konkreter Ablauf:
+
+- `scaleup_galaxy_100` mit deaktiviertem VSync starten
+- im Root-Overview auf `obsidian` gehen, mit `Ctrl+1` speichern
+- in ein Stern-/Planet-/Mond-Detail zoomen und mit `Ctrl+2` speichern
+- mit `1` und `2` mehrfach wechseln:
+  Fokus, Zoom und manueller Pan sollen sauber wiederhergestellt werden
+- mit WASD manuell pannen, danach denselben Slot erneut speichern:
+  der neue Pan soll beim Restore erhalten bleiben
+- einen leeren Slot wie `5` druecken:
+  sauberer No-op, keine Fehlermeldung und kein Fokusverlust
+- nach Welt-/Scope-Wechsel pruefen:
+  alte Slots werden ignoriert bzw. geloescht; es gibt keinen
+  versteckten Streaming- oder Savegame-Pfad
+
+Wenn dieser Gate kippt:
+
+- keine Bookmark-Persistenz oder Slot-UI anfangen
+- zuerst nur den View-Slice korrigieren:
+  Keyboard-Routing, stale-Body-No-op, Zoom/Pan-Restore oder
+  Fokus-/Inspector-Synchronisierung
 
 ## Prioritaet 0 - Genetic Lifeform Foundation v1 Acceptance Gate
 

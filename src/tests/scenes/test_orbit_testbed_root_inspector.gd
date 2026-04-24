@@ -27,6 +27,13 @@ class CameraControllerProbe:
 	var focused_ids: Array[StringName] = []
 	var immediate_flags: Array[bool] = []
 	var force_fit_flags: Array[bool] = []
+	var captured_state: Dictionary = {
+		"focus_id": &"alpha_i",
+		"zoom_factor": 4.0,
+		"manual_pan_ru": Vector2(8.0, -3.0),
+	}
+	var restored_states: Array[Dictionary] = []
+	var restore_immediate_flags: Array[bool] = []
 
 	func set_focus(body_id: StringName, immediate := false, force_fit := false) -> void:
 		focused_ids.append(body_id)
@@ -43,6 +50,15 @@ class CameraControllerProbe:
 
 	func fit_current_focus() -> void:
 		pass
+
+	func capture_view_state() -> Dictionary:
+		return captured_state.duplicate(true)
+
+	func restore_view_state(state: Dictionary, immediate := false) -> void:
+		restored_states.append(state.duplicate(true))
+		restore_immediate_flags.append(immediate)
+		if bubble != null:
+			bubble.set_focus(StringName(state.get("focus_id", StringName(""))))
 
 
 class RootInspectorProbe:
@@ -157,6 +173,9 @@ static func run(ctx) -> void:
 	_test_root_inspector_clicks_use_immediate_focus_fit(ctx)
 	_test_non_large_world_keeps_root_inspector_hidden(ctx)
 	_test_galaxy_proxy_visibility_is_root_overview_only(ctx)
+	_test_view_bookmark_shortcuts_route_to_slots(ctx)
+	_test_view_bookmark_slots_store_and_restore_camera_state(ctx)
+	_test_view_bookmark_restore_ignores_stale_or_cross_world_slots(ctx)
 
 
 static func _test_root_inspector_opens_only_explicitly_and_overrides_root_overview_interest(ctx) -> void:
@@ -235,6 +254,77 @@ static func _test_root_inspector_clicks_use_immediate_focus_fit(ctx) -> void:
 	ctx.assert_true(camera.force_fit_flags.back(), "Inspector-Klick fordert jetzt zusaetzlich einen Fit des Fokus-Scope an")
 	ctx.assert_true(testbed._root_inspector.is_open(), "Inspector bleibt nach dem Fokus-Sprung offen")
 	_destroy_testbed_probe(testbed)
+
+
+static func _test_view_bookmark_slots_store_and_restore_camera_state(ctx) -> void:
+	var testbed = _build_testbed_probe(true)
+	var camera: CameraControllerProbe = testbed._camera_controller
+	testbed._store_view_bookmark_slot(1)
+	camera.captured_state = {
+		"focus_id": &"alpha",
+		"zoom_factor": 1.5,
+		"manual_pan_ru": Vector2.ZERO,
+	}
+	testbed._restore_view_bookmark_slot(1)
+
+	ctx.assert_true(camera.restored_states.size() == 1, "Bookmark-Restore ruft den Camera-Controller genau einmal")
+	var restored_state: Dictionary = camera.restored_states[0]
+	var restored_pan: Vector2 = restored_state.get("manual_pan_ru", Vector2.ZERO)
+	ctx.assert_true(StringName(restored_state.get("focus_id", StringName(""))) == &"alpha_i", "Slot merkt den gespeicherten Fokus")
+	ctx.assert_almost(float(restored_state.get("zoom_factor", 0.0)), 4.0, 1.0e-9, "Slot merkt den gespeicherten Zoom")
+	ctx.assert_true(restored_pan == Vector2(8.0, -3.0), "Slot merkt den gespeicherten Pan")
+	ctx.assert_true(camera.restore_immediate_flags[0], "Bookmark-Restore snappt die Kamera sofort")
+	ctx.assert_true(testbed._focus_index == 2, "Bookmark-Restore aktualisiert den Fokusindex")
+	_destroy_testbed_probe(testbed)
+
+
+static func _test_view_bookmark_shortcuts_route_to_slots(ctx) -> void:
+	var testbed = _build_testbed_probe(true)
+	var camera: CameraControllerProbe = testbed._camera_controller
+	var store_event := _key_press(KEY_1, true)
+	ctx.assert_true(testbed._handle_view_bookmark_key_event(store_event), "Ctrl+1 wird als Bookmark-Save behandelt")
+	ctx.assert_true(testbed._view_bookmarks.has(1), "Ctrl+1 speichert Slot 1")
+
+	var restore_event := _key_press(KEY_1, false)
+	ctx.assert_true(testbed._handle_view_bookmark_key_event(restore_event), "1 wird als Bookmark-Restore behandelt")
+	ctx.assert_true(camera.restored_states.size() == 1, "1 restored den gespeicherten Slot")
+
+	var shifted_event := _key_press(KEY_2, false, true)
+	ctx.assert_true(not testbed._handle_view_bookmark_key_event(shifted_event), "Shift+2 bleibt frei fuer Tastaturlayout-Zeichen")
+	_destroy_testbed_probe(testbed)
+
+
+static func _test_view_bookmark_restore_ignores_stale_or_cross_world_slots(ctx) -> void:
+	var testbed = _build_testbed_probe(true)
+	var camera: CameraControllerProbe = testbed._camera_controller
+	testbed._view_bookmarks[1] = {
+		"focus_id": &"missing_body",
+		"zoom_factor": 2.0,
+		"manual_pan_ru": Vector2.ZERO,
+		"world_scope_id": testbed._active_world_scope_id,
+	}
+	testbed._restore_view_bookmark_slot(1)
+	ctx.assert_true(camera.restored_states.is_empty(), "Stale Bookmark-Foki werden ignoriert")
+
+	testbed._view_bookmarks[2] = {
+		"focus_id": &"alpha_i",
+		"zoom_factor": 2.0,
+		"manual_pan_ru": Vector2.ZERO,
+		"world_scope_id": &"other_world",
+	}
+	testbed._restore_view_bookmark_slot(2)
+	ctx.assert_true(camera.restored_states.is_empty(), "Bookmarks aus anderem World-Scope werden ignoriert")
+	_destroy_testbed_probe(testbed)
+
+
+static func _key_press(keycode: int, ctrl_pressed: bool, shift_pressed: bool = false) -> InputEventKey:
+	var event := InputEventKey.new()
+	event.keycode = keycode
+	event.physical_keycode = keycode
+	event.pressed = true
+	event.ctrl_pressed = ctrl_pressed
+	event.shift_pressed = shift_pressed
+	return event
 
 
 static func _build_testbed_probe(is_large_world: bool):
