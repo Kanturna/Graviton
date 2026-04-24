@@ -24,6 +24,7 @@ const VELOCITY_SEED_EPSILON_S: float = 1.0
 # Zentrale finite Differenz fuer das analytische Velocity-Seeding beim
 # Eintritt in NUMERIC_LOCAL und beim Rueckwechsel nach KEPLER_APPROX.
 const LOCAL_ORBIT_INTEGRATOR_SCRIPT := preload("res://src/sim/orbit/local_orbit_integrator.gd")
+const PerfProbeScript := preload("res://src/tools/debug/perf_probe.gd")
 const NO_REQUEST_TICK: int = -2147483648
 const UPDATE_REASON_SIM_TICK: StringName = &"sim_tick"
 const UPDATE_REASON_RECOMPUTE: StringName = &"recompute"
@@ -44,6 +45,7 @@ var _last_requested_tick_by_id: Dictionary = {}
 var _substep_cap_warning_active_by_id: Dictionary = {}
 var _exit_budget_warning_active_by_id: Dictionary = {}
 var _sim_tick_index: int = 0
+var _numeric_local_count: int = 0
 
 
 func configure(registry: Node, time_service: Node) -> void:
@@ -58,6 +60,7 @@ func configure(registry: Node, time_service: Node) -> void:
 	_substep_cap_warning_active_by_id.clear()
 	_exit_budget_warning_active_by_id.clear()
 	_sim_tick_index = 0
+	_numeric_local_count = 0
 	if not _time.sim_tick.is_connected(_on_sim_tick):
 		_time.sim_tick.connect(_on_sim_tick)
 	_configured = true
@@ -83,7 +86,13 @@ func _on_sim_tick(_dt: float) -> void:
 		update_body(state, def, t)
 		if _runtime_state_changed(before, state):
 			updated_ids.append(id)
+	PerfProbeScript.sample(&"numeric_local_count", _numeric_local_count)
+	PerfProbeScript.bump(&"orbit_sim_ticks")
 	_emit_bodies_updated(updated_ids, UPDATE_REASON_SIM_TICK)
+
+
+func get_numeric_local_count() -> int:
+	return _numeric_local_count
 
 
 func request_numeric_local_candidates(ids: Array[StringName]) -> void:
@@ -260,6 +269,8 @@ func _enter_numeric_local(state: BodyState, def: BodyDef, profile: OrbitProfile,
 	state.position_parent_frame_m = evaluated.get("position_parent_frame_m", Vector3.ZERO)
 	state.velocity_parent_frame_mps = evaluated.get("velocity_parent_frame_mps", Vector3.ZERO)
 	state.current_mode = OrbitMode.Kind.NUMERIC_LOCAL
+	_numeric_local_count += 1
+	PerfProbeScript.bump(&"regime_enter_numeric")
 
 
 func _update_numeric_local(state: BodyState, def: BodyDef, t_s: float) -> void:
@@ -275,7 +286,9 @@ func _update_numeric_local(state: BodyState, def: BodyDef, t_s: float) -> void:
 	state.position_parent_frame_m = integrated.get("position_parent_frame_m", state.position_parent_frame_m)
 	state.velocity_parent_frame_mps = integrated.get("velocity_parent_frame_mps", state.velocity_parent_frame_mps)
 	state.current_mode = OrbitMode.Kind.NUMERIC_LOCAL
+	PerfProbeScript.bump(&"numeric_substep_total", int(integrated.get("substep_count", 0)))
 	if bool(integrated.get("hit_substep_cap", false)):
+		PerfProbeScript.bump(&"substep_cap_hits")
 		_warn_on_substep_cap(def.id, dt, integrated)
 	else:
 		_substep_cap_warning_active_by_id.erase(def.id)
@@ -315,6 +328,8 @@ func _exit_numeric_local_to_kepler(state: BodyState, def: BodyDef, profile: Orbi
 	state.velocity_parent_frame_mps = analytical_vel
 	state.current_mode = OrbitMode.Kind.KEPLER_APPROX
 	_clear_numeric_local_runtime_for(def.id)
+	_numeric_local_count = maxi(_numeric_local_count - 1, 0)
+	PerfProbeScript.bump(&"regime_exit_numeric")
 	return true
 
 
