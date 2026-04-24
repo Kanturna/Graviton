@@ -171,17 +171,24 @@ static func format_native_forms(genetic_species_desc: Dictionary) -> String:
 	var parts: Array[String] = []
 	for profile_variant in profiles:
 		var profile: Dictionary = profile_variant
-		parts.append("%s/%s" % [
+		parts.append("%s %s/%s" % [
 			_genetic_role_text(profile),
 			_genetic_abundance_text(profile),
+			_genetic_selection_pressure_text(profile),
 		])
 	return "Native forms: %s" % " | ".join(parts)
 
 
 static func format_dominant_form(genetic_species_desc: Dictionary) -> String:
-	var profile: Dictionary = _dominant_genetic_profile(genetic_species_desc)
-	if profile.is_empty():
+	var dominant_profiles: Array[Dictionary] = _dominant_genetic_profiles(genetic_species_desc)
+	if dominant_profiles.is_empty():
 		return "Dominant form: n/a"
+	if dominant_profiles.size() > 1:
+		var role_texts: Array[String] = []
+		for profile in dominant_profiles:
+			role_texts.append(_genetic_role_text(profile))
+		return "Dominant forms: %s" % ", ".join(role_texts)
+	var profile: Dictionary = dominant_profiles[0]
 	return "Dominant form: %s / %s / %s" % [
 		_genetic_role_text(profile),
 		_genetic_abundance_text(profile),
@@ -671,6 +678,28 @@ static func _dominant_genetic_profile(genetic_species_desc: Dictionary) -> Dicti
 	return profiles[0]
 
 
+static func _dominant_genetic_profiles(genetic_species_desc: Dictionary) -> Array[Dictionary]:
+	if not bool(genetic_species_desc.get(GeneticSpeciesServiceScript.KEY_HAS_GENETIC_SPECIES_BASIS, false)):
+		return []
+	var profiles: Array = genetic_species_desc.get(
+		GeneticSpeciesServiceScript.KEY_LIFEFORM_PROFILES,
+		[]
+	)
+	var dominant_profiles: Array[Dictionary] = []
+	for profile_variant in profiles:
+		var profile: Dictionary = profile_variant
+		if int(profile.get(
+			GeneticSpeciesServiceScript.KEY_ABUNDANCE_CLASS,
+			GeneticSpeciesServiceScript.AbundanceClass.TRACE
+		)) == GeneticSpeciesServiceScript.AbundanceClass.DOMINANT:
+			dominant_profiles.append(profile)
+	if dominant_profiles.is_empty():
+		var profile: Dictionary = _dominant_genetic_profile(genetic_species_desc)
+		if not profile.is_empty():
+			dominant_profiles.append(profile)
+	return dominant_profiles
+
+
 static func _genetic_role_text(profile: Dictionary) -> String:
 	return GeneticSpeciesServiceScript.to_string_role_class(int(profile.get(
 		GeneticSpeciesServiceScript.KEY_ROLE_CLASS,
@@ -682,6 +711,13 @@ static func _genetic_abundance_text(profile: Dictionary) -> String:
 	return GeneticSpeciesServiceScript.to_string_abundance_class(int(profile.get(
 		GeneticSpeciesServiceScript.KEY_ABUNDANCE_CLASS,
 		GeneticSpeciesServiceScript.AbundanceClass.TRACE
+	)))
+
+
+static func _genetic_selection_pressure_text(profile: Dictionary) -> String:
+	return GeneticSpeciesServiceScript.to_string_selection_pressure_class(int(profile.get(
+		GeneticSpeciesServiceScript.KEY_SELECTION_PRESSURE_CLASS,
+		GeneticSpeciesServiceScript.SelectionPressureClass.LOW
 	)))
 
 

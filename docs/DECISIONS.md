@@ -1,5 +1,30 @@
 # Graviton - Decisions
 
+## 2026-04-24 - Qualitative Pressure und Co-Dominanz kommen vor zeitlicher Evolution
+
+Nach `Genetic Lifeform Foundation v1` wird das Lifeform-Modell bewusst
+nur um eine kleine neue Achse erweitert: `SelectionPressureClass` als
+qualitativer oekologischer Druck pro Profil. Dieser Wert liegt direkt
+auf dem Profil und nicht in `trait_loci`, weil Pressure kein Gen ist,
+sondern eine Ableitung aus Umweltstress, Richness, Rolle und Abundance.
+
+Konsequenz:
+
+- mehrere dominante Lebensformen sind erlaubt; in diversen
+  `COMPLEX_ECOSYSTEM`-Welten darf `GRAZER_FILTER` neben `PRODUCER`
+  ebenfalls `DOMINANT` sein
+- `PRODUCER` bleibt durch die stabile Sortierung der erste
+  Summary-Anker, ist aber nicht mehr automatisch die einzige
+  Gewinnerform
+- `Native forms` zeigt qualitative Pressure im bestehenden kompakten
+  Readout statt eine neue Panel-Zeile einzufuehren
+- es gibt bewusst keine neuen Niche-/Competition-/VisualPattern-Enums,
+  weil sie aktuell nur `RoleClass`, `AbundanceClass` oder
+  `BodyPlanClass` duplizieren wuerden
+- echte zeitliche Evolution wie Pioneer -> Established -> Declining,
+  Populationen, Kriege, Katastrophen und Zivilisationen bleiben eigene
+  Folgeentscheidungen
+
 ## 2026-04-24 - Trait-/Lifeform-Profile kommen vor echter Population
 
 Der naechste Schritt nach `Native Species Foundation v1` und dem

@@ -223,13 +223,18 @@ static func _test_genetic_species_formatters_render_native_forms_and_visual_prof
 	var genetic_species_desc: Dictionary = _sample_genetic_species_desc()
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_native_forms(genetic_species_desc)
-			== "Native forms: PRODUCER/DOMINANT | PREDATOR/LOCAL",
+			== "Native forms: PRODUCER DOMINANT/LOW | PREDATOR LOCAL/HIGH",
 		"Native-Forms-Formatter rendert Profile kompakt und ohne Populationszahlen"
 	)
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_dominant_form(genetic_species_desc)
 			== "Dominant form: PRODUCER / DOMINANT / PHOTOTROPHIC",
 		"Dominant-Form-Formatter nutzt das dominante Profil"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_dominant_form(_sample_co_dominant_genetic_species_desc())
+			== "Dominant forms: PRODUCER, GRAZER_FILTER",
+		"Dominant-Form-Formatter rendert mehrere dominante Lifeforms plural und kompakt"
 	)
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_abundance(genetic_species_desc) == "Abundance: DOMINANT",
@@ -529,6 +534,7 @@ static func _sample_genetic_species_desc() -> Dictionary:
 				GeneticSpeciesServiceScript.KEY_LIFEFORM_ID: &"planet_a_producer",
 				GeneticSpeciesServiceScript.KEY_ROLE_CLASS: GeneticSpeciesServiceScript.RoleClass.PRODUCER,
 				GeneticSpeciesServiceScript.KEY_ABUNDANCE_CLASS: GeneticSpeciesServiceScript.AbundanceClass.DOMINANT,
+				GeneticSpeciesServiceScript.KEY_SELECTION_PRESSURE_CLASS: GeneticSpeciesServiceScript.SelectionPressureClass.LOW,
 				GeneticSpeciesServiceScript.KEY_TRAIT_LOCI: {
 					GeneticSpeciesServiceScript.KEY_METABOLISM_LOCUS: NativeSpeciesServiceScript.MetabolismClass.PHOTOTROPHIC,
 					GeneticSpeciesServiceScript.KEY_BODY_PLAN_LOCUS: GeneticSpeciesServiceScript.BodyPlanClass.MACRO_SESSILE,
@@ -544,8 +550,25 @@ static func _sample_genetic_species_desc() -> Dictionary:
 				GeneticSpeciesServiceScript.KEY_LIFEFORM_ID: &"planet_a_predator",
 				GeneticSpeciesServiceScript.KEY_ROLE_CLASS: GeneticSpeciesServiceScript.RoleClass.PREDATOR,
 				GeneticSpeciesServiceScript.KEY_ABUNDANCE_CLASS: GeneticSpeciesServiceScript.AbundanceClass.LOCAL,
+				GeneticSpeciesServiceScript.KEY_SELECTION_PRESSURE_CLASS: GeneticSpeciesServiceScript.SelectionPressureClass.HIGH,
 				GeneticSpeciesServiceScript.KEY_TRAIT_LOCI: {},
 				GeneticSpeciesServiceScript.KEY_VISUAL_PROFILE: {},
 			},
 		],
 	}
+
+
+static func _sample_co_dominant_genetic_species_desc() -> Dictionary:
+	var desc: Dictionary = _sample_genetic_species_desc()
+	var profiles: Array = desc[GeneticSpeciesServiceScript.KEY_LIFEFORM_PROFILES]
+	var grazer_profile: Dictionary = {
+		GeneticSpeciesServiceScript.KEY_LIFEFORM_ID: &"planet_a_grazer_filter",
+		GeneticSpeciesServiceScript.KEY_ROLE_CLASS: GeneticSpeciesServiceScript.RoleClass.GRAZER_FILTER,
+		GeneticSpeciesServiceScript.KEY_ABUNDANCE_CLASS: GeneticSpeciesServiceScript.AbundanceClass.DOMINANT,
+		GeneticSpeciesServiceScript.KEY_SELECTION_PRESSURE_CLASS: GeneticSpeciesServiceScript.SelectionPressureClass.MODERATE,
+		GeneticSpeciesServiceScript.KEY_TRAIT_LOCI: {},
+		GeneticSpeciesServiceScript.KEY_VISUAL_PROFILE: {},
+	}
+	profiles.insert(1, grazer_profile)
+	desc[GeneticSpeciesServiceScript.KEY_LIFEFORM_PROFILES] = profiles
+	return desc

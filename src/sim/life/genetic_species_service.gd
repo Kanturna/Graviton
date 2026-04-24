@@ -22,6 +22,13 @@ enum AbundanceClass {
 	DOMINANT,
 }
 
+enum SelectionPressureClass {
+	LOW,
+	MODERATE,
+	HIGH,
+	EXTREME,
+}
+
 enum BodyPlanClass {
 	MAT_FILM,
 	COLONY,
@@ -68,6 +75,7 @@ const KEY_PROTO_FORM_SUMMARY: StringName = &"proto_form_summary"
 const KEY_LIFEFORM_ID: StringName = &"lifeform_id"
 const KEY_ROLE_CLASS: StringName = &"role_class"
 const KEY_ABUNDANCE_CLASS: StringName = &"abundance_class"
+const KEY_SELECTION_PRESSURE_CLASS: StringName = &"selection_pressure_class"
 const KEY_TRAIT_LOCI: StringName = &"trait_loci"
 const KEY_VISUAL_PROFILE: StringName = &"visual_profile"
 
@@ -272,6 +280,19 @@ static func to_string_abundance_class(value: int) -> String:
 	return "UNKNOWN"
 
 
+static func to_string_selection_pressure_class(value: int) -> String:
+	match value:
+		SelectionPressureClass.LOW:
+			return "LOW"
+		SelectionPressureClass.MODERATE:
+			return "MODERATE"
+		SelectionPressureClass.HIGH:
+			return "HIGH"
+		SelectionPressureClass.EXTREME:
+			return "EXTREME"
+	return "UNKNOWN"
+
+
 static func to_string_body_plan_class(value: int) -> String:
 	match value:
 		BodyPlanClass.MAT_FILM:
@@ -414,13 +435,21 @@ static func _profile_for_role(
 		native_species_desc
 	)
 	var visual_profile: Dictionary = _visual_profile_from_trait_loci(trait_loci)
+	var abundance_class: int = _abundance_class_for_role(role_class, biosphere_stage, richness_class)
 	return {
 		KEY_LIFEFORM_ID: StringName("%s_%s" % [
 			String(body_id),
 			to_string_role_class(role_class).to_lower()
 		]),
 		KEY_ROLE_CLASS: role_class,
-		KEY_ABUNDANCE_CLASS: _abundance_class_for_role(role_class, biosphere_stage),
+		KEY_ABUNDANCE_CLASS: abundance_class,
+		KEY_SELECTION_PRESSURE_CLASS: _selection_pressure_class_for_profile(
+			role_class,
+			biosphere_stage,
+			richness_class,
+			abundance_class,
+			int(trait_loci.get(KEY_STRESS_TOLERANCE_LOCUS, StressToleranceClass.BASELINE))
+		),
 		KEY_TRAIT_LOCI: trait_loci,
 		KEY_VISUAL_PROFILE: visual_profile,
 	}
@@ -560,11 +589,13 @@ static func _reproduction_class_for_role(role_class: int, biosphere_stage: int) 
 	return ReproductionClass.DIVISION
 
 
-static func _abundance_class_for_role(role_class: int, biosphere_stage: int) -> int:
+static func _abundance_class_for_role(role_class: int, biosphere_stage: int, richness_class: int) -> int:
 	match role_class:
 		RoleClass.PRODUCER:
 			return AbundanceClass.DOMINANT
 		RoleClass.GRAZER_FILTER:
+			if biosphere_stage >= BiosphereScaleServiceScript.Stage.COMPLEX_ECOSYSTEM and richness_class == NativeSpeciesServiceScript.RichnessClass.DIVERSE:
+				return AbundanceClass.DOMINANT
 			return AbundanceClass.COMMON
 		RoleClass.DECOMPOSER:
 			return AbundanceClass.COMMON if biosphere_stage == BiosphereScaleServiceScript.Stage.MICROBIAL else AbundanceClass.LOCAL
@@ -573,6 +604,35 @@ static func _abundance_class_for_role(role_class: int, biosphere_stage: int) -> 
 		RoleClass.PARASITE_SYMBIONT:
 			return AbundanceClass.TRACE
 	return AbundanceClass.TRACE
+
+
+static func _selection_pressure_class_for_profile(
+		role_class: int,
+		biosphere_stage: int,
+		richness_class: int,
+		abundance_class: int,
+		stress_tolerance_class: int
+	) -> int:
+	var pressure_class: int = _selection_pressure_base_for_stress(stress_tolerance_class)
+	if biosphere_stage >= BiosphereScaleServiceScript.Stage.COMPLEX_ECOSYSTEM \
+			and richness_class == NativeSpeciesServiceScript.RichnessClass.DIVERSE \
+			and (role_class == RoleClass.PREDATOR or role_class == RoleClass.PARASITE_SYMBIONT):
+		pressure_class += 1
+	if pressure_class >= SelectionPressureClass.HIGH \
+			and (abundance_class == AbundanceClass.TRACE or abundance_class == AbundanceClass.LOCAL):
+		pressure_class += 1
+	return mini(maxi(pressure_class, SelectionPressureClass.LOW), SelectionPressureClass.EXTREME)
+
+
+static func _selection_pressure_base_for_stress(stress_tolerance_class: int) -> int:
+	match stress_tolerance_class:
+		StressToleranceClass.BASELINE:
+			return SelectionPressureClass.LOW
+		StressToleranceClass.COLD_HARDY, StressToleranceClass.HEAT_HARDY, StressToleranceClass.SEASONAL_DORMANT:
+			return SelectionPressureClass.MODERATE
+		StressToleranceClass.EXTREME_HARDY:
+			return SelectionPressureClass.HIGH
+	return SelectionPressureClass.LOW
 
 
 static func _microbial_mobility_for_role(role_class: int, richness_class: int) -> int:

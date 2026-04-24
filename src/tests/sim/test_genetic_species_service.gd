@@ -196,6 +196,14 @@ static func _test_microbial_profiles_without_native_species_basis(ctx) -> void:
 		],
 		"MICROBIAL mit DIVERSE-Carrying-Capacity erzeugt PRODUCER plus DECOMPOSER"
 	)
+	ctx.assert_true(
+		_selection_pressure_classes(desc) == [
+			GeneticSpeciesServiceScript.SelectionPressureClass.LOW,
+			GeneticSpeciesServiceScript.SelectionPressureClass.LOW,
+		],
+		"MICROBIAL-Profile tragen deterministische Selection-Pressure ohne Native-Species-Basis"
+	)
+	_assert_no_redundant_scope_keys(ctx, desc)
 	var sulfur_desc: Dictionary = _microbial_desc_without_native_basis(
 		&"sulfur_microbe",
 		LifePotentialServiceScript.Track.SULFUR_REACTIVE,
@@ -217,6 +225,13 @@ static func _test_microbial_profiles_without_native_species_basis(ctx) -> void:
 		int(sulfur_visual_profile.get(GeneticSpeciesServiceScript.KEY_VISUAL_COLOR_FAMILY, -1))
 			== GeneticSpeciesServiceScript.ColorFamily.AMBER_RUST,
 		"MICROBIAL SULFUR/HOT rendert AMBER_RUST statt Default-GREY_BIOLUMEN"
+	)
+	ctx.assert_true(
+		_selection_pressure_classes(sulfur_desc) == [
+			GeneticSpeciesServiceScript.SelectionPressureClass.MODERATE,
+			GeneticSpeciesServiceScript.SelectionPressureClass.MODERATE,
+		],
+		"MICROBIAL SULFUR/HOT liest als moderater Selection Pressure"
 	)
 
 	var cryogenic_desc: Dictionary = _microbial_desc_without_native_basis(
@@ -294,10 +309,31 @@ static func _test_complex_profile_count_order_and_dominance_are_pinned(ctx) -> v
 		"COMPLEX_ECOSYSTEM DIVERSE plus Stress erzeugt die volle v1-Rollenliste in stabiler Reihenfolge"
 	)
 	ctx.assert_true(
+		_abundance_classes(ecosystem_desc) == [
+			GeneticSpeciesServiceScript.AbundanceClass.DOMINANT,
+			GeneticSpeciesServiceScript.AbundanceClass.DOMINANT,
+			GeneticSpeciesServiceScript.AbundanceClass.LOCAL,
+			GeneticSpeciesServiceScript.AbundanceClass.LOCAL,
+			GeneticSpeciesServiceScript.AbundanceClass.TRACE,
+		],
+		"COMPLEX_ECOSYSTEM DIVERSE erlaubt PRODUCER und GRAZER_FILTER als Co-Dominants"
+	)
+	ctx.assert_true(
+		_selection_pressure_classes(ecosystem_desc) == [
+			GeneticSpeciesServiceScript.SelectionPressureClass.MODERATE,
+			GeneticSpeciesServiceScript.SelectionPressureClass.MODERATE,
+			GeneticSpeciesServiceScript.SelectionPressureClass.MODERATE,
+			GeneticSpeciesServiceScript.SelectionPressureClass.EXTREME,
+			GeneticSpeciesServiceScript.SelectionPressureClass.EXTREME,
+		],
+		"Abhaengige lokale Rollen in diversen Ecosystems steigen bis EXTREME, stabile Co-Dominants bleiben moderat"
+	)
+	ctx.assert_true(
 		StringName(ecosystem_desc.get(GeneticSpeciesServiceScript.KEY_DOMINANT_LIFEFORM_ID, StringName("")))
 			== &"ecosystem_world_producer",
 		"Das erste sortierte Profil ist deterministisch der dominante Lifeform-Eintrag"
 	)
+	_assert_no_redundant_scope_keys(ctx, ecosystem_desc)
 
 
 static func _test_track_stress_and_visual_mappings_are_pinned(ctx) -> void:
@@ -346,6 +382,12 @@ static func _test_track_stress_and_visual_mappings_are_pinned(ctx) -> void:
 			== GeneticSpeciesServiceScript.MotionStyle.SLOW_EXPANDING,
 		"COLONIAL-Mobility mappt auf SLOW_EXPANDING"
 	)
+	ctx.assert_true(
+		int(dominant_profile.get(GeneticSpeciesServiceScript.KEY_SELECTION_PRESSURE_CLASS, -1))
+			== GeneticSpeciesServiceScript.SelectionPressureClass.MODERATE,
+		"HOT-Stress mappt auf moderaten Selection Pressure"
+	)
+	_assert_no_redundant_scope_keys(ctx, sulfur_desc)
 
 
 static func _complex_desc_for_richness(richness_class: int) -> Dictionary:
@@ -433,6 +475,49 @@ static func _role_classes(genetic_species_desc: Dictionary) -> Array[int]:
 			GeneticSpeciesServiceScript.RoleClass.PRODUCER
 		)))
 	return out
+
+
+static func _abundance_classes(genetic_species_desc: Dictionary) -> Array[int]:
+	var out: Array[int] = []
+	var profiles: Array = genetic_species_desc.get(
+		GeneticSpeciesServiceScript.KEY_LIFEFORM_PROFILES,
+		[]
+	)
+	for profile_variant in profiles:
+		var profile: Dictionary = profile_variant
+		out.append(int(profile.get(
+			GeneticSpeciesServiceScript.KEY_ABUNDANCE_CLASS,
+			GeneticSpeciesServiceScript.AbundanceClass.TRACE
+		)))
+	return out
+
+
+static func _selection_pressure_classes(genetic_species_desc: Dictionary) -> Array[int]:
+	var out: Array[int] = []
+	var profiles: Array = genetic_species_desc.get(
+		GeneticSpeciesServiceScript.KEY_LIFEFORM_PROFILES,
+		[]
+	)
+	for profile_variant in profiles:
+		var profile: Dictionary = profile_variant
+		out.append(int(profile.get(
+			GeneticSpeciesServiceScript.KEY_SELECTION_PRESSURE_CLASS,
+			-1
+		)))
+	return out
+
+
+static func _assert_no_redundant_scope_keys(ctx, genetic_species_desc: Dictionary) -> void:
+	var profiles: Array = genetic_species_desc.get(
+		GeneticSpeciesServiceScript.KEY_LIFEFORM_PROFILES,
+		[]
+	)
+	for profile_variant in profiles:
+		var profile: Dictionary = profile_variant
+		ctx.assert_true(not profile.has(&"ecology_profile"), "Profile fuehren kein redundantes ecology_profile ein")
+		ctx.assert_true(not profile.has(&"niche_class"), "Profile fuehren keine NicheClass-Duplikate ein")
+		ctx.assert_true(not profile.has(&"competition_state_class"), "Profile fuehren keine statische CompetitionStateClass ein")
+		ctx.assert_true(not profile.has(&"visual_pattern_class"), "Profile fuehren keine VisualPatternClass-Duplikate ein")
 
 
 static func _sampled_planetary_state_desc(

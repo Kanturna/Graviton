@@ -8,6 +8,40 @@ Die aktuell im Repo eingecheckte `orbit_testbed.tscn` startet derzeit mit
 Fuer Acceptance-Runs auf `starter_world` oder `sample_system` den
 Szenen-Override vor dem Editor-Run bewusst umstellen.
 
+## Prioritaet 0 - Lifeform Pressure v1 Acceptance Gate
+
+Ziel:
+Den headless-gruenen Selection-Pressure- und Co-Dominanz-Slice im
+echten Editor validieren, bevor daraus echte Population, zeitliche
+Evolution oder Ereignisse abgeleitet werden.
+
+Konkreter Ablauf:
+
+- `starter_world -> gamma_iv` pruefen:
+  Prebiotic zeigt weiter nur Proto-/Precursor-Lesart, keine stabilen
+  Profile und keine Pressure-Pseudoaussage
+- `starter_world -> gamma_iii` pruefen:
+  `Native forms` nutzt das neue Format
+  `ROLE ABUNDANCE/PRESSURE` und bleibt als eine kompakte Zeile lesbar
+- `sample_system -> planet_a` nach laengerer Bio-Zeit pruefen:
+  `Native forms` zeigt qualitative Pressure, `Population:` bleibt
+  `not established`
+- ein `COMPLEX_ECOSYSTEM`-/Diverse-Detailplanet pruefen:
+  mehrere dominante Profile werden als Co-Dominanz lesbar und
+  `Dominant forms:` rendert plural statt eine einzige Gewinnerform zu
+  behaupten
+- dabei explizit pruefen:
+  keine Populationszahlen, keine War-/Catastrophe-/Civilization-Texte,
+  keine zeitliche Pioneer-/Declining-Evolution und keine neuen
+  Niche-/Competition-/VisualPattern-Labels im Panel
+
+Wenn dieser Gate kippt:
+
+- keinen Population- oder Evolutions-Tick-Block anfangen
+- zuerst nur den kleinen Pressure-Slice korrigieren:
+  Selection-Pressure-Mapping, Co-Dominanz-Regel, Formatter-Sprache oder
+  Panel-Lesbarkeit
+
 ## Prioritaet 0 - Unlocked-FPS / Focus-Smoothing Acceptance Gate
 
 Ziel:

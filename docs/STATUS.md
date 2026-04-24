@@ -109,6 +109,16 @@ Native-Species-Basis: Track/Thermik fallen jetzt nicht mehr auf die
 Default-Species-Werte zurueck. Das Panel bleibt ausserdem kompakter,
 weil `Abundance` nur noch in `Native forms`/`Dominant form` mitlaeuft
 und keine eigene Datenblatt-Zeile mehr bekommt.
+Darauf sitzt jetzt zusaetzlich `Lifeform Pressure v1`:
+Lifeform-Profile tragen einen qualitativen `SelectionPressureClass`-
+Wert direkt auf dem Profil, ohne daraus ein neues Gen oder eine
+Population zu machen. `COMPLEX_ECOSYSTEM`-Welten mit `DIVERSE`
+Richness koennen jetzt mehrere dominante Lebensformen zeigen; die
+`Native forms`-Zeile liest darum `ROLE ABUNDANCE/PRESSURE`, waehrend
+`Dominant form` bei mehreren dominanten Profilen plural als
+`Dominant forms` rendert. Es gibt weiter keine Populationszahlen, keine
+zeitliche Evolution, keine Kriege, keine Katastrophen und keine neuen
+redundanten Niche-/Competition-/VisualPattern-Enums.
 Ein anschliessender Root-Overview-Performance-Fix macht den
 `GalaxyProxyRenderer` dirty-getrieben: der 100-Root-Proxy-Pfad queued
 nicht mehr jedes Render-Frame pauschal ein Redraw, sondern nur noch bei

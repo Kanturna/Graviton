@@ -94,7 +94,7 @@ static func _test_panel_reuses_formatter_lines_and_placeholders(ctx) -> void:
 	ctx.assert_true(
 		snapshot.get("placeholder_texts", PackedStringArray()) == PackedStringArray([
 			"Population: not established",
-			"Native forms: PRODUCER/DOMINANT | GRAZER_FILTER/COMMON",
+			"Native forms: PRODUCER DOMINANT/LOW | GRAZER_FILTER COMMON/LOW",
 			"Visual profile: MACRO_SESSILE / GREEN_BLUE / DRIFTING_OR_CRAWLING",
 		]),
 		"Panel zeigt Genetic-Species-Readouts ueber zentrale Formatter und keine Populationszahl"
@@ -204,7 +204,7 @@ static func _test_panel_integration_pins_prebiotic_and_complex_lifeform_outputs(
 		"Integration pinnt Planet A auf den komplexen Life-Readout"
 	)
 	ctx.assert_true(
-		sample_placeholders.has("Native forms: PRODUCER/DOMINANT"),
+		sample_placeholders.has("Native forms: PRODUCER DOMINANT/MODERATE"),
 		"Integration pinnt Planet-A-Native-Forms-Ausgabe: %s" % [str(sample_placeholders)]
 	)
 	ctx.assert_true(
@@ -251,6 +251,7 @@ static func _seed_full_descriptions(cache: SnapshotCacheProbe, id: StringName) -
 				GeneticSpeciesServiceScript.KEY_LIFEFORM_ID: &"planet_a_producer",
 				GeneticSpeciesServiceScript.KEY_ROLE_CLASS: GeneticSpeciesServiceScript.RoleClass.PRODUCER,
 				GeneticSpeciesServiceScript.KEY_ABUNDANCE_CLASS: GeneticSpeciesServiceScript.AbundanceClass.DOMINANT,
+				GeneticSpeciesServiceScript.KEY_SELECTION_PRESSURE_CLASS: GeneticSpeciesServiceScript.SelectionPressureClass.LOW,
 				GeneticSpeciesServiceScript.KEY_TRAIT_LOCI: {
 					GeneticSpeciesServiceScript.KEY_METABOLISM_LOCUS: NativeSpeciesServiceScript.MetabolismClass.PHOTOTROPHIC,
 					GeneticSpeciesServiceScript.KEY_BODY_PLAN_LOCUS: GeneticSpeciesServiceScript.BodyPlanClass.MACRO_SESSILE,
@@ -266,6 +267,7 @@ static func _seed_full_descriptions(cache: SnapshotCacheProbe, id: StringName) -
 				GeneticSpeciesServiceScript.KEY_LIFEFORM_ID: &"planet_a_grazer_filter",
 				GeneticSpeciesServiceScript.KEY_ROLE_CLASS: GeneticSpeciesServiceScript.RoleClass.GRAZER_FILTER,
 				GeneticSpeciesServiceScript.KEY_ABUNDANCE_CLASS: GeneticSpeciesServiceScript.AbundanceClass.COMMON,
+				GeneticSpeciesServiceScript.KEY_SELECTION_PRESSURE_CLASS: GeneticSpeciesServiceScript.SelectionPressureClass.LOW,
 				GeneticSpeciesServiceScript.KEY_TRAIT_LOCI: {},
 				GeneticSpeciesServiceScript.KEY_VISUAL_PROFILE: {},
 			},
