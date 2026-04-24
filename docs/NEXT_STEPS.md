@@ -8,6 +8,30 @@ Die aktuell im Repo eingecheckte `orbit_testbed.tscn` startet derzeit mit
 Fuer Acceptance-Runs auf `starter_world` oder `sample_system` den
 Szenen-Override vor dem Editor-Run bewusst umstellen.
 
+## Meta - Agentenvertrag / Repo-Hygiene - erledigt
+
+Erledigt:
+
+- `AGENTS.md` beschreibt jetzt den gemeinsamen Arbeitsvertrag fuer
+  Codex und Claude Code:
+  Startprotokoll, Dirty-Worktree-Regel, Validierung, Doku-Sync,
+  Review-Uebergabe und Commit-Vorschlagspflicht
+- `CLAUDE.md` verweist Claude Code auf `AGENTS.md` und rahmt Claude
+  standardmaessig als Reviewer-/Architekturinstanz
+- lokale Claude-State-Dateien und lokale Logs/Wrapper werden ueber
+  `.gitignore` vom geteilten Repo-Vertrag getrennt
+- `run_tests.bat` nutzt jetzt `GODOT_BIN` oder `godot_console.exe` aus
+  `PATH` statt eines fest verdrahteten lokalen Godot-Pfads
+
+Offen als separate Architektur-Slices:
+
+- `OrbitService` darf nicht dauerhaft direkt von
+  `src/tools/debug/perf_probe.gd` abhaengen; Perf-Sampling soll aus
+  `sim` herausgezogen werden
+- die bereits implementierte `BubbleActivationSet`-Exit-Hysterese muss
+  bewusst in `ARCHITEKTUR.md`, `SIMULATIONSREGELN.md` und
+  `DECISIONS.md` legalisiert oder als Codepfad zurueckgebaut werden
+
 ## Prioritaet 0 - Lifeform Pressure v1 Acceptance Gate
 
 Ziel:

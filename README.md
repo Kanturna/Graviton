@@ -61,7 +61,8 @@ godot_console.exe --headless --path . --script res://src/tests/test_runner.gd --
 ```
 
 Im Repo ist dafuer ausserdem `run_tests.bat` als lokaler Testpfad
-vorhanden.
+vorhanden. Das Script nutzt `GODOT_BIN`, falls gesetzt, sonst
+`godot_console.exe` aus `PATH`.
 
 ## Historische Detaildokumente
 

@@ -190,6 +190,13 @@ Kamera-State lesen. Sofortige Fokus-/Bookmark-Restores duerfen den
 Renderer-Same-Frame-Guard gezielt uebersteuern, damit deferred
 UI-Klicks keinen alten Visual-State bis zum naechsten Frame behalten.
 Auch dieser Fix bleibt reine View-/Scene-Synchronisierung.
+Ein begleitender Workflow-/Repo-Hygiene-Slice haertet jetzt den
+Agentenvertrag:
+`AGENTS.md` beschreibt Startprotokoll, Validierung,
+Doku-Sync, Review-Uebergabe und Commit-Vorschlagspflicht explizit,
+`CLAUDE.md` verweist Claude Code auf die Reviewer-Rolle, lokale
+Claude-State-Dateien werden nicht mehr geteilt und `run_tests.bat`
+nutzt `GODOT_BIN` statt eines fest verdrahteten lokalen Godot-Pfads.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -1089,6 +1096,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/sim/orbit/orbit_period_helper.gd`
 - `src/sim/orbit/orbit_readout_service.gd`
 - `src/tests/sim/test_orbit_readout_service.gd`
+- `AGENTS.md`
+- `CLAUDE.md`
+- `.gitignore`
 - `run_tests.bat`
 
 ## Bekannte offene Punkte

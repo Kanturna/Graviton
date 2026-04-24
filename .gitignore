@@ -14,3 +14,16 @@ export_credentials.cfg
 .mono/
 data_*/
 mono_crash.*.json
+
+# Local AI-agent state
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+CLAUDE.local.md
+
+# Local logs
+*.log
+godot-headless.log
+
+# Local test wrappers
+run_tests.local.bat
+run_tests.local.ps1

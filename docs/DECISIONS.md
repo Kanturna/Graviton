@@ -1,5 +1,28 @@
 # Graviton - Decisions
 
+## 2026-04-24 - Agentenvertrag und Review-Handoff werden explizit im Repo verankert
+
+Der wiederkehrende Codex-/Claude-Code-Workflow wird nicht mehr nur im
+Chat oder in impliziter Erinnerung gehalten. `AGENTS.md` ist ab jetzt
+der gemeinsame Arbeitsvertrag fuer Builder- und Reviewer-Agenten,
+waehrend `CLAUDE.md` Claude Code kurz auf diese Regeln und den
+Reviewer-Fokus verweist.
+
+Konsequenz:
+
+- nach Codeaenderungen erwartet das Repo eine explizite Abschlusslage:
+  geaenderte Dateien, Validierung, Doku-Sync, Risiken und
+  Commit-Vorschlag mit Titel und Body
+- Agenten committen, pushen oder oeffnen PRs nicht still ohne
+  ausdrueckliche Nutzerfreigabe
+- lokale Agenten-Zustaende wie `settings.local.json` und Locks gehoeren
+  nicht in den geteilten Repo-Vertrag
+- `run_tests.bat` darf lokal ueber `GODOT_BIN` verdrahtet werden, statt
+  einen maschinenspezifischen Godot-Pfad im Repo festzuschreiben
+- Architektur-Drifts bleiben eigene Slices:
+  insbesondere PerfProbe-Entkopplung aus `sim/` und die bewusste
+  Entscheidung zur `BubbleActivationSet`-Exit-Hysterese
+
 ## 2026-04-24 - Qualitative Pressure und Co-Dominanz kommen vor zeitlicher Evolution
 
 Nach `Genetic Lifeform Foundation v1` wird das Lifeform-Modell bewusst
