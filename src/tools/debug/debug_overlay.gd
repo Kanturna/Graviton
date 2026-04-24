@@ -183,7 +183,7 @@ func _build_text() -> String:
 		return "\n".join(lines)
 	lines.append("")
 	lines.append("[b]Bodies (truth: parent-frame)[/b]")
-	for id in _registry.get_update_order():
+	for id in _registry_update_order():
 		lines.append(_format_body_line(id))
 	return "\n".join(lines)
 
@@ -286,7 +286,7 @@ func _format_kind_counts_line() -> String:
 	var star_count: int = 0
 	var planet_count: int = 0
 	var moon_count: int = 0
-	for id in _registry.get_update_order():
+	for id in _registry_update_order():
 		var def: BodyDef = _registry.get_def(id)
 		if def == null:
 			continue
@@ -305,6 +305,14 @@ func _format_kind_counts_line() -> String:
 		planet_count,
 		moon_count,
 	]
+
+
+func _registry_update_order() -> Array[StringName]:
+	if _registry == null:
+		return []
+	if _registry.has_method("get_update_order_ref"):
+		return _registry.get_update_order_ref()
+	return _registry.get_update_order()
 
 
 func _format_focus_summary_line() -> String:

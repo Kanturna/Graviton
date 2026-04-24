@@ -138,6 +138,17 @@ Render-Frame ein neues `PackedVector2Array` zu setzen. Das
 `PlanetBadgeOverlay` liest Body-Sichtbarkeit, Screen-Center und
 projizierten Radius jetzt ueber einen gemeinsamen Renderer-Metrics-Call
 statt ueber drei separate Transform-Abfragen pro Body.
+`Performance Closure v2` schliesst den naechsten Render-Hotpath:
+Trail-History wird jetzt ueber `TimeService.sim_tick` statt ueber den
+Renderloop fortgeschrieben; `_sync_visual_positions()` positioniert nur
+noch Bodies, Orbits und Trail-Lines. `UniverseRegistry` bietet dafuer
+additiv `get_update_order_ref()` als trusted read-only Hotpath-Iteration,
+waehrend `get_update_order()` weiter die defensive Kopie liefert.
+Sterne queueen ihren CPU-gezeichneten Halo nicht mehr per `_process()`
+jedes Frame neu; die Sternscheibe bleibt ueber den bestehenden
+`body_star.gdshader`/`TIME`-Pfad animiert. Bewusst akzeptiert: Trails
+sind in v2 sim-tick-proportional und koennen bei hohem `time_scale`
+eckiger wirken.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 

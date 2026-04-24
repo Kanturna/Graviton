@@ -40,7 +40,7 @@ func build(root_id: StringName, focused_body_id: StringName) -> Dictionary:
 	}
 	var children_by_parent: Dictionary = {}
 
-	for id in _registry.get_update_order():
+	for id in _registry_update_order():
 		if _topology.root_id_of(id) != root_id:
 			continue
 		var def: BodyDef = _registry.get_def(id)
@@ -131,6 +131,14 @@ func _append_rows(
 	var children: Array = children_by_parent.get(body_id, [])
 	for child_variant in children:
 		_append_rows(rows, StringName(child_variant), focused_body_id, depth + 1, children_by_parent)
+
+
+func _registry_update_order() -> Array[StringName]:
+	if _registry == null:
+		return []
+	if _registry.has_method("get_update_order_ref"):
+		return _registry.get_update_order_ref()
+	return _registry.get_update_order()
 
 
 func _note_text_for_body(body_id: StringName, def: BodyDef, children_by_parent: Dictionary) -> String:

@@ -75,6 +75,10 @@ func get_update_order() -> Array[StringName]:
 	return _update_order.duplicate()
 
 
+func get_update_order_ref() -> Array[StringName]:
+	return _update_order
+
+
 func get_children_of(parent: StringName) -> Array[StringName]:
 	var out: Array[StringName] = []
 	for id in defs_by_id.keys():

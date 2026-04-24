@@ -209,7 +209,7 @@ func _rebuild_topology_cache() -> void:
 	if _registry == null or _topology == null:
 		return
 	_topology.configure(_registry)
-	for id in _registry.get_update_order():
+	for id in _registry_update_order():
 		var root_id: StringName = _topology.root_id_of(id)
 		_root_id_by_id[id] = root_id
 		if not _ids_by_root.has(root_id):
@@ -238,7 +238,7 @@ func _rebuild_all() -> void:
 
 	var focus_id: StringName = _bubble.get_focus()
 	if focus_id == StringName("") or not _registry.has_body(focus_id):
-		for id in _registry.get_update_order():
+		for id in _registry_update_order():
 			_state_by_id[id] = State.INACTIVE_NO_LCA
 		_inactive_no_lca_count = _registry.body_count()
 		_focus_root_id = StringName("")
@@ -251,7 +251,7 @@ func _rebuild_all() -> void:
 	if _ids_by_root.has(_focus_root_id):
 		_same_root_ids.append_array(_ids_by_root[_focus_root_id])
 
-	for id in _registry.get_update_order():
+	for id in _registry_update_order():
 		if _root_id_by_id.get(id, StringName("")) != _focus_root_id:
 			_state_by_id[id] = State.INACTIVE_NO_LCA
 			_inactive_no_lca_count += 1
@@ -265,7 +265,7 @@ func _prune_removed_cached_ids() -> void:
 	if _registry == null:
 		return
 	var valid_ids: Dictionary = {}
-	for id in _registry.get_update_order():
+	for id in _registry_update_order():
 		valid_ids[id] = true
 
 	for id_variant in _state_by_id.keys():
@@ -290,6 +290,14 @@ func _prune_removed_cached_ids() -> void:
 		if valid_ids.has(id):
 			filtered_same_root_ids.append(id)
 	_same_root_ids = filtered_same_root_ids
+
+
+func _registry_update_order() -> Array[StringName]:
+	if _registry == null:
+		return []
+	if _registry.has_method("get_update_order_ref"):
+		return _registry.get_update_order_ref()
+	return _registry.get_update_order()
 
 
 func _collect_impacted_ids() -> Array[StringName]:

@@ -35,7 +35,10 @@
       "PowerShell(git diff HEAD -- src/sim/life/genetic_species_service.gd src/sim/life/native_species_service.gd)",
       "PowerShell(.\\\\run_tests.bat 2>&1)",
       "PowerShell(git diff HEAD -- src/tools/rendering/galaxy_proxy_renderer.gd)",
-      "PowerShell(git diff HEAD -- src/tests/rendering/test_galaxy_proxy_renderer.gd project.godot)"
+      "PowerShell(git diff HEAD -- src/tests/rendering/test_galaxy_proxy_renderer.gd project.godot)",
+      "PowerShell(git diff HEAD -- src/tools/ui/root_inspector_overlay.gd)",
+      "PowerShell(git show HEAD -- src/tools/ui/root_inspector_overlay.gd)",
+      "PowerShell(git show HEAD -- src/tools/rendering/orbit_view_renderer.gd src/tools/rendering/planet_badge_overlay.gd)"
     ]
   }
 }

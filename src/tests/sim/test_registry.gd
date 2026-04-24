@@ -13,6 +13,7 @@ static func run(ctx) -> void:
 	_test_unregister(ctx)
 	_test_clear(ctx)
 	_test_unknown_id_returns_null(ctx)
+	_test_update_order_copy_and_ref_contract(ctx)
 
 
 # --- helpers ---
@@ -113,4 +114,19 @@ static func _test_unknown_id_returns_null(ctx) -> void:
 	ctx.assert_true(reg.get_def(&"nonexistent") == null, "get_def null fuer unbekannte id")
 	ctx.assert_true(reg.get_state(&"nonexistent") == null, "get_state null fuer unbekannte id")
 	ctx.assert_true(not reg.has_body(&"nonexistent"), "has_body false fuer unbekannte id")
+	reg.free()
+
+
+static func _test_update_order_copy_and_ref_contract(ctx) -> void:
+	var reg := _make_registry()
+	reg.register_body(_root_def(&"sol"))
+	reg.register_body(_child_def(&"planet_a", &"sol"))
+	var copied_order: Array[StringName] = reg.get_update_order()
+	copied_order.append(&"fake")
+	ctx.assert_true(
+		not reg.get_update_order().has(&"fake"),
+		"get_update_order bleibt defensive Kopie fuer statehaltende Aufrufer"
+	)
+	var ref_order: Array[StringName] = reg.get_update_order_ref()
+	ctx.assert_true(ref_order == reg.get_update_order(), "get_update_order_ref liefert dieselbe Reihenfolge fuer trusted Hotpaths")
 	reg.free()

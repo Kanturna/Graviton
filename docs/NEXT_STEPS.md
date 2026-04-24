@@ -11,9 +11,10 @@ Szenen-Override vor dem Editor-Run bewusst umstellen.
 ## Prioritaet 0 - Unlocked-FPS / Focus-Smoothing Acceptance Gate
 
 Ziel:
-Den headless-gruenen Presentation-Interpolation-Fix im echten Editor mit
-deaktiviertem VSync pruefen, weil der urspruengliche Fehler nur in der
-Renderbewegung sichtbar war.
+Den headless-gruenen Presentation-Interpolation- und
+Performance-Closure-v2-Pfad im echten Editor mit deaktiviertem VSync
+pruefen, weil der urspruengliche Fehler nur in der Renderbewegung
+sichtbar war.
 
 Konkreter Ablauf:
 
@@ -43,8 +44,15 @@ Konkreter Ablauf:
   0 muessen ohne visuelles Nachziehen stehen bleiben
 - Trails pruefen:
   keine explosionsartig wachsenden Trail-Punkte, kein sichtbares Trail-
-  Flimmern und keine Line-Punkte-Schreibarbeit bei unveraenderter
-  History; Trails duerfen weiterhin tick-basiert wirken
+  Flimmern und keine Line-Punkte-Schreibarbeit zwischen Sim-Ticks;
+  `trail_update_distinct_body_count` soll mit dem Sim-Tick skalieren,
+  nicht mit der unlocked Render-FPS
+- bei hohem `time_scale` pruefen:
+  Trails duerfen in v2 eckiger wirken, weil keine Subsample- oder
+  Interpolationspunkte eingefuegt wurden; das ist kein Simulationsfehler
+- Sternfokus pruefen:
+  die Sternscheibe bleibt shaderseitig lebendig, aber der CPU-Halo
+  darf nicht mehr jedes Frame Redraw-Arbeit verursachen
 
 Wenn dieser Gate kippt:
 

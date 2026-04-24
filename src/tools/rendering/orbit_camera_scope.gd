@@ -105,10 +105,18 @@ static func _ordered_ids(registry: Node, include_ids: Dictionary) -> Array[Strin
 	if registry == null:
 		return out
 
-	for id in registry.get_update_order():
+	for id in _registry_update_order(registry):
 		if include_ids.has(id):
 			out.append(id)
 	return out
+
+
+static func _registry_update_order(registry: Node) -> Array[StringName]:
+	if registry == null:
+		return []
+	if registry.has_method("get_update_order_ref"):
+		return registry.get_update_order_ref()
+	return registry.get_update_order()
 
 
 static func _scope_kind_for_focus(focus_def: BodyDef) -> StringName:

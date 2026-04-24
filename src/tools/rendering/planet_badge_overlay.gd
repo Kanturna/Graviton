@@ -61,7 +61,7 @@ func refresh() -> void:
 	var viewport: Viewport = get_viewport()
 	var viewport_size: Vector2 = viewport.get_visible_rect().size if viewport != null else Vector2.ZERO
 	var candidates: Array[Dictionary] = []
-	for id_variant in _registry.get_update_order():
+	for id_variant in _registry_update_order():
 		var id: StringName = id_variant
 		var def: BodyDef = _registry.get_def(id)
 		if def == null:
@@ -260,6 +260,14 @@ static func _is_offscreen(center_px: Vector2, projected_radius_px: float, viewpo
 		or center_px.y < -projected_radius_px \
 		or center_px.x > viewport_size.x + projected_radius_px \
 		or center_px.y > viewport_size.y + projected_radius_px
+
+
+func _registry_update_order() -> Array[StringName]:
+	if _registry == null:
+		return []
+	if _registry.has_method("get_update_order_ref"):
+		return _registry.get_update_order_ref()
+	return _registry.get_update_order()
 
 
 func _on_badge_pressed(index: int) -> void:

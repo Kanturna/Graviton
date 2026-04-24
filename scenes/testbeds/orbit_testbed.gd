@@ -125,7 +125,7 @@ func _ready() -> void:
 	_bubble.configure(UniverseRegistry)
 	_bubble.set_focus(_focus_order[_focus_index])
 	_activation_set.configure(UniverseRegistry, _bubble)
-	_activation_set.mark_ids_dirty(UniverseRegistry.get_update_order())
+	_activation_set.mark_ids_dirty(UniverseRegistry.get_update_order_ref())
 	_activation_set.rebuild()
 	if not _orbit_service.bodies_updated.is_connected(_on_orbit_service_bodies_updated):
 		_orbit_service.bodies_updated.connect(_on_orbit_service_bodies_updated)
@@ -610,7 +610,7 @@ func _planetary_interest_ids_for_root(root_id: StringName) -> Array[StringName]:
 	var interest_ids: Array[StringName] = []
 	if root_id == StringName(""):
 		return interest_ids
-	for id in UniverseRegistry.get_update_order():
+	for id in UniverseRegistry.get_update_order_ref():
 		var def: BodyDef = UniverseRegistry.get_def(id)
 		if def == null:
 			continue

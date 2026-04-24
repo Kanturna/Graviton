@@ -1,6 +1,7 @@
 extends RefCounted
 
 const OrbitViewRendererScript = preload("res://src/tools/rendering/orbit_view_renderer.gd")
+const OrbitCameraFramingScript = preload("res://src/tools/rendering/orbit_camera_framing.gd")
 
 
 class TimeProbe:
@@ -20,6 +21,52 @@ class RendererProbe:
 		line_width_apply_count += 1
 
 
+class RegistryProbe:
+	extends Node
+
+	var order: Array[StringName] = []
+	var defs: Dictionary = {}
+	var states: Dictionary = {}
+
+	func add_body(id: StringName, kind: int, parent_id: StringName, pos_m: Vector3) -> void:
+		var def := BodyDef.new()
+		def.id = id
+		def.display_name = String(id)
+		def.kind = kind
+		def.mass_kg = 1.0
+		def.radius_m = 1.0
+		def.parent_id = parent_id
+		defs[id] = def
+		var state := BodyState.new(id, parent_id)
+		state.position_parent_frame_m = pos_m
+		states[id] = state
+		order.append(id)
+
+	func get_update_order() -> Array[StringName]:
+		return order.duplicate()
+
+	func get_update_order_ref() -> Array[StringName]:
+		return order
+
+	func get_def(id: StringName) -> BodyDef:
+		return defs.get(id, null)
+
+	func get_state(id: StringName) -> BodyState:
+		return states.get(id, null)
+
+	func has_body(id: StringName) -> bool:
+		return defs.has(id)
+
+
+class BubbleProbe:
+	extends Node
+
+	func compose_view_position_m(id: StringName, _presentation_offset_s: float = 0.0) -> Vector3:
+		if id == &"planet":
+			return Vector3(1000.0, 0.0, 0.0)
+		return Vector3.ZERO
+
+
 static func run(ctx) -> void:
 	ctx.current_suite = "test_orbit_view_renderer"
 	_test_presentation_offset_uses_physics_interpolation_fraction(ctx)
@@ -27,6 +74,8 @@ static func run(ctx) -> void:
 	_test_engine_interpolation_fraction_is_safe(ctx)
 	_test_world_scale_does_not_reapply_line_widths_when_unchanged(ctx)
 	_test_trail_points_update_only_when_history_changes(ctx)
+	_test_render_sync_does_not_write_trail_points_without_sim_tick(ctx)
+	_test_root_overview_sim_tick_does_not_write_trail_points(ctx)
 
 
 static func _test_presentation_offset_uses_physics_interpolation_fraction(ctx) -> void:
@@ -119,3 +168,64 @@ static func _test_trail_points_update_only_when_history_changes(ctx) -> void:
 
 	line.free()
 	renderer.free()
+
+
+static func _test_render_sync_does_not_write_trail_points_without_sim_tick(ctx) -> void:
+	var renderer = OrbitViewRendererScript.new()
+	var registry := _make_trail_registry_probe()
+	var bubble := BubbleProbe.new()
+	var line := AntialiasedLine2D.new()
+	renderer._registry = registry
+	renderer._bubble = bubble
+	renderer._focus_id = &"star"
+	renderer._trail_visuals[&"planet"] = line
+	renderer._trail_histories[&"planet"] = []
+
+	renderer._sync_visual_positions()
+	ctx.assert_true(
+		renderer._trail_update_body_ids.is_empty() and line.points.size() == 0,
+		"Render-Sync positioniert Trail-Lines, schreibt aber ohne sim_tick keine Trail-Punkte"
+	)
+
+	renderer._on_sim_tick(1.0 / 60.0)
+	ctx.assert_true(
+		renderer._trail_update_body_ids.has(&"planet") and line.points.size() == 1,
+		"Sim-Tick schreibt die Trail-History fuer sichtbare Trail-Bodies"
+	)
+
+	line.free()
+	bubble.free()
+	registry.free()
+	renderer.free()
+
+
+static func _test_root_overview_sim_tick_does_not_write_trail_points(ctx) -> void:
+	var renderer = OrbitViewRendererScript.new()
+	var registry := _make_trail_registry_probe()
+	var bubble := BubbleProbe.new()
+	var line := AntialiasedLine2D.new()
+	renderer._registry = registry
+	renderer._bubble = bubble
+	renderer._focus_id = &"star"
+	renderer._frame_label = OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW
+	renderer._trail_visuals[&"planet"] = line
+	renderer._trail_histories[&"planet"] = []
+
+	renderer._sync_visual_positions()
+	renderer._on_sim_tick(1.0 / 60.0)
+	ctx.assert_true(
+		renderer._trail_update_body_ids.is_empty() and line.points.size() == 0,
+		"Root-Overview schreibt auch bei sim_tick keine versteckten Trail-Punkte"
+	)
+
+	line.free()
+	bubble.free()
+	registry.free()
+	renderer.free()
+
+
+static func _make_trail_registry_probe() -> RegistryProbe:
+	var registry := RegistryProbe.new()
+	registry.add_body(&"star", BodyType.Kind.STAR, &"", Vector3.ZERO)
+	registry.add_body(&"planet", BodyType.Kind.PLANET, &"star", Vector3(1000.0, 0.0, 0.0))
+	return registry

@@ -4,6 +4,7 @@ extends Node2D
 const ORBIT_SAMPLE_COUNT: int = 120
 const TRAIL_LINE_WIDTH_PX: float = 2.0
 const MIN_TRAIL_STEP_PX: float = 1.2
+const SIM_TICK_SIGNAL: StringName = &"sim_tick"
 
 const UniverseTopologyScript := preload("res://src/sim/topology/universe_topology.gd")
 const OrbitCameraFramingScript := preload("res://src/tools/rendering/orbit_camera_framing.gd")
@@ -55,7 +56,7 @@ func configure(registry: Node, bubble: Node, topology = null, time_service: Node
 	_registry = registry
 	_bubble = bubble
 	_topology = topology
-	_time_service = time_service
+	_set_time_service(time_service)
 	if _topology == null and _registry != null:
 		_topology = UniverseTopologyScript.new()
 		_topology.configure(_registry)
@@ -63,7 +64,26 @@ func configure(registry: Node, bubble: Node, topology = null, time_service: Node
 
 
 func set_time_service(time_service: Node) -> void:
+	_set_time_service(time_service)
+
+
+func _set_time_service(time_service: Node) -> void:
+	if _time_service == time_service:
+		return
+	_disconnect_time_service()
 	_time_service = time_service
+	if _time_service != null and _time_service.has_signal(SIM_TICK_SIGNAL):
+		var callback := Callable(self, "_on_sim_tick")
+		if not _time_service.is_connected(SIM_TICK_SIGNAL, callback):
+			_time_service.connect(SIM_TICK_SIGNAL, callback)
+
+
+func _disconnect_time_service() -> void:
+	if _time_service == null or not _time_service.has_signal(SIM_TICK_SIGNAL):
+		return
+	var callback := Callable(self, "_on_sim_tick")
+	if _time_service.is_connected(SIM_TICK_SIGNAL, callback):
+		_time_service.disconnect(SIM_TICK_SIGNAL, callback)
 
 
 func set_environment_service(environment_service: Node) -> void:
@@ -115,7 +135,7 @@ func pick_body_at_screen(screen_pos: Vector2) -> StringName:
 	var best_id: StringName = StringName("")
 	var best_score: float = INF
 	var best_priority: int = -1
-	for id in _registry.get_update_order():
+	for id in _registry_update_order():
 		var visual: OrbitBodyVisual = _body_visuals.get(id, null)
 		var def: BodyDef = _registry.get_def(id)
 		if visual == null or def == null or not visual.visible:
@@ -199,8 +219,16 @@ func _ready() -> void:
 	_apply_line_widths()
 
 
+func _exit_tree() -> void:
+	_disconnect_time_service()
+
+
 func _process(_delta: float) -> void:
 	_sync_visual_positions()
+
+
+func _on_sim_tick(_dt: float) -> void:
+	_update_trails_for_sim_tick(false)
 
 
 func _rebuild_visuals() -> void:
@@ -221,7 +249,7 @@ func _rebuild_visuals() -> void:
 	if _registry == null:
 		return
 
-	for id in _registry.get_update_order():
+	for id in _registry_update_order():
 		var def: BodyDef = _registry.get_def(id)
 		if def == null:
 			continue
@@ -258,6 +286,7 @@ func _rebuild_visuals() -> void:
 
 	_apply_line_widths()
 	_sync_visual_positions(true)
+	_update_trails_for_sim_tick(true)
 	set_focus(_focus_id)
 
 
@@ -266,14 +295,13 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 		return
 	_apply_environment_visuals()
 	_compose_view_position_body_ids.clear()
-	_trail_update_body_ids.clear()
 	var presentation_offset_s: float = _presentation_offset_s()
 	var overview_hidden_descendant_count: int = 0
 	var overview_visible_star_count: int = 0
 	var root_overview_active: bool = _is_root_overview_active()
 	var positions_by_id: Dictionary = {}
 
-	for id in _registry.get_update_order():
+	for id in _registry_update_order():
 		var def: BodyDef = _registry.get_def(id)
 		if def == null:
 			continue
@@ -345,11 +373,8 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 				if not _is_finite_vec2(trail_parent_pos):
 					trail_parent_pos = _compute_body_view_position_ru(def.parent_id, true, presentation_offset_s)
 					positions_by_id[def.parent_id] = trail_parent_pos
-				var parent_frame_pos_ru: Vector2 = _body_parent_frame_position_ru(id)
-				if _is_finite_vec2(trail_parent_pos) and _is_finite_vec2(parent_frame_pos_ru):
+				if _is_finite_vec2(trail_parent_pos):
 					trail_line.position = trail_parent_pos
-					_resume_trail_if_paused(id, parent_frame_pos_ru)
-					_update_trail(id, parent_frame_pos_ru, reset_trails)
 				else:
 					_pause_trail(id)
 			else:
@@ -376,7 +401,7 @@ func _apply_environment_visuals() -> void:
 		var revision: int = _derived_snapshot_cache.get_revision()
 		if revision == _applied_environment_snapshot_revision:
 			return
-		for id in _registry.get_update_order():
+		for id in _registry_update_order():
 			var def: BodyDef = _registry.get_def(id)
 			var visual: OrbitBodyVisual = _body_visuals.get(id, null)
 			if visual == null or def == null:
@@ -390,7 +415,7 @@ func _apply_environment_visuals() -> void:
 
 	if _environment_service == null:
 		return
-	for id in _registry.get_update_order():
+	for id in _registry_update_order():
 		var def: BodyDef = _registry.get_def(id)
 		var visual: OrbitBodyVisual = _body_visuals.get(id, null)
 		if visual == null or def == null:
@@ -435,6 +460,30 @@ func _apply_focus_emphasis() -> void:
 		var trail_line: CanvasItem = _trail_visuals.get(id, null)
 		if trail_line != null:
 			trail_line.modulate = Color(1.0, 1.0, 1.0, trail_alpha)
+
+
+func _update_trails_for_sim_tick(reset_trails: bool = false) -> void:
+	_trail_update_body_ids.clear()
+	if _registry == null or _bubble == null:
+		return
+	var root_overview_active: bool = _is_root_overview_active()
+	for id in _registry_update_order():
+		var line: AntialiasedLine2D = _trail_visuals.get(id, null)
+		if line == null:
+			continue
+		var def: BodyDef = _registry.get_def(id)
+		if def == null or root_overview_active or not _body_shares_focus_root(id):
+			_pause_trail(id)
+			continue
+		if not line.visible:
+			_pause_trail(id)
+			continue
+		var parent_frame_pos_ru: Vector2 = _body_parent_frame_position_ru(id)
+		if not _is_finite_vec2(parent_frame_pos_ru):
+			_pause_trail(id)
+			continue
+		_resume_trail_if_paused(id, parent_frame_pos_ru)
+		_update_trail(id, parent_frame_pos_ru, reset_trails)
 
 
 func _update_trail(id: StringName, pos: Vector2, reset_trails: bool) -> void:
@@ -686,6 +735,14 @@ func _body_parent_frame_position_ru(id: StringName) -> Vector2:
 	if not _is_finite_vec3(pos_m):
 		return Vector2(INF, INF)
 	return Vector2(pos_m.x, pos_m.y) / UnitSystem.RENDER_SCALE_M_PER_UNIT
+
+
+func _registry_update_order() -> Array[StringName]:
+	if _registry == null:
+		return []
+	if _registry.has_method("get_update_order_ref"):
+		return _registry.get_update_order_ref()
+	return _registry.get_update_order()
 
 
 func _should_show_orbit_in_root_overview(def: BodyDef) -> bool:

@@ -112,13 +112,6 @@ func _ready() -> void:
 		_apply_theme_to_material(_theme)
 
 
-func _process(_delta: float) -> void:
-	# Stars drive a subtle outer-ring breath in `_draw_star_glow`; all other
-	# kinds only redraw on state change, so _process is a no-op for them.
-	if _kind == BodyType.Kind.STAR:
-		queue_redraw()
-
-
 func apply_planet_theme(theme) -> void:
 	if _kind != BodyType.Kind.PLANET and _kind != BodyType.Kind.MOON:
 		return
@@ -214,10 +207,7 @@ func _draw_moon_glow() -> void:
 
 
 func _draw_star_glow() -> void:
-	var breath: float = 1.0 - _STAR_HALO_BREATH_AMPLITUDE + _STAR_HALO_BREATH_AMPLITUDE \
-		* sin(Time.get_ticks_msec() * 0.001 * _STAR_HALO_BREATH_FREQ_RAD_PER_S)
 	var outer_color: Color = _STAR_HALO_OUTER_COLOR
-	outer_color.a *= breath
 	draw_circle(Vector2.ZERO, _STAR_HALO_OUTER_RADIUS, outer_color)
 	for i in range(_STAR_HALO_INNER_RINGS.size() - 1, -1, -1):
 		var ring: Array = _STAR_HALO_INNER_RINGS[i]
@@ -225,7 +215,7 @@ func _draw_star_glow() -> void:
 	if _star_closeup_phase <= 0.35:
 		return
 
-	var time_s: float = Time.get_ticks_msec() * 0.001
+	var time_s: float = 0.0
 	var spike_phase: float = smoothstep(0.35, 1.0, _star_closeup_phase)
 	var spike_base_radius: float = _STAR_HALO_OUTER_RADIUS - 0.8
 	var spike_lengths: Array[float] = [1.8, 2.6, 1.4, 3.0, 2.1, 1.7, 2.8, 1.5, 2.2, 1.9, 2.7, 1.6]
