@@ -10,6 +10,7 @@ static func run(ctx) -> void:
 	_test_focus_switch_flips_root_visibility(ctx)
 	_test_root_local_position_is_focus_independent(ctx)
 	_test_large_parent_offsets_keep_local_delta_precise(ctx)
+	_test_presentation_offset_is_view_only(ctx)
 
 
 static func _make_registry() -> Node:
@@ -177,6 +178,32 @@ static func _test_large_parent_offsets_keep_local_delta_precise(ctx) -> void:
 		Vector3(120.0, -50.0, 0.0),
 		1.0e-6,
 		"LCA-Komposition behaelt 100m-Lokaldeltas trotz 1e12m-Root-Offset"
+	)
+	bubble.free()
+	reg.free()
+
+
+static func _test_presentation_offset_is_view_only(ctx) -> void:
+	var reg := _make_registry()
+	var bubble := _make_bubble(reg)
+	bubble.set_focus(&"planet_a1")
+
+	reg.get_state(&"star_a").velocity_parent_frame_mps = Vector3(100.0, 0.0, 0.0)
+	reg.get_state(&"planet_a1").velocity_parent_frame_mps = Vector3(1.0, 2.0, 0.0)
+	reg.get_state(&"planet_a2").velocity_parent_frame_mps = Vector3(4.0, 6.0, 0.0)
+	var original_planet_a2_pos: Vector3 = reg.get_state(&"planet_a2").position_parent_frame_m
+
+	ctx.assert_vec_almost(
+		bubble.compose_view_position_m(&"planet_a2", 0.5),
+		Vector3(121.5, -48.0, 0.0),
+		1.0e-6,
+		"Presentation-Offset nutzt Velocity in der View-Komposition"
+	)
+	ctx.assert_vec_almost(
+		reg.get_state(&"planet_a2").position_parent_frame_m,
+		original_planet_a2_pos,
+		1.0e-9,
+		"Presentation-Offset mutiert BodyState nicht"
 	)
 	bubble.free()
 	reg.free()

@@ -156,6 +156,7 @@ static func run(ctx) -> void:
 	_test_root_inspector_stays_closed_for_focus_and_streaming_events_and_resets_on_world_change(ctx)
 	_test_root_inspector_clicks_use_immediate_focus_fit(ctx)
 	_test_non_large_world_keeps_root_inspector_hidden(ctx)
+	_test_galaxy_proxy_visibility_is_root_overview_only(ctx)
 
 
 static func _test_root_inspector_opens_only_explicitly_and_overrides_root_overview_interest(ctx) -> void:
@@ -205,6 +206,22 @@ static func _test_non_large_world_keeps_root_inspector_hidden(ctx) -> void:
 	var testbed = _build_testbed_probe(false)
 	testbed._open_root_inspector_for_current_root()
 	ctx.assert_true(not testbed._root_inspector.is_open(), "Nicht-Large-World-Pfade ignorieren das Root-Inspector-Oeffnen komplett")
+	_destroy_testbed_probe(testbed)
+
+
+static func _test_galaxy_proxy_visibility_is_root_overview_only(ctx) -> void:
+	var testbed = _build_testbed_probe(true)
+	var camera: CameraControllerProbe = testbed._camera_controller
+	var proxy: Node2D = testbed._galaxy_proxy_renderer
+
+	camera.frame_label = OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW
+	proxy.visible = false
+	testbed._sync_view_lod_state(false, false)
+	ctx.assert_true(proxy.visible, "Galaxy-Proxies bleiben im Root-Overview sichtbar")
+
+	camera.frame_label = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
+	testbed._sync_view_lod_state(false, false)
+	ctx.assert_true(not proxy.visible, "Galaxy-Proxies schlafen im lokalen Fokus-/Detailblick")
 	_destroy_testbed_probe(testbed)
 
 

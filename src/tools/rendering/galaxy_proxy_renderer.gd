@@ -22,6 +22,12 @@ var _detail_renderer = null
 
 var _root_local_positions_ru: Dictionary = {}
 var _star_proxy_visible_by_root: Dictionary = {}
+var _cached_proxy_state: Dictionary = {"entries": [], "screen_scale": 1.0}
+var _last_redraw_signature: Dictionary = {}
+var _proxy_state_dirty: bool = true
+var _redraw_queued: bool = false
+var _proxy_state_recompute_count: int = 0
+var _redraw_request_count: int = 0
 var _last_debug_snapshot: Dictionary = {
 	"bh_only_root_count": 0,
 	"star_proxy_root_count": 0,
@@ -48,6 +54,12 @@ func configure(
 	_streaming_controller = streaming_controller
 	_detail_renderer = detail_renderer
 	_star_proxy_visible_by_root.clear()
+	_cached_proxy_state = {"entries": [], "screen_scale": 1.0}
+	_last_redraw_signature.clear()
+	_proxy_state_dirty = true
+	_redraw_queued = false
+	_proxy_state_recompute_count = 0
+	_redraw_request_count = 0
 	_last_debug_snapshot = {
 		"bh_only_root_count": 0,
 		"star_proxy_root_count": 0,
@@ -55,10 +67,12 @@ func configure(
 		"visible_root_count": 0,
 		"culled_root_count": 0,
 	}
-	queue_redraw()
+	_request_proxy_redraw()
 
 
 func pick_root_at_screen(screen_pos: Vector2) -> StringName:
+	if not visible:
+		return StringName("")
 	var canvas_xform: Transform2D = _canvas_xform()
 	var best_id: StringName = StringName("")
 	var best_score: float = INF
@@ -76,14 +90,25 @@ func pick_root_at_screen(screen_pos: Vector2) -> StringName:
 
 
 func _process(_delta: float) -> void:
-	queue_redraw()
+	if not visible:
+		return
+	var signature: Dictionary = _redraw_signature()
+	if _proxy_state_dirty or signature != _last_redraw_signature:
+		_proxy_state_dirty = true
+		_request_proxy_redraw()
 
 
 func get_debug_snapshot() -> Dictionary:
-	return _last_debug_snapshot.duplicate(true)
+	var snapshot: Dictionary = _last_debug_snapshot.duplicate(true)
+	snapshot["proxy_state_dirty"] = _proxy_state_dirty
+	snapshot["redraw_queued"] = _redraw_queued
+	snapshot["proxy_state_recompute_count"] = _proxy_state_recompute_count
+	snapshot["redraw_request_count"] = _redraw_request_count
+	return snapshot
 
 
 func recompute_proxy_state() -> Dictionary:
+	_proxy_state_recompute_count += 1
 	_root_local_positions_ru.clear()
 	if _galaxy == null or _bubble == null or _topology == null or _time_service == null or _detail_renderer == null:
 		_last_debug_snapshot = {
@@ -93,7 +118,7 @@ func recompute_proxy_state() -> Dictionary:
 			"visible_root_count": 0,
 			"culled_root_count": 0,
 		}
-		return {"entries": []}
+		return _store_proxy_state({"entries": [], "screen_scale": maxf(absf(scale.x), 0.001)})
 	var focus_id: StringName = _bubble.get_focus()
 	var focus_root_id: StringName = _topology.root_id_of(focus_id)
 	if focus_root_id == StringName(""):
@@ -104,7 +129,7 @@ func recompute_proxy_state() -> Dictionary:
 			"visible_root_count": 0,
 			"culled_root_count": 0,
 		}
-		return {"entries": []}
+		return _store_proxy_state({"entries": [], "screen_scale": maxf(absf(scale.x), 0.001)})
 	var focus_manifest = _galaxy.get_manifest(focus_root_id)
 	if focus_manifest == null:
 		_last_debug_snapshot = {
@@ -114,7 +139,7 @@ func recompute_proxy_state() -> Dictionary:
 			"visible_root_count": 0,
 			"culled_root_count": 0,
 		}
-		return {"entries": []}
+		return _store_proxy_state({"entries": [], "screen_scale": maxf(absf(scale.x), 0.001)})
 	var focus_root_view_ru: Vector2 = _detail_renderer.get_body_view_position_ru(focus_root_id)
 	if not _is_finite_vec2(focus_root_view_ru):
 		focus_root_view_ru = Vector2.ZERO
@@ -177,14 +202,15 @@ func recompute_proxy_state() -> Dictionary:
 		"visible_root_count": visible_root_count,
 		"culled_root_count": culled_root_count,
 	}
-	return {
+	return _store_proxy_state({
 		"entries": entries,
 		"screen_scale": screen_scale,
-	}
+	})
 
 
 func _draw() -> void:
-	var state: Dictionary = recompute_proxy_state()
+	var state: Dictionary = recompute_proxy_state() if _proxy_state_dirty else _cached_proxy_state
+	_redraw_queued = false
 	var entries: Array = state.get("entries", [])
 	var screen_scale: float = float(state.get("screen_scale", maxf(absf(scale.x), 0.001)))
 	for entry_variant in entries:
@@ -207,6 +233,65 @@ func _draw() -> void:
 				screen_px_to_local_units(STAR_PROXY_RADIUS_PX, screen_scale),
 				Color(1.0, 0.86, 0.48, 0.90)
 			)
+
+
+func _request_proxy_redraw() -> void:
+	if _redraw_queued:
+		return
+	_redraw_queued = true
+	_redraw_request_count += 1
+	queue_redraw()
+
+
+func _store_proxy_state(state: Dictionary) -> Dictionary:
+	_cached_proxy_state = state
+	_last_redraw_signature = _redraw_signature()
+	_proxy_state_dirty = false
+	_redraw_queued = false
+	return _cached_proxy_state
+
+
+func _redraw_signature() -> Dictionary:
+	var focus_id: StringName = StringName("")
+	var focus_root_id: StringName = StringName("")
+	var focus_root_view_ru: Vector2 = Vector2.ZERO
+	if _bubble != null:
+		focus_id = _bubble.get_focus()
+	if _topology != null and focus_id != StringName(""):
+		focus_root_id = _topology.root_id_of(focus_id)
+	if _detail_renderer != null and focus_root_id != StringName(""):
+		focus_root_view_ru = _detail_renderer.get_body_view_position_ru(focus_root_id)
+		if not _is_finite_vec2(focus_root_view_ru):
+			focus_root_view_ru = Vector2.ZERO
+	var canvas_xform: Transform2D = _canvas_xform()
+	return {
+		"configured": _galaxy != null and _bubble != null and _topology != null and _time_service != null and _detail_renderer != null,
+		"focus_id": focus_id,
+		"focus_root_id": focus_root_id,
+		"focus_root_view_ru": focus_root_view_ru,
+		"canvas_x": canvas_xform.x,
+		"canvas_y": canvas_xform.y,
+		"canvas_origin": canvas_xform.origin,
+		"viewport_size_px": _viewport_size_px(),
+		"sim_time_s": _sim_time_signature(),
+		"resident_roots": _resident_roots_signature(),
+	}
+
+
+func _sim_time_signature() -> float:
+	if _time_service == null:
+		return 0.0
+	if int(_last_debug_snapshot.get("star_proxy_count", 0)) <= 0:
+		return 0.0
+	return _time_service.sim_time_s
+
+
+func _resident_roots_signature() -> Array[StringName]:
+	var out: Array[StringName] = []
+	if _streaming_controller == null:
+		return out
+	out.append_array(_streaming_controller.get_resident_root_ids())
+	return out
 
 
 static func _is_finite_vec2(value: Vector2) -> bool:
@@ -289,6 +374,8 @@ func _resolve_star_proxy_visibility(root_id: StringName, projected_extent_px: fl
 
 
 func _viewport_size_px() -> Vector2:
+	if not is_inside_tree():
+		return Vector2.ZERO
 	return get_viewport_rect().size
 
 

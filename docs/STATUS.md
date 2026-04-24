@@ -109,6 +109,25 @@ Native-Species-Basis: Track/Thermik fallen jetzt nicht mehr auf die
 Default-Species-Werte zurueck. Das Panel bleibt ausserdem kompakter,
 weil `Abundance` nur noch in `Native forms`/`Dominant form` mitlaeuft
 und keine eigene Datenblatt-Zeile mehr bekommt.
+Ein anschliessender Root-Overview-Performance-Fix macht den
+`GalaxyProxyRenderer` dirty-getrieben: der 100-Root-Proxy-Pfad queued
+nicht mehr jedes Render-Frame pauschal ein Redraw, sondern nur noch bei
+Kamera-/Canvas-, Viewport-, Fokus-/Resident- oder bei sichtbaren
+Stern-Proxies auch Sim-Zeit-Aenderungen.
+Ein direkter Follow-up adressiert den danach sichtbaren Fokus-Ruckler
+bei deaktiviertem VSync: `TimeService` merkt das letzte autoritative
+Sim-dt, `LocalBubbleManager` kann daraus rein view-seitig eine
+zwischen Physics-Ticks interpolierte Position komponieren und
+`OrbitViewRenderer` nutzt Godots Physics-Interpolation-Fraction fuer
+Kamera-/Fokus-Readouts und Body-Positionen. `BodyState` bleibt dabei
+unveraendert; Trails bleiben bewusst tick-basiert, damit unlocked FPS
+nicht hunderte Trailpunkte pro Sekunde erzeugt.
+Ein weiterer kleiner Hotpath-Fix laesst den `GalaxyProxyRenderer` jetzt
+nur im echten `root-overview` aktiv und pickbar. Lokale
+Sonnen-/Planeten-/Mond-Foki muessen beim Reinzoomen dadurch nicht mehr
+parallel den 100-Root-Proxy-Pfad pruefen oder redrawen. Zusaetzlich
+schreibt `OrbitViewRenderer.set_world_scale(...)` Orbit-/Trail-
+Line-Widths nur noch, wenn sich der Scale wirklich geaendert hat.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 

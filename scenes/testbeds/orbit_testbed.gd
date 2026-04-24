@@ -177,7 +177,7 @@ func _ready() -> void:
 	)
 	_orbit_readout_service.configure(UniverseRegistry)
 
-	_renderer.configure(UniverseRegistry, _bubble, _topology)
+	_renderer.configure(UniverseRegistry, _bubble, _topology, TimeService)
 	_renderer.set_environment_service(_environment_service)
 	if not _world_loader.world_loaded.is_connected(_on_world_loader_world_loaded):
 		_world_loader.world_loaded.connect(_on_world_loader_world_loaded)
@@ -521,6 +521,8 @@ func _refresh_snapshot_interest_ids() -> void:
 func _sync_galaxy_proxy_transform() -> void:
 	if not _is_large_world or _galaxy_proxy_renderer == null:
 		return
+	if not _galaxy_proxy_renderer.visible:
+		return
 	_galaxy_proxy_renderer.scale = _renderer.scale
 	_galaxy_proxy_renderer.position = _renderer.position
 
@@ -552,6 +554,8 @@ static func _is_large_world_id(world_id: StringName) -> bool:
 func _sync_view_lod_state(force_interest_refresh: bool, immediate_debug_refresh: bool) -> void:
 	var frame_label: StringName = _camera_controller.get_frame_label()
 	_renderer.set_frame_label(frame_label)
+	if _is_large_world and _galaxy_proxy_renderer != null:
+		_galaxy_proxy_renderer.visible = frame_label == OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW
 	if _planet_badge_overlay != null:
 		_planet_badge_overlay.set_frame_label(frame_label)
 	_debug_overlay.set_view_context(_is_large_world, frame_label)

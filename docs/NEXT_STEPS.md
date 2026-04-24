@@ -8,6 +8,43 @@ Die aktuell im Repo eingecheckte `orbit_testbed.tscn` startet derzeit mit
 Fuer Acceptance-Runs auf `starter_world` oder `sample_system` den
 Szenen-Override vor dem Editor-Run bewusst umstellen.
 
+## Prioritaet 0 - Unlocked-FPS / Focus-Smoothing Acceptance Gate
+
+Ziel:
+Den headless-gruenen Presentation-Interpolation-Fix im echten Editor mit
+deaktiviertem VSync pruefen, weil der urspruengliche Fehler nur in der
+Renderbewegung sichtbar war.
+
+Konkreter Ablauf:
+
+- `orbit_testbed.tscn` mit deaktiviertem VSync starten
+- `scaleup_galaxy_100` im Root-Overview pruefen:
+  FPS darf weiter schwanken, aber sichtbare Black-Hole-/Star-Proxies
+  sollen nicht mehr durch per-frame Redraw-Chatter oder 60-Hz-Step-
+  Sampling ruckelig wirken
+- nacheinander Fokus setzen auf:
+  `obsidian`, eine Sonne, einen Planeten und einen Mond
+- bei jedem Fokus pruefen:
+  Kamera-Follow und Orbitbewegung laufen sichtbar kontinuierlich,
+  besonders bei schwarzem Loch und Sternfokus
+- im Detail-/Fokusblick pruefen:
+  entfernte Galaxy-Proxies sind nicht sichtbar/pickbar und verursachen
+  beim Reinzoomen keine weiteren Proxy-Redraw-Spikes
+- Time-Scale variieren:
+  niedrige Rate, mittlere Rate und hoher Preset; Pause und `time_scale`
+  0 muessen ohne visuelles Nachziehen stehen bleiben
+- Trails pruefen:
+  keine explosionsartig wachsenden Trail-Punkte oder sichtbares Trail-
+  Flimmern; Trails duerfen weiterhin tick-basiert wirken
+
+Wenn dieser Gate kippt:
+
+- nicht die Simulationsrate oder OrbitService-Wahrheit anheben
+- zuerst nur den View-Slice nachziehen:
+  Interpolationsrichtung, Presentation-Offset-Clamping,
+  Camera-Controller-Readout, Trail-Update-Pfad, Badge-Overlay oder
+  Detail-Visual-Shaderkosten
+
 ## Prioritaet 0 - Genetic Lifeform Foundation v1 Acceptance Gate
 
 Ziel:
@@ -361,6 +398,11 @@ Konkreter Ablauf:
     Life-Reset, sondern denselben fortgeschriebenen Background-State
   - Proxy-Culling, BH-only-/Stern-Proxy-Tiering und Streaming-Hysterese
     lesen weiter stabil
+  - mit ausgeschaltetem VSync oder Godot-Profiler pruefen:
+    `GalaxyProxyRenderer.redraw_request_count` steigt im stabilen
+    Root-Overview nicht mehr jedes Render-Frame, sondern nur bei
+    Kamera-/Viewport-/Streaming-Aenderungen oder bei sichtbaren
+    Stern-Proxies mit Sim-Zeit
 
 Wenn dieser Gate kippt:
 

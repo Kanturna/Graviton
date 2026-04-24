@@ -22,6 +22,8 @@ var _bubble: Node = null
 var _topology = null
 var _environment_service: Node = null
 var _derived_snapshot_cache = null
+var _time_service: Node = null
+var _physics_interpolation_fraction_override: float = -1.0
 
 var _body_visuals: Dictionary = {}
 var _orbit_visuals: Dictionary = {}
@@ -45,17 +47,23 @@ var _last_debug_snapshot: Dictionary = {
 	"trail_update_distinct_body_count": 0,
 	"overview_hidden_descendant_count": 0,
 	"overview_visible_star_count": 0,
+	"presentation_offset_s": 0.0,
 }
 
 
-func configure(registry: Node, bubble: Node, topology = null) -> void:
+func configure(registry: Node, bubble: Node, topology = null, time_service: Node = null) -> void:
 	_registry = registry
 	_bubble = bubble
 	_topology = topology
+	_time_service = time_service
 	if _topology == null and _registry != null:
 		_topology = UniverseTopologyScript.new()
 		_topology.configure(_registry)
 	_rebuild_visuals()
+
+
+func set_time_service(time_service: Node) -> void:
+	_time_service = time_service
 
 
 func set_environment_service(environment_service: Node) -> void:
@@ -85,7 +93,10 @@ func set_frame_label(frame_label: StringName) -> void:
 
 
 func set_world_scale(value: float) -> void:
-	_world_scale = maxf(value, 0.001)
+	var next_scale: float = maxf(value, 0.001)
+	if is_equal_approx(next_scale, _world_scale):
+		return
+	_world_scale = next_scale
 	_apply_line_widths()
 
 
@@ -247,6 +258,7 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 	_apply_environment_visuals()
 	_compose_view_position_body_ids.clear()
 	_trail_update_body_ids.clear()
+	var presentation_offset_s: float = _presentation_offset_s()
 	var overview_hidden_descendant_count: int = 0
 	var overview_visible_star_count: int = 0
 	var root_overview_active: bool = _is_root_overview_active()
@@ -268,7 +280,7 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 			_pause_trail(id)
 			continue
 
-		var pos: Vector2 = _compute_body_view_position_ru(id, true)
+		var pos: Vector2 = _compute_body_view_position_ru(id, true, presentation_offset_s)
 		positions_by_id[id] = pos
 		var is_finite: bool = _is_finite_vec2(pos)
 		var was_finite: bool = bool(_body_view_is_finite.get(id, false))
@@ -312,7 +324,7 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 				if orbit_visible:
 					var parent_pos: Vector2 = positions_by_id.get(parent_id, Vector2(INF, INF))
 					if not _is_finite_vec2(parent_pos):
-						parent_pos = _compute_body_view_position_ru(parent_id, true)
+						parent_pos = _compute_body_view_position_ru(parent_id, true, presentation_offset_s)
 						positions_by_id[parent_id] = parent_pos
 					orbit_line.position = parent_pos
 
@@ -322,7 +334,7 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 			if show_trail:
 				var trail_parent_pos: Vector2 = positions_by_id.get(def.parent_id, Vector2(INF, INF))
 				if not _is_finite_vec2(trail_parent_pos):
-					trail_parent_pos = _compute_body_view_position_ru(def.parent_id, true)
+					trail_parent_pos = _compute_body_view_position_ru(def.parent_id, true, presentation_offset_s)
 					positions_by_id[def.parent_id] = trail_parent_pos
 				var parent_frame_pos_ru: Vector2 = _body_parent_frame_position_ru(id)
 				if _is_finite_vec2(trail_parent_pos) and _is_finite_vec2(parent_frame_pos_ru):
@@ -341,6 +353,7 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 		"trail_update_distinct_body_count": _trail_update_body_ids.size(),
 		"overview_hidden_descendant_count": overview_hidden_descendant_count,
 		"overview_visible_star_count": overview_visible_star_count,
+		"presentation_offset_s": presentation_offset_s,
 	}
 
 
@@ -583,17 +596,48 @@ static func _is_finite_vec3(value: Vector3) -> bool:
 	return is_finite(value.x) and is_finite(value.y) and is_finite(value.z)
 
 
-func _compute_body_view_position_ru(id: StringName, count_for_frame: bool = false) -> Vector2:
+func _compute_body_view_position_ru(
+	id: StringName,
+	count_for_frame: bool = false,
+	presentation_offset_s: float = INF
+) -> Vector2:
 	if _bubble == null:
 		return Vector2.ZERO
 	if not _body_shares_focus_root(id):
 		return Vector2(INF, INF)
 	if count_for_frame:
 		_compose_view_position_body_ids[id] = true
-	var view_m: Vector3 = _bubble.compose_view_position_m(id)
+	var offset_s: float = _presentation_offset_s() if is_inf(presentation_offset_s) else presentation_offset_s
+	var view_m: Vector3 = _bubble.compose_view_position_m(id, offset_s)
 	if not _is_finite_vec3(view_m):
 		return Vector2(INF, INF)
 	return Vector2(view_m.x, view_m.y) / UnitSystem.RENDER_SCALE_M_PER_UNIT
+
+
+func _presentation_offset_s() -> float:
+	if _time_service == null:
+		return 0.0
+	if bool(_time_service.get("paused")):
+		return 0.0
+	var time_scale_value = _time_service.get("time_scale")
+	if time_scale_value == null or float(time_scale_value) <= 0.0:
+		return 0.0
+	var last_dt_value = _time_service.get("last_sim_dt_s")
+	if last_dt_value == null:
+		return 0.0
+	var last_sim_dt_s: float = float(last_dt_value)
+	if last_sim_dt_s <= 0.0:
+		return 0.0
+	var fraction: float = _physics_interpolation_fraction()
+	return -(1.0 - fraction) * last_sim_dt_s
+
+
+func _physics_interpolation_fraction() -> float:
+	if _physics_interpolation_fraction_override >= 0.0:
+		return clampf(_physics_interpolation_fraction_override, 0.0, 1.0)
+	if Engine.has_method("get_physics_interpolation_fraction"):
+		return clampf(float(Engine.call("get_physics_interpolation_fraction")), 0.0, 1.0)
+	return 1.0
 
 
 func _is_root_overview_active() -> bool:

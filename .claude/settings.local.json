@@ -32,7 +32,10 @@
       "PowerShell(git diff HEAD -- src/tests/rendering/test_life_detail_panel.gd src/tests/rendering/test_orbit_hud_formatter.gd)",
       "PowerShell(git diff HEAD -- src/tests/helpers/sim_test_harness.gd docs/DECISIONS.md docs/STATUS.md docs/NEXT_STEPS.md)",
       "PowerShell(.\\\\run_tests.bat)",
-      "PowerShell(git diff HEAD -- src/sim/life/genetic_species_service.gd src/sim/life/native_species_service.gd)"
+      "PowerShell(git diff HEAD -- src/sim/life/genetic_species_service.gd src/sim/life/native_species_service.gd)",
+      "PowerShell(.\\\\run_tests.bat 2>&1)",
+      "PowerShell(git diff HEAD -- src/tools/rendering/galaxy_proxy_renderer.gd)",
+      "PowerShell(git diff HEAD -- src/tests/rendering/test_galaxy_proxy_renderer.gd project.godot)"
     ]
   }
 }

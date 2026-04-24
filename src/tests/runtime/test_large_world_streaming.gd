@@ -25,7 +25,7 @@ class BubbleProbe:
 	var compose_call_ids: Array[StringName] = []
 	var return_value_m: Vector3 = Vector3(1000.0, 500.0, 0.0)
 
-	func compose_view_position_m(id: StringName) -> Vector3:
+	func compose_view_position_m(id: StringName, _presentation_offset_s: float = 0.0) -> Vector3:
 		compose_call_ids.append(id)
 		return return_value_m
 
@@ -36,7 +36,7 @@ class StatefulBubbleProbe:
 	var compose_call_ids: Array[StringName] = []
 	var positions_by_id: Dictionary = {}
 
-	func compose_view_position_m(id: StringName) -> Vector3:
+	func compose_view_position_m(id: StringName, _presentation_offset_s: float = 0.0) -> Vector3:
 		compose_call_ids.append(id)
 		return positions_by_id.get(id, Vector3.ZERO)
 

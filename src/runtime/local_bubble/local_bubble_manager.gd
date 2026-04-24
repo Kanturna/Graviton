@@ -16,6 +16,10 @@ extends Node
 #   grossen Root-Abstaenden nicht durch Vector3-Cancellation verloren
 #   gehen.
 #
+#   Der optionale presentation_offset_s ist rein visuell: er verschiebt
+#   gelesene Parent-Frame-Positionen entlang der letzten autoritativen
+#   Velocity, schreibt aber niemals BodyState zurueck.
+#
 #   Bodies ohne gemeinsamen Root mit dem aktuellen Fokus liefern
 #   Vector3.INF als bewusstes "in diesem Frame nicht lokalisierbar".
 #   Die root-lokale Hilfsfunktion compose_root_local_position_m() ist
@@ -72,7 +76,7 @@ func compose_root_local_position_m(id: StringName) -> Vector3:
 # Rueckgabe ist fokus-relativ, kanonisch im gemeinsamen LCA-Frame.
 # Ohne Fokus oder ohne gemeinsamen Root wird bewusst Vector3.INF
 # geliefert, damit solche Pfade nicht still plausibel aussehen.
-func compose_view_position_m(id: StringName) -> Vector3:
+func compose_view_position_m(id: StringName, presentation_offset_s: float = 0.0) -> Vector3:
 	if _registry == null:
 		_warn_once("bubble_registry_missing_view", "compose_view_position_m ohne Registry-Konfiguration aufgerufen")
 		return Vector3.INF
@@ -105,8 +109,8 @@ func compose_view_position_m(id: StringName) -> Vector3:
 		)
 		return Vector3.INF
 
-	var target_offset: Dictionary = _accumulate_to_ancestor_exclusive(id, lca_id)
-	var focus_offset: Dictionary = _accumulate_to_ancestor_exclusive(_focus_id, lca_id)
+	var target_offset: Dictionary = _accumulate_to_ancestor_exclusive(id, lca_id, presentation_offset_s)
+	var focus_offset: Dictionary = _accumulate_to_ancestor_exclusive(_focus_id, lca_id, presentation_offset_s)
 	if not bool(target_offset.get("ok", false)) or not bool(focus_offset.get("ok", false)):
 		return Vector3.INF
 
@@ -117,7 +121,11 @@ func compose_view_position_m(id: StringName) -> Vector3:
 	)
 
 
-func _accumulate_to_ancestor_exclusive(from_id: StringName, stop_id: StringName) -> Dictionary:
+func _accumulate_to_ancestor_exclusive(
+	from_id: StringName,
+	stop_id: StringName,
+	presentation_offset_s: float = 0.0
+) -> Dictionary:
 	var x: float = 0.0
 	var y: float = 0.0
 	var z: float = 0.0
@@ -132,9 +140,12 @@ func _accumulate_to_ancestor_exclusive(from_id: StringName, stop_id: StringName)
 				"_accumulate_to_ancestor_exclusive: fehlender BodyState fuer '%s'" % String(cursor)
 			)
 			return {"ok": false}
-		x += float(state.position_parent_frame_m.x)
-		y += float(state.position_parent_frame_m.y)
-		z += float(state.position_parent_frame_m.z)
+		var position_m: Vector3 = state.position_parent_frame_m
+		if not is_zero_approx(presentation_offset_s):
+			position_m += state.velocity_parent_frame_mps * presentation_offset_s
+		x += float(position_m.x)
+		y += float(position_m.y)
+		z += float(position_m.z)
 		cursor = state.parent_id
 		hop_limit -= 1
 
