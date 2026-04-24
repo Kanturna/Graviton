@@ -26,12 +26,11 @@ Erledigt:
   `src/tools/debug/perf_probe.gd` ab; er exponiert read-only
   Perf-Counter-Snapshots, und `orbit_testbed.gd` sampelt diese Werte
   in die bestehende `PerfProbe`-CSV-Diagnose
-
-Offen als separate Architektur-Slices:
-
-- die bereits implementierte `BubbleActivationSet`-Exit-Hysterese muss
-  bewusst in `ARCHITEKTUR.md`, `SIMULATIONSREGELN.md` und
-  `DECISIONS.md` legalisiert oder als Codepfad zurueckgebaut werden
+- die bereits implementierte `BubbleActivationSet`-Exit-Hysterese ist
+  jetzt als rein geometrische read-only Relevanzklassifikation in
+  `ARCHITEKTUR.md`, `SIMULATIONSREGELN.md` und `DECISIONS.md`
+  legalisiert; sie ist keine Regime-Policy und schreibt keinen
+  `BodyState`
 
 ## Prioritaet 0 - Lifeform Pressure v1 Acceptance Gate
 
@@ -727,8 +726,8 @@ Erledigt:
 
 Ziel:
 Den bestehenden `NUMERIC_LOCAL`-Pfad gegen grosse `dt` und den
-dokumentierten Wish-Versatz haerten, ohne `BubbleActivationSet` mit
-Hysterese aufzublasen oder `BodyState` zu erweitern.
+dokumentierten Wish-Versatz haerten, ohne Regime-Policy in
+`BubbleActivationSet` auszulagern oder `BodyState` zu erweitern.
 
 Erledigt:
 

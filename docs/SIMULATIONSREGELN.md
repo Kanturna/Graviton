@@ -77,7 +77,9 @@ vollstaendig. Ein identischer erneuter Request auf einen bereits
 numerischen Body darf keinen Neu-Eintritt und kein Reseeding ausloesen.
 Der bekannte `_process()`/`_physics_process()`-Versatz wird dabei nicht
 durch die Szene geloest, sondern ueber eine kleine OrbitService-seitige
-Grace abgefedert. `BubbleActivationSet` bleibt ohne Hysterese.
+Grace abgefedert. `BubbleActivationSet` darf zusaetzlich eine eigene
+geometrische Enter-/Exit-Hysterese fuer das Aktiv-Set nutzen; diese
+Hysterese ist nur Relevanzklassifikation und keine Regime-Policy.
 
 **Integrator:** Velocity Verlet, zwei Beschleunigungsauswertungen pro
 Schritt. Nur Parentgravitation
@@ -414,7 +416,7 @@ hinein will, wechselt `TimeService` auf ein Epoch-Relative-Modell
 | Begriff | Bedeutung | Wer entscheidet |
 |---|---|---|
 | **Fokus** | View-Ankerpunkt; Zentrum des View-Space | `LocalBubbleManager` |
-| **Aktiv-Set** | Bodies, deren fokus-relative View-Distanz <= Aktivierungsradius | `BubbleActivationSet` |
+| **Aktiv-Set** | Bodies innerhalb des Aktivierungsradius bzw. bereits aktive Bodies innerhalb des Exit-Radius | `BubbleActivationSet` |
 | **lokal aktiv** | im Aktiv-Set; Kandidat fuer `NUMERIC_LOCAL` (wenn `KEPLER_APPROX`-Profil) | `BubbleActivationSet` |
 | **approximiert** | ausserhalb Aktiv-Set; bleibt bei `AUTHORED_ORBIT` / `KEPLER_APPROX` | `OrbitService` (Kepler-Pfad) |
 
@@ -427,9 +429,17 @@ orthogonal.
 ausschliesslich durch `OrbitService.request_numeric_local_candidates()`
 plus den naechsten Sim-Tick ausgeloest.
 
+**Aktivierungs-Hysterese:** Inaktive Bodies werden erst bei
+`distance <= activation_radius_m` aktiv. Bereits aktive Bodies bleiben
+bis `distance <= activation_radius_m * activation_radius_exit_ratio`
+aktiv. Diese Hysterese stabilisiert nur das Wish-Signal am geometrischen
+Rand. `OrbitService` bleibt alleiniger Ort fuer Eligibility,
+Missing-Request-Grace, Rejoin-Budget und `BodyState.current_mode`.
+
 **Klassifikationsgruende** (aktueller Stand):
 
-- `ACTIVE` - fokus-relativ erreichbar, innerhalb Radius
+- `ACTIVE` - fokus-relativ erreichbar, innerhalb Enter-Radius oder
+  als bereits aktiver Body noch innerhalb Exit-Radius
 - `INACTIVE_DISTANT` - fokus-relativ erreichbar, ausserhalb Radius
 - `INACTIVE_NO_LCA` - nicht fokus-relativ vergleichbar (anderer Baum)
 

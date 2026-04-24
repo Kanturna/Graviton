@@ -202,6 +202,11 @@ Ein direkter Architektur-Hygiene-Follow-up entkoppelt danach
 read-only Perf-Counter-Snapshots, waehrend `orbit_testbed.gd` diese
 Werte in die bestehenden `PerfProbe`-Spalten sampelt. Damit zeigt keine
 Abhaengigkeit mehr aus `src/sim/` nach `src/tools/debug/`.
+Der naechste Hygiene-Follow-up legalisiert die bereits vorhandene
+`BubbleActivationSet`-Exit-Hysterese als rein geometrische read-only
+Relevanzklassifikation: sie stabilisiert nur das Aktiv-Set-Wish am
+Distanzrand, waehrend `OrbitService` alleiniger Autor fuer
+`BodyState.current_mode`, Grace und Rejoin-Budget bleibt.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 
@@ -229,7 +234,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Leuchtkraft und Albedo.
 - `BubbleActivationSet` klassifiziert Bodies jetzt read-only relativ
   zum aktuellen Fokus in `ACTIVE`, `INACTIVE_DISTANT` und
-  `INACTIVE_NO_LCA`.
+  `INACTIVE_NO_LCA`; eine rein geometrische Enter-/Exit-Hysterese
+  stabilisiert dabei nur das Aktiv-Set-Wish am Distanzrand.
 - `OrbitService` bridged das aktuelle Aktiv-Set jetzt explizit in den
   Sim-Layer und schaltet eligible `KEPLER_APPROX`-Bodies minimal auf
   `NUMERIC_LOCAL`.
@@ -689,7 +695,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist weiter reproduzierbar: `run_tests.bat`
-  laeuft nach dem PerfProbe-Entkopplungs-Slice mit `7768`
+  laeuft nach den Architektur-Hygiene-Slices mit `7768`
   erfolgreichen Assertions bei `0` Failures.
 
 ### Aktuelle Praesentation
@@ -1118,8 +1124,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   praezisionsbewusste Bubble-Komposition fuer same-root-Faelle.
 - `BubbleActivationSet` ist jetzt implementiert, wird im Testbed pro
   Frame aufgerufen, macht im steady-state aber keinen Full-Scan mehr
-  und wird jetzt read-only als Wish-Quelle fuer
-  `OrbitService.request_numeric_local_candidates(...)` genutzt.
+  und wird jetzt read-only inklusive geometrischer Exit-Hysterese als
+  Wish-Quelle fuer `OrbitService.request_numeric_local_candidates(...)`
+  genutzt.
 - Das Projekt ist topologisch offen fuer mehrere Root-Systeme und hat
   jetzt eine explizite Loader-, Aktivierungs- und erste
   Stabilitaetsschicht fuer hohe `time_scale` im numerischen Pfad.
@@ -1271,7 +1278,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - den produktiven Large-World-Pfad weiter nur ueber Proxy-/Perf-Trim
   oder planetare Derived-Folgearbeit ausbauen, nicht ueber noch mehr
   Root-Anzahl ohne echten Editor-/Feel-Playtest
-- Headless-Basis nach dem PerfProbe-Entkopplungs-Slice:
+- Headless-Basis nach den Architektur-Hygiene-Slices:
   `./run_tests.bat` laeuft gruen mit `7768` Passed, `0` Failed;
   der reale Lauf meldet am Prozessende aber weiter generische
   `ObjectDB instances leaked`- und

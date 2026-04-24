@@ -23,7 +23,8 @@ const KEY_INACTIVE_NO_LCA_COUNT: StringName = &"inactive_no_lca_count"
 # Hysterese-Multiplikator fuer den Exit-Radius: ein Body, der bereits
 # ACTIVE war, bleibt bis radius_m * exit_ratio ACTIVE. Ohne Hysterese
 # flackert die Klassifikation bei kleinen Kamera-/Focus-Mikrobewegungen
-# genau an der Schwelle, was teure Regime-Wechsel in OrbitService ausloest.
+# genau an der Schwelle. Das stabilisiert nur das Wish-Signal; OrbitService
+# bleibt alleiniger Autor fuer Regime-Wechsel und BodyState.
 @export_range(1.0, 4.0, 0.01, "or_greater") var activation_radius_exit_ratio: float = 1.15
 
 var _registry: Node = null

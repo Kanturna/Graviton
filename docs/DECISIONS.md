@@ -1,5 +1,28 @@
 # Graviton - Decisions
 
+## 2026-04-24 - BubbleActivationSet-Hysterese ist Relevanzklassifikation, keine Regime-Policy
+
+Die vorhandene `BubbleActivationSet`-Exit-Hysterese wird legalisiert,
+aber eng begrenzt: sie ist eine rein geometrische Enter-/Exit-
+Klassifikation fuer das Aktiv-Set und kein eigener Orbit- oder
+Stabilitaetsentscheid.
+
+Konsequenz:
+
+- inaktive Bodies werden erst innerhalb von `activation_radius_m`
+  `ACTIVE`
+- bereits aktive Bodies duerfen bis
+  `activation_radius_m * activation_radius_exit_ratio` aktiv bleiben,
+  damit das Wish-Signal an der Schwelle nicht flackert
+- `BubbleActivationSet` bleibt read-only, schreibt keinen `BodyState`
+  und kennt keine Orbit-Eligibility
+- `OrbitService` bleibt alleiniger Autor fuer
+  `BodyState.current_mode`, Missing-Request-Grace,
+  `NUMERIC_LOCAL`-Exit-Budget und Rejoin-Entscheidungen
+- die fruehere P10-Regel "Anti-Thrashing bleibt im OrbitService"
+  meint damit Regime-Stabilitaet; sie verbietet nicht diese
+  geometrische Aktivierungsrand-Hysterese im Runtime-Layer
+
 ## 2026-04-24 - Perf-Diagnostik bleibt ausserhalb der Sim-Schicht
 
 `OrbitService` darf fuer Diagnosezwecke read-only Counter anbieten,
@@ -1325,11 +1348,15 @@ Der erste `NUMERIC_LOCAL`-Stabilitaets-Guardrail lebt bewusst im
 Konsequenz:
 
 - `BubbleActivationSet` bleibt rein geometrische Aktivierungslogik ohne
-  Hysterese
+  Regime-Policy
 - der bekannte `_process()`/`_physics_process()`-Versatz wird ueber eine
   kleine Missing-Request-Grace im `OrbitService` abgefedert
 - es gibt in P10 keine neue Wunsch-/Stability-Zwischenschicht und keine
   `BodyState`-Erweiterung
+- Praezisierung vom 2026-04-24: eine rein geometrische Enter-/Exit-
+  Hysterese am Aktivierungsradius ist erlaubt, solange sie read-only
+  bleibt und keine Orbit-Eligibility oder `BodyState.current_mode`
+  entscheidet
 
 ## 2026-04-18 - Overspeed-Policy fuer `NUMERIC_LOCAL` ist `Cap+Warn`
 

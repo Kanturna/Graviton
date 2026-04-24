@@ -303,6 +303,9 @@ eine Gottklasse.
 
 **Verantwortung:** Liest `registry.get_update_order()` und
 `bubble.compose_view_position_m()`. Schreibt nichts. Kein Autoload.
+Die Klasse darf ihr eigenes letztes Klassifikationsergebnis lesen, um
+eine rein geometrische Enter-/Exit-Hysterese am Aktivierungsrand zu
+bilden; das ist keine Simulations- oder Orbit-Regime-Wahrheit.
 
 **Rebuild-Strategie:** Die Szene darf `rebuild()` weiter pro Frame
 aufrufen, aber der Dienst scannt nicht mehr blind alles neu. Same-root-
@@ -312,7 +315,11 @@ IDs bzw. betroffene Teilbaeume.
 
 **Klassifikation:** Drei explizite Zustaende - `ACTIVE`,
 `INACTIVE_DISTANT`, `INACTIVE_NO_LCA`. Kein stilles "inaktiv ist
-inaktiv".
+inaktiv". Inaktive Bodies werden bei
+`distance <= activation_radius_m` aktiv. Bereits aktive Bodies bleiben
+bis `distance <= activation_radius_m * activation_radius_exit_ratio`
+aktiv, damit der reine Relevanz-Wish an der Distanzschwelle nicht
+flackert.
 
 **Dirty-Quelle:** `OrbitService.bodies_updated(...)` markiert geaenderte
 Bodies ueber den Composition Root dirty; Registry-Churn setzt nur
@@ -322,7 +329,10 @@ Bodies ueber den Composition Root dirty; Registry-Churn setzt nur
 **Aktueller Stand:** Implementiert als read-only Runtime-Service in
 `src/runtime/local_bubble/bubble_activation_set.gd`. `classify(id)`
 liest den Zustand des letzten `rebuild()`, und `get_active_ids()`
-folgt der topologischen Registry-Reihenfolge (Parent vor Kind).
+folgt der topologischen Registry-Reihenfolge (Parent vor Kind). Das
+Activation-Set bleibt ein Wish-Signal fuer den Composition Root:
+`OrbitService` entscheidet weiter allein ueber Eligibility,
+`BodyState.current_mode`, Grace und budgetierten Rejoin.
 
 ## Bubble-Verantwortung - ADR
 
@@ -517,13 +527,14 @@ am aktuellen `t_s`. Velocity wird per zentraler finite Differenz mit
 
 **P10-Guardrail-Stand:** Der Wish-Pfad entsteht weiter in `_process()`,
 der eigentliche Sim-Tick in `_physics_process()`. Dieser
-Ein-Frame-Versatz bleibt bewusst bestehen, wird aber jetzt im
-`OrbitService` ueber eine kleine Missing-Request-Grace abgefedert.
-`BubbleActivationSet` bleibt dabei rein geometrisch und bekommt keine
-Hysterese. Zusaetzlich erfolgt der Rueckwechsel auf `KEPLER_APPROX` nur
-noch ueber budgetierten Rejoin; liegt der numerische Zustand zu weit von
-der analytischen Loesung entfernt, bleibt der Body autoritativ
-`NUMERIC_LOCAL`.
+Ein-Frame-Versatz bleibt bewusst bestehen, wird aber im `OrbitService`
+ueber eine kleine Missing-Request-Grace abgefedert. Separat darf
+`BubbleActivationSet` eine rein geometrische Enter-/Exit-Hysterese fuer
+das Aktiv-Set nutzen; sie schreibt keinen Sim-State und entscheidet
+keinen Orbit-Modus. Der Rueckwechsel auf `KEPLER_APPROX` erfolgt nur
+ueber den budgetierten Rejoin im `OrbitService`; liegt der numerische
+Zustand zu weit von der analytischen Loesung entfernt, bleibt der Body
+autoritativ `NUMERIC_LOCAL`.
 
 **Overspeed-Policy:** `OrbitService` integriert `NUMERIC_LOCAL` jetzt
 per Substepping bis zu einem festen Budget und nutzt darueber hinaus

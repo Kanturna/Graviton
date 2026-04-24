@@ -51,7 +51,6 @@ var _substep_cap_warning_active_by_id: Dictionary = {}
 var _exit_budget_warning_active_by_id: Dictionary = {}
 var _sim_tick_index: int = 0
 var _numeric_local_count: int = 0
-var _orbit_sim_tick_count: int = 0
 var _regime_enter_numeric_count: int = 0
 var _numeric_substep_total: int = 0
 var _substep_cap_hit_count: int = 0
@@ -71,7 +70,6 @@ func configure(registry: Node, time_service: Node) -> void:
 	_exit_budget_warning_active_by_id.clear()
 	_sim_tick_index = 0
 	_numeric_local_count = 0
-	_orbit_sim_tick_count = 0
 	_regime_enter_numeric_count = 0
 	_numeric_substep_total = 0
 	_substep_cap_hit_count = 0
@@ -90,7 +88,6 @@ func _on_sim_tick(_dt: float) -> void:
 	if not _configured:
 		return
 	_sim_tick_index += 1
-	_orbit_sim_tick_count += 1
 	var t: float = _time.sim_time_s
 	var updated_ids: Array[StringName] = []
 	for id in _registry.get_update_order():
@@ -112,7 +109,7 @@ func get_numeric_local_count() -> int:
 func get_perf_counter_snapshot() -> Dictionary:
 	return {
 		PERF_KEY_NUMERIC_LOCAL_COUNT: _numeric_local_count,
-		PERF_KEY_ORBIT_SIM_TICKS: _orbit_sim_tick_count,
+		PERF_KEY_ORBIT_SIM_TICKS: _sim_tick_index,
 		PERF_KEY_REGIME_ENTER_NUMERIC: _regime_enter_numeric_count,
 		PERF_KEY_NUMERIC_SUBSTEP_TOTAL: _numeric_substep_total,
 		PERF_KEY_SUBSTEP_CAP_HITS: _substep_cap_hit_count,
