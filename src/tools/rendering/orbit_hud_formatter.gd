@@ -8,6 +8,7 @@ const LifePotentialServiceScript = preload("res://src/sim/life/life_potential_se
 const ProtoBiosphereSimulationServiceScript = preload("res://src/sim/life/proto_biosphere_simulation_service.gd")
 const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_service.gd")
 const NativeSpeciesServiceScript = preload("res://src/sim/life/native_species_service.gd")
+const GeneticSpeciesServiceScript = preload("res://src/sim/life/genetic_species_service.gd")
 const OrbitReadoutServiceScript = preload("res://src/sim/orbit/orbit_readout_service.gd")
 
 const MINUTE_S: float = 60.0
@@ -140,6 +141,83 @@ static func format_density(biosphere_desc: Dictionary) -> String:
 	if density_text == "":
 		return "Density: n/a"
 	return "Density: %s" % density_text
+
+
+static func format_life_detail_species_or_dominant(
+		native_species_desc: Dictionary,
+		genetic_species_desc: Dictionary,
+		biosphere_desc: Dictionary
+	) -> String:
+	if _genetic_species_should_replace_species_line(genetic_species_desc, biosphere_desc):
+		return format_dominant_form(genetic_species_desc)
+	return format_species(native_species_desc)
+
+
+static func format_native_forms(genetic_species_desc: Dictionary) -> String:
+	if not bool(genetic_species_desc.get(GeneticSpeciesServiceScript.KEY_HAS_GENETIC_SPECIES_BASIS, false)):
+		return "Native forms: n/a"
+	var profiles: Array = genetic_species_desc.get(
+		GeneticSpeciesServiceScript.KEY_LIFEFORM_PROFILES,
+		[]
+	)
+	if profiles.is_empty():
+		var proto_summary: String = String(genetic_species_desc.get(
+			GeneticSpeciesServiceScript.KEY_PROTO_FORM_SUMMARY,
+			""
+		))
+		if proto_summary != "":
+			return "Native forms: %s" % proto_summary
+		return "Native forms: none"
+	var parts: Array[String] = []
+	for profile_variant in profiles:
+		var profile: Dictionary = profile_variant
+		parts.append("%s/%s" % [
+			_genetic_role_text(profile),
+			_genetic_abundance_text(profile),
+		])
+	return "Native forms: %s" % " | ".join(parts)
+
+
+static func format_dominant_form(genetic_species_desc: Dictionary) -> String:
+	var profile: Dictionary = _dominant_genetic_profile(genetic_species_desc)
+	if profile.is_empty():
+		return "Dominant form: n/a"
+	return "Dominant form: %s / %s / %s" % [
+		_genetic_role_text(profile),
+		_genetic_abundance_text(profile),
+		_genetic_metabolism_text(profile),
+	]
+
+
+static func format_abundance(genetic_species_desc: Dictionary) -> String:
+	var profile: Dictionary = _dominant_genetic_profile(genetic_species_desc)
+	if profile.is_empty():
+		return "Abundance: n/a"
+	return "Abundance: %s" % _genetic_abundance_text(profile)
+
+
+static func format_visual_profile(genetic_species_desc: Dictionary) -> String:
+	var profile: Dictionary = _dominant_genetic_profile(genetic_species_desc)
+	if profile.is_empty():
+		return "Visual profile: n/a"
+	var visual_profile: Dictionary = profile.get(
+		GeneticSpeciesServiceScript.KEY_VISUAL_PROFILE,
+		{}
+	)
+	return "Visual profile: %s / %s / %s" % [
+		GeneticSpeciesServiceScript.to_string_body_plan_class(int(visual_profile.get(
+			GeneticSpeciesServiceScript.KEY_VISUAL_BODY_PLAN_CLASS,
+			GeneticSpeciesServiceScript.BodyPlanClass.UNICELLULAR
+		))),
+		GeneticSpeciesServiceScript.to_string_color_family(int(visual_profile.get(
+			GeneticSpeciesServiceScript.KEY_VISUAL_COLOR_FAMILY,
+			GeneticSpeciesServiceScript.ColorFamily.GREY_BIOLUMEN
+		))),
+		GeneticSpeciesServiceScript.to_string_motion_style(int(visual_profile.get(
+			GeneticSpeciesServiceScript.KEY_VISUAL_MOTION_STYLE,
+			GeneticSpeciesServiceScript.MotionStyle.ANCHORED
+		))),
+	]
 
 
 static func compact_life_stage_text(biosphere_desc: Dictionary) -> String:
@@ -555,6 +633,67 @@ static func _native_species_mobility_text(native_species_desc: Dictionary) -> St
 			NativeSpeciesServiceScript.MobilityClass.SESSILE
 		))
 	)
+
+
+static func _genetic_species_should_replace_species_line(genetic_species_desc: Dictionary, biosphere_desc: Dictionary) -> bool:
+	if not bool(genetic_species_desc.get(GeneticSpeciesServiceScript.KEY_HAS_GENETIC_SPECIES_BASIS, false)):
+		return false
+	if int(biosphere_desc.get(
+		BiosphereScaleServiceScript.KEY_BIOSPHERE_STAGE,
+		BiosphereScaleServiceScript.Stage.STERILE
+	)) < BiosphereScaleServiceScript.Stage.COMPLEX_ECOSYSTEM:
+		return false
+	var profiles: Array = genetic_species_desc.get(
+		GeneticSpeciesServiceScript.KEY_LIFEFORM_PROFILES,
+		[]
+	)
+	return profiles.size() > 1
+
+
+static func _dominant_genetic_profile(genetic_species_desc: Dictionary) -> Dictionary:
+	if not bool(genetic_species_desc.get(GeneticSpeciesServiceScript.KEY_HAS_GENETIC_SPECIES_BASIS, false)):
+		return {}
+	var profiles: Array = genetic_species_desc.get(
+		GeneticSpeciesServiceScript.KEY_LIFEFORM_PROFILES,
+		[]
+	)
+	if profiles.is_empty():
+		return {}
+	var dominant_id: StringName = StringName(genetic_species_desc.get(
+		GeneticSpeciesServiceScript.KEY_DOMINANT_LIFEFORM_ID,
+		StringName("")
+	))
+	if dominant_id != StringName(""):
+		for profile_variant in profiles:
+			var profile: Dictionary = profile_variant
+			if StringName(profile.get(GeneticSpeciesServiceScript.KEY_LIFEFORM_ID, StringName(""))) == dominant_id:
+				return profile
+	return profiles[0]
+
+
+static func _genetic_role_text(profile: Dictionary) -> String:
+	return GeneticSpeciesServiceScript.to_string_role_class(int(profile.get(
+		GeneticSpeciesServiceScript.KEY_ROLE_CLASS,
+		GeneticSpeciesServiceScript.RoleClass.PRODUCER
+	)))
+
+
+static func _genetic_abundance_text(profile: Dictionary) -> String:
+	return GeneticSpeciesServiceScript.to_string_abundance_class(int(profile.get(
+		GeneticSpeciesServiceScript.KEY_ABUNDANCE_CLASS,
+		GeneticSpeciesServiceScript.AbundanceClass.TRACE
+	)))
+
+
+static func _genetic_metabolism_text(profile: Dictionary) -> String:
+	var trait_loci: Dictionary = profile.get(
+		GeneticSpeciesServiceScript.KEY_TRAIT_LOCI,
+		{}
+	)
+	return NativeSpeciesServiceScript.to_string_metabolism_class(int(trait_loci.get(
+		GeneticSpeciesServiceScript.KEY_METABOLISM_LOCUS,
+		NativeSpeciesServiceScript.MetabolismClass.CHEMOTROPHIC
+	)))
 
 
 static func _density_class_text(biosphere_desc: Dictionary) -> String:

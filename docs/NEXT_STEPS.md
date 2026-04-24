@@ -8,6 +8,42 @@ Die aktuell im Repo eingecheckte `orbit_testbed.tscn` startet derzeit mit
 Fuer Acceptance-Runs auf `starter_world` oder `sample_system` den
 Szenen-Override vor dem Editor-Run bewusst umstellen.
 
+## Prioritaet 0 - Genetic Lifeform Foundation v1 Acceptance Gate
+
+Ziel:
+Den jetzt headless-gruenen `GeneticSpeciesService` und die neuen
+`Native forms`-/`Visual profile`-Zeilen im echten Editor-/Playtest-Lauf
+validieren, bevor `Population Foundation v1`, Kriege/Katastrophen oder
+echte Species-Visuals begonnen werden.
+
+Konkreter Ablauf:
+
+- `starter_world -> gamma_iv` pruefen:
+  `LifeDetailPanel` zeigt Prebiotic-/Precursor-Lesart und keine stabilen
+  Species- oder Populationszahlen
+- `starter_world -> gamma_iii` pruefen:
+  mehrprofilige Lifeforms bleiben lesbar und widersprechen nicht der
+  bestehenden `Species:`-Zeile
+- `sample_system -> planet_a` nach laengerer Bio-Zeit pruefen:
+  Complex-Multicellular zeigt `Native forms` und `Visual profile` aus
+  den neuen Trait-Loci; qualitative Abundance bleibt in `Native forms`
+  integriert statt als eigene Datenblatt-Zeile
+- ein Detailplanet in `scaleup_galaxy_100` pruefen:
+  Panel bleibt ruhig, keine Ueberladung, Root Inspector bleibt Navigator
+- als spaeteren Folgeblock vormerken:
+  rollen-spezifische Trait-/Visual-Varianz, damit Profile derselben Welt
+  nicht dauerhaft dieselbe Farbe/Bewegung teilen
+- dabei explizit pruefen:
+  `Population:` bleibt `not established`, es erscheinen keine Counts,
+  keine War-/Catastrophe-/Civilization-Texte und keine generierten Bilder
+
+Wenn dieser Gate kippt:
+
+- keinen Population-Block anfangen
+- zuerst nur den konkreten kleinen Slice korrigieren:
+  Service-Mapping, Formatter-Sprache, Panel-Lesbarkeit oder Cache-
+  Verdrahtung
+
 ## Prioritaet 0 - Survey Color v1 / Life Detail Panel v1 Acceptance Gate
 
 Ziel:

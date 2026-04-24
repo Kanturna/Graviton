@@ -1,5 +1,30 @@
 # Graviton - Decisions
 
+## 2026-04-24 - Trait-/Lifeform-Profile kommen vor echter Population
+
+Der naechste Schritt nach `Native Species Foundation v1` und dem
+klickbaren `LifeDetailPanel` fuehrt bewusst noch keine echten
+Populationszahlen, Kriege, Katastrophen, Zivilisationen oder
+Kreaturenbilder ein. Stattdessen landet zuerst ein kleiner read-only
+`GeneticSpeciesService`, der mehrere native Lifeform-Profile aus den
+bestehenden Life-/World-Wahrheiten ableitet.
+
+Konsequenz:
+
+- `NativeSpeciesService` bleibt die kompakte dominante Species-Wahrheit;
+  `GeneticSpeciesService` baut in v1 darueber auf und driftet nicht zu
+  einer zweiten dominanten Species-Logik ab
+- `trait_loci` sind in v1 stabile Gameplay-Trait-Achsen und noch keine
+  Mutation, Rekombination oder molekulare DNA-Simulation
+- `MICROBIAL` darf bereits `Native forms` zeigen, aber die bestehende
+  `Species:`-Zeile bleibt dort bewusst `n/a`
+- alle Abundance-/Native-Forms-Aussagen bleiben qualitativ; es gibt
+  keine Pseudo-Counts und keine Settlement-/Population-API
+- `Visual profile` ist nur ein textueller Hook fuer spaetere
+  Kreaturenbilder und keine Bildgenerierung
+- `LifeDetailPanel` ist die erste Oberflaeche fuer diese Tiefe; Summary
+  und Root Inspector bleiben bewusst kompakt
+
 ## 2026-04-23 - Survey-Oberflaechen bleiben bis Population bewusst summary-first und navigator-first
 
 Bevor `Population Foundation v1` echte Counts einfuehrt, wird die

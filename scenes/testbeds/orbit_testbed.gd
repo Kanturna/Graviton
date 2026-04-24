@@ -14,6 +14,7 @@ const LifePotentialServiceScript = preload("res://src/sim/life/life_potential_se
 const ProtoBiosphereSimulationServiceScript = preload("res://src/sim/life/proto_biosphere_simulation_service.gd")
 const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_service.gd")
 const NativeSpeciesServiceScript = preload("res://src/sim/life/native_species_service.gd")
+const GeneticSpeciesServiceScript = preload("res://src/sim/life/genetic_species_service.gd")
 const OrbitReadoutServiceScript = preload("res://src/sim/orbit/orbit_readout_service.gd")
 
 const ZOOM_FACTOR_STEP: float = 1.12
@@ -69,6 +70,7 @@ var _life_potential_service = LifePotentialServiceScript.new()
 var _proto_biosphere_service = ProtoBiosphereSimulationServiceScript.new()
 var _biosphere_scale_service = BiosphereScaleServiceScript.new()
 var _native_species_service = NativeSpeciesServiceScript.new()
+var _genetic_species_service = GeneticSpeciesServiceScript.new()
 var _orbit_readout_service = OrbitReadoutServiceScript.new()
 var _focus_order: Array[StringName] = []
 var _topology = null
@@ -166,6 +168,13 @@ func _ready() -> void:
 		_life_potential_service,
 		_biosphere_scale_service
 	)
+	_genetic_species_service.configure(
+		UniverseRegistry,
+		_planetary_state_service,
+		_life_potential_service,
+		_biosphere_scale_service,
+		_native_species_service
+	)
 	_orbit_readout_service.configure(UniverseRegistry)
 
 	_renderer.configure(UniverseRegistry, _bubble, _topology)
@@ -185,7 +194,8 @@ func _ready() -> void:
 		_proto_biosphere_service,
 		_biosphere_scale_service,
 		_orbit_readout_service,
-		_native_species_service
+		_native_species_service,
+		_genetic_species_service
 	)
 	_configure_life_detail_panel()
 	_configure_root_inspector()
@@ -265,6 +275,9 @@ func _exit_tree() -> void:
 	if _native_species_service != null:
 		_native_species_service.free()
 		_native_species_service = null
+	if _genetic_species_service != null:
+		_genetic_species_service.free()
+		_genetic_species_service = null
 	if _planetary_year_sampler != null:
 		_planetary_year_sampler.free()
 		_planetary_year_sampler = null

@@ -1,6 +1,9 @@
 extends RefCounted
 
 const OrbitHudFormatterScript = preload("res://src/tools/rendering/orbit_hud_formatter.gd")
+const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_service.gd")
+const NativeSpeciesServiceScript = preload("res://src/sim/life/native_species_service.gd")
+const GeneticSpeciesServiceScript = preload("res://src/sim/life/genetic_species_service.gd")
 
 
 static func run(ctx) -> void:
@@ -15,6 +18,8 @@ static func run(ctx) -> void:
 	_test_life_formatter_handles_track_and_none_cases(ctx)
 	_test_biomass_formatter_shows_quantitative_index(ctx)
 	_test_species_formatter_reuses_caps_style(ctx)
+	_test_genetic_species_formatters_render_native_forms_and_visual_profile(ctx)
+	_test_life_detail_species_line_switches_to_dominant_form_only_for_ecosystems(ctx)
 	_test_summary_formatters_use_compact_survey_language(ctx)
 	_test_density_formatter_maps_life_stages_without_extra_thresholds(ctx)
 	_test_compact_badge_helpers_reuse_short_stage_density_and_species_text(ctx)
@@ -211,6 +216,75 @@ static func _test_species_formatter_reuses_caps_style(ctx) -> void:
 	ctx.assert_true(
 		OrbitHudFormatterScript.format_species({}) == "Species: n/a",
 		"HUD formatter zeigt ohne Species-Basis explizit Species: n/a"
+	)
+
+
+static func _test_genetic_species_formatters_render_native_forms_and_visual_profile(ctx) -> void:
+	var genetic_species_desc: Dictionary = _sample_genetic_species_desc()
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_native_forms(genetic_species_desc)
+			== "Native forms: PRODUCER/DOMINANT | PREDATOR/LOCAL",
+		"Native-Forms-Formatter rendert Profile kompakt und ohne Populationszahlen"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_dominant_form(genetic_species_desc)
+			== "Dominant form: PRODUCER / DOMINANT / PHOTOTROPHIC",
+		"Dominant-Form-Formatter nutzt das dominante Profil"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_abundance(genetic_species_desc) == "Abundance: DOMINANT",
+		"Abundance-Formatter bleibt qualitativ"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_visual_profile(genetic_species_desc)
+			== "Visual profile: MACRO_SESSILE / GREEN_BLUE / DRIFTING_OR_CRAWLING",
+		"Visual-Profile-Formatter nutzt die textuelle Visual-Grundlage"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_native_forms({
+			GeneticSpeciesServiceScript.KEY_HAS_GENETIC_SPECIES_BASIS: true,
+			GeneticSpeciesServiceScript.KEY_PROTO_FORM_SUMMARY: GeneticSpeciesServiceScript.PROTO_FORM_CHEMICAL_PRECURSORS,
+			GeneticSpeciesServiceScript.KEY_LIFEFORM_PROFILES: [],
+		}) == "Native forms: CHEMICAL_PRECURSORS",
+		"PREBIOTIC rendert Proto-/Precursor-Text statt stabiler Profile"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_visual_profile({}) == "Visual profile: n/a",
+		"Ohne Genetic-Species-Basis bleibt Visual profile explizit n/a"
+	)
+
+
+static func _test_life_detail_species_line_switches_to_dominant_form_only_for_ecosystems(ctx) -> void:
+	var native_species_desc: Dictionary = {
+		"has_native_species_basis": true,
+		"species_complexity_class": 1,
+		"metabolism_class": 0,
+		"habitat_class": 0,
+		"mobility_class": 2,
+	}
+	var ecosystem_desc: Dictionary = {
+		"has_biosphere_scale_basis": true,
+		"biosphere_stage": BiosphereScaleServiceScript.Stage.COMPLEX_ECOSYSTEM,
+	}
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_life_detail_species_or_dominant(
+			native_species_desc,
+			_sample_genetic_species_desc(),
+			ecosystem_desc
+		) == "Dominant form: PRODUCER / DOMINANT / PHOTOTROPHIC",
+		"LifeDetailPanel ersetzt Species bei mehrprofiligen Ecosystems durch Dominant form"
+	)
+	var multicellular_desc: Dictionary = {
+		"has_biosphere_scale_basis": true,
+		"biosphere_stage": BiosphereScaleServiceScript.Stage.COMPLEX_MULTICELLULAR,
+	}
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_life_detail_species_or_dominant(
+			native_species_desc,
+			_sample_genetic_species_desc(),
+			multicellular_desc
+		) == "Species: DIVERSE_MACRO / PHOTOTROPHIC / TEMPERATE_SURFACE / MOTILE",
+		"LifeDetailPanel behaelt Species bei Complex-Multicellular"
 	)
 
 
@@ -444,3 +518,34 @@ static func _test_cadence_formatter_humanizes_bio_tick_durations(ctx) -> void:
 		OrbitHudFormatterScript.format_cadence(1.0) == "Cadence: Bio tick ~ 10 d",
 		"Der Slider-Feinmodus bleibt bis in Tagesdauern sauber lesbar"
 	)
+
+
+static func _sample_genetic_species_desc() -> Dictionary:
+	return {
+		GeneticSpeciesServiceScript.KEY_HAS_GENETIC_SPECIES_BASIS: true,
+		GeneticSpeciesServiceScript.KEY_DOMINANT_LIFEFORM_ID: &"planet_a_producer",
+		GeneticSpeciesServiceScript.KEY_LIFEFORM_PROFILES: [
+			{
+				GeneticSpeciesServiceScript.KEY_LIFEFORM_ID: &"planet_a_producer",
+				GeneticSpeciesServiceScript.KEY_ROLE_CLASS: GeneticSpeciesServiceScript.RoleClass.PRODUCER,
+				GeneticSpeciesServiceScript.KEY_ABUNDANCE_CLASS: GeneticSpeciesServiceScript.AbundanceClass.DOMINANT,
+				GeneticSpeciesServiceScript.KEY_TRAIT_LOCI: {
+					GeneticSpeciesServiceScript.KEY_METABOLISM_LOCUS: NativeSpeciesServiceScript.MetabolismClass.PHOTOTROPHIC,
+					GeneticSpeciesServiceScript.KEY_BODY_PLAN_LOCUS: GeneticSpeciesServiceScript.BodyPlanClass.MACRO_SESSILE,
+					GeneticSpeciesServiceScript.KEY_MOBILITY_LOCUS: NativeSpeciesServiceScript.MobilityClass.MOTILE,
+				},
+				GeneticSpeciesServiceScript.KEY_VISUAL_PROFILE: {
+					GeneticSpeciesServiceScript.KEY_VISUAL_BODY_PLAN_CLASS: GeneticSpeciesServiceScript.BodyPlanClass.MACRO_SESSILE,
+					GeneticSpeciesServiceScript.KEY_VISUAL_COLOR_FAMILY: GeneticSpeciesServiceScript.ColorFamily.GREEN_BLUE,
+					GeneticSpeciesServiceScript.KEY_VISUAL_MOTION_STYLE: GeneticSpeciesServiceScript.MotionStyle.DRIFTING_OR_CRAWLING,
+				},
+			},
+			{
+				GeneticSpeciesServiceScript.KEY_LIFEFORM_ID: &"planet_a_predator",
+				GeneticSpeciesServiceScript.KEY_ROLE_CLASS: GeneticSpeciesServiceScript.RoleClass.PREDATOR,
+				GeneticSpeciesServiceScript.KEY_ABUNDANCE_CLASS: GeneticSpeciesServiceScript.AbundanceClass.LOCAL,
+				GeneticSpeciesServiceScript.KEY_TRAIT_LOCI: {},
+				GeneticSpeciesServiceScript.KEY_VISUAL_PROFILE: {},
+			},
+		],
+	}

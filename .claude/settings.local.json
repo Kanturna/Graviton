@@ -25,7 +25,14 @@
       "PowerShell(git diff HEAD -- src/tools/rendering/orbit_hud_formatter.gd scenes/testbeds/orbit_testbed.tscn scenes/testbeds/orbit_testbed.gd 2>&1 | Select-Object -First 200)",
       "PowerShell(git diff HEAD -- docs/STATUS.md 2>&1 | Select-String -Pattern \"^[+-]\" | Select-Object -First 5)",
       "PowerShell(git diff HEAD -- src/sim/planetary/planetary_year_sampler.gd src/tools/rendering/orbit_hud_formatter.gd 2>&1 | Select-Object -First 200)",
-      "PowerShell(git diff HEAD -- scenes/testbeds/orbit_testbed.gd scenes/testbeds/orbit_testbed.tscn 2>&1 | Select-Object -First 120)"
+      "PowerShell(git diff HEAD -- scenes/testbeds/orbit_testbed.gd scenes/testbeds/orbit_testbed.tscn 2>&1 | Select-Object -First 120)",
+      "PowerShell(git diff HEAD -- src/runtime/derived/derived_snapshot_cache.gd)",
+      "PowerShell(git diff HEAD -- src/tools/rendering/orbit_hud_formatter.gd)",
+      "PowerShell(git diff HEAD -- src/tools/ui/life_detail_panel.gd scenes/testbeds/orbit_testbed.gd)",
+      "PowerShell(git diff HEAD -- src/tests/rendering/test_life_detail_panel.gd src/tests/rendering/test_orbit_hud_formatter.gd)",
+      "PowerShell(git diff HEAD -- src/tests/helpers/sim_test_harness.gd docs/DECISIONS.md docs/STATUS.md docs/NEXT_STEPS.md)",
+      "PowerShell(.\\\\run_tests.bat)",
+      "PowerShell(git diff HEAD -- src/sim/life/genetic_species_service.gd src/sim/life/native_species_service.gd)"
     ]
   }
 }

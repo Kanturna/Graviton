@@ -96,6 +96,19 @@ Der anschliessende Praxis-Fix macht zusaetzlich die sichtbaren
 Badge-Textzeilen selbst zu transparenten Buttons, damit Klicks direkt
 auf `LIFE MICROBIAL` oder die zweite Zeile wie `SPARSE` sicher im
 Life-Detail-Pfad landen.
+Darauf sitzt jetzt zusaetzlich `Genetic Lifeform Foundation v1` als
+kleiner read-only Lifeform-/Trait-Layer vor echter Population:
+`GeneticSpeciesService` baut auf `NativeSpeciesService` auf, erzeugt
+deterministische Native-Forms-Profile mit stabilen `trait_loci` und
+textuellen Visual-Profilen und fuellt damit im `LifeDetailPanel` die
+bisherigen `Native forms`-/`Visual profile`-Platzhalter. Es gibt weiter
+keine Populationszahlen, keine Kriege, keine Katastrophen, keine
+Zivilisationen und keine generierten Kreaturenbilder.
+Ein direkter Follow-up haertet dabei den `MICROBIAL`-Pfad ohne
+Native-Species-Basis: Track/Thermik fallen jetzt nicht mehr auf die
+Default-Species-Werte zurueck. Das Panel bleibt ausserdem kompakter,
+weil `Abundance` nur noch in `Native forms`/`Dominant form` mitlaeuft
+und keine eigene Datenblatt-Zeile mehr bekommt.
 
 Die Simulationsbasis bleibt getrennt von der Darstellung:
 

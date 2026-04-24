@@ -277,6 +277,9 @@ static func _destroy_testbed_probe(testbed) -> void:
 		if testbed._native_species_service != null:
 			testbed._native_species_service.free()
 			testbed._native_species_service = null
+		if testbed._genetic_species_service != null:
+			testbed._genetic_species_service.free()
+			testbed._genetic_species_service = null
 		if testbed._orbit_readout_service != null:
 			testbed._orbit_readout_service.free()
 			testbed._orbit_readout_service = null

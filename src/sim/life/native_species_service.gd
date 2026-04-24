@@ -246,6 +246,14 @@ static func to_string_mobility_class(value: int) -> String:
 	return "UNKNOWN"
 
 
+static func habitat_class_for_track_and_thermal(track_id: int, thermal_class: int) -> int:
+	return _habitat_class_for_track_and_thermal(track_id, thermal_class)
+
+
+static func metabolism_class_for_track_and_habitat(track_id: int, habitat_class: int) -> int:
+	return _metabolism_class_for_track_and_habitat(track_id, habitat_class)
+
+
 static func _complexity_class_for_stage(biosphere_stage: int) -> int:
 	if biosphere_stage >= BiosphereScaleServiceScript.Stage.COMPLEX_ECOSYSTEM:
 		return ComplexityClass.DIVERSE_MACRO

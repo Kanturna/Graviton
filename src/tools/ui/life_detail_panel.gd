@@ -154,17 +154,29 @@ func _apply_body(body_id: StringName) -> void:
 	_kind_label.text = BodyType.to_string_kind(body_def.kind) if body_def != null else "UNKNOWN"
 
 	var biosphere_desc: Dictionary = _snapshot_cache.get_biosphere_scale_desc(body_id) if _snapshot_cache != null else {}
+	var genetic_species_desc: Dictionary = _snapshot_cache.get_genetic_species_desc(body_id) if _snapshot_cache != null and _snapshot_cache.has_method("get_genetic_species_desc") else {}
 	var lines: Array[String] = [
 		OrbitHudFormatterScript.format_environment(_snapshot_cache.get_environment_desc(body_id) if _snapshot_cache != null else {}),
 		OrbitHudFormatterScript.format_world(_snapshot_cache.get_planetary_state_desc(body_id) if _snapshot_cache != null else {}),
 		OrbitHudFormatterScript.format_life(biosphere_desc),
 		OrbitHudFormatterScript.format_density(biosphere_desc),
-		OrbitHudFormatterScript.format_species(_snapshot_cache.get_native_species_desc(body_id) if _snapshot_cache != null else {}),
+		OrbitHudFormatterScript.format_life_detail_species_or_dominant(
+			_snapshot_cache.get_native_species_desc(body_id) if _snapshot_cache != null else {},
+			genetic_species_desc,
+			biosphere_desc
+		),
 		OrbitHudFormatterScript.format_life_potential(_snapshot_cache.get_life_potential_desc(body_id) if _snapshot_cache != null else {}),
 		OrbitHudFormatterScript.format_biomass(biosphere_desc),
 	]
 	for index in range(_line_labels.size()):
 		_line_labels[index].text = lines[index] if index < lines.size() else ""
+	var placeholder_lines: Array[String] = [
+		"Population: not established",
+		OrbitHudFormatterScript.format_native_forms(genetic_species_desc),
+		OrbitHudFormatterScript.format_visual_profile(genetic_species_desc),
+	]
+	for index in range(_placeholder_labels.size()):
+		_placeholder_labels[index].text = placeholder_lines[index] if index < placeholder_lines.size() else ""
 
 
 static func _make_line_label() -> Label:
