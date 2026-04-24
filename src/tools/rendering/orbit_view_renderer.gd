@@ -5,6 +5,13 @@ const ORBIT_SAMPLE_COUNT: int = 120
 const TRAIL_LINE_WIDTH_PX: float = 2.0
 const MIN_TRAIL_STEP_PX: float = 1.2
 const SIM_TICK_SIGNAL: StringName = &"sim_tick"
+# Close-zoom-LOD aktiviert sich, wenn der Fokus-Body derart gross auf
+# dem Screen ist, dass Trails + Orbitlinien fremder Bodies nur noch
+# Overdraw und kaum Information sind. Enter/Exit-Hysterese verhindert
+# Flackern bei minimalen Kamera-Mikrobewegungen.
+const CLOSE_ZOOM_ENTER_EFFECTIVE_SCALE: float = 6.0
+const CLOSE_ZOOM_EXIT_EFFECTIVE_SCALE: float = 4.5
+const CLOSE_ZOOM_TRAIL_POINT_CAP: int = 48
 
 const UniverseTopologyScript := preload("res://src/sim/topology/universe_topology.gd")
 const OrbitCameraFramingScript := preload("res://src/tools/rendering/orbit_camera_framing.gd")
@@ -13,6 +20,7 @@ const OrbitEmphasisRulesScript := preload("res://src/tools/rendering/orbit_empha
 const OrbitOrbitGeometryScript := preload("res://src/tools/rendering/orbit_orbit_geometry.gd")
 const BODY_VISUAL_SCRIPT := preload("res://src/tools/rendering/orbit_body_visual.gd")
 const PlanetVisualProfileScript := preload("res://src/tools/rendering/planet_visual_profile.gd")
+const PerfProbeScript := preload("res://src/tools/debug/perf_probe.gd")
 
 @onready var _orbit_layer: Node2D = $OrbitLayer
 @onready var _trail_layer: Node2D = $TrailLayer
@@ -41,6 +49,8 @@ var _frame_label: StringName = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
 
 var _compose_view_position_body_ids: Dictionary = {}
 var _trail_update_body_ids: Dictionary = {}
+var _synced_frame_number: int = -1
+var _close_zoom_active: bool = false
 var _last_debug_snapshot: Dictionary = {
 	"frame_label": OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK,
 	"root_overview_active": false,
@@ -224,6 +234,20 @@ func _exit_tree() -> void:
 
 
 func _process(_delta: float) -> void:
+	# Pose-Pipeline-Invariante: Alle sichtbaren Elemente lesen dieselbe
+	# interpolierte Frame-Pose. Der Szenen-Root ruft sync_visuals_now()
+	# VOR camera.step() auf, damit Bodies, Kamera und Overlays dieselbe
+	# fraction benutzen. Fallback, falls der Szenen-Root den expliziten
+	# Aufruf nicht driven.
+	var current_frame: int = Engine.get_process_frames()
+	if _synced_frame_number == current_frame:
+		return
+	_sync_visual_positions()
+	_synced_frame_number = current_frame
+
+
+func sync_visuals_now() -> void:
+	_synced_frame_number = Engine.get_process_frames()
 	_sync_visual_positions()
 
 
@@ -351,6 +375,14 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 				visual.scale = visual_scale
 			visual.set_detail_factor(detail_factor)
 			visual.set_star_closeup_phase(star_phase)
+			# effective_screen_scale = finaler lokaler Zeichnen-zu-Pixel-Faktor.
+			# visual.scale kompensiert world_scale, renderer.scale = world_scale,
+			# daher kuerzt sich world_scale raus und die effektive Pixel-Skala
+			# eines lokalen 1px-Radius ist detail_factor * star_scale.
+			var body_effective_scale: float = detail_factor * star_scale
+			visual.set_effective_screen_scale(body_effective_scale)
+			if id == _focus_id:
+				_update_close_zoom_state(body_effective_scale)
 
 		if root_overview_active and _is_visible_root_overview_star(def):
 			overview_visible_star_count += 1
@@ -393,6 +425,8 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 		"overview_visible_star_count": overview_visible_star_count,
 		"presentation_offset_s": presentation_offset_s,
 	}
+	PerfProbeScript.bump(&"sync_visuals")
+	PerfProbeScript.sample(&"compose_view_position_body_count", _compose_view_position_body_ids.size())
 
 
 func _apply_environment_visuals() -> void:
@@ -503,8 +537,17 @@ func _update_trail(id: StringName, pos: Vector2, reset_trails: bool) -> void:
 	else:
 		var last_pos: Vector2 = history[history.size() - 1]
 		if not last_pos.is_equal_approx(pos):
-			history.append(pos)
-			history_changed = true
+			# Screen-space decimation: bei weit rausgezoomten Views
+			# bewegt sich der Body pro Tick nur Bruchteile eines Pixels.
+			# Ohne diese Schwelle fuellt sich der Trail mit Punkten, die
+			# exakt denselben Pixel belegen und Line2D trotzdem remeshen.
+			# _world_scale = renderer canvas scale (pixels per render unit).
+			var delta_px: float = pos.distance_to(last_pos) * _world_scale
+			if delta_px >= MIN_TRAIL_STEP_PX:
+				history.append(pos)
+				history_changed = true
+			else:
+				PerfProbeScript.bump(&"trail_points_decimated")
 
 		var def: BodyDef = null if _registry == null else _registry.get_def(id)
 		var max_points: int = _trail_point_budget(def.kind if def != null else BodyType.Kind.PLANET)
@@ -517,6 +560,7 @@ func _update_trail(id: StringName, pos: Vector2, reset_trails: bool) -> void:
 	_trail_update_body_ids[id] = true
 	_trail_histories[id] = history
 	line.points = PackedVector2Array(history)
+	PerfProbeScript.bump(&"trail_point_writes")
 
 
 func _clear_trail(id: StringName) -> void:
@@ -555,6 +599,7 @@ func _apply_line_widths() -> void:
 		var kind: int = entry.get("kind", BodyType.Kind.PLANET)
 		if line != null:
 			line.width = _orbit_line_width(kind) / _world_scale
+	PerfProbeScript.bump(&"orbit_line_width_applies")
 
 
 static func _clear_layer(layer: Node) -> void:
@@ -562,7 +607,14 @@ static func _clear_layer(layer: Node) -> void:
 		child.queue_free()
 
 
-static func _trail_point_budget(kind: int) -> int:
+func _trail_point_budget(kind: int) -> int:
+	var base: int = _trail_point_budget_base(kind)
+	if _close_zoom_active:
+		return mini(base, CLOSE_ZOOM_TRAIL_POINT_CAP)
+	return base
+
+
+static func _trail_point_budget_base(kind: int) -> int:
 	match kind:
 		BodyType.Kind.BLACK_HOLE:
 			return 72
@@ -572,6 +624,22 @@ static func _trail_point_budget(kind: int) -> int:
 			return 110
 		_:
 			return 132
+
+
+func _update_close_zoom_state(focus_effective_scale: float) -> void:
+	var next_active: bool = _close_zoom_active
+	if _close_zoom_active:
+		if focus_effective_scale < CLOSE_ZOOM_EXIT_EFFECTIVE_SCALE:
+			next_active = false
+	else:
+		if focus_effective_scale > CLOSE_ZOOM_ENTER_EFFECTIVE_SCALE:
+			next_active = true
+	PerfProbeScript.sample(&"focus_effective_scale", focus_effective_scale)
+	PerfProbeScript.sample(&"close_zoom_active", next_active)
+	if next_active == _close_zoom_active:
+		return
+	_close_zoom_active = next_active
+	PerfProbeScript.bump(&"close_zoom_transitions")
 
 
 static func _body_z_index(kind: int) -> int:

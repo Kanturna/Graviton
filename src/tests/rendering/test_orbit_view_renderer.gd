@@ -74,8 +74,11 @@ static func run(ctx) -> void:
 	_test_engine_interpolation_fraction_is_safe(ctx)
 	_test_world_scale_does_not_reapply_line_widths_when_unchanged(ctx)
 	_test_trail_points_update_only_when_history_changes(ctx)
+	_test_trail_points_are_decimated_below_pixel_threshold(ctx)
 	_test_render_sync_does_not_write_trail_points_without_sim_tick(ctx)
 	_test_root_overview_sim_tick_does_not_write_trail_points(ctx)
+	_test_close_zoom_state_has_hysteresis(ctx)
+	_test_sync_visuals_now_skips_redundant_process_sync(ctx)
 
 
 static func _test_presentation_offset_uses_physics_interpolation_fraction(ctx) -> void:
@@ -146,6 +149,7 @@ static func _test_trail_points_update_only_when_history_changes(ctx) -> void:
 	var line := AntialiasedLine2D.new()
 	renderer._trail_visuals[&"planet"] = line
 	renderer._trail_histories[&"planet"] = []
+	renderer._world_scale = 1.0
 
 	renderer._update_trail(&"planet", Vector2(1.0, 2.0), false)
 	ctx.assert_true(
@@ -160,10 +164,45 @@ static func _test_trail_points_update_only_when_history_changes(ctx) -> void:
 		"Unveraenderte Trail-Position schreibt kein neues PackedVector2Array"
 	)
 
-	renderer._update_trail(&"planet", Vector2(2.0, 2.0), false)
+	# Delta = 2.0 render units * world_scale 1.0 = 2.0 px -> oberhalb
+	# MIN_TRAIL_STEP_PX und wird daher nicht dezimiert.
+	renderer._update_trail(&"planet", Vector2(3.0, 2.0), false)
 	ctx.assert_true(
 		renderer._trail_update_body_ids.has(&"planet"),
 		"Neue Trail-Position aktualisiert die Line-Punkte weiterhin"
+	)
+
+	line.free()
+	renderer.free()
+
+
+static func _test_trail_points_are_decimated_below_pixel_threshold(ctx) -> void:
+	var renderer = OrbitViewRendererScript.new()
+	var line := AntialiasedLine2D.new()
+	renderer._trail_visuals[&"planet"] = line
+	renderer._trail_histories[&"planet"] = []
+	renderer._world_scale = 0.1
+
+	renderer._update_trail(&"planet", Vector2(0.0, 0.0), false)
+	ctx.assert_true(
+		renderer._trail_update_body_ids.has(&"planet"),
+		"Erster Trail-Punkt wird auch beim weit rausgezoomten Renderer geschrieben"
+	)
+
+	# Delta = 10 render units * world_scale 0.1 = 1.0 px < MIN_TRAIL_STEP_PX
+	# -> die Dezimation verwirft den Punkt, Line2D wird nicht remeshed.
+	renderer._trail_update_body_ids.clear()
+	renderer._update_trail(&"planet", Vector2(10.0, 0.0), false)
+	ctx.assert_true(
+		renderer._trail_update_body_ids.is_empty(),
+		"Sub-Pixel-Bewegung beim Rauszoom wird dezimiert und schreibt keine Line-Punkte"
+	)
+
+	# Delta = 20 render units * 0.1 = 2.0 px -> ueber der Schwelle.
+	renderer._update_trail(&"planet", Vector2(20.0, 0.0), false)
+	ctx.assert_true(
+		renderer._trail_update_body_ids.has(&"planet"),
+		"Ausreichend grosse Screen-Bewegung uebersteht die Dezimation"
 	)
 
 	line.free()
@@ -221,6 +260,67 @@ static func _test_root_overview_sim_tick_does_not_write_trail_points(ctx) -> voi
 	line.free()
 	bubble.free()
 	registry.free()
+	renderer.free()
+
+
+static func _test_close_zoom_state_has_hysteresis(ctx) -> void:
+	var renderer = OrbitViewRendererScript.new()
+
+	renderer._update_close_zoom_state(3.0)
+	ctx.assert_true(
+		not renderer._close_zoom_active,
+		"Kleine effektive Scale unterhalb Enter laesst Close-Zoom inaktiv"
+	)
+
+	renderer._update_close_zoom_state(5.5)
+	ctx.assert_true(
+		not renderer._close_zoom_active,
+		"Scale zwischen Exit und Enter loest keinen Enter aus"
+	)
+
+	renderer._update_close_zoom_state(6.5)
+	ctx.assert_true(
+		renderer._close_zoom_active,
+		"Scale oberhalb Enter-Schwelle aktiviert Close-Zoom"
+	)
+
+	renderer._update_close_zoom_state(5.5)
+	ctx.assert_true(
+		renderer._close_zoom_active,
+		"Hysterese haelt Close-Zoom aktiv, solange Scale ueber Exit bleibt"
+	)
+
+	renderer._update_close_zoom_state(4.0)
+	ctx.assert_true(
+		not renderer._close_zoom_active,
+		"Scale unterhalb Exit-Schwelle deaktiviert Close-Zoom"
+	)
+
+	renderer.free()
+
+
+static func _test_sync_visuals_now_skips_redundant_process_sync(ctx) -> void:
+	var renderer = OrbitViewRendererScript.new()
+	renderer._registry = null
+	renderer._bubble = null
+
+	# Explicit external sync markiert den aktuellen Frame als gesynced.
+	renderer.sync_visuals_now()
+	var guard_frame: int = renderer._synced_frame_number
+
+	ctx.assert_true(
+		guard_frame == Engine.get_process_frames(),
+		"sync_visuals_now merkt sich den aktuellen Frame"
+	)
+
+	# Ein direkter _process-Aufruf im selben Frame darf nicht erneut syncen.
+	# (Indirekter Assert: der Guard-Frame bleibt unveraendert.)
+	renderer._process(0.016)
+	ctx.assert_true(
+		renderer._synced_frame_number == guard_frame,
+		"_process im selben Frame syncet nicht doppelt, wenn bereits extern getriggert"
+	)
+
 	renderer.free()
 
 

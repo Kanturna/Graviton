@@ -15,6 +15,7 @@ static func run(ctx) -> void:
 	_test_dirty_focus_rebuild_recomputes_same_root(ctx)
 	_test_registry_churn_rebuilds_only_focus_root_slice(ctx)
 	_test_describe_reports_consistent_counts(ctx)
+	_test_radius_hysteresis_prevents_edge_flicker(ctx)
 
 
 static func _make_registry() -> Node:
@@ -307,6 +308,56 @@ static func _test_describe_reports_consistent_counts(ctx) -> void:
 	ctx.assert_true(int(desc.get(BubbleActivationSetScript.KEY_ACTIVE_COUNT, -1)) == 3, "describe meldet drei aktive Bodies")
 	ctx.assert_true(int(desc.get(BubbleActivationSetScript.KEY_INACTIVE_DISTANT_COUNT, -1)) == 1, "describe meldet einen fernen same-root Body")
 	ctx.assert_true(int(desc.get(BubbleActivationSetScript.KEY_INACTIVE_NO_LCA_COUNT, -1)) == 3, "describe meldet drei cross-root Bodies")
+
+	activation_set.free()
+	bubble.free()
+	reg.free()
+
+
+static func _test_radius_hysteresis_prevents_edge_flicker(ctx) -> void:
+	var reg := _make_registry()
+	var bubble := _make_bubble(reg)
+	bubble.set_focus(&"star_a")
+	var activation_set := _make_activation_set(reg, bubble)
+
+	activation_set.activation_radius_m = 5.0e8
+	activation_set.activation_radius_exit_ratio = 1.2
+	# near_a bei 1e8 (relativ zu star_a) ist im Enter-Radius -> ACTIVE.
+	reg.get_state(&"near_a").position_parent_frame_m = Vector3(2.0e8, 0.0, 0.0)
+	activation_set.rebuild()
+	_assert_state(ctx, activation_set, &"near_a", "ACTIVE",
+		"innerhalb Enter-Radius klassifiziert near_a als ACTIVE")
+
+	# Body bewegt sich knapp ueber Enter (5.5e8), aber noch unter Exit (6e8) -
+	# ohne Hysterese wuerde er flippen, mit Hysterese bleibt er ACTIVE.
+	reg.get_state(&"near_a").position_parent_frame_m = Vector3(5.5e8, 0.0, 0.0)
+	var dirty: Array[StringName] = [&"near_a"]
+	activation_set.mark_ids_dirty(dirty)
+	activation_set.rebuild()
+	_assert_state(ctx, activation_set, &"near_a", "ACTIVE",
+		"zwischen Enter und Exit haelt die Hysterese den Body aktiv")
+
+	# Body jetzt ueber Exit (>6e8 absolut) -> Deaktivierung.
+	reg.get_state(&"near_a").position_parent_frame_m = Vector3(7.0e8, 0.0, 0.0)
+	activation_set.mark_ids_dirty(dirty)
+	activation_set.rebuild()
+	_assert_state(ctx, activation_set, &"near_a", "INACTIVE_DISTANT",
+		"ueber Exit-Radius deaktiviert die Hysterese den Body")
+
+	# Body wieder knapp unter Exit (5.8e8) -> bleibt INACTIVE, weil inaktive
+	# Bodies den strengeren Enter-Radius (5e8) brauchen.
+	reg.get_state(&"near_a").position_parent_frame_m = Vector3(5.8e8, 0.0, 0.0)
+	activation_set.mark_ids_dirty(dirty)
+	activation_set.rebuild()
+	_assert_state(ctx, activation_set, &"near_a", "INACTIVE_DISTANT",
+		"zwischen Enter und Exit bleibt ein inaktiver Body inaktiv")
+
+	# Body unterhalb Enter -> reaktiviert.
+	reg.get_state(&"near_a").position_parent_frame_m = Vector3(4.5e8, 0.0, 0.0)
+	activation_set.mark_ids_dirty(dirty)
+	activation_set.rebuild()
+	_assert_state(ctx, activation_set, &"near_a", "ACTIVE",
+		"unterhalb Enter-Radius reaktiviert die Hysterese den Body")
 
 	activation_set.free()
 	bubble.free()

@@ -5,6 +5,7 @@ signal life_details_requested(body_id: StringName)
 
 const OrbitCameraFramingScript := preload("res://src/tools/rendering/orbit_camera_framing.gd")
 const OrbitHudFormatterScript := preload("res://src/tools/rendering/orbit_hud_formatter.gd")
+const PerfProbeScript := preload("res://src/tools/debug/perf_probe.gd")
 
 const MAX_BADGES: int = 24
 const MIN_BADGE_RADIUS_PX: float = 12.0
@@ -236,6 +237,7 @@ func _apply_badge(badge: Dictionary, candidate: Dictionary, viewport_size: Vecto
 		badge["lines_signature"] = lines_signature
 		badge["cached_size"] = badge_size
 		_badge_text_apply_count += 1
+		PerfProbeScript.bump(&"badge_text_applies")
 	badge["body_id"] = candidate.get("body_id", StringName(""))
 	if not panel.visible:
 		panel.visible = true

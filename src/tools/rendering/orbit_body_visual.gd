@@ -10,6 +10,7 @@ const _TEMPERATE_REFERENCE_TEXTURE_PATH := "res://src/tools/rendering/assets/tem
 const _FROZEN_REFERENCE_TEXTURE_PATH := "res://src/tools/rendering/assets/frozen_reference.png"
 const _HOT_SCORCHED_REFERENCE_TEXTURE_PATH := "res://src/tools/rendering/assets/hot_scorched_reference.png"
 const PlanetVisualThemeScript := preload("res://src/tools/rendering/planet_visual_theme.gd")
+const PerfProbeScript := preload("res://src/tools/debug/perf_probe.gd")
 
 # Star halo: 5 concentric discs, outermost first in draw order so inner rings
 # layer on top. Outer radius stays within the previous 22 px footprint plus a
@@ -33,6 +34,13 @@ const _BLACK_HOLE_CORE_RADIUS_PX: float = 8.2
 const _BLACK_HOLE_CENTER_GLOW_RADIUS_PX: float = 3.0
 const DETAIL_FACTOR_REDRAW_EPSILON: float = 0.015
 const STAR_CLOSEUP_PHASE_REDRAW_EPSILON: float = 0.008
+const HALO_EFFECTIVE_SCALE_REDRAW_EPSILON: float = 0.02
+# Close-Zoom-Fill-Rate-Cap: wenn ein Halo groesser als dieser Wert in
+# Screen-Pixeln projiziert, wird er radial geklemmt. Ohne Cap fuellen
+# Star-/Black-Hole-Halos bei Nahzoom den halben Viewport mit mehreren
+# semi-transparenten Layern - klassischer Overdraw-Killer.
+const HALO_MAX_SCREEN_RADIUS_PX: float = 180.0
+const HALO_CLAMP_ACTIVATION_SCALE: float = 4.5
 static var _TEXTURE_CACHE: Dictionary = {}
 static var _WHITE_PIXEL_TEXTURE: Texture2D = null
 static var _TRANSPARENT_PIXEL_TEXTURE: Texture2D = null
@@ -43,6 +51,7 @@ var _detail_factor: float = 1.0
 var _star_closeup_phase: float = 0.0
 var _theme_signature: String = ""
 var _theme_apply_count: int = 0
+var _effective_screen_scale: float = 1.0
 
 var _sphere: Sprite2D = null
 var _overlay: Node2D = null
@@ -93,6 +102,48 @@ func set_star_closeup_phase(value: float) -> void:
 		_overlay.queue_redraw()
 
 
+func set_effective_screen_scale(value: float) -> void:
+	var clamped: float = maxf(value, 0.001)
+	if absf(clamped - _effective_screen_scale) < HALO_EFFECTIVE_SCALE_REDRAW_EPSILON:
+		return
+	var prev_clamp_active: bool = _effective_screen_scale > HALO_CLAMP_ACTIVATION_SCALE
+	var next_clamp_active: bool = clamped > HALO_CLAMP_ACTIVATION_SCALE
+	_effective_screen_scale = clamped
+	# Nur redrawen, wenn der Clamp tatsaechlich greift - im normalen
+	# Zoom-Bereich aendert sich an den Halo-Radien nichts.
+	if prev_clamp_active or next_clamp_active:
+		queue_redraw()
+		if _overlay != null:
+			_overlay.queue_redraw()
+
+
+func _halo_scale_factor() -> float:
+	# Ziel: Halos sollen in Screen-Pixeln nicht ueber
+	# HALO_MAX_SCREEN_RADIUS_PX wachsen. base_px * effective_screen_scale
+	# = Screen-Pixel; wenn > max, skaliere lokal runter.
+	if _effective_screen_scale <= HALO_CLAMP_ACTIVATION_SCALE:
+		return 1.0
+	var base_radius: float = _halo_base_reference_radius_px()
+	if base_radius <= 0.0:
+		return 1.0
+	var projected_px: float = base_radius * _effective_screen_scale
+	if projected_px <= HALO_MAX_SCREEN_RADIUS_PX:
+		return 1.0
+	return HALO_MAX_SCREEN_RADIUS_PX / projected_px
+
+
+func _halo_base_reference_radius_px() -> float:
+	match _kind:
+		BodyType.Kind.BLACK_HOLE:
+			return _BLACK_HOLE_OUTER_GLOW_RADIUS_PX
+		BodyType.Kind.STAR:
+			return _STAR_HALO_OUTER_RADIUS
+		BodyType.Kind.MOON:
+			return 6.0
+		_:
+			return 10.5
+
+
 func _ready() -> void:
 	if _kind == BodyType.Kind.BLACK_HOLE:
 		return
@@ -134,6 +185,7 @@ func get_theme_apply_count() -> int:
 
 
 func _draw() -> void:
+	PerfProbeScript.bump(&"body_visual_draws")
 	match _kind:
 		BodyType.Kind.BLACK_HOLE:
 			_draw_black_hole()
@@ -154,6 +206,7 @@ func _draw() -> void:
 
 
 func _on_overlay_draw() -> void:
+	PerfProbeScript.bump(&"body_overlay_draws")
 	match _kind:
 		BodyType.Kind.PLANET:
 			_draw_planet_overlay()
@@ -172,12 +225,13 @@ func _on_overlay_draw() -> void:
 
 func _draw_black_hole() -> void:
 	var spec: Dictionary = black_hole_base_visual_spec()
-	draw_circle(Vector2.ZERO, float(spec.get("outer_glow_radius_px", _BLACK_HOLE_OUTER_GLOW_RADIUS_PX)), spec.get("outer_glow_color", Color(0.40, 0.12, 0.56, 0.04)))
-	draw_circle(Vector2.ZERO, float(spec.get("mid_glow_radius_px", _BLACK_HOLE_MID_GLOW_RADIUS_PX)), spec.get("mid_glow_color", Color(0.45, 0.18, 0.62, 0.08)))
-	draw_circle(Vector2.ZERO, float(spec.get("inner_glow_radius_px", _BLACK_HOLE_INNER_GLOW_RADIUS_PX)), spec.get("inner_glow_color", Color(0.28, 0.10, 0.42, 0.12)))
+	var clamp: float = _halo_scale_factor()
+	draw_circle(Vector2.ZERO, float(spec.get("outer_glow_radius_px", _BLACK_HOLE_OUTER_GLOW_RADIUS_PX)) * clamp, spec.get("outer_glow_color", Color(0.40, 0.12, 0.56, 0.04)))
+	draw_circle(Vector2.ZERO, float(spec.get("mid_glow_radius_px", _BLACK_HOLE_MID_GLOW_RADIUS_PX)) * clamp, spec.get("mid_glow_color", Color(0.45, 0.18, 0.62, 0.08)))
+	draw_circle(Vector2.ZERO, float(spec.get("inner_glow_radius_px", _BLACK_HOLE_INNER_GLOW_RADIUS_PX)) * clamp, spec.get("inner_glow_color", Color(0.28, 0.10, 0.42, 0.12)))
 	draw_arc(
 		Vector2.ZERO,
-		float(spec.get("ring_radius_px", _BLACK_HOLE_RING_RADIUS_PX)),
+		float(spec.get("ring_radius_px", _BLACK_HOLE_RING_RADIUS_PX)) * clamp,
 		0.0,
 		TAU,
 		72,
@@ -186,9 +240,9 @@ func _draw_black_hole() -> void:
 		true
 	)
 	if _detail_factor > 1.25:
-		draw_arc(Vector2.ZERO, 15.5, -0.55, 1.15, 28, Color(0.98, 0.78, 0.52, 0.20), 1.4, true)
-	draw_circle(Vector2.ZERO, float(spec.get("core_radius_px", _BLACK_HOLE_CORE_RADIUS_PX)), spec.get("core_color", Color(0.05, 0.04, 0.09, 1.0)))
-	draw_circle(Vector2.ZERO, float(spec.get("center_glow_radius_px", _BLACK_HOLE_CENTER_GLOW_RADIUS_PX)), spec.get("center_glow_color", Color(0.72, 0.34, 0.88, 0.18)))
+		draw_arc(Vector2.ZERO, 15.5 * clamp, -0.55, 1.15, 28, Color(0.98, 0.78, 0.52, 0.20), 1.4, true)
+	draw_circle(Vector2.ZERO, float(spec.get("core_radius_px", _BLACK_HOLE_CORE_RADIUS_PX)) * clamp, spec.get("core_color", Color(0.05, 0.04, 0.09, 1.0)))
+	draw_circle(Vector2.ZERO, float(spec.get("center_glow_radius_px", _BLACK_HOLE_CENTER_GLOW_RADIUS_PX)) * clamp, spec.get("center_glow_color", Color(0.72, 0.34, 0.88, 0.18)))
 
 
 func _draw_planet_glow() -> void:
@@ -201,39 +255,40 @@ func _draw_planet_glow() -> void:
 				glow_color.a *= 0.05
 			_:
 				glow_color.a *= 0.82
-	draw_circle(Vector2.ZERO, 10.5, glow_color)
+	draw_circle(Vector2.ZERO, 10.5 * _halo_scale_factor(), glow_color)
 
 
 func _draw_moon_glow() -> void:
-	draw_circle(Vector2.ZERO, 6.0, Color(_glow_color.r, _glow_color.g, _glow_color.b, _glow_color.a * 0.62))
+	draw_circle(Vector2.ZERO, 6.0 * _halo_scale_factor(), Color(_glow_color.r, _glow_color.g, _glow_color.b, _glow_color.a * 0.62))
 
 
 func _draw_star_glow() -> void:
+	var clamp: float = _halo_scale_factor()
 	var outer_color: Color = _STAR_HALO_OUTER_COLOR
-	draw_circle(Vector2.ZERO, _STAR_HALO_OUTER_RADIUS, outer_color)
+	draw_circle(Vector2.ZERO, _STAR_HALO_OUTER_RADIUS * clamp, outer_color)
 	for i in range(_STAR_HALO_INNER_RINGS.size() - 1, -1, -1):
 		var ring: Array = _STAR_HALO_INNER_RINGS[i]
-		draw_circle(Vector2.ZERO, ring[0], ring[1])
+		draw_circle(Vector2.ZERO, float(ring[0]) * clamp, ring[1])
 	if _star_closeup_phase <= 0.35:
 		return
 
 	var time_s: float = 0.0
 	var spike_phase: float = smoothstep(0.35, 1.0, _star_closeup_phase)
-	var spike_base_radius: float = _STAR_HALO_OUTER_RADIUS - 0.8
+	var spike_base_radius: float = (_STAR_HALO_OUTER_RADIUS - 0.8) * clamp
 	var spike_lengths: Array[float] = [1.8, 2.6, 1.4, 3.0, 2.1, 1.7, 2.8, 1.5, 2.2, 1.9, 2.7, 1.6]
 	var spike_angles: Array[float] = [-2.92, -2.35, -1.82, -1.28, -0.71, -0.18, 0.42, 0.97, 1.54, 2.08, 2.63, 3.03]
 	for i in range(spike_angles.size()):
 		var angle: float = float(spike_angles[i]) + sin(time_s * 0.11 + float(i) * 0.73) * 0.04
-		var length: float = float(spike_lengths[i]) * spike_phase
+		var length: float = float(spike_lengths[i]) * spike_phase * clamp
 		var start: Vector2 = Vector2(cos(angle), sin(angle)) * spike_base_radius
 		var finish: Vector2 = Vector2(cos(angle), sin(angle)) * (spike_base_radius + length)
 		draw_line(start, finish, Color(1.0, 0.86, 0.34, 0.18 * spike_phase), 0.9, true)
 
-	var prominence_radius: float = _STAR_HALO_OUTER_RADIUS + 0.6
+	var prominence_radius: float = (_STAR_HALO_OUTER_RADIUS + 0.6) * clamp
 	var prominence_boost: float = 0.28 * spike_phase
 	draw_arc(
 		Vector2.ZERO,
-		prominence_radius + 1.2 * spike_phase,
+		prominence_radius + 1.2 * spike_phase * clamp,
 		-2.74 + sin(time_s * 0.09) * 0.03,
 		-2.22 + sin(time_s * 0.12) * 0.03,
 		16,
@@ -243,7 +298,7 @@ func _draw_star_glow() -> void:
 	)
 	draw_arc(
 		Vector2.ZERO,
-		prominence_radius + 1.8 * spike_phase,
+		prominence_radius + 1.8 * spike_phase * clamp,
 		-0.18 + sin(time_s * 0.08 + 0.8) * 0.02,
 		0.29 + sin(time_s * 0.10 + 0.4) * 0.02,
 		18,
@@ -253,7 +308,7 @@ func _draw_star_glow() -> void:
 	)
 	draw_arc(
 		Vector2.ZERO,
-		prominence_radius + 1.4 * spike_phase,
+		prominence_radius + 1.4 * spike_phase * clamp,
 		1.88 + sin(time_s * 0.07 + 1.3) * 0.02,
 		2.27 + sin(time_s * 0.09 + 0.6) * 0.02,
 		15,

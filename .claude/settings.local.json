@@ -38,7 +38,9 @@
       "PowerShell(git diff HEAD -- src/tests/rendering/test_galaxy_proxy_renderer.gd project.godot)",
       "PowerShell(git diff HEAD -- src/tools/ui/root_inspector_overlay.gd)",
       "PowerShell(git show HEAD -- src/tools/ui/root_inspector_overlay.gd)",
-      "PowerShell(git show HEAD -- src/tools/rendering/orbit_view_renderer.gd src/tools/rendering/planet_badge_overlay.gd)"
+      "PowerShell(git show HEAD -- src/tools/rendering/orbit_view_renderer.gd src/tools/rendering/planet_badge_overlay.gd)",
+      "PowerShell(& \"C:\\\\Program Files\\\\Godot\\\\godot_console.exe\" --headless --path \"d:\\\\Projekte\\\\Godot\\\\Graviton\" --script res://src/tests/test_runner.gd --quit 2>&1)",
+      "PowerShell(& \"D:\\\\Programme\\\\Godot\\\\godot_console.exe\" --path \"d:\\\\Projekte\\\\Godot\\\\Graviton\" --headless --script res://src/tests/test_runner.gd --quit 2>&1)"
     ]
   }
 }

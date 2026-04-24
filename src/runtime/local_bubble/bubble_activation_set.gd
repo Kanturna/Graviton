@@ -20,6 +20,11 @@ const KEY_INACTIVE_DISTANT_COUNT: StringName = &"inactive_distant_count"
 const KEY_INACTIVE_NO_LCA_COUNT: StringName = &"inactive_no_lca_count"
 
 @export_range(0.0, 1.0e13, 1.0e7, "or_greater") var activation_radius_m: float = 5.0e8
+# Hysterese-Multiplikator fuer den Exit-Radius: ein Body, der bereits
+# ACTIVE war, bleibt bis radius_m * exit_ratio ACTIVE. Ohne Hysterese
+# flackert die Klassifikation bei kleinen Kamera-/Focus-Mikrobewegungen
+# genau an der Schwelle, was teure Regime-Wechsel in OrbitService ausloest.
+@export_range(1.0, 4.0, 0.01, "or_greater") var activation_radius_exit_ratio: float = 1.15
 
 var _registry: Node = null
 var _bubble: LocalBubbleManager = null
@@ -345,7 +350,8 @@ func _recompute_state_for_id(id: StringName) -> void:
 	var new_state: int = State.INACTIVE_NO_LCA
 	if _root_id_by_id.get(id, StringName("")) == _focus_root_id:
 		var view_pos_m: Vector3 = _bubble.compose_view_position_m(id)
-		new_state = _classify_from_view_position(view_pos_m)
+		var prev_state: int = int(_state_by_id.get(id, State.INACTIVE_NO_LCA))
+		new_state = _classify_from_view_position(view_pos_m, prev_state)
 		_last_rebuild_eval_count += 1
 	_replace_state(id, new_state)
 
@@ -377,10 +383,16 @@ func _sync_active_ids_from_same_root() -> void:
 			_active_ids.append(id)
 
 
-func _classify_from_view_position(view_pos_m: Vector3) -> int:
+func _classify_from_view_position(view_pos_m: Vector3, prev_state: int = State.INACTIVE_NO_LCA) -> int:
 	if not _is_finite_vec3(view_pos_m):
 		return State.INACTIVE_NO_LCA
-	if view_pos_m.length() <= activation_radius_m:
+	var distance_m: float = view_pos_m.length()
+	var exit_radius_m: float = activation_radius_m * maxf(activation_radius_exit_ratio, 1.0)
+	if prev_state == State.ACTIVE:
+		if distance_m <= exit_radius_m:
+			return State.ACTIVE
+		return State.INACTIVE_DISTANT
+	if distance_m <= activation_radius_m:
 		return State.ACTIVE
 	return State.INACTIVE_DISTANT
 

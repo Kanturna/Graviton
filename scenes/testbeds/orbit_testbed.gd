@@ -16,6 +16,7 @@ const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_
 const NativeSpeciesServiceScript = preload("res://src/sim/life/native_species_service.gd")
 const GeneticSpeciesServiceScript = preload("res://src/sim/life/genetic_species_service.gd")
 const OrbitReadoutServiceScript = preload("res://src/sim/orbit/orbit_readout_service.gd")
+const PerfProbeScript = preload("res://src/tools/debug/perf_probe.gd")
 
 const ZOOM_FACTOR_STEP: float = 1.12
 const VIEW_BOOKMARK_SLOT_COUNT: int = 5
@@ -288,6 +289,12 @@ func _exit_tree() -> void:
 func _process(delta: float) -> void:
 	_activation_set.rebuild()
 	_orbit_service.request_numeric_local_candidates(_activation_set.get_active_ids())
+	# Renderer VOR Kamera syncen: Bodies, Kamera und Overlays lesen
+	# dieselbe interpolierte Frame-Pose. Sonst zeigt der Fokus-Body
+	# die Position aus Frame N-1, waehrend die Kamera bereits auf
+	# Frame N zentriert -> sichtbarer Jitter um zentrale Bodies.
+	if _renderer != null:
+		_renderer.sync_visuals_now()
 	_camera_controller.handle_pan_input(_pan_input_dir(), delta)
 	_camera_controller.step(delta, get_viewport_rect().size)
 	if _is_large_world:
@@ -297,6 +304,19 @@ func _process(delta: float) -> void:
 	if _planet_badge_overlay != null:
 		_planet_badge_overlay.refresh()
 	_update_hud()
+	_sample_perf_probe()
+
+
+func _sample_perf_probe() -> void:
+	if _activation_set != null:
+		PerfProbeScript.sample(&"active_ids", _activation_set.get_active_ids().size())
+	if _camera_controller != null:
+		PerfProbeScript.sample(&"zoom_factor", _camera_controller.get_zoom_factor())
+		PerfProbeScript.sample(&"view_scale", _camera_controller.get_current_view_scale())
+		PerfProbeScript.sample(&"frame_label", String(_camera_controller.get_frame_label()))
+	if _planet_badge_overlay != null:
+		var badge_snapshot: Dictionary = _planet_badge_overlay.get_debug_snapshot()
+		PerfProbeScript.sample(&"visible_badges", int(badge_snapshot.get("visible_badge_count", 0)))
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -325,6 +345,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_F3:
 				_debug_overlay.visible = not _debug_overlay.visible
 				_debug_overlay.mark_dirty(_debug_overlay.visible)
+				get_viewport().set_input_as_handled()
+			KEY_P:
+				if event.shift_pressed:
+					PerfProbeScript.clear()
+					print("[PerfProbe] ring cleared")
+				else:
+					var dump_path: String = "user://perf_probe_%d.csv" % Time.get_unix_time_from_system()
+					var rows_written: int = PerfProbeScript.dump_csv(dump_path)
+					print("[PerfProbe] dumped %d rows to %s" % [rows_written, dump_path])
 				get_viewport().set_input_as_handled()
 			KEY_BACKSPACE:
 				_camera_controller.fit_current_focus()
@@ -481,7 +510,7 @@ func _update_hud() -> void:
 		if _cycle_value.visible:
 			_cycle_value.text = OrbitHudFormatterScript.format_cycle(orbit_readout_desc)
 
-	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Home root overview   Ctrl+1-5 save view   1-5 recall view   Q/E or PgUp/PgDn speed   WASD pan   Wheel zoom   Backspace fit focus   Space pause   F3 debug"
+	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Home root overview   Ctrl+1-5 save view   1-5 recall view   Q/E or PgUp/PgDn speed   WASD pan   Wheel zoom   Backspace fit focus   Space pause   F3 debug   P perf dump   Shift+P perf clear"
 
 
 func _pan_input_dir() -> Vector2:
