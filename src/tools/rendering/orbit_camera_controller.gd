@@ -140,6 +140,7 @@ func _apply_view_state(
 		fit_current_focus()
 	if _last_viewport_size != Vector2.ZERO:
 		_refresh_target_view(_last_viewport_size, 0.0)
+		_apply_target_focus_closeup_ratio(_last_viewport_size)
 		if immediate:
 			_apply_view_transform(true, 0.0, _last_viewport_size)
 
@@ -188,6 +189,13 @@ func _apply_view_transform(immediate: bool, delta: float, viewport_size: Vector2
 	var focus_fit_scale: float = _focus_fit_scale(viewport_size)
 	_renderer.set_focus_closeup_ratio(
 		OrbitZoomModelScript.focus_closeup_ratio(_current_view_scale, focus_fit_scale)
+	)
+
+
+func _apply_target_focus_closeup_ratio(viewport_size: Vector2) -> void:
+	var focus_fit_scale: float = _focus_fit_scale(viewport_size)
+	_renderer.set_focus_closeup_ratio(
+		OrbitZoomModelScript.focus_closeup_ratio(_target_view_scale, focus_fit_scale)
 	)
 
 

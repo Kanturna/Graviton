@@ -62,6 +62,10 @@ Konkreter Ablauf:
 - bei jedem Fokus pruefen:
   Kamera-Follow und Orbitbewegung laufen sichtbar kontinuierlich,
   besonders bei schwarzem Loch und Sternfokus
+- bei hoher Time-Rate mehrfach von schwarzem Loch oder starkem
+  Detailfokus auf eine Sonne klicken:
+  der Stern darf keinen einzelnen Frame als uebergrosser Closeup-Pop
+  rendern, bevor die Kamera auf der korrekten Fokusstufe landet
 - im Detail-/Fokusblick pruefen:
   entfernte Galaxy-Proxies sind nicht sichtbar/pickbar und verursachen
   beim Reinzoomen keine weiteren Proxy-Redraw-Spikes

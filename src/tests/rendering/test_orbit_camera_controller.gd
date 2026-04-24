@@ -80,6 +80,7 @@ static func run(ctx) -> void:
 	_test_zoom_multiplier_clamps_to_bounds(ctx)
 	_test_detail_zoom_keeps_focus_centered_when_root_is_not_visible(ctx)
 	_test_detail_zoom_closeup_ratio_follows_smoothed_view_scale(ctx)
+	_test_focus_change_resets_target_closeup_before_next_render_sync(ctx)
 	_test_focus_change_resets_zoom_to_fit(ctx)
 	_test_explicit_root_focus_uses_root_overview_label(ctx)
 	_test_non_finite_root_falls_back_to_focus_lock(ctx)
@@ -261,6 +262,31 @@ static func _test_detail_zoom_closeup_ratio_follows_smoothed_view_scale(ctx) -> 
 	ctx.assert_true(
 		renderer.last_focus_closeup_ratio > 1.0 and renderer.last_focus_closeup_ratio < 4.0,
 		"Bei laufender Zoom-Interpolation liegt das Closeup-Ratio sichtbar zwischen Fit und Zielzoom"
+	)
+	_teardown_controller_setup(setup)
+
+
+static func _test_focus_change_resets_target_closeup_before_next_render_sync(ctx) -> void:
+	var setup := _make_controller()
+	var controller = setup["controller"]
+	var renderer: RendererStub = setup["renderer"]
+	var viewport: Vector2 = Vector2(400.0, 200.0)
+	controller.set_focus(&"planet", false, true)
+	controller.step(0.0, viewport)
+	controller.handle_zoom_multiplier(6.0)
+	controller.step(0.0, viewport)
+	ctx.assert_true(
+		renderer.last_focus_closeup_ratio > 5.9,
+		"Vor dem Fokuswechsel liegt ein starker Detail-Closeup-Wert an"
+	)
+
+	controller.set_focus(&"root")
+	ctx.assert_true(renderer.focused_id == &"root", "Fokuswechsel setzt den Renderer-Fokus sofort")
+	ctx.assert_almost(
+		renderer.last_focus_closeup_ratio,
+		1.0,
+		1.0e-9,
+		"Fokuswechsel setzt das Ziel-Closeup vor dem naechsten Render-Sync und verhindert einen alten Detail-Frame"
 	)
 	_teardown_controller_setup(setup)
 

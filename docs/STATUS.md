@@ -148,6 +148,12 @@ Render-Frame ein neues `PackedVector2Array` zu setzen. Das
 `PlanetBadgeOverlay` liest Body-Sichtbarkeit, Screen-Center und
 projizierten Radius jetzt ueber einen gemeinsamen Renderer-Metrics-Call
 statt ueber drei separate Transform-Abfragen pro Body.
+Ein weiterer kleiner Fokuswechsel-Fix verhindert einen sichtbaren
+Einzel-Frame-Scale-Pop beim Klick von stark gezoomten Foki auf Sterne:
+`OrbitCameraController` setzt das Renderer-Closeup-Ratio jetzt direkt
+auf den neuen Ziel-Fokus, bevor der naechste Render-Sync mit altem
+Detail-/Closeup-Wert laufen kann. Kamera-Smoothing bleibt erhalten;
+Sim-Zeit, Orbit-Zustand und Body-Groessen bleiben unveraendert.
 `Performance Closure v2` schliesst den naechsten Render-Hotpath:
 Trail-History wird jetzt ueber `TimeService.sim_tick` statt ueber den
 Renderloop fortgeschrieben; `_sync_visual_positions()` positioniert nur
