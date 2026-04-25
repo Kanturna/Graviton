@@ -29,6 +29,12 @@ Konsequenz:
 - Stage-Timer fuer Asteroiden-Advance, Snapshot-Refresh,
   Asteroiden-Renderer-Sync und Orbit-Renderer-Sync werden im
   Composition Root gemessen, nicht in `sim/`
+- nach dem ersten Editor-Feedback sind Stern-/Planet-/Mond-
+  Einflussradien groesser und die Default-Startgeschwindigkeiten
+  weniger escape-lastig; ein deterministischer Minderheitsanteil bleibt
+  als Wanderer/Flyby erhalten
+- `orbit_step_core_us` kommt als read-only OrbitService-Diagnosewert
+  dazu, damit der naechste `P`-Dump den Physics-Hotpath klarer trennt
 - Gravitationskonstanten bleiben zentral in `UnitSystem`; der
   Asteroiden-Integrator fuehrt keinen zweiten `G`-Konstantenort
 - Anchor-Switching, Re-Spawn/Belt-Replenishment, Impacts, Merge/Split,

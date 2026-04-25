@@ -334,6 +334,8 @@ static func _test_perf_counter_snapshot_tracks_numeric_work(ctx) -> void:
 		"Perf-Counter-Snapshot enthaelt substep_cap_hits")
 	ctx.assert_true(initial.has(OrbitService.PERF_KEY_REGIME_EXIT_NUMERIC),
 		"Perf-Counter-Snapshot enthaelt regime_exit_numeric")
+	ctx.assert_true(initial.has(OrbitService.PERF_KEY_STEP_CORE_US),
+		"Perf-Counter-Snapshot enthaelt orbit_step_core_us")
 	ctx.assert_true(int(initial.get(OrbitService.PERF_KEY_NUMERIC_LOCAL_COUNT, -1)) == 0,
 		"Perf-Counter-Snapshot startet ohne numerische Bodies")
 	ctx.assert_true(int(initial.get(OrbitService.PERF_KEY_ORBIT_SIM_TICKS, -1)) == 0,

@@ -386,6 +386,10 @@ func _sample_orbit_service_perf_probe() -> void:
 		OrbitService.PERF_KEY_NUMERIC_LOCAL_COUNT,
 		int(snapshot.get(OrbitService.PERF_KEY_NUMERIC_LOCAL_COUNT, 0))
 	)
+	PerfProbeScript.sample(
+		OrbitService.PERF_KEY_STEP_CORE_US,
+		int(snapshot.get(OrbitService.PERF_KEY_STEP_CORE_US, 0))
+	)
 	_bump_perf_counter_delta(snapshot, OrbitService.PERF_KEY_ORBIT_SIM_TICKS)
 	_bump_perf_counter_delta(snapshot, OrbitService.PERF_KEY_REGIME_ENTER_NUMERIC)
 	_bump_perf_counter_delta(snapshot, OrbitService.PERF_KEY_NUMERIC_SUBSTEP_TOTAL)

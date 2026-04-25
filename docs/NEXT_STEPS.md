@@ -16,7 +16,7 @@ abgesicherten Slices, jetzt inklusive `Asteroiden v1`.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Asteroiden-v1.1-Root-Frame-Freiflug-Slice mit `8325`
+- `run_tests.bat` lief nach dem Asteroiden-v1.1-Root-Frame-Freiflug-/Tuning-Slice mit `8326`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -81,7 +81,11 @@ Offene Editor-/Feel-/FPS-Gates:
   ausserdem freie Segmente ausserhalb von Stern-/Planet-/Mond-
   Einflussradien sichtbar sein, keine BH-gebundenen Asteroidenkreise
   auftreten und `free_drift_count` im Dump steigen. `attractor_checks`
-  sollte im Catchup deutlich niedriger als vorher ausfallen. Nach dem Orbit-LOD-
+  sollte im Catchup deutlich niedriger als vorher ausfallen. Nach dem
+  Einflussradius-/Velocity-Tuning sollten mehr Asteroiden im
+  Sternkontext eingefangen bleiben statt sofort als reine Flybys aus
+  dem View zu verschwinden; `orbit_step_core_us` trennt im naechsten
+  Dump den Orbit-Physics-Anteil vom Asteroidenpfad. Nach dem Orbit-LOD-
   und Screen-Culling-Follow-up sollten ausserdem
   `orbit_visible_point_count`, `render_primitives`, `body_visible_count`
   und `draw_calls` im lokalen Fokus sinken. Nach dem Root-lock-/Badge-
@@ -153,8 +157,8 @@ Konkreter Ablauf:
   Asteroiden, Attractor-Checks, Substeps, Freiflug und Despawns muessen
   im Sidecar sichtbar sein; Stage-Timer fuer
   `asteroid_advance_us`, `asteroid_snapshot_refresh_us`,
-  `asteroid_renderer_sync_us` und `orbit_renderer_sync_us` muessen in
-  der CSV-Zeitreihe auftauchen
+  `asteroid_renderer_sync_us`, `orbit_renderer_sync_us` und
+  `orbit_step_core_us` muessen in der CSV-Zeitreihe auftauchen
 - dabei explizit pruefen:
   kein HUD, Inspector oder Life-Panel behauptet Kollisionen,
   Katastrophen, Life-Destruction, Merge/Split oder

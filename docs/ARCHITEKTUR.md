@@ -79,9 +79,12 @@ Derived-Cache, Renderer, Streaming, UI und Service-Counter.
 Stage-Zeiten fuer Asteroiden- und Render-Hotpaths werden ebenfalls im
 Composition Root gemessen (`asteroid_advance_us`,
 `asteroid_snapshot_refresh_us`, `asteroid_renderer_sync_us`,
-`orbit_renderer_sync_us`). `sim/`-Services bleiben dabei frei von
-`PerfProbe`-Abhaengigkeiten und exponieren hoechstens read-only
-Counter wie `free_drift_count`.
+`orbit_renderer_sync_us`). Der OrbitService exponiert zusaetzlich den
+letzten reinen Orbit-Step als read-only `orbit_step_core_us`, damit
+Physics-Zeit in `P`-Dumps nicht mit Asteroiden- oder View-Arbeit
+verwechselt wird. `sim/`-Services bleiben dabei frei von
+`PerfProbe`-Abhaengigkeiten und exponieren hoechstens read-only Counter
+wie `free_drift_count`.
 
 **Konsequenz:** `PerfProbe` ist CSV-/Playtest-Diagnostik, keine
 Simulationswahrheit. Der JSON-Sidecar ist ebenfalls nur Diagnoseausgabe
@@ -578,7 +581,10 @@ ihres Einflussradius liegen. Bereits aktive Attraktoren nutzen einen
 Exit-Radius mit Faktor `1.15`; optionale Quellen werden nur ersetzt,
 wenn ein neuer Kandidat den schwaechsten aktuellen Attraktor mindestens
 um Faktor `1.25` uebertrifft. Die teure Set-Auswahl darf in v1.1 ueber
-ein kurzes Refresh-Fenster wiederverwendet werden; die konkreten
+ein kurzes Refresh-Fenster wiederverwendet werden. Nach dem ersten
+Editor-Freiflug-Feedback sind Stern-, Planet- und Mondradien bewusst
+grosszuegiger als die reinen visuellen Spawn-Belts, damit nicht fast
+jeder Asteroid sofort aus dem Systemfeld herausfaellt. Die konkreten
 Major-Body-Positionen der ausgewaehlten Attraktoren werden trotzdem in
 jedem Tick neu gelesen.
 

@@ -33,6 +33,7 @@ const PERF_KEY_REGIME_ENTER_NUMERIC: StringName = &"regime_enter_numeric"
 const PERF_KEY_NUMERIC_SUBSTEP_TOTAL: StringName = &"numeric_substep_total"
 const PERF_KEY_SUBSTEP_CAP_HITS: StringName = &"substep_cap_hits"
 const PERF_KEY_REGIME_EXIT_NUMERIC: StringName = &"regime_exit_numeric"
+const PERF_KEY_STEP_CORE_US: StringName = &"orbit_step_core_us"
 
 signal bodies_updated(ids: Array[StringName], reason: StringName)
 signal step_completed(dt_s: float, t_s: float)
@@ -56,6 +57,7 @@ var _regime_enter_numeric_count: int = 0
 var _numeric_substep_total: int = 0
 var _substep_cap_hit_count: int = 0
 var _regime_exit_numeric_count: int = 0
+var _last_step_core_us: int = 0
 
 
 func configure(registry: Node, time_service: Node) -> void:
@@ -75,6 +77,7 @@ func configure(registry: Node, time_service: Node) -> void:
 	_numeric_substep_total = 0
 	_substep_cap_hit_count = 0
 	_regime_exit_numeric_count = 0
+	_last_step_core_us = 0
 	if not _time.sim_tick.is_connected(_on_sim_tick):
 		_time.sim_tick.connect(_on_sim_tick)
 	_configured = true
@@ -88,6 +91,7 @@ func _exit_tree() -> void:
 func _on_sim_tick(_dt: float) -> void:
 	if not _configured:
 		return
+	var step_start_us: int = Time.get_ticks_usec()
 	_sim_tick_index += 1
 	var t: float = _time.sim_time_s
 	var updated_ids: Array[StringName] = []
@@ -100,6 +104,7 @@ func _on_sim_tick(_dt: float) -> void:
 		update_body(state, def, t)
 		if _runtime_state_changed(before, state):
 			updated_ids.append(id)
+	_last_step_core_us = Time.get_ticks_usec() - step_start_us
 	_emit_bodies_updated(updated_ids, UPDATE_REASON_SIM_TICK)
 	step_completed.emit(_dt, t)
 
@@ -116,6 +121,7 @@ func get_perf_counter_snapshot() -> Dictionary:
 		PERF_KEY_NUMERIC_SUBSTEP_TOTAL: _numeric_substep_total,
 		PERF_KEY_SUBSTEP_CAP_HITS: _substep_cap_hit_count,
 		PERF_KEY_REGIME_EXIT_NUMERIC: _regime_exit_numeric_count,
+		PERF_KEY_STEP_CORE_US: _last_step_core_us,
 	}
 
 

@@ -44,6 +44,16 @@ Velocity-Aenderung und ohne v1.1-Re-Spawn. Out-of-Bounds-Despawn ist
 bewusst akzeptiert und wird gezaehlt. Trails speichern jetzt stabile
 Root-Frame-Samples und werden pro Frame re-projiziert, statt alte
 View-Pixel als Wahrheit mitzuschleppen.
+Nach dem ersten v1.1-Editor-Dump zeigte sich: wegdriftende Asteroiden
+senken zwar `attractor_checks`/Substeps, bleiben aber weiter aktive
+und sichtbare Minor Bodies; die Sternfokus-FPS wird dadurch nicht
+automatisch besser. Das Tuning wurde nachgezogen: Stern-/Planet-/Mond-
+Einflussradien sind groesser, Default-Startgeschwindigkeiten sind
+weniger escape-lastig, ein deterministischer Minderheitsanteil bleibt
+als Wanderer erhalten und das Attractor-Rescanning laeuft seltener.
+Der naechste Dump enthaelt ausserdem `orbit_step_core_us`, um den
+verbliebenen Physics-Hotpath von Asteroiden- und Rendererzeiten zu
+trennen.
 Ein direkter Qualitaets-Follow-up reduziert den zuvor zu sauberen
 Kreisbahn-Eindruck: Initiale Asteroiden-Velocities enthalten jetzt
 deterministischen radialen Drift und einen kleinen Anteil retrograder

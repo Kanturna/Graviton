@@ -9,15 +9,15 @@ const RELATIVE_STATE_RESOLVER_SCRIPT := preload("res://src/sim/topology/relative
 const ASTEROIDS_PER_ROOT: int = 24
 const MAX_ATTRACTORS: int = 6
 const ATTRACTOR_REPLACE_FACTOR: float = 1.25
-const ATTRACTOR_REFRESH_INTERVAL_TICKS: int = 4
+const ATTRACTOR_REFRESH_INTERVAL_TICKS: int = 8
 const INFLUENCE_EXIT_FACTOR: float = 1.15
-const STAR_INFLUENCE_RADIUS_MULTIPLIER: float = 1.45
-const STAR_INFLUENCE_PADDING_M: float = 1.0e11
-const STAR_FALLBACK_INFLUENCE_M: float = 3.4e11
-const PLANET_RADIUS_INFLUENCE_MULTIPLIER: float = 80.0
-const PLANET_MOON_ORBIT_INFLUENCE_MULTIPLIER: float = 2.0
-const MOON_RADIUS_INFLUENCE_MULTIPLIER: float = 50.0
-const MOON_MIN_INFLUENCE_M: float = 2.0e8
+const STAR_INFLUENCE_RADIUS_MULTIPLIER: float = 3.25
+const STAR_INFLUENCE_PADDING_M: float = 2.5e11
+const STAR_FALLBACK_INFLUENCE_M: float = 1.0e12
+const PLANET_RADIUS_INFLUENCE_MULTIPLIER: float = 160.0
+const PLANET_MOON_ORBIT_INFLUENCE_MULTIPLIER: float = 3.0
+const MOON_RADIUS_INFLUENCE_MULTIPLIER: float = 90.0
+const MOON_MIN_INFLUENCE_M: float = 4.0e8
 const TARGET_SUBSTEP_S: float = 1800.0
 const MAX_SUBSTEPS_PER_TICK: int = 32
 const OUT_OF_BOUNDS_M: float = 2.0e14
@@ -271,8 +271,19 @@ func _build_initial_state(def, t_s: float):
 	var origin_mass_kg: float = origin_def.mass_kg if origin_def != null and _is_v1_attractor_kind(origin_def.kind) else UnitSystem.SOLAR_MASS_KG
 	var mu: float = UnitSystem.mu_from_mass(maxf(origin_mass_kg, 1.0))
 	var circular_speed_mps: float = sqrt(mu / maxf(radius_m, 1.0))
-	var tangential_speed_mps: float = circular_speed_mps * _range_from_seed(def.seed, 5, 0.70, 1.22)
-	var radial_speed_mps: float = circular_speed_mps * _range_from_seed(def.seed, 7, -0.32, 0.32)
+	var wanderer_bias: float = _range_from_seed(def.seed, 9, 0.0, 1.0)
+	var tangential_speed_mps: float = circular_speed_mps * _range_from_seed(
+		def.seed,
+		5,
+		0.78,
+		1.30 if wanderer_bias < 0.24 else 1.08
+	)
+	var radial_speed_mps: float = circular_speed_mps * _range_from_seed(
+		def.seed,
+		7,
+		-0.28 if wanderer_bias < 0.24 else -0.12,
+		0.28 if wanderer_bias < 0.24 else 0.12
+	)
 	var direction: float = -1.0 if _range_from_seed(def.seed, 8, 0.0, 1.0) < 0.18 else 1.0
 	var tilt: float = _range_from_seed(def.seed, 6, -0.10, 0.10)
 	state.vx_mps = float(origin_relative.get("vx_mps", 0.0)) + cos(phase_rad) * radial_speed_mps - sin(phase_rad) * tangential_speed_mps * direction

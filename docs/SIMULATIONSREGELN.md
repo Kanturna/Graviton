@@ -459,7 +459,9 @@ Missing-Request-Grace, Rejoin-Budget und `BodyState.current_mode`.
   Autoritaet.
 - `STAR`, `PLANET` und `MOON` sind nur innerhalb expliziter
   Einflussradien Attraktoren. Bereits aktive Attraktoren duerfen bis
-  zum `1.15`-Exit-Radius gehalten werden.
+  zum `1.15`-Exit-Radius gehalten werden. Diese Radien duerfen
+  spielerisch groesser als reine Spawn- oder Visual-Belts sein, damit
+  lokale Sternsysteme Asteroiden sichtbar binden koennen.
 - `BLACK_HOLE` ist kein Asteroiden-Attractor in v1.1. Es gibt keine
   globale Asteroiden-Dauerschwerkraft.
 - Ein leerer Attractor-Satz bedeutet linearen Freiflug mit
