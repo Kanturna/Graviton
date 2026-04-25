@@ -2,6 +2,7 @@ extends RefCounted
 
 const RootInspectorModelBuilderScript = preload("res://src/tools/ui/root_inspector_model_builder.gd")
 const RootInspectorOverlayScript = preload("res://src/tools/ui/root_inspector_overlay.gd")
+const RootInspectorRowScript = preload("res://src/tools/ui/root_inspector_row.gd")
 const DerivedSnapshotCacheScript = preload("res://src/runtime/derived/derived_snapshot_cache.gd")
 const UniverseTopologyScript = preload("res://src/sim/topology/universe_topology.gd")
 const SimTestHarnessScript = preload("res://src/tests/helpers/sim_test_harness.gd")
@@ -50,6 +51,8 @@ static func run(ctx) -> void:
 	_test_overlay_compact_focus_branch_keeps_focused_subtree(ctx)
 	_test_overlay_starts_closed_and_emits_focus_requests(ctx)
 	_test_overlay_life_chip_emits_details_without_focus_request(ctx)
+	_test_overlay_rows_are_single_controls(ctx)
+	_test_row_hit_testing_routes_life_chip_separately(ctx)
 	_test_overlay_throttles_sim_tick_rebuilds_but_not_user_events(ctx)
 	_test_overlay_skips_identical_model_apply(ctx)
 
@@ -131,47 +134,50 @@ static func _test_overlay_formats_navigation_first_rows(ctx) -> void:
 	)
 	overlay.set_root_context(&"obsidian", &"alpha", true)
 
-	var alpha_row: PanelContainer = _find_row_panel_by_body_id(overlay, &"alpha")
-	ctx.assert_true(alpha_row != null, "Overlay rendert STAR-Rows als strukturierte Row-Panels")
-	ctx.assert_true(_label_text(alpha_row, "NameLabel") == "Alpha", "STAR-Row haelt den Namen in einem eigenen Label")
-	ctx.assert_true(_label_text(alpha_row, "KindLabel") == "STAR", "STAR-Row haelt den Body-Kind in einem eigenen Label")
-	ctx.assert_true(_find_named_descendant(alpha_row, "LifeChip") == null, "STAR-Rows tragen keinen Life-Chip")
-	ctx.assert_true(_find_named_descendant(alpha_row, "EnvironmentChip") == null, "STAR-Rows tragen keinen Environment-Chip")
-	ctx.assert_true(_find_named_descendant(alpha_row, "DetailLabel") == null, "STAR-Rows tragen keine World-/Species-Detailzeile")
+	var alpha_row = _find_row_control_by_body_id(overlay, &"alpha")
+	var alpha_snapshot: Dictionary = alpha_row.get_debug_snapshot()
+	ctx.assert_true(alpha_row != null, "Overlay rendert STAR-Rows als konsolidierte Row-Controls")
+	ctx.assert_true(String(alpha_snapshot.get("name_text", "")) == "Alpha", "STAR-Row haelt den Namen im Row-Snapshot")
+	ctx.assert_true(String(alpha_snapshot.get("kind_text", "")) == "STAR", "STAR-Row haelt den Body-Kind im Row-Snapshot")
+	ctx.assert_true(not bool(alpha_snapshot.get("has_life_badge", true)), "STAR-Rows tragen keinen Life-Chip")
+	ctx.assert_true(not bool(alpha_snapshot.get("has_environment_badge", true)), "STAR-Rows tragen keinen Environment-Chip")
+	ctx.assert_true(String(alpha_snapshot.get("detail_text", "")) == "", "STAR-Rows tragen keine World-/Species-Detailzeile")
 	ctx.assert_true(_colors_close(
-		_label_color(alpha_row, "NameLabel"),
+		alpha_snapshot.get("name_color", Color.TRANSPARENT),
 		SurveyVisualThemeScript.color_for_body_kind(BodyType.Kind.STAR)
 	), "STAR-Namen nutzen den warmen Survey-Farbton")
 
-	var gamma_iv_row: PanelContainer = _find_row_panel_by_body_id(overlay, &"gamma_iv")
-	ctx.assert_true(gamma_iv_row != null, "Overlay rendert PLANET-Rows als strukturierte Row-Panels")
+	var gamma_iv_row = _find_row_control_by_body_id(overlay, &"gamma_iv")
+	var gamma_iv_snapshot: Dictionary = gamma_iv_row.get_debug_snapshot()
+	ctx.assert_true(gamma_iv_row != null, "Overlay rendert PLANET-Rows als konsolidierte Row-Controls")
 	ctx.assert_true(
-		_label_text(gamma_iv_row, "NameLabel") == "Gamma IV" and _label_text(gamma_iv_row, "KindLabel") == "PLANET",
+		String(gamma_iv_snapshot.get("name_text", "")) == "Gamma IV" and String(gamma_iv_snapshot.get("kind_text", "")) == "PLANET",
 		"Nicht fokussierte PLANET-Rows behalten Name und Kind an erster Stelle"
 	)
 	ctx.assert_true(
-		_chip_label_text(gamma_iv_row, "EnvironmentChip") != "" and _chip_label_text(gamma_iv_row, "ClimateChip") != "",
+		String(gamma_iv_snapshot.get("environment_chip_text", "")) != "" and String(gamma_iv_snapshot.get("climate_chip_text", "")) != "",
 		"PLANET-Rows trennen Environment und Climate in zwei eigene Chips"
 	)
 	ctx.assert_true(
-		_chip_label_text(gamma_iv_row, "LifeChip") == "PREBIOTIC" and _label_text(gamma_iv_row, "NoteLabel") == "0 moons",
+		String(gamma_iv_snapshot.get("life_chip_text", "")) == "PREBIOTIC" and String(gamma_iv_snapshot.get("note_text", "")) == "0 moons",
 		"Nicht fokussierte PLANET-Rows tragen nur noch Life-Chip und Moon-Note als kompakte Zusatzinfos"
 	)
 	ctx.assert_true(
-		_find_named_descendant(gamma_iv_row, "DetailLabel") == null,
+		String(gamma_iv_snapshot.get("detail_text", "")) == "",
 		"Nicht fokussierte PLANET-Rows blenden die Detailzeile im Navigator aus"
 	)
-	ctx.assert_true(_theme_color_matches_chip(gamma_iv_row, "EnvironmentChip"), "Environment-Chip nutzt seine enum-basierte Theme-Farbe")
-	ctx.assert_true(_theme_color_matches_chip(gamma_iv_row, "ClimateChip"), "Climate-Chip nutzt seine eigene enum-basierte Theme-Farbe")
+	ctx.assert_true(_colors_close(gamma_iv_snapshot.get("environment_color", Color.TRANSPARENT), _expected_environment_color(gamma_iv_snapshot)), "Environment-Chip nutzt seine enum-basierte Theme-Farbe")
+	ctx.assert_true(_colors_close(gamma_iv_snapshot.get("climate_color", Color.TRANSPARENT), _expected_climate_color(gamma_iv_snapshot)), "Climate-Chip nutzt seine eigene enum-basierte Theme-Farbe")
 
 	overlay.set_root_context(&"obsidian", &"gamma_iv", true)
-	var focused_gamma_iv_row: PanelContainer = _find_row_panel_by_body_id(overlay, &"gamma_iv")
+	var focused_gamma_iv_row = _find_row_control_by_body_id(overlay, &"gamma_iv")
+	var focused_gamma_iv_snapshot: Dictionary = focused_gamma_iv_row.get_debug_snapshot()
 	ctx.assert_true(
-		_label_text(focused_gamma_iv_row, "NameLabel") == "Gamma IV" and _chip_label_text(focused_gamma_iv_row, "LifeChip") == "PREBIOTIC",
+		String(focused_gamma_iv_snapshot.get("name_text", "")) == "Gamma IV" and String(focused_gamma_iv_snapshot.get("life_chip_text", "")) == "PREBIOTIC",
 		"Fokussierte PLANET-Rows ohne Species-Basis bleiben ebenfalls navigator-first"
 	)
 	ctx.assert_true(
-		_find_named_descendant(focused_gamma_iv_row, "DetailLabel") == null,
+		String(focused_gamma_iv_snapshot.get("detail_text", "")) == "",
 		"Ohne Species-Basis gibt es fuer fokussierte PLANET-Rows keine Fallback-Zeile"
 	)
 	ctx.assert_true(
@@ -208,14 +214,14 @@ static func _test_overlay_compact_root_overview_limits_visible_rows(ctx) -> void
 		compact_snapshot.get("row_body_ids", []) == [&"obsidian", &"alpha", &"beta", &"gamma", &"delta"],
 		"Compact-Modus materialisiert im Root-Overview nur Root plus direkte Stern-Navigation"
 	)
-	ctx.assert_true(_find_row_panel_by_body_id(overlay, &"alpha") != null, "Compact-Modus behaelt Stern-Rows klickbar")
-	ctx.assert_true(_find_row_panel_by_body_id(overlay, &"gamma_iv") == null, "Compact-Modus materialisiert keine planetaren Chip-Rows")
+	ctx.assert_true(_find_row_control_by_body_id(overlay, &"alpha") != null, "Compact-Modus behaelt Stern-Rows klickbar")
+	ctx.assert_true(_find_row_control_by_body_id(overlay, &"gamma_iv") == null, "Compact-Modus materialisiert keine planetaren Chip-Rows")
 
 	overlay.set_compact_root_overview(false)
 	var full_snapshot: Dictionary = overlay.get_debug_snapshot()
 	ctx.assert_true(not bool(full_snapshot.get("compact_root_overview", true)), "Voller Inspector-Modus ist im Debug-Snapshot sichtbar")
 	ctx.assert_true(int(full_snapshot.get("visible_row_count", 0)) == 18, "Voller Inspector-Modus materialisiert wieder alle Rows")
-	ctx.assert_true(_find_row_panel_by_body_id(overlay, &"gamma_iv") != null, "Voller Inspector-Modus stellt planetare Rows wieder her")
+	ctx.assert_true(_find_row_control_by_body_id(overlay, &"gamma_iv") != null, "Voller Inspector-Modus stellt planetare Rows wieder her")
 
 	overlay.free()
 	_teardown_starter_root_context(context)
@@ -249,8 +255,8 @@ static func _test_overlay_compact_focus_branch_keeps_focused_subtree(ctx) -> voi
 		],
 		"Focus-Branch-Modus materialisiert den fokussierten Stern-Teilbaum und kollabiert Geschwistersterne"
 	)
-	ctx.assert_true(_find_row_panel_by_body_id(overlay, &"alpha_i_m") != null, "Focus-Branch-Modus behaelt Monde im fokussierten Stern-Teilbaum")
-	ctx.assert_true(_find_row_panel_by_body_id(overlay, &"beta_i") == null, "Focus-Branch-Modus materialisiert keine Planeten unter Geschwistersternen")
+	ctx.assert_true(_find_row_control_by_body_id(overlay, &"alpha_i_m") != null, "Focus-Branch-Modus behaelt Monde im fokussierten Stern-Teilbaum")
+	ctx.assert_true(_find_row_control_by_body_id(overlay, &"beta_i") == null, "Focus-Branch-Modus materialisiert keine Planeten unter Geschwistersternen")
 
 	overlay.set_root_context(&"obsidian", &"alpha_i", false)
 	var planet_snapshot: Dictionary = overlay.get_debug_snapshot()
@@ -293,13 +299,13 @@ static func _test_overlay_starts_closed_and_emits_focus_requests(ctx) -> void:
 	ctx.assert_true(snapshot.get("focused_body_id", StringName("")) == &"alpha_i", "Inspector tracked die aktuell fokussierte Body-Zeile")
 	var row_body_ids: Array = snapshot.get("row_body_ids", [])
 	ctx.assert_true(row_body_ids.size() == 18, "Inspector rendert die vollstaendige Root-Hierarchie als eingerueckte Liste")
-	var alpha_row_panel: PanelContainer = _find_row_panel_by_body_id(overlay, &"alpha")
-	ctx.assert_true(alpha_row_panel != null, "Overlay rendert fuer STAR-Rows klickbare Row-Panels")
+	var alpha_row_panel = _find_row_control_by_body_id(overlay, &"alpha")
+	ctx.assert_true(alpha_row_panel != null, "Overlay rendert fuer STAR-Rows klickbare Row-Controls")
 	ctx.assert_true(
 		alpha_row_panel.mouse_filter == Control.MOUSE_FILTER_STOP,
-		"Row-Panels stoppen gezielt Inspector-Klicks, damit Fokusnavigation nicht zur Welt durchfaellt"
+		"Row-Controls stoppen gezielt Inspector-Klicks, damit Fokusnavigation nicht zur Welt durchfaellt"
 	)
-	var gui_connections: Array[Dictionary] = alpha_row_panel.get_signal_connection_list("gui_input")
+	var gui_connections: Array[Dictionary] = alpha_row_panel.get_signal_connection_list("focus_requested")
 	var uses_deferred_click_routing: bool = false
 	for connection_variant in gui_connections:
 		var connection: Dictionary = connection_variant
@@ -308,7 +314,7 @@ static func _test_overlay_starts_closed_and_emits_focus_requests(ctx) -> void:
 			break
 	ctx.assert_true(
 		uses_deferred_click_routing,
-		"Row-Panels routen Fokuswechsel deferred, damit Rebuilds die aktive Row nicht mitten im gui_input-Signal freigeben"
+		"Row-Controls routen Fokuswechsel deferred, damit Rebuilds die aktive Row nicht mitten im gui_input-Signal freigeben"
 	)
 	var first_row_container: Control = overlay.find_children("Rows", "VBoxContainer", true, false)[0].get_child(0)
 
@@ -339,19 +345,19 @@ static func _test_overlay_life_chip_emits_details_without_focus_request(ctx) -> 
 	)
 	overlay.set_root_context(&"obsidian", &"alpha", true)
 
-	var gamma_iv_row: PanelContainer = _find_row_panel_by_body_id(overlay, &"gamma_iv")
-	var life_chip: Button = _find_named_descendant(gamma_iv_row, "LifeChip") as Button
-	ctx.assert_true(life_chip != null, "Planetare Life-Chips sind echte Buttons")
+	var gamma_iv_row = _find_row_control_by_body_id(overlay, &"gamma_iv")
+	var row_snapshot: Dictionary = gamma_iv_row.get_debug_snapshot()
+	ctx.assert_true(bool(row_snapshot.get("has_life_badge", false)), "Planetare Life-Chips sind im konsolidierten Row-Control vorhanden")
 	ctx.assert_true(
-		life_chip.action_mode == BaseButton.ACTION_MODE_BUTTON_PRESS,
-		"Life-Chips feuern auf Mouse-Down wie die bisherige Inspector-Klickdisziplin"
+		row_snapshot.get("life_chip_rect", Rect2()).size.x > 0.0,
+		"Life-Chips behalten ein explizites Hit-Rect"
 	)
 	ctx.assert_true(
-		life_chip.mouse_filter == Control.MOUSE_FILTER_STOP,
-		"Life-Chips stoppen das Event, damit kein Row-Fokuswechsel mit ausgeloest wird"
+		gamma_iv_row.mouse_filter == Control.MOUSE_FILTER_STOP,
+		"Row-Control stoppt das Event, damit kein Klick zur Welt durchfaellt"
 	)
 	var uses_deferred_click_routing: bool = false
-	for connection_variant in life_chip.get_signal_connection_list("pressed"):
+	for connection_variant in gamma_iv_row.get_signal_connection_list("life_details_requested"):
 		var connection: Dictionary = connection_variant
 		if int(connection.get("flags", 0)) & CONNECT_DEFERRED:
 			uses_deferred_click_routing = true
@@ -364,6 +370,67 @@ static func _test_overlay_life_chip_emits_details_without_focus_request(ctx) -> 
 	overlay._on_life_chip_pressed(&"gamma_iv")
 	ctx.assert_true(life_probe.requested_id == &"gamma_iv", "Life-Chip emittiert life_details_requested fuer den Body")
 	ctx.assert_true(focus_probe.requested_id == StringName(""), "Life-Chip emittiert keinen focus_requested-Fokuswechsel")
+
+	overlay.free()
+	_teardown_starter_root_context(context)
+
+
+static func _test_overlay_rows_are_single_controls(ctx) -> void:
+	var context: Dictionary = _build_starter_root_context()
+	var overlay = RootInspectorOverlayScript.new()
+	overlay.configure(
+		context.get("registry"),
+		context.get("topology"),
+		context.get("snapshot_cache")
+	)
+	overlay.set_compact_focus_branch(true)
+	overlay.set_root_context(&"obsidian", &"alpha", true)
+
+	var snapshot: Dictionary = overlay.get_debug_snapshot()
+	var row_controls: Array = []
+	for row_variant in overlay.find_children("Row_*", "Control", true, false):
+		if row_variant.get_script() == RootInspectorRowScript:
+			row_controls.append(row_variant)
+	ctx.assert_true(
+		row_controls.size() == int(snapshot.get("visible_row_count", 0)),
+		"Jede sichtbare Inspector-Row ist genau ein RootInspectorRow-Control"
+	)
+	for row_variant in row_controls:
+		var row = row_variant
+		ctx.assert_true(row.get_child_count() == 0, "Konsolidierte Inspector-Rows haben keine Label-/Chip-Untercontrols")
+
+	overlay.free()
+	_teardown_starter_root_context(context)
+
+
+static func _test_row_hit_testing_routes_life_chip_separately(ctx) -> void:
+	var context: Dictionary = _build_starter_root_context()
+	var overlay = RootInspectorOverlayScript.new()
+	var focus_probe := FocusRequestProbe.new()
+	var life_probe := LifeDetailsRequestProbe.new()
+	overlay.configure(
+		context.get("registry"),
+		context.get("topology"),
+		context.get("snapshot_cache")
+	)
+	overlay.set_root_context(&"obsidian", &"alpha", true)
+	var gamma_iv_row = _find_row_control_by_body_id(overlay, &"gamma_iv")
+	gamma_iv_row.focus_requested.connect(focus_probe.on_focus_requested)
+	gamma_iv_row.life_details_requested.connect(life_probe.on_life_details_requested)
+	gamma_iv_row.size = Vector2(360.0, gamma_iv_row.custom_minimum_size.y)
+	gamma_iv_row._recompute_hit_rects()
+
+	var life_rect: Rect2 = gamma_iv_row.get_debug_snapshot().get("life_chip_rect", Rect2())
+	ctx.assert_true(life_rect.size.x > 0.0 and life_rect.size.y > 0.0, "Row-Control berechnet ein klickbares Life-Chip-Rect")
+
+	gamma_iv_row._gui_input(_left_mouse_press_event(life_rect.get_center()))
+	ctx.assert_true(life_probe.requested_id == &"gamma_iv", "Klick im Life-Chip-Rect emittiert life_details_requested")
+	ctx.assert_true(focus_probe.requested_id == StringName(""), "Life-Chip-Klick emittiert keinen Fokuswechsel")
+
+	life_probe.requested_id = StringName("")
+	gamma_iv_row._gui_input(_left_mouse_press_event(Vector2(8.0, 8.0)))
+	ctx.assert_true(focus_probe.requested_id == &"gamma_iv", "Klick ausserhalb des Life-Chips emittiert focus_requested")
+	ctx.assert_true(life_probe.requested_id == StringName(""), "Row-Fokus-Klick emittiert kein Life-Details-Signal")
 
 	overlay.free()
 	_teardown_starter_root_context(context)
@@ -557,68 +624,37 @@ static func _row_by_body_id(rows: Array, body_id: StringName) -> Dictionary:
 	return {}
 
 
-static func _find_row_panel_by_body_id(overlay: Control, body_id: StringName) -> PanelContainer:
-	for panel_variant in overlay.find_children("Row_%s" % RootInspectorOverlayScript._node_name_fragment(body_id), "PanelContainer", true, false):
-		return panel_variant as PanelContainer
+static func _find_row_control_by_body_id(overlay: Control, body_id: StringName) -> Control:
+	for row_variant in overlay.find_children("Row_%s" % RootInspectorOverlayScript._node_name_fragment(body_id), "Control", true, false):
+		if row_variant.get_script() == RootInspectorRowScript:
+			return row_variant as Control
 	return null
 
 
-static func _find_named_descendant(root: Node, node_name: String) -> Node:
-	if root == null:
-		return null
-	for child_variant in root.find_children(node_name, "", true, false):
-		return child_variant
-	return null
+static func _expected_environment_color(row_snapshot: Dictionary) -> Color:
+	match String(row_snapshot.get("environment_chip_text", "")):
+		"HABITABLE":
+			return SurveyVisualThemeScript.color_for_environment_class(EnvironmentServiceScript.Class.HABITABLE)
+		"HARSH":
+			return SurveyVisualThemeScript.color_for_environment_class(EnvironmentServiceScript.Class.MARGINAL)
+		"HOSTILE":
+			return SurveyVisualThemeScript.color_for_environment_class(EnvironmentServiceScript.Class.HOSTILE)
+		_:
+			return Color.TRANSPARENT
 
 
-static func _label_text(root: Node, node_name: String) -> String:
-	var label: Label = _find_named_descendant(root, node_name) as Label
-	return "" if label == null else label.text
-
-
-static func _label_color(root: Node, node_name: String) -> Color:
-	var label: Label = _find_named_descendant(root, node_name) as Label
-	return Color.TRANSPARENT if label == null else label.get_theme_color("font_color")
-
-
-static func _chip_label_text(root: Node, chip_name: String) -> String:
-	var chip := _find_named_descendant(root, chip_name)
-	if chip == null:
-		return ""
-	if chip is Button:
-		return (chip as Button).text
-	var label: Label = _find_named_descendant(chip, "Label") as Label
-	return "" if label == null else label.text
-
-
-static func _theme_color_matches_chip(root: Node, chip_name: String) -> bool:
-	var chip := _find_named_descendant(root, chip_name)
-	if chip == null:
-		return false
-	var label: Label = _find_named_descendant(chip, "Label") as Label
-	if label == null:
-		return false
-	var expected: Color = Color.TRANSPARENT
-	match chip_name:
-		"EnvironmentChip":
-			var text := label.text
-			if text == "HABITABLE":
-				expected = SurveyVisualThemeScript.color_for_environment_class(EnvironmentServiceScript.Class.HABITABLE)
-			elif text == "HARSH":
-				expected = SurveyVisualThemeScript.color_for_environment_class(EnvironmentServiceScript.Class.MARGINAL)
-			elif text == "HOSTILE":
-				expected = SurveyVisualThemeScript.color_for_environment_class(EnvironmentServiceScript.Class.HOSTILE)
-		"ClimateChip":
-			var text := label.text
-			if text == "FROZEN":
-				expected = SurveyVisualThemeScript.color_for_ecosystem_type(EnvironmentServiceScript.EcosystemType.FROZEN_WORLD)
-			elif text == "TEMPERATE":
-				expected = SurveyVisualThemeScript.color_for_ecosystem_type(EnvironmentServiceScript.EcosystemType.TEMPERATE_WORLD)
-			elif text == "SEASONAL":
-				expected = SurveyVisualThemeScript.color_for_ecosystem_type(EnvironmentServiceScript.EcosystemType.SEASONAL_WORLD)
-			elif text == "HOT":
-				expected = SurveyVisualThemeScript.color_for_ecosystem_type(EnvironmentServiceScript.EcosystemType.HOT_WORLD)
-	return _colors_close(label.get_theme_color("font_color"), expected)
+static func _expected_climate_color(row_snapshot: Dictionary) -> Color:
+	match String(row_snapshot.get("climate_chip_text", "")):
+		"FROZEN":
+			return SurveyVisualThemeScript.color_for_ecosystem_type(EnvironmentServiceScript.EcosystemType.FROZEN_WORLD)
+		"TEMPERATE":
+			return SurveyVisualThemeScript.color_for_ecosystem_type(EnvironmentServiceScript.EcosystemType.TEMPERATE_WORLD)
+		"SEASONAL":
+			return SurveyVisualThemeScript.color_for_ecosystem_type(EnvironmentServiceScript.EcosystemType.SEASONAL_WORLD)
+		"HOT":
+			return SurveyVisualThemeScript.color_for_ecosystem_type(EnvironmentServiceScript.EcosystemType.HOT_WORLD)
+		_:
+			return Color.TRANSPARENT
 
 
 static func _colors_close(a: Color, b: Color) -> bool:
@@ -628,8 +664,9 @@ static func _colors_close(a: Color, b: Color) -> bool:
 		and is_equal_approx(a.a, b.a)
 
 
-static func _left_mouse_press_event() -> InputEventMouseButton:
+static func _left_mouse_press_event(position: Vector2 = Vector2.ZERO) -> InputEventMouseButton:
 	var event := InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.pressed = true
+	event.position = position
 	return event

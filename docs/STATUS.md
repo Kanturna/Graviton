@@ -69,6 +69,18 @@ noch in echten Planet-/Mond-Detailfoki und scannt im Stern-/Root-lock
 keine Badge-Kandidaten. Der neue Counter
 `root_lock_hidden_body_count` macht diesen LOD-Pfad im naechsten
 `P`-Dump messbar.
+Der danach verglichene `P`-Dump bestaetigte den offenen rechten
+`RootInspectorOverlay` als groessten verbliebenen Hotpath im lokalen
+Sternfokus: bei geschlossenem Inspector lag der Alpha-Fokus nahe 60-70
+FPS, bei offenem Inspector fielen `render_objects`, `draw_calls` und
+Primitive deutlich hoeher aus, obwohl `visible_badges = 0` und
+`attractor_checks = 0` waren. Deshalb rendert der Inspector seine
+sichtbaren Rows jetzt als je ein konsolidiertes `RootInspectorRow`-
+Control mit eigenem `_draw()`-Pfad, statt pro Row verschachtelte
+Panel-/Margin-/Label-/Chip-/Button-Untercontrols zu erzeugen. Das
+Inspector-Modell, die deferred Fokus-Signale und der explizite
+Life-Chip-Hit-Test bleiben erhalten; nur die View-Materialisierung
+wurde reduziert.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und

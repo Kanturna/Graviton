@@ -16,7 +16,7 @@ abgesicherten Slices, jetzt inklusive `Asteroiden v1`.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Root-lock-/Badge-LOD-Follow-up mit `8193`
+- `run_tests.bat` lief nach dem Root-Inspector-Row-Follow-up mit `8208`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -34,7 +34,10 @@ Headless-Basis:
   sowie Renderer -> Streaming, Numeric-Exit-Tests pinnen
   Counter-/Warning-Dedup-Semantik; zusaetzlich pinnen View-Tests jetzt,
   dass Root-lock nur Fokuszweig plus direkte Sterne zeichnet und
-  Sternfokus keine planetennahen Detail-Badges scannt
+  Sternfokus keine planetennahen Detail-Badges scannt; zusaetzlich
+  pinnen Inspector-Tests jetzt, dass sichtbare Rows einzelne
+  `RootInspectorRow`-Controls ohne Label-/Chip-Unterbaum sind und der
+  Life-Chip-Hit-Test getrennt vom Row-Fokus bleibt
 
 Offene Editor-/Feel-/FPS-Gates:
 
@@ -50,7 +53,14 @@ Offene Editor-/Feel-/FPS-Gates:
   Regression: Runtime-Haptik und Performance mit
   `scaleup_galaxy_100` und offenem Inspector pruefen; vor einem
   `FramePoseCache` bleiben Detail-Fokus-`P`-Dumps fuer Stern/Planet/Mond
-  das naechste Evidence-Gate
+  das naechste Evidence-Gate. Nach dem Root-Inspector-Row-Follow-up
+  gezielt Alpha-/Sternfokus mit geschlossenem und offenem Inspector
+  vergleichen: `root_inspector_open = 1` darf die FPS nicht mehr massiv
+  durch statische Control-Fanout-Kosten druecken; `render_objects`,
+  `draw_calls` und `render_primitives` sind die relevanten
+  Before-/After-Spalten. Bei weiterem Einbruch waehrend Kamerabewegung
+  zuerst den Linien-/FramePose-/Renderer-Pfad untersuchen, nicht wieder
+  die Asteroiden-Sim
 - Asteroiden v1:
   `scaleup_galaxy_100` im Root-/Stern-/Planet-Fokus pruefen,
   sichtbare Punkte und kurze Trails beobachten, Bahnverformung nahe
