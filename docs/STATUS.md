@@ -8,12 +8,23 @@ Stand: 2026-04-25
 Weltraum-/Systemsimulation und eine erste stilisierte 2D-
 Praesentationsschicht.
 
+Darauf sitzt jetzt zusaetzlich ein lokaler statischer Website-Prototyp
+unter `website/`: ein deutscher Onepager ohne Build-System, ohne
+Deployment und ohne JavaScript. Die Bildflaechen sind bewusst als
+`Platzhalter - Aufnahme ausstehend` markiert, weil noch keine lokalen
+Website-Screenshots als Projektbelege vorliegen. Die Seite trennt
+sichtbar vorhandene Readouts von geplanten Gates und nennt
+ausdruecklich, dass kein fertiges Gameplay, keine lebenden dynamischen
+Populationen, keine Settlement-/Economy-/Quest-Systeme und keine
+Veroeffentlichung behauptet werden.
+
 Darauf sitzt jetzt zusaetzlich `Asteroiden v1` als sichtbare
 Minor-Body-Simulation:
 Asteroiden leben in einem eigenen `sim/asteroids/`-Slice mit eigenem
 `AsteroidState`, stabilem `anchor_id`, eigenem ID-Raum und
-Restricted-Gravity-Integrator. `BLACK_HOLE`, `STAR`, `PLANET` und
-`MOON` ziehen Asteroiden an, aber Asteroiden schreiben nie
+Restricted-Gravity-Integrator. `STAR`, `PLANET` und `MOON` ziehen
+Asteroiden an; `BLACK_HOLE` bleibt in v1 Root-/Kontextkoerper, aber
+kein Asteroiden-Attractor. Asteroiden schreiben nie
 Major-Body-`BodyState` und wirken nicht aufeinander. Die Szene bridged
 `OrbitService.step_completed(dt_s, t_s)` explizit in den
 Asteroid-Service; Single-World- und Large-World-Residency spawnen
@@ -23,6 +34,13 @@ deterministisch pro Root. View-seitig projiziert ein separater
 History zeichnet. Impacts, Merge/Split, Life-Folgen,
 Asteroid-Asteroid-Kollisionen, Anchor-Switching und Fokusnavigation auf
 Asteroiden bleiben bewusst Folge-Slices.
+Ein direkter Qualitaets-Follow-up reduziert den zuvor zu sauberen
+Kreisbahn-Eindruck: Initiale Asteroiden-Velocities enthalten jetzt
+deterministischen radialen Drift und einen kleinen Anteil retrograder
+Starts, statt fast perfekte Tangenten um den Anchor zu sein. Zusammen
+mit dem Entfernen von `BLACK_HOLE` aus dem v1-Attractor-Set sollen die
+Steinchen im Root-/Sternfokus eher wie fliegendes Geroell statt wie
+kleine gezeichnete Mondorbits lesen.
 Ein direkter Performance-Follow-up cached im Asteroid-Service
 relative Major-Body-Zustaende pro `(anchor_id, body_id)` innerhalb
 eines Asteroiden-Ticks. Damit werden identische Topologie-/Frame-
@@ -81,6 +99,16 @@ Panel-/Margin-/Label-/Chip-/Button-Untercontrols zu erzeugen. Das
 Inspector-Modell, die deferred Fokus-Signale und der explizite
 Life-Chip-Hit-Test bleiben erhalten; nur die View-Materialisierung
 wurde reduziert.
+Der naechste Dump war dann mit geschlossenem Inspector weiter im
+Sternfokus langsam. Die Zeitreihe zeigte keinen Zusammenhang mit der
+Asteroiden-Physik: Frames mit `attractor_checks = 0` und Frames mit
+`432` Checks lagen bei praktisch gleicher FPS. Der harte
+Render-Objekt-Sprung trat stattdessen beim Reinzoomen in den
+Fokus-Stern auf, sobald `body_star_closeup_phase_max` den
+Closeup-Schwellenbereich erreichte. `OrbitBodyVisual` zeichnet deshalb
+die sternspezifischen Closeup-Spicules/Prominence-Arcs nicht mehr als
+CPU-Canvas-Linien; die Sternoberflaeche und der Closeup-Eindruck
+bleiben ueber den bestehenden `body_star.gdshader`-Pfad erhalten.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und
@@ -1196,6 +1224,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Wichtige zuletzt geaenderte Dateien
 
+- `website/index.html`
+- `website/styles.css`
+- `website/assets/README.md`
 - `src/core/math/orbit_math.gd`
 - `src/tests/orbit/test_orbit.gd`
 - `src/sim/world/world_loader.gd`
@@ -1482,6 +1513,10 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - den produktiven Large-World-Pfad weiter nur ueber Proxy-/Perf-Trim
   oder planetare Derived-Folgearbeit ausbauen, nicht ueber noch mehr
   Root-Anzahl ohne echten Editor-/Feel-Playtest
+- fuer den lokalen Website-Prototyp erst nach einem echten lokalen
+  Screenshot-Capture die Platzhalter in `website/` ersetzen; keine
+  externen Bilder, Stock-Weltraumbilder, Addon-Icons oder Rendering-
+  Referenztexturen als Projektbeleg verwenden
 - Headless-Basis nach `Population Estimates v1`:
   `./run_tests.bat` laeuft gruen mit `7960` Passed, `0` Failed;
   der reale Lauf meldet am Prozessende aber weiter generische

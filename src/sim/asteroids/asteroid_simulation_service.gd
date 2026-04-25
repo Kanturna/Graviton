@@ -242,11 +242,14 @@ func _build_initial_state(def, t_s: float):
 
 	var anchor_def: BodyDef = _registry.get_def(def.anchor_id)
 	var mu: float = INTEGRATOR_SCRIPT.G_M3_PER_KG_S2 * maxf(anchor_def.mass_kg if anchor_def != null else 0.0, 1.0)
-	var speed_mps: float = sqrt(mu / maxf(radius_m, 1.0)) * _range_from_seed(def.seed, 5, 0.82, 1.12)
-	var tilt: float = _range_from_seed(def.seed, 6, -0.08, 0.08)
-	state.vx_mps = -sin(phase_rad) * speed_mps
-	state.vy_mps = cos(phase_rad) * speed_mps
-	state.vz_mps = speed_mps * tilt
+	var circular_speed_mps: float = sqrt(mu / maxf(radius_m, 1.0))
+	var tangential_speed_mps: float = circular_speed_mps * _range_from_seed(def.seed, 5, 0.70, 1.22)
+	var radial_speed_mps: float = circular_speed_mps * _range_from_seed(def.seed, 7, -0.32, 0.32)
+	var direction: float = -1.0 if _range_from_seed(def.seed, 8, 0.0, 1.0) < 0.18 else 1.0
+	var tilt: float = _range_from_seed(def.seed, 6, -0.10, 0.10)
+	state.vx_mps = cos(phase_rad) * radial_speed_mps - sin(phase_rad) * tangential_speed_mps * direction
+	state.vy_mps = sin(phase_rad) * radial_speed_mps + cos(phase_rad) * tangential_speed_mps * direction
+	state.vz_mps = circular_speed_mps * tilt
 	return state
 
 
@@ -273,12 +276,10 @@ func _spawn_radius_bounds(anchor_id: StringName) -> Dictionary:
 func _select_attractors_for(state) -> Array[StringName]:
 	var candidates: Array = _rank_attractor_candidates(state)
 	var mandatory: Array[StringName] = []
-	for required_id in [state.root_id, state.anchor_id]:
-		if required_id != StringName("") and not mandatory.has(required_id) and _registry.has_body(required_id):
-			mandatory.append(required_id)
+	for required_id in [state.anchor_id, state.root_id]:
+		_append_mandatory_attractor(mandatory, required_id)
 	var strongest_star: StringName = _strongest_star_for_root(state.root_id)
-	if strongest_star != StringName("") and not mandatory.has(strongest_star):
-		mandatory.append(strongest_star)
+	_append_mandatory_attractor(mandatory, strongest_star)
 
 	var selected: Array[StringName] = []
 	for id in mandatory:
@@ -330,7 +331,7 @@ func _should_refresh_attractors(state, tick_index: int) -> bool:
 
 
 func _attractor_ids_still_valid(state) -> bool:
-	for required_id in [state.root_id, state.anchor_id]:
+	for required_id in _required_attractor_ids_for(state):
 		if required_id != StringName("") and not state.current_attractor_ids.has(required_id):
 			return false
 	for id in state.current_attractor_ids:
@@ -376,7 +377,7 @@ func _build_attractor_entries(state, attractor_ids: Array[StringName]) -> Packed
 	var out := PackedFloat64Array()
 	for id in attractor_ids:
 		var def: BodyDef = _registry.get_def(id)
-		if def == null:
+		if def == null or not _is_v1_attractor_kind(def.kind):
 			continue
 		var relative: Dictionary = _resolve_body_relative_to_anchor_cached(id, state.anchor_id)
 		if not bool(relative.get("ok", false)):
@@ -386,6 +387,22 @@ func _build_attractor_entries(state, attractor_ids: Array[StringName]) -> Packed
 		out.append(float(relative.get("z_m", 0.0)))
 		out.append(INTEGRATOR_SCRIPT.G_M3_PER_KG_S2 * maxf(def.mass_kg, 0.0))
 	return out
+
+
+func _append_mandatory_attractor(mandatory: Array[StringName], body_id: StringName) -> void:
+	if body_id == StringName("") or mandatory.has(body_id) or not _registry.has_body(body_id):
+		return
+	var def: BodyDef = _registry.get_def(body_id)
+	if def == null or not _is_v1_attractor_kind(def.kind):
+		return
+	mandatory.append(body_id)
+
+
+func _required_attractor_ids_for(state) -> Array[StringName]:
+	var required: Array[StringName] = []
+	for id in [state.anchor_id, state.root_id, _strongest_star_for_root(state.root_id)]:
+		_append_mandatory_attractor(required, id)
+	return required
 
 
 func _strongest_star_for_root(root_id: StringName) -> StringName:
@@ -442,8 +459,7 @@ func _resolve_body_relative_to_anchor_cached(body_id: StringName, anchor_id: Str
 
 static func _is_v1_attractor_kind(kind: int) -> bool:
 	return (
-		kind == BodyType.Kind.BLACK_HOLE
-		or kind == BodyType.Kind.STAR
+		kind == BodyType.Kind.STAR
 		or kind == BodyType.Kind.PLANET
 		or kind == BodyType.Kind.MOON
 	)

@@ -269,53 +269,6 @@ func _draw_star_glow() -> void:
 	for i in range(_STAR_HALO_INNER_RINGS.size() - 1, -1, -1):
 		var ring: Array = _STAR_HALO_INNER_RINGS[i]
 		draw_circle(Vector2.ZERO, float(ring[0]) * clamp, ring[1])
-	if _star_closeup_phase <= 0.35:
-		return
-
-	var time_s: float = 0.0
-	var spike_phase: float = smoothstep(0.35, 1.0, _star_closeup_phase)
-	var spike_base_radius: float = (_STAR_HALO_OUTER_RADIUS - 0.8) * clamp
-	var spike_lengths: Array[float] = [1.8, 2.6, 1.4, 3.0, 2.1, 1.7, 2.8, 1.5, 2.2, 1.9, 2.7, 1.6]
-	var spike_angles: Array[float] = [-2.92, -2.35, -1.82, -1.28, -0.71, -0.18, 0.42, 0.97, 1.54, 2.08, 2.63, 3.03]
-	for i in range(spike_angles.size()):
-		var angle: float = float(spike_angles[i]) + sin(time_s * 0.11 + float(i) * 0.73) * 0.04
-		var length: float = float(spike_lengths[i]) * spike_phase * clamp
-		var start: Vector2 = Vector2(cos(angle), sin(angle)) * spike_base_radius
-		var finish: Vector2 = Vector2(cos(angle), sin(angle)) * (spike_base_radius + length)
-		draw_line(start, finish, Color(1.0, 0.86, 0.34, 0.18 * spike_phase), 0.9, true)
-
-	var prominence_radius: float = (_STAR_HALO_OUTER_RADIUS + 0.6) * clamp
-	var prominence_boost: float = 0.28 * spike_phase
-	draw_arc(
-		Vector2.ZERO,
-		prominence_radius + 1.2 * spike_phase * clamp,
-		-2.74 + sin(time_s * 0.09) * 0.03,
-		-2.22 + sin(time_s * 0.12) * 0.03,
-		16,
-		Color(1.0, 0.74, 0.28, prominence_boost),
-		1.0,
-		true
-	)
-	draw_arc(
-		Vector2.ZERO,
-		prominence_radius + 1.8 * spike_phase * clamp,
-		-0.18 + sin(time_s * 0.08 + 0.8) * 0.02,
-		0.29 + sin(time_s * 0.10 + 0.4) * 0.02,
-		18,
-		Color(1.0, 0.70, 0.24, prominence_boost * 0.92),
-		1.0,
-		true
-	)
-	draw_arc(
-		Vector2.ZERO,
-		prominence_radius + 1.4 * spike_phase * clamp,
-		1.88 + sin(time_s * 0.07 + 1.3) * 0.02,
-		2.27 + sin(time_s * 0.09 + 0.6) * 0.02,
-		15,
-		Color(1.0, 0.72, 0.26, prominence_boost * 0.84),
-		0.9,
-		true
-	)
 
 
 func _draw_planet_overlay() -> void:

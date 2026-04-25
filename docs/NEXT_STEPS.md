@@ -16,7 +16,7 @@ abgesicherten Slices, jetzt inklusive `Asteroiden v1`.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Root-Inspector-Row-Follow-up mit `8208`
+- `run_tests.bat` lief nach dem Asteroiden-Drift-/Attractor-Follow-up mit `8233`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -60,7 +60,10 @@ Offene Editor-/Feel-/FPS-Gates:
   `draw_calls` und `render_primitives` sind die relevanten
   Before-/After-Spalten. Bei weiterem Einbruch waehrend Kamerabewegung
   zuerst den Linien-/FramePose-/Renderer-Pfad untersuchen, nicht wieder
-  die Asteroiden-Sim
+  die Asteroiden-Sim. Nach dem Fokus-Stern-Closeup-Follow-up zusaetzlich
+  pruefen, ob der fruehere harte Sprung bei
+  `body_star_closeup_phase_max > 0.35` wegfaellt; `render_objects`
+  sollte im Alpha-Fokus nicht mehr von grob `465` auf `690` springen
 - Asteroiden v1:
   `scaleup_galaxy_100` im Root-/Stern-/Planet-Fokus pruefen,
   sichtbare Punkte und kurze Trails beobachten, Bahnverformung nahe
@@ -80,6 +83,16 @@ Offene Editor-/Feel-/FPS-Gates:
   Sternfokus 0 bleiben und `draw_calls`/`render_objects` gegenueber den
   17:40-Dumps weiter sinken; bei weiterem Einbruch direkt wieder zwei
   `P`-Dumps vergleichen.
+- Website-Prototyp / Screenshot-Gate:
+  `website/` ist lokal statisch angelegt, die Bildflaechen bleiben aber
+  bis zu echten lokalen Graviton-Aufnahmen als Platzhalter markiert.
+  Nach dem Screenshot-Capture zuerst Root-Overview, Survey-/Readout-
+  Ansicht und Inspector-/Life-Detail-Ansicht belegen. Keine externen
+  Bilder, Stock-Weltraumbilder, Addon-Icons oder Rendering-
+  Referenztexturen als Projektbeleg verwenden; Website-Texte duerfen
+  weiter kein fertiges Gameplay, keine dynamische Population, keine
+  Settlements, keine Economy, keine Quests und keine Veroeffentlichung
+  behaupten.
 
 Erst wenn diese Gates sauber sind, ist ein Folgeblock wie
 `Population Dynamics v1` oder `Evolution Competition v1` sinnvoll.
@@ -100,10 +113,16 @@ Konkreter Ablauf:
   Simulationswahrheit ersetzen
 - auf einen Stern fokussieren:
   Asteroiden sollen als kleine Punkte mit kurzen Trails sichtbar sein
-  und sich erkennbar gegen die planetaren Orbits bewegen
+  und sich erkennbar gegen die planetaren Orbits bewegen; nach dem
+  Drift-/Attractor-Follow-up sollen sie nicht mehr als saubere kleine
+  Kreisbahn-Polygone um Sterne oder das Schwarze Loch lesen
 - einen Planeten-/Mondnahbereich beobachten:
   nahe Major Bodies sollen die Bahn leicht verformen; harte Impacts
   oder Kill-/Consume-Radien werden noch nicht behauptet
+- Root-/BH-Overview beobachten:
+  `BLACK_HOLE` ist in v1 kein Asteroiden-Attractor; sichtbare
+  Asteroiden sollen von Stern-/Planet-/Mond-Kontexten gepraegt sein und
+  nicht als schwarze-Loch-gebundene Miniorbits erscheinen
 - Streaming/Fokuswechsel zwischen Root-Systemen pruefen:
   in Large-Worlds spawnt v1 Asteroiden nur fuer den aktuellen Fokus-
   Root; residenter Neighbor-/Prewarm-Zustand darf keine zusaetzlichen

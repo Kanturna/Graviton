@@ -15,8 +15,10 @@ Konsequenz:
   Asteroiden-Vorbeifluege umgeschrieben
 - v1 nutzt `anchor_id` im Asteroid-State als lokale Rechenbasis; der
   Anchor bleibt in v1 stabil und wechselt nicht
-- Asteroiden lesen `BLACK_HOLE`, `STAR`, `PLANET` und `MOON` als
-  Attractors, schreiben aber niemals Major-Body-`BodyState`
+- Asteroiden lesen Major-Body-Zustaende nur read-only; als v1-
+  Attractors gelten bewusst nur `STAR`, `PLANET` und `MOON`.
+  `BLACK_HOLE` bleibt Root-/Kontextkoerper, zieht kleine v1-
+  Asteroiden aber nicht an
 - Asteroid-Positionen/Velozitaeten liegen als double-Felder im
   `AsteroidState`, nicht als `Vector3`-Wahrheit
 - das Attractor-Set ist gecappt und hysterese-stabilisiert; pro

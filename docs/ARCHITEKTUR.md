@@ -526,7 +526,8 @@ konsumiert nur den letzten Snapshot.
 sein, ohne die bestehende Parent-/Child-Topologie der grossen
 Himmelskoerper zu zerlegen. Die Major-Body-Simulation bleibt die
 Quelle fuer `BLACK_HOLE`, `STAR`, `PLANET` und `MOON`; Asteroiden
-lesen diese Zustande nur als Attraktoren.
+lesen diese Zustande nur als read-only Kontext. Als v1-Attraktoren
+gelten bewusst nur `STAR`, `PLANET` und `MOON`.
 
 **State und Autoritaet:** `AsteroidState` speichert `anchor_id`,
 Position und Velocity in double-Feldern im Anchor-Frame. Nur
@@ -547,8 +548,9 @@ residenten oder vorgewaermten Neighbor-Roots. Neighbor-Residency bleibt
 Streaming-/Registry-Zustand fuer Major Bodies; sie erweitert in v1
 nicht automatisch die aktive Minor-Body-Physik.
 
-**Physik v1:** Restricted Gravity. `BLACK_HOLE`, `STAR`, `PLANET` und
-`MOON` ziehen Asteroiden an; Asteroiden ziehen nichts an. Es gibt keine
+**Physik v1:** Restricted Gravity. `STAR`, `PLANET` und `MOON`
+ziehen Asteroiden an; Schwarze Loecher sind in v1 Root-/Anchor-Kontext,
+aber keine Asteroiden-Attraktoren. Asteroiden ziehen nichts an. Es gibt keine
 Asteroid-Asteroid-Gravitation, keine Asteroid-Kollisionen, keine
 Impacts, kein Merge/Split und keine Life-Folgen.
 

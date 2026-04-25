@@ -465,6 +465,8 @@ Missing-Request-Grace, Rejoin-Budget und `BodyState.current_mode`.
   `scenes/` oder `src/tools/` einfuehren.
 - Asteroiden-v1 duerfen niemals Major-Body-`BodyState` schreiben oder
   `UniverseRegistry`-Bodies fuer kleine Steinchen anlegen.
+- Asteroiden-v1 duerfen `STAR`, `PLANET` und `MOON` als Attraktoren
+  lesen; `BLACK_HOLE` ist in v1 kein Asteroiden-Attractor.
 - Asteroiden-v1 haben keine Asteroid-Asteroid-Wechselwirkung: keine
   Gravitation, keine Kollisionen, kein Merge/Split.
 - Asteroiden-Trails sind reine Renderer-History und duerfen nicht in

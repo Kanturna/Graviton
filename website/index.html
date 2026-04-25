@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Graviton - lokaler Projektstand</title>
+  <meta name="description" content="Lokaler statischer Projekt-Onepager fuer Graviton mit Status, Architekturgrundsatz und bewusstem No-Overpromise-Abschnitt.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#ueberblick" aria-label="Graviton Start">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span>Graviton</span>
+    </a>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <a href="#ueberblick">Überblick</a>
+      <a href="#sichtstand">Sichtstand</a>
+      <a href="#simulation">Simulation</a>
+      <a href="#status">Status</a>
+      <a href="#grenzen">Grenzen</a>
+      <a href="#naechste-schritte">Nächste Schritte</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero section-band" id="ueberblick">
+      <div class="hero-copy">
+        <p class="eyebrow">Lokaler Prototyp - keine Veröffentlichung</p>
+        <h1>Graviton Projektstand</h1>
+        <p class="lead">
+          Ein statischer Onepager für den aktuellen Stand der Godot-4-
+          Weltraum- und Systemsimulation. Diese Seite beschreibt nur, was
+          im Repo belegt oder als nächstes Entwicklungs-Gate dokumentiert ist.
+        </p>
+        <div class="status-strip" aria-label="Stand und Repo-Revision">
+          <span>Stand: 2026-04-25</span>
+          <span>Repo HEAD: 095b8b5</span>
+        </div>
+      </div>
+      <figure class="image-slot hero-slot">
+        <div class="placeholder-visual" role="img" aria-label="Platzhalter fuer ausstehende lokale Graviton-Aufnahme">
+          <span class="orbit orbit-a"></span>
+          <span class="orbit orbit-b"></span>
+          <span class="orbit orbit-c"></span>
+          <span class="body body-root"></span>
+          <span class="body body-star"></span>
+          <span class="body body-planet"></span>
+        </div>
+        <figcaption>
+          <strong>Platzhalter - Aufnahme ausstehend</strong>
+          Geplante Quelle: lokale Graviton-Szene / Root-Overview.
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="content-section" id="sichtstand">
+      <div class="section-heading">
+        <p class="eyebrow">Sichtstand</p>
+        <h2>Was diese Seite sichtbar macht</h2>
+      </div>
+      <div class="two-column">
+        <div>
+          <p>
+            Graviton hat aktuell eine stilisierte 2D-Orbitansicht, HUD- und
+            Inspector-Readouts, produktive Large-World-Pfade bis
+            <code>scaleup_galaxy_100</code> und einen ersten sichtbaren
+            Minor-Body-Slice für Asteroiden.
+          </p>
+          <p>
+            Die Bildflächen sind in diesem Prototyp absichtlich nicht mit
+            generischem Material belegt. Solange keine lokalen Projekt-
+            Screenshots im Website-Assetordner liegen, bleiben sie als
+            ausstehende Aufnahmen markiert.
+          </p>
+        </div>
+        <div class="figure-grid" aria-label="Geplante Projektaufnahmen">
+          <figure class="image-slot">
+            <div class="placeholder-visual compact" role="img" aria-label="Platzhalter fuer Survey- oder Readout-Ansicht">
+              <span class="readout-line line-a"></span>
+              <span class="readout-line line-b"></span>
+              <span class="readout-line line-c"></span>
+              <span class="mini-chip chip-a"></span>
+              <span class="mini-chip chip-b"></span>
+            </div>
+            <figcaption>
+              <strong>Platzhalter - Aufnahme ausstehend</strong>
+              Geplante Quelle: lokale Survey- oder Readout-Ansicht.
+            </figcaption>
+          </figure>
+          <figure class="image-slot">
+            <div class="placeholder-visual compact alt" role="img" aria-label="Platzhalter fuer Life-Detail- oder Inspector-Ansicht">
+              <span class="panel-line panel-a"></span>
+              <span class="panel-line panel-b"></span>
+              <span class="panel-line panel-c"></span>
+              <span class="panel-line panel-d"></span>
+            </div>
+            <figcaption>
+              <strong>Platzhalter - Aufnahme ausstehend</strong>
+              Geplante Quelle: lokale Inspector- oder Life-Detail-Ansicht.
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section section-band" id="simulation">
+      <div class="section-heading">
+        <p class="eyebrow">Simulation</p>
+        <h2>Architekturgrundsatz</h2>
+      </div>
+      <blockquote class="principle">
+        Daten und Simulationszustand sind die Wahrheit; die View ist Projektion.
+      </blockquote>
+      <div class="three-column">
+        <article>
+          <h3>Autorität</h3>
+          <p>
+            Zeit, Body-Zustände, Orbit-Modi, Derived-Services und Asteroiden-
+            State leben in den dafür dokumentierten Services und Schichten.
+          </p>
+        </article>
+        <article>
+          <h3>Projektion</h3>
+          <p>
+            HUD, Inspector, Renderer, Proxies und Website-Screenshots dürfen
+            Werte darstellen oder ableiten, aber keine zweite Wahrheit einführen.
+          </p>
+        </article>
+        <article>
+          <h3>Website-Regel</h3>
+          <p>
+            Texte und Captions beschreiben nur den belegten Stand oder offene
+            Gates. UI-Readouts sind kein Beweis für fertige Spielsysteme.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section class="content-section" id="status">
+      <div class="section-heading">
+        <p class="eyebrow">Status</p>
+        <h2>Drift-Schutz</h2>
+      </div>
+      <div class="status-card">
+        <span>Stand: 2026-04-25</span>
+        <span>Repo HEAD: 095b8b5</span>
+      </div>
+      <div class="status-columns">
+        <article>
+          <h3>Sichtbar / vorhanden</h3>
+          <ul>
+            <li>Godot-4-Projekt mit 2D-Orbit-Testbed.</li>
+            <li>Strikte Schichtung: <code>core</code>, <code>sim</code>, <code>runtime</code>, <code>scenes</code>.</li>
+            <li>Large-World-Pfad mit Streaming, Proxy-Darstellung und <code>scaleup_galaxy_100</code>.</li>
+            <li>HUD-, Root-Inspector-, Life-Detail- und Readout-Flächen als View über Derived-Daten.</li>
+            <li>Asteroiden v1 als Minor Bodies mit Punkten und kurzen Renderer-Trails.</li>
+          </ul>
+        </article>
+        <article>
+          <h3>In Arbeit / geplant</h3>
+          <ul>
+            <li>Editor-/Feel-/FPS-Acceptance-Bundle über die bestehenden Slices.</li>
+            <li>Asteroiden-v1-Acceptance im Root-, Stern- und Detailfokus.</li>
+            <li>Lokale Screenshot-Aufnahmen für diese Website nach dem Capture-Gate.</li>
+            <li>Spätere Population- oder Evolutions-Slices erst nach sauberem Acceptance-Gate.</li>
+            <li>Weitere planetare Ableitungen wie Mehrquellenstrahlung und Volatile-Logik als eigene Slices.</li>
+          </ul>
+        </article>
+        <article>
+          <h3>Ausdrücklich nicht behauptet</h3>
+          <ul>
+            <li>Kein fertiges Gameplay.</li>
+            <li>Keine lebenden dynamischen Populationen.</li>
+            <li>Keine Settlement-, Economy-, Quest- oder Content-Systeme.</li>
+            <li>Keine Veröffentlichung, kein Deployment und keine Spielbarkeitszusage.</li>
+            <li>Keine Asteroiden-Impacts, Katastrophen, Kriege oder Zivilisationen.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="content-section section-band" id="grenzen">
+      <div class="section-heading">
+        <p class="eyebrow">Grenzen</p>
+        <h2>No Overpromise</h2>
+      </div>
+      <div class="limit-layout">
+        <p>
+          Diese Seite ist ein lokaler Projektprototyp. Sie verspricht keine
+          Veröffentlichung, keine spielbare Demo und keine fertigen
+          Gameplay-Loops. Sie behauptet auch keine Systeme, die im Repo nur
+          als spätere Richtung, offenes Gate oder read-only Ableitung
+          dokumentiert sind.
+        </p>
+        <ul class="plain-list">
+          <li>Readouts über Life, Species, Ecology oder Population Estimates bleiben abgeleitete Anzeigen.</li>
+          <li>Qualitative Population oder Estimate-Ranges sind kein Census und kein Settlement-State.</li>
+          <li>Asteroiden v1 haben keine Kollisionen, Impacts, Merge/Split-Logik oder Life-Folgen.</li>
+          <li>Website-Bilder werden erst ersetzt, wenn lokale Graviton-Aufnahmen wirklich vorliegen.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="content-section" id="naechste-schritte">
+      <div class="section-heading">
+        <p class="eyebrow">Nächste Schritte</p>
+        <h2>Konservativer Arbeitsblock</h2>
+      </div>
+      <ol class="step-list">
+        <li>
+          Das dokumentierte Editor-/Feel-/FPS-Acceptance-Bundle lokal durchspielen.
+        </li>
+        <li>
+          <code>scaleup_galaxy_100</code> im Root-, Stern-, Planet- und Mondfokus prüfen.
+        </li>
+        <li>
+          HUD, Inspector, Life-Detail-Panel, Badges, Asteroiden und Performance-Dumps gegen die aktuellen Gates validieren.
+        </li>
+        <li>
+          Erst nach belegten lokalen Aufnahmen die Platzhalter dieser Website durch echte Projektbilder ersetzen.
+        </li>
+      </ol>
+    </section>
+  </main>
+</body>
+</html>

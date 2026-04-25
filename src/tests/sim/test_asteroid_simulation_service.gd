@@ -9,6 +9,8 @@ static func run(ctx) -> void:
 	_test_trajectory_is_deterministic(ctx)
 	_test_major_body_states_stay_read_only(ctx)
 	_test_anchor_id_stays_stable(ctx)
+	_test_black_holes_are_not_v1_attractors(ctx)
+	_test_initial_spawn_has_radial_drift(ctx)
 	_test_attractor_cap_and_hysteresis(ctx)
 	_test_sync_resident_roots_lifecycle_is_idempotent(ctx)
 	_test_single_world_spawns_without_streaming_controller(ctx)
@@ -207,6 +209,46 @@ static func _test_anchor_id_stays_stable(ctx) -> void:
 	ctx.assert_true(before.size() == after.size(), "Anchor-Stabilitaet behaelt alle aktiven Test-Asteroiden")
 	for id in before.keys():
 		ctx.assert_true(before[id] == after[id], "V1 fuehrt keinen Anchor-Switch durch")
+
+	service.free()
+	reg.free()
+
+
+static func _test_black_holes_are_not_v1_attractors(ctx) -> void:
+	var reg := _make_registry()
+	var service = _make_service(reg)
+	service.reset_for_world(&"scope_a", [&"root_a"], 0.0)
+	service.advance_to_time(900.0, 900.0)
+
+	for entry in service.get_state_snapshot().get("entries", []):
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		ctx.assert_true(
+			not Array(entry.get("current_attractor_ids", [])).has(&"root_a"),
+			"Asteroiden-v1 nutzen Schwarze Loecher nicht als Attraktoren"
+		)
+
+	service.free()
+	reg.free()
+
+
+static func _test_initial_spawn_has_radial_drift(ctx) -> void:
+	var reg := _make_registry()
+	var service = _make_service(reg)
+	service.reset_for_world(&"scope_a", [&"root_a"], 0.0)
+
+	var drift_count: int = 0
+	for entry in service.get_state_snapshot().get("entries", []):
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var x: float = float(entry.get("x_m", 0.0))
+		var y: float = float(entry.get("y_m", 0.0))
+		var radius: float = maxf(sqrt(x * x + y * y), 1.0)
+		var radial_speed: float = (x * float(entry.get("vx_mps", 0.0)) + y * float(entry.get("vy_mps", 0.0))) / radius
+		if absf(radial_speed) > 10.0:
+			drift_count += 1
+	ctx.assert_true(drift_count > 0,
+		"Initiale Asteroiden-Velocities sind nicht alle perfekte Kreisbahn-Tangenten")
 
 	service.free()
 	reg.free()
