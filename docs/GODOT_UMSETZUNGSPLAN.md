@@ -1,8 +1,19 @@
 # Graviton - Umsetzungsplan
 
-Dieses Dokument ist die lebende Roadmap. Es zeigt, was abgeschlossen
-ist, was als naechstes kommt, und was bewusst noch nicht entschieden
-ist.
+Historischer Snapshot:
+Dieses Dokument ist **keine** lebende Roadmap mehr. Es beschreibt einen
+fruehen Foundation-Stand und bleibt nur als Hintergrund erhalten.
+
+Aktuell gelten stattdessen:
+
+- `docs/ARCHITEKTUR.md` fuer normative Architekturregeln
+- `docs/STATUS.md` fuer den aktuellen Repo-Zustand
+- `docs/NEXT_STEPS.md` fuer den naechsten Arbeitsblock
+- `docs/DECISIONS.md` fuer Richtungsentscheidungen
+
+Wenn dieses Dokument von den kanonischen Dateien abweicht, sind die
+kanonischen Dateien massgeblich. Das gilt insbesondere fuer Aussagen zu
+Generatoren, Large-World-Pfaden und heutigen Nicht-Zielen.
 
 ## Foundation-Schritte (Architektur-Dokumentation)
 
@@ -22,7 +33,7 @@ ist.
     `initial_world_id`
   - benannte Referenzwelten: `starter_world`, `sample_system`
 
-## Naechster Fokus
+## Damals geplanter Fokus
 
 - planetare Zustandsableitung auf Basis der jetzt vorhandenen
   Weltmodell-Felder ueber reine Insolation hinaus
@@ -42,7 +53,7 @@ beantwortet sein, bevor Code geschrieben wird:
 
 Erst wenn diese Fragen explizit beantwortet sind, beginnt Schritt 5.
 
-## Bewusste Nicht-Ziele dieser Phase
+## Damals bewusste Nicht-Ziele dieser Phase
 
 - kein Multiplayer / keine Server-Architektur
 - keine prozedurale Welt-Generierung

@@ -12,6 +12,9 @@ const MIN_BADGE_RADIUS_PX: float = 12.0
 const BADGE_OFFSET_X_PX: float = 10.0
 const BADGE_OFFSET_Y_PX: float = 10.0
 const VIEWPORT_MARGIN_PX: float = 4.0
+const CANDIDATE_REBUILD_INTERVAL_USEC: int = 125_000
+const CANDIDATE_BACKGROUND_REBUILD_INTERVAL_USEC: int = 250_000
+const VIEWPORT_SIZE_EPSILON_PX: float = 1.0
 
 var _registry: Node = null
 var _topology = null
@@ -22,6 +25,14 @@ var _frame_label: StringName = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
 var _root: Control = null
 var _badge_pool: Array[Dictionary] = []
 var _badge_text_apply_count: int = 0
+var _cached_candidates: Array[Dictionary] = []
+var _candidate_rebuild_dirty: bool = true
+var _candidate_rebuild_immediate: bool = true
+var _last_candidate_rebuild_usec: int = 0
+var _last_candidate_focus_root_id: StringName = StringName("")
+var _last_candidate_frame_label: StringName = StringName("")
+var _last_candidate_viewport_size: Vector2 = Vector2.ZERO
+var _candidate_rebuild_count: int = 0
 
 
 func _ready() -> void:
@@ -29,18 +40,28 @@ func _ready() -> void:
 	_ensure_badge_pool()
 
 
+func _exit_tree() -> void:
+	_disconnect_snapshot_cache()
+
+
 func configure(registry: Node, topology, bubble, snapshot_cache, renderer) -> void:
+	_disconnect_snapshot_cache()
 	_registry = registry
 	_topology = topology
 	_bubble = bubble
 	_snapshot_cache = snapshot_cache
 	_renderer = renderer
+	_connect_snapshot_cache()
+	_mark_candidate_rebuild_dirty(true)
 	_ensure_ui()
 	_ensure_badge_pool()
 
 
 func set_frame_label(frame_label: StringName) -> void:
+	if _frame_label == frame_label:
+		return
 	_frame_label = frame_label
+	_mark_candidate_rebuild_dirty(true)
 
 
 func refresh() -> void:
@@ -62,6 +83,38 @@ func refresh() -> void:
 
 	var viewport: Viewport = get_viewport()
 	var viewport_size: Vector2 = viewport.get_visible_rect().size if viewport != null else Vector2.ZERO
+	_refresh_candidate_context(focus_root_id, viewport_size)
+	if _should_rebuild_candidates():
+		_rebuild_cached_candidates(focus_root_id, viewport_size)
+	_apply_cached_candidates(viewport_size)
+
+
+func _refresh_candidate_context(focus_root_id: StringName, viewport_size: Vector2) -> void:
+	if _last_candidate_focus_root_id != focus_root_id:
+		_mark_candidate_rebuild_dirty(true)
+	if _last_candidate_frame_label != _frame_label:
+		_mark_candidate_rebuild_dirty(true)
+	if not _last_candidate_viewport_size.is_equal_approx(viewport_size) \
+			and (_last_candidate_viewport_size - viewport_size).length() > VIEWPORT_SIZE_EPSILON_PX:
+		_mark_candidate_rebuild_dirty(true)
+	_last_candidate_focus_root_id = focus_root_id
+	_last_candidate_frame_label = _frame_label
+	_last_candidate_viewport_size = viewport_size
+
+
+func _should_rebuild_candidates() -> bool:
+	if _candidate_rebuild_immediate:
+		return true
+	var now_usec: int = Time.get_ticks_usec()
+	if _last_candidate_rebuild_usec <= 0:
+		return true
+	var elapsed_usec: int = now_usec - _last_candidate_rebuild_usec
+	if _candidate_rebuild_dirty:
+		return elapsed_usec >= CANDIDATE_REBUILD_INTERVAL_USEC
+	return elapsed_usec >= CANDIDATE_BACKGROUND_REBUILD_INTERVAL_USEC
+
+
+func _rebuild_cached_candidates(focus_root_id: StringName, viewport_size: Vector2) -> void:
 	var candidates: Array[Dictionary] = []
 	for id_variant in _registry_update_order():
 		var id: StringName = id_variant
@@ -97,10 +150,41 @@ func refresh() -> void:
 		})
 
 	candidates.sort_custom(Callable(self, "_sort_candidates_by_radius_desc"))
-	var limit: int = mini(candidates.size(), MAX_BADGES)
-	for index in range(limit):
-		_apply_badge(_badge_pool[index], candidates[index], viewport_size)
-	for index in range(limit, _badge_pool.size()):
+	_cached_candidates.clear()
+	for index in range(mini(candidates.size(), MAX_BADGES)):
+		_cached_candidates.append(candidates[index])
+	_candidate_rebuild_dirty = false
+	_candidate_rebuild_immediate = false
+	_last_candidate_rebuild_usec = Time.get_ticks_usec()
+	_candidate_rebuild_count += 1
+	PerfProbeScript.bump(&"badge_candidate_rebuilds")
+
+
+func _apply_cached_candidates(viewport_size: Vector2) -> void:
+	var visible_index: int = 0
+	for candidate_variant in _cached_candidates:
+		if visible_index >= _badge_pool.size():
+			break
+		var candidate: Dictionary = candidate_variant
+		var body_id: StringName = candidate.get("body_id", StringName(""))
+		if body_id == StringName(""):
+			continue
+		var screen_metrics: Dictionary = _renderer.get_body_screen_metrics(body_id)
+		if not bool(screen_metrics.get("visible", false)):
+			continue
+		var projected_radius_px: float = float(screen_metrics.get("projected_radius_px", 0.0))
+		if projected_radius_px < MIN_BADGE_RADIUS_PX:
+			continue
+		var center_px: Vector2 = screen_metrics.get("center_px", Vector2(INF, INF))
+		if not _is_finite_vec2(center_px):
+			continue
+		if _is_offscreen(center_px, projected_radius_px, viewport_size):
+			continue
+		candidate["center_px"] = center_px
+		candidate["projected_radius_px"] = projected_radius_px
+		_apply_badge(_badge_pool[visible_index], candidate, viewport_size)
+		visible_index += 1
+	for index in range(visible_index, _badge_pool.size()):
 		_set_badge_visible(_badge_pool[index], false)
 
 
@@ -123,6 +207,10 @@ func get_debug_snapshot() -> Dictionary:
 		"max_badges": MAX_BADGES,
 		"min_badge_radius_px": MIN_BADGE_RADIUS_PX,
 		"badge_text_apply_count": _badge_text_apply_count,
+		"badge_candidate_rebuild_count": _candidate_rebuild_count,
+		"cached_candidate_count": _cached_candidates.size(),
+		"candidate_rebuild_interval_usec": CANDIDATE_REBUILD_INTERVAL_USEC,
+		"candidate_background_rebuild_interval_usec": CANDIDATE_BACKGROUND_REBUILD_INTERVAL_USEC,
 	}
 
 
@@ -288,6 +376,31 @@ func _registry_update_order() -> Array[StringName]:
 	if _registry.has_method("get_update_order_ref"):
 		return _registry.get_update_order_ref()
 	return _registry.get_update_order()
+
+
+func _connect_snapshot_cache() -> void:
+	if _snapshot_cache == null or not _snapshot_cache.has_signal("snapshot_refreshed"):
+		return
+	var callback := Callable(self, "_on_snapshot_refreshed")
+	if not _snapshot_cache.snapshot_refreshed.is_connected(callback):
+		_snapshot_cache.snapshot_refreshed.connect(callback)
+
+
+func _disconnect_snapshot_cache() -> void:
+	if _snapshot_cache == null or not _snapshot_cache.has_signal("snapshot_refreshed"):
+		return
+	var callback := Callable(self, "_on_snapshot_refreshed")
+	if _snapshot_cache.snapshot_refreshed.is_connected(callback):
+		_snapshot_cache.snapshot_refreshed.disconnect(callback)
+
+
+func _mark_candidate_rebuild_dirty(immediate: bool = false) -> void:
+	_candidate_rebuild_dirty = true
+	_candidate_rebuild_immediate = _candidate_rebuild_immediate or immediate
+
+
+func _on_snapshot_refreshed(reason: StringName) -> void:
+	_mark_candidate_rebuild_dirty(reason != &"sim_tick")
 
 
 func _on_badge_pressed(index: int) -> void:

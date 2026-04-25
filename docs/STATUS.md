@@ -1,6 +1,6 @@
 # Graviton - Status
 
-Stand: 2026-04-24
+Stand: 2026-04-25
 
 ## Kurzfassung
 
@@ -191,6 +191,15 @@ als neuen Shader-/Redraw-State schreibt. `OrbitViewRenderer` vermeidet
 zusaetzlich unveraenderte Scale-/Visibility-Property-Writes im
 per-frame Sync. Die Sim-Wahrheit und der OrbitService bleiben davon
 unberuehrt.
+Ein weiterer kleiner Badge-Performance-Slice drosselt danach den
+teuren Candidate-Pfad:
+`PlanetBadgeOverlay.refresh()` scannt und sortiert planetare Badge-
+Kandidaten nicht mehr jedes Render-Frame, sondern rebuildet die
+Candidate-Liste nur noch dirty/periodisch. Bereits sichtbare Badges
+ziehen ihre Screen-Position weiter pro Frame nach, damit die View nicht
+stottert. Der Debug-Snapshot exponiert dafuer
+`badge_candidate_rebuild_count`; `badge_text_apply_count` bleibt die
+separate Text-/Layout-Messung.
 Ein weiterer Fokus-/Pan-Follow-up schliesst danach die verbliebene
 Frame-Order-Kante: `orbit_testbed.gd` wendet Kamera, Zoom und
 Manual-Pan jetzt vor dem expliziten Renderer-Sync an, damit
@@ -1052,9 +1061,15 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/sim/life/life_potential_service.gd`
 - `src/sim/life/life_track_lookup.gd`
 - `src/sim/life/biosphere_scale_service.gd`
+- `src/sim/life/native_species_service.gd`
+- `src/sim/life/genetic_species_service.gd`
+- `src/sim/life/life_ecology_service.gd`
 - `src/tests/sim/test_environment_service.gd`
 - `src/tests/sim/test_life_potential_service.gd`
 - `src/tests/sim/test_biosphere_scale_service.gd`
+- `src/tests/sim/test_native_species_service.gd`
+- `src/tests/sim/test_genetic_species_service.gd`
+- `src/tests/sim/test_life_ecology_service.gd`
 - `docs/SIMULATIONSREGELN.md`
 - `docs/STARTER_WORLD.md`
 - `docs/ARCHITEKTUR.md`
@@ -1063,6 +1078,11 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/runtime/local_bubble/local_bubble_manager.gd`
 - `src/tests/runtime/test_local_bubble_step2.gd`
 - `src/tools/rendering/orbit_view_renderer.gd`
+- `src/tools/rendering/orbit_time_scale_controller.gd`
+- `src/tools/rendering/planet_badge_overlay.gd`
+- `src/tools/ui/root_inspector_overlay.gd`
+- `src/tools/ui/life_detail_panel.gd`
+- `src/tools/ui/survey_visual_theme.gd`
 - `src/sim/topology/universe_topology.gd`
 - `src/tests/sim/test_universe_topology.gd`
 - `src/tests/helpers/sim_test_harness.gd`
@@ -1096,7 +1116,13 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tests/rendering/test_orbit_body_visual.gd`
 - `src/tests/rendering/test_orbit_emphasis_rules.gd`
 - `src/tests/rendering/test_planet_visual_profile.gd`
+- `src/tests/rendering/test_orbit_view_renderer.gd`
+- `src/tests/rendering/test_orbit_time_scale_controller.gd`
 - `src/tests/rendering/test_orbit_zoom_model.gd`
+- `src/tests/rendering/test_root_inspector_overlay.gd`
+- `src/tests/rendering/test_life_detail_panel.gd`
+- `src/tests/rendering/test_planet_badge_overlay.gd`
+- `src/tests/rendering/test_survey_visual_theme.gd`
 - `src/tests/rendering/test_space_backdrop.gd`
 - `src/tools/rendering/space_backdrop.gd`
 - `src/tools/rendering/shaders/space_backdrop.gdshader`
@@ -1114,6 +1140,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tests/rendering/test_debug_overlay.gd`
 - `src/tests/rendering/test_orbit_hud_formatter.gd`
 - `src/tests/scenes/test_orbit_testbed_hud_modes.gd`
+- `src/tests/scenes/test_orbit_testbed_root_inspector.gd`
 - `src/sim/orbit/orbit_period_helper.gd`
 - `src/sim/orbit/orbit_readout_service.gd`
 - `src/tests/sim/test_orbit_readout_service.gd`
@@ -1250,40 +1277,39 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
-- zuerst `Planet Summary v1` zusammen mit dem bestehenden
-  `Survey UX v2`-Pfad und dem neuen Survey-Color-/Life-Detail-Slice im
-  echten Editor-/HUD-Lauf abnehmen:
+- zuerst kein neuer Simulationslayer, sondern das in
+  `docs/NEXT_STEPS.md` beschriebene Acceptance-Bundle:
+  Lifeform Pressure, Life Ecology, Genetic Lifeforms,
+  Survey-Color-/Life-Detail-Panel, Planet Summary, Survey UX,
+  Native Species, Orbit Readout, Time UX, View Bookmarks und die
+  aktuellen Performance-/Focus-Smoothing-Gates gemeinsam im Editor
+  validieren
+- die Headless-Basis ist dabei bereits sichtbar:
+  `./run_tests.bat` lief nach dem Badge-Candidate-Throttle mit `7829`
+  Passed und `0` Failed; gezielte Tests decken unter anderem
+  HUD-Modi, Root-Inspector-Testbed-Regeln, Root-Inspector-
+  Model-Caching, Planet-Badge-Text-/Candidate-Caching,
+  Life-Detail-Panel, Genetic-/Pressure-/Life-Ecology-Ableitung und
+  `scaleup_galaxy_100`-Streaming ab
+- diese Tests ersetzen das offene Editor-Gate nicht:
   `sample_system.planet_a`, `starter_world.gamma_iv`,
-  `starter_world.alpha_iii`, `starter_world.gamma_iii` und einen
-  Detailplaneten in `scaleup_galaxy_100` im Fokus-HUD lesen
-- dabei im Summary-Modus explizit pruefen, dass die neue zweizeilige
-  Hauptaussage die alten separaten `Environment`-/`Life`-/`Species`-/
-  `Density`-Zeilen ersetzt, waehrend `Details` diese Informationen
-  weiter als Expertenwerte anzeigt
-- dabei den neuen `World:`-Pfad explizit gegen den bestehenden
-  `Environment`-/`Climate`-Pfad pruefen und jetzt zusaetzlich die neuen
-  `Life:`-, `Biomass:`- und `Life Potential:`-Lesarten mitlesen:
-  `Environment` soll weiter "jetzt", `World` bewusst "ueber das Jahr",
-  `Life` bewusst "quantitative Biosphaerenstufe",
-  `Biomass` bewusst "Menge" und `Life Potential` bewusst
-  "dominanter Chemiepfad" bedeuten
-- denselben Acceptance-Run gleich mit den offenen Large-World-Gates
-  koppeln:
+  `starter_world.alpha_iii`, `starter_world.gamma_iii` und mindestens
+  ein Detailplanet in `scaleup_galaxy_100` muessen im Fokus-HUD,
+  Inspector, Life-Detail-Panel und Badge-Pfad wirklich gelesen werden
+- dabei im Summary-/Details-Flow pruefen:
+  `Environment` bleibt "jetzt", `World` bleibt "ueber das Jahr",
+  `Life` bleibt quantitative Biosphaerenstufe, `Biomass` bleibt Menge,
+  `Life Potential` bleibt dominanter Chemiepfad, und `Population:`
+  bleibt qualitativ ohne Counts, Count-Ranges, Kriege, Katastrophen,
+  Zivilisationen oder Settlement-Zahlen
+- denselben Acceptance-Run mit den offenen Large-World-/Performance-
+  Gates koppeln:
   `scaleup_galaxy_30` und `scaleup_galaxy_100` mit offenem Inspector im
-  `ROOT_OVERVIEW` pruefen, damit die neue planetare Desc-Familie die
-  ruhige Large-World-Haptik nicht regressiert
-- dabei zusaetzlich die neuen Interaktionskanten pruefen:
-  Inspector-Life-Chip oeffnet das Panel ohne Row-Fokuswechsel,
-  planetennahe `LIFE`-Badges oeffnen dasselbe Panel, Klicks neben
-  Badges bleiben Welt-Picking, Same-Body-Klick toggelt zu und
-  `ESC`/Close schliessen
-- wenn dieser Playtest sauber ist, zunaechst `Life Ecology Foundation
-  v1` im Editor abnehmen:
-  `Population:` darf qualitative Klassen ausgeben, aber weiter keine
-  Counts, Count-Ranges, Kriege, Katastrophen, Zivilisationen oder
-  Settlement-Zahlen behaupten
-- danach als naechsten Simulationsblock `Population Counts v1`
-  schneiden:
+  `ROOT_OVERVIEW` pruefen, inklusive `model_apply_count`,
+  `badge_text_apply_count`, `badge_candidate_rebuild_count`,
+  Proxy-Culling, Focus-Smoothing, View-Bookmarks und unlocked-FPS-Haptik
+- wenn dieses Bundle sauber ist, danach als naechsten Simulationsblock
+  `Population Counts v1` schneiden:
   erster echter Population-/Settlement-State auf Basis von
   `World + Life Potential + Life v2 + GeneticSpecies + LifeEcology`
 - falls der Playtest stattdessen zeigt, dass

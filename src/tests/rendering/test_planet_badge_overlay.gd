@@ -15,6 +15,86 @@ class LifeDetailsRequestProbe:
 		requested_id = body_id
 
 
+class FakeRegistry:
+	extends Node
+
+	var _defs: Dictionary = {}
+	var _order: Array[StringName] = []
+
+	func add_body(id: StringName, kind: int) -> void:
+		var def := BodyDef.new()
+		def.id = id
+		def.kind = kind
+		_defs[id] = def
+		_order.append(id)
+
+	func get_def(id: StringName) -> BodyDef:
+		return _defs.get(id, null)
+
+	func get_update_order_ref() -> Array[StringName]:
+		return _order
+
+	func get_update_order() -> Array[StringName]:
+		var out: Array[StringName] = []
+		out.append_array(_order)
+		return out
+
+
+class FakeTopology:
+	extends RefCounted
+
+	func root_id_of(id: StringName) -> StringName:
+		return &"root" if id != StringName("") else StringName("")
+
+
+class FakeBubble:
+	extends RefCounted
+
+	func get_focus() -> StringName:
+		return &"root"
+
+
+class FakeSnapshotCache:
+	extends RefCounted
+
+	signal snapshot_refreshed(reason: StringName)
+
+	var biosphere_call_count: int = 0
+	var native_call_count: int = 0
+
+	func get_biosphere_scale_desc(_id: StringName) -> Dictionary:
+		biosphere_call_count += 1
+		return {
+			BiosphereScaleServiceScript.KEY_HAS_BIOSPHERE_SCALE_BASIS: true,
+			BiosphereScaleServiceScript.KEY_BIOSPHERE_STAGE: BiosphereScaleServiceScript.Stage.MICROBIAL,
+			BiosphereScaleServiceScript.KEY_DOMINANT_TRACK_ID: LifePotentialServiceScript.Track.SULFUR_REACTIVE,
+		}
+
+	func get_native_species_desc(_id: StringName) -> Dictionary:
+		native_call_count += 1
+		return {}
+
+
+class FakeRenderer:
+	extends RefCounted
+
+	var metrics_call_count: int = 0
+	var metrics_by_id: Dictionary = {}
+
+	func set_metric(body_id: StringName, center_px: Vector2, projected_radius_px: float) -> void:
+		metrics_by_id[body_id] = {
+			"visible": true,
+			"center_px": center_px,
+			"projected_radius_px": projected_radius_px,
+		}
+
+	func get_body_screen_metrics(body_id: StringName) -> Dictionary:
+		metrics_call_count += 1
+		if not metrics_by_id.has(body_id):
+			return {"visible": false}
+		return metrics_by_id[body_id].duplicate(true)
+
+
 static func run(ctx) -> void:
 	ctx.current_suite = "test_planet_badge_overlay"
 	_test_badge_lines_hide_second_row_for_prebiotic_worlds(ctx)
@@ -22,6 +102,7 @@ static func run(ctx) -> void:
 	_test_badge_lines_show_density_and_species_for_complex_worlds(ctx)
 	_test_badge_click_contract_and_debug_snapshot(ctx)
 	_test_badge_text_layout_is_cached_for_stable_lines(ctx)
+	_test_refresh_throttles_candidate_scans_but_moves_cached_badges(ctx)
 
 
 static func _test_badge_lines_hide_second_row_for_prebiotic_worlds(ctx) -> void:
@@ -144,3 +225,54 @@ static func _test_badge_text_layout_is_cached_for_stable_lines(ctx) -> void:
 		"Geaenderte Badge-Zeilen erneuern Text/Layout weiterhin"
 	)
 	overlay.free()
+
+
+static func _test_refresh_throttles_candidate_scans_but_moves_cached_badges(ctx) -> void:
+	var registry := FakeRegistry.new()
+	registry.add_body(&"alpha_i", BodyType.Kind.STAR)
+	registry.add_body(&"alpha_ii", BodyType.Kind.PLANET)
+	registry.add_body(&"alpha_iii", BodyType.Kind.MOON)
+	var topology := FakeTopology.new()
+	var bubble := FakeBubble.new()
+	var snapshot_cache := FakeSnapshotCache.new()
+	var renderer := FakeRenderer.new()
+	renderer.set_metric(&"alpha_ii", Vector2.ZERO, 24.0)
+	renderer.set_metric(&"alpha_iii", Vector2.ZERO, 18.0)
+
+	var overlay = PlanetBadgeOverlayScript.new()
+	overlay.configure(registry, topology, bubble, snapshot_cache, renderer)
+	overlay.refresh()
+	var first_snapshot: Dictionary = overlay.get_debug_snapshot()
+	var first_rebuild_count: int = int(first_snapshot.get("badge_candidate_rebuild_count", -1))
+	var first_biosphere_calls: int = snapshot_cache.biosphere_call_count
+	var first_renderer_calls: int = renderer.metrics_call_count
+	ctx.assert_true(first_rebuild_count == 1, "Erster Badge-Refresh baut Candidate-Cache genau einmal auf")
+	ctx.assert_true(int(first_snapshot.get("visible_badge_count", -1)) == 2, "Erster Badge-Refresh zeigt die sichtbaren planetaren Kandidaten")
+	ctx.assert_true(first_biosphere_calls == 2, "Candidate-Rebuild liest Derived-Badge-Text nur fuer planetare Kandidaten")
+
+	overlay._last_candidate_rebuild_usec = Time.get_ticks_usec()
+	renderer.set_metric(&"alpha_ii", Vector2(32.0, 16.0), 24.0)
+	snapshot_cache.snapshot_refreshed.emit(&"sim_tick")
+	overlay.refresh()
+	var second_snapshot: Dictionary = overlay.get_debug_snapshot()
+	ctx.assert_true(
+		int(second_snapshot.get("badge_candidate_rebuild_count", -1)) == first_rebuild_count,
+		"Sim-Tick-Dirty loest innerhalb des Badge-Cooldowns keinen neuen Full-Scan aus"
+	)
+	ctx.assert_true(
+		snapshot_cache.biosphere_call_count == first_biosphere_calls,
+		"Throttled Badge-Refresh liest Snapshot-Texte nicht erneut"
+	)
+	ctx.assert_true(
+		renderer.metrics_call_count == first_renderer_calls + 2,
+		"Throttled Badge-Refresh aktualisiert nur die zwei gecachten Badge-Positionen"
+	)
+
+	snapshot_cache.snapshot_refreshed.emit(&"focus_changed")
+	overlay.refresh()
+	ctx.assert_true(
+		int(overlay.get_debug_snapshot().get("badge_candidate_rebuild_count", -1)) == first_rebuild_count + 1,
+		"Fokus-/Kontext-Dirty erzwingt den naechsten Badge-Full-Scan sofort"
+	)
+	overlay.free()
+	registry.free()

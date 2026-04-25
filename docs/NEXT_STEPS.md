@@ -1,12 +1,46 @@
 # Graviton - Next Steps
 
-Stand: 2026-04-24
+Stand: 2026-04-25
 
 Hinweis:
 Die aktuell im Repo eingecheckte `orbit_testbed.tscn` startet derzeit mit
 `initial_world_id = "scaleup_galaxy_100"`.
 Fuer Acceptance-Runs auf `starter_world` oder `sample_system` den
 Szenen-Override vor dem Editor-Run bewusst umstellen.
+
+## Aktiver Fokus - Acceptance-Bundle
+
+Der naechste Arbeitsblock ist aktuell kein neuer Simulationslayer,
+sondern ein gebuendelter Editor-/Feel-/FPS-Acceptance-Run ueber die
+bereits headless abgesicherten Slices.
+
+Headless-Basis:
+
+- `run_tests.bat` lief nach dem Badge-Candidate-Throttle mit `7829`
+  Passed und `0` Failed; am Prozessende bleiben generische
+  `ObjectDB instances leaked`-/`resources still in use`-Hinweise
+  sichtbar
+- gezielte Coverage existiert fuer HUD-Modi, Root-Inspector-
+  Testbed-Regeln, Root-Inspector-Model-Caching,
+  Planet-Badge-Text-/Candidate-Caching, Orbit-/Time-Formatter,
+  Genetic/Pressure-/Life-Ecology-Ableitungen und den bounded
+  `scaleup_galaxy_100`-Streamingpfad
+
+Offene Editor-/Feel-/FPS-Gates:
+
+- Lifeform Pressure, Life Ecology, Genetic Lifeforms und
+  Life-Detail-Panel: Lesbarkeit pruefen, ohne Counts, War-/
+  Catastrophe-/Civilization-Texte oder echte Population zu behaupten
+- Survey UX, Planet Summary, Native Species, Orbit Readout und Time UX:
+  HUD-Semantik, Summary-/Details-Trennung und Navigator-Inspector im
+  echten Testbed validieren
+- Unlocked-FPS/Focus-Smoothing, View Bookmarks und Large-World-
+  Regression: Runtime-Haptik und Performance mit
+  `scaleup_galaxy_100` und offenem Inspector pruefen
+
+Erst wenn diese Gates sauber sind, ist `Population Counts v1` wieder der
+naechste sinnvolle Simulationsblock. Wenn ein Gate kippt, wird zuerst
+der kleinste konkrete View-, Life- oder Performance-Fix geschnitten.
 
 ## Meta - Agentenvertrag / Repo-Hygiene - erledigt
 
@@ -144,7 +178,8 @@ Konkreter Ablauf:
   Badges bleiben klickbar, folgen den Bodies und erzeugen keine
   auffaellige Transform-Query- oder Textlayout-Chatterei beim stabilen
   Fokus; `badge_text_apply_count` darf bei unveraenderten Badge-Zeilen
-  nicht pro Frame weiterlaufen
+  nicht pro Frame weiterlaufen und `badge_candidate_rebuild_count` soll
+  im stabilen Fokus nur dirty/periodisch steigen
 - Zoom in Detailfoki pruefen:
   Planeten-/Stern-Detail wirkt weiter kontinuierlich, aber winziger
   Closeup-Jitter soll keine staendige CPU-Redraw-/Shader-State-Arbeit
