@@ -776,7 +776,10 @@ func _cycle_focus(direction: int) -> void:
 func _set_focus(body_id: StringName, immediate: bool = false, force_fit: bool = false) -> void:
 	if body_id == StringName(""):
 		return
+	var previous_focus_id: StringName = _bubble.get_focus() if _bubble != null else StringName("")
 	_camera_controller.set_focus(body_id, immediate, force_fit)
+	if body_id != previous_focus_id:
+		_clear_asteroid_renderer_state()
 	_sync_root_inspector_context(false)
 	_refresh_snapshot_interest_ids()
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
@@ -1038,7 +1041,7 @@ func _on_streaming_residency_changed(_resident_root_ids: Array[StringName], focu
 	_refresh_focus_order()
 	_renderer.rebuild_from_registry()
 	if _asteroid_service != null:
-		_asteroid_service.sync_resident_roots(_active_world_scope_id, _resident_root_ids, TimeService.sim_time_s)
+		_asteroid_service.sync_resident_roots(_active_world_scope_id, _asteroid_root_ids_for_focus(focus_root_id), TimeService.sim_time_s)
 	if not UniverseRegistry.has_body(_bubble.get_focus()) and UniverseRegistry.has_body(focus_root_id):
 		_focus_index = maxi(_focus_order.find(focus_root_id), 0)
 		_set_focus(focus_root_id, true, true)
@@ -1098,21 +1101,32 @@ func _sync_asteroid_renderer(force: bool = false) -> void:
 		_asteroid_renderer.sync_visuals_now(force)
 
 
+func _clear_asteroid_renderer_state() -> void:
+	if _asteroid_renderer != null and _asteroid_renderer.has_method("clear_state"):
+		_asteroid_renderer.clear_state()
+
+
 func _reset_asteroids_for_current_roots(t_s: float) -> void:
 	if _asteroid_service == null:
 		return
-	_asteroid_service.reset_for_world(_active_world_scope_id, _current_resident_root_ids(), t_s)
+	_asteroid_service.reset_for_world(_active_world_scope_id, _current_asteroid_root_ids(), t_s)
 
 
-func _current_resident_root_ids() -> Array[StringName]:
-	if _is_large_world and _streaming_controller != null and _streaming_controller.has_method("get_resident_root_ids"):
-		return _streaming_controller.get_resident_root_ids()
+func _current_asteroid_root_ids() -> Array[StringName]:
+	if _is_large_world and _streaming_controller != null and _streaming_controller.has_method("get_focus_root_id"):
+		return _asteroid_root_ids_for_focus(_streaming_controller.get_focus_root_id())
 	var root_ids: Array[StringName] = []
 	for id in UniverseRegistry.get_update_order_ref():
 		var def: BodyDef = UniverseRegistry.get_def(id)
 		if def != null and def.is_root():
 			root_ids.append(id)
 	return root_ids
+
+
+func _asteroid_root_ids_for_focus(focus_root_id: StringName) -> Array[StringName]:
+	if focus_root_id == StringName("") or not UniverseRegistry.has_body(focus_root_id):
+		return []
+	return [focus_root_id]
 
 
 func _configure_root_inspector() -> void:

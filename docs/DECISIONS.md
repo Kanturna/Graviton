@@ -25,6 +25,9 @@ Konsequenz:
 - `OrbitService.step_completed(dt_s, t_s)` ist das explizite
   Tick-Completion-Signal fuer abhaengige Sim-Services; es feuert pro
   Sim-Tick genau einmal und ist nicht an `bodies_updated` gekoppelt
+- Large-World-Asteroiden folgen in v1 dem aktuellen Fokus-Root; ein
+  residenter oder vorgewaermter Neighbor-Root spawnt nicht automatisch
+  zusaetzliche aktive Asteroiden
 - `AsteroidSnapshotCache` ist ein eigener Runtime-Helper und erweitert
   nicht den planetaren `DerivedSnapshotCache`
 - Trails sind reine Renderer-History und keine Sim- oder Snapshot-

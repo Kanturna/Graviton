@@ -540,6 +540,13 @@ Asteroiden stabil. Anchor-Switching, Stetigkeitsgarantien beim Switch
 und eine moegliche Vereinheitlichung mit einem spaeteren Frame-Modell
 sind Folge-Slices.
 
+**Lifecycle v1:** In Single-World-Szenen werden Asteroiden fuer die
+geladenen Root-IDs gespawnt. In Large-World-Szenen folgt der
+Asteroiden-Slice bewusst nur dem aktuellen Fokus-Root, nicht allen
+residenten oder vorgewaermten Neighbor-Roots. Neighbor-Residency bleibt
+Streaming-/Registry-Zustand fuer Major Bodies; sie erweitert in v1
+nicht automatisch die aktive Minor-Body-Physik.
+
 **Physik v1:** Restricted Gravity. `BLACK_HOLE`, `STAR`, `PLANET` und
 `MOON` ziehen Asteroiden an; Asteroiden ziehen nichts an. Es gibt keine
 Asteroid-Asteroid-Gravitation, keine Asteroid-Kollisionen, keine

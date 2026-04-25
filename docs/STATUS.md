@@ -34,6 +34,14 @@ eine Polyline statt als viele einzelne Liniensegmente gezeichnet.
 Zusaetzliche Perf-Probe-Spalten `asteroid_visible_count`,
 `asteroid_trail_count` und `asteroid_trail_point_count` machen diesen
 Renderpfad im naechsten `P`-Dump direkt messbar.
+Der danach gemessene Sternfokus-Einbruch kam von Large-World-
+Residency: waehrend im lokalen Fokus nur 24 Asteroiden sichtbar waren,
+wurden durch einen residenten Neighbor-Root 48 Asteroiden simuliert.
+Der Testbed-Composition-Root bridged Asteroiden in Large-Worlds deshalb
+jetzt nur noch fuer den aktuellen Fokus-Root; Single-Worlds behalten
+weiter ihre geladenen Roots. Beim Fokuswechsel wird ausserdem die reine
+Renderer-Trail-History geleert, damit keine alten Root-Overview-Linien
+in den lokalen Sternfokus hineinragen.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und

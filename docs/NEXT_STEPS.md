@@ -54,9 +54,12 @@ Offene Editor-/Feel-/FPS-Gates:
   sichtbare Punkte und kurze Trails beobachten, Bahnverformung nahe
   Major Bodies pruefen und sicherstellen, dass HUD/Inspector/Life-
   Panels keine Kollisionen, Katastrophen oder Life-Folgen behaupten.
-  Nach dem Relative-State-Cache- und Trail-Batching-Follow-up speziell
-  die vorherigen 3-6-FPS-Fokusfaelle erneut pruefen und bei weiterem
-  Einbruch direkt wieder zwei `P`-Dumps vergleichen.
+  Nach dem Relative-State-Cache-, Trail-Batching- und Fokus-Root-
+  Lifecycle-Follow-up speziell die vorherigen 3-6-FPS-Sternfoki erneut
+  pruefen: im lokalen Sternfokus sollte `active_asteroids` wieder bei
+  24 statt 48 liegen, alte Root-Overview-Trails sollten beim Fokuswechsel
+  verschwinden, und bei weiterem Einbruch direkt wieder zwei `P`-Dumps
+  vergleichen.
 
 Erst wenn diese Gates sauber sind, ist ein Folgeblock wie
 `Population Dynamics v1` oder `Evolution Competition v1` sinnvoll.
@@ -82,8 +85,10 @@ Konkreter Ablauf:
   nahe Major Bodies sollen die Bahn leicht verformen; harte Impacts
   oder Kill-/Consume-Radien werden noch nicht behauptet
 - Streaming/Fokuswechsel zwischen Root-Systemen pruefen:
-  residente Roots spawnen Asteroiden, nichtresidente Roots verlieren
-  ihre Asteroiden ohne Duplikate oder Trail-Reste
+  in Large-Worlds spawnt v1 Asteroiden nur fuer den aktuellen Fokus-
+  Root; residenter Neighbor-/Prewarm-Zustand darf keine zusaetzlichen
+  aktiven Asteroiden im lokalen Fokus erzeugen. Fokuswechsel muessen
+  ohne Duplikate und ohne alte Trail-Reste bleiben
 - `P`-Dump ausloesen:
   Service-/Renderer-Snapshots und Perf-Counter fuer aktive
   Asteroiden, Attractor-Checks, Substeps und Despawns muessen im
