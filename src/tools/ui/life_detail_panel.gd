@@ -135,8 +135,9 @@ func _ensure_ui() -> void:
 	root_vbox.add_child(placeholder_separator)
 
 	for placeholder_text in [
-		"Population: not established",
 		"Native forms: pending",
+		"Population: not established",
+		"Estimate: n/a",
 		"Visual profile: pending",
 	]:
 		var placeholder_label := _make_line_label()
@@ -156,6 +157,7 @@ func _apply_body(body_id: StringName) -> void:
 	var biosphere_desc: Dictionary = _snapshot_cache.get_biosphere_scale_desc(body_id) if _snapshot_cache != null else {}
 	var genetic_species_desc: Dictionary = _snapshot_cache.get_genetic_species_desc(body_id) if _snapshot_cache != null and _snapshot_cache.has_method("get_genetic_species_desc") else {}
 	var life_ecology_desc: Dictionary = _snapshot_cache.get_life_ecology_desc(body_id) if _snapshot_cache != null and _snapshot_cache.has_method("get_life_ecology_desc") else {}
+	var population_estimate_desc: Dictionary = _snapshot_cache.get_population_estimate_desc(body_id) if _snapshot_cache != null and _snapshot_cache.has_method("get_population_estimate_desc") else {}
 	var lines: Array[String] = [
 		OrbitHudFormatterScript.format_environment(_snapshot_cache.get_environment_desc(body_id) if _snapshot_cache != null else {}),
 		OrbitHudFormatterScript.format_world(_snapshot_cache.get_planetary_state_desc(body_id) if _snapshot_cache != null else {}),
@@ -172,8 +174,9 @@ func _apply_body(body_id: StringName) -> void:
 	for index in range(_line_labels.size()):
 		_line_labels[index].text = lines[index] if index < lines.size() else ""
 	var placeholder_lines: Array[String] = [
-		OrbitHudFormatterScript.format_population(life_ecology_desc),
 		OrbitHudFormatterScript.format_native_forms(genetic_species_desc),
+		OrbitHudFormatterScript.format_population(life_ecology_desc),
+		OrbitHudFormatterScript.format_population_estimate(population_estimate_desc),
 		OrbitHudFormatterScript.format_visual_profile(genetic_species_desc),
 	]
 	for index in range(_placeholder_labels.size()):

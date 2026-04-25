@@ -16,7 +16,7 @@ bereits headless abgesicherten Slices.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Frame-Order-/Numeric-Exit-Slice mit `7906`
+- `run_tests.bat` lief nach `Population Estimates v1` mit `7960`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -24,7 +24,7 @@ Headless-Basis:
   Testbed-Regeln, Root-Inspector-Model-Caching,
   Planet-Badge-Text-/Candidate-Caching, Perf-Snapshot-JSON-
   Konvertierung, Orbit-/Time-Formatter, Genetic/Pressure-/
-  Life-Ecology-Ableitungen und den bounded
+  Life-Ecology-/Population-Estimate-Ableitungen und den bounded
   `scaleup_galaxy_100`-Streamingpfad; zusaetzlich pinnen Recorder-
   Tests jetzt die Reihenfolge Kamera -> Frame-/LOD-Kontext -> Renderer
   sowie Renderer -> Streaming, und Numeric-Exit-Tests pinnen
@@ -32,9 +32,11 @@ Headless-Basis:
 
 Offene Editor-/Feel-/FPS-Gates:
 
-- Lifeform Pressure, Life Ecology, Genetic Lifeforms und
+- Population Estimates, Lifeform Pressure, Life Ecology,
+  Genetic Lifeforms und
   Life-Detail-Panel: Lesbarkeit pruefen, ohne Counts, War-/
-  Catastrophe-/Civilization-Texte oder echte Population zu behaupten
+  Catastrophe-/Civilization-Texte, Settlement-State oder echte
+  dynamische Population zu behaupten
 - Survey UX, Planet Summary, Native Species, Orbit Readout und Time UX:
   HUD-Semantik, Summary-/Details-Trennung und Navigator-Inspector im
   echten Testbed validieren
@@ -44,9 +46,10 @@ Offene Editor-/Feel-/FPS-Gates:
   `FramePoseCache` bleiben Detail-Fokus-`P`-Dumps fuer Stern/Planet/Mond
   das naechste Evidence-Gate
 
-Erst wenn diese Gates sauber sind, ist `Population Counts v1` wieder der
-naechste sinnvolle Simulationsblock. Wenn ein Gate kippt, wird zuerst
-der kleinste konkrete View-, Life- oder Performance-Fix geschnitten.
+Erst wenn diese Gates sauber sind, ist ein Folgeblock wie
+`Population Dynamics v1` oder `Evolution Competition v1` sinnvoll.
+Wenn ein Gate kippt, wird zuerst der kleinste konkrete View-, Life-
+oder Performance-Fix geschnitten.
 
 ## Meta - Agentenvertrag / Repo-Hygiene - erledigt
 
@@ -130,9 +133,10 @@ Konkreter Ablauf:
   mehrere Lifeforms bleiben vergleichbar; maximal drei Population-
   Klassen werden sichtbar, weitere Profile laufen ueber `+N forms`
 - dabei explizit pruefen:
-  keine numerischen Bevoelkerungszahlen, keine Count-Ranges, keine
-  War-/Catastrophe-/Civilization-Texte, keine Settlement-Zahlen und
-  keine neuen Bilder
+  `Population:` bleibt qualitativ und enthaelt keine numerischen
+  Bevoelkerungszahlen; `Estimate:` ist nur im eigenen Acceptance-Gate
+  als grobe Magnitude zu bewerten. Keine War-/Catastrophe-/
+  Civilization-Texte, keine Settlement-Zahlen und keine neuen Bilder
 
 Wenn dieser Gate kippt:
 
@@ -140,6 +144,44 @@ Wenn dieser Gate kippt:
 - zuerst nur den kleinen Ecology-Slice korrigieren:
   `LifeEcologyService`-Mapping, `DerivedSnapshotCache`-Verdrahtung,
   Formatter-Sprache oder Panel-Lesbarkeit
+
+## Prioritaet 0 - Population Estimates v1 Acceptance Gate
+
+Ziel:
+Den headless-gruenen Order-of-Magnitude-Estimate-Readout im echten
+Editor validieren, bevor daraus echter PopulationState, zeitliche
+Population Dynamics, Kriege, Katastrophen oder Zivilisationen werden.
+
+Konkreter Ablauf:
+
+- `starter_world -> gamma_iv` pruefen:
+  Prebiotic bleibt ohne stabile Population und `Estimate:` liest
+  `n/a`
+- `starter_world -> gamma_iii` oder ein anderer vorhandener
+  Microbial-Planet pruefen:
+  `Population:` bleibt qualitativ, `Estimate:` zeigt eine grobe
+  mikrobielle Groessenordnung und `Species:` bleibt bei Microbial
+  weiterhin keine Pseudo-Wahrheit
+- `sample_system -> planet_a` nach laengerer Bio-Zeit pruefen:
+  `Native forms`, `Population:`, `Estimate:` und `Visual profile`
+  bleiben zeilenparallel lesbar; `Estimate:` wirkt wie Magnitude,
+  nicht wie exakter Census
+- ein Detailplanet in `scaleup_galaxy_100` pruefen:
+  Panel bleibt kompakt, Root Inspector bleibt Navigator, und die
+  neue Zeile fuehrt nicht zu HUD-Ueberladung
+- dabei explizit pruefen:
+  keine `PopulationState`-/`SettlementState`-Sprache, keine echten
+  Counts, keine War-/Catastrophe-/Civilization-Texte und keine
+  dynamische Hysterese- oder Ereignisbehauptung
+
+Wenn dieser Gate kippt:
+
+- keinen Population-Dynamics- oder Evolution-Competition-Block
+  anfangen
+- zuerst nur den kleinen Estimate-Slice korrigieren:
+  `LifePopulationEstimateService`-Range-Ableitung,
+  `DerivedSnapshotCache`-Verdrahtung, Formatter-Sprache oder
+  Panel-Lesbarkeit
 
 ## Prioritaet 0 - Unlocked-FPS / Focus-Smoothing Acceptance Gate
 
@@ -261,8 +303,8 @@ Wenn dieser Gate kippt:
 Ziel:
 Den jetzt headless-gruenen `GeneticSpeciesService` und die neuen
 `Native forms`-/`Visual profile`-Zeilen im echten Editor-/Playtest-Lauf
-validieren, bevor `Population Counts v1`, Kriege/Katastrophen oder
-echte Species-Visuals begonnen werden.
+validieren, bevor Population Dynamics, Kriege/Katastrophen oder echte
+Species-Visuals begonnen werden.
 
 Konkreter Ablauf:
 
@@ -298,8 +340,7 @@ Wenn dieser Gate kippt:
 Ziel:
 Den jetzt headless-gruenen farbigen Root-Inspector und das neue
 read-only Life-Detail-Panel im echten Editor-/Playtest-Lauf validieren,
-bevor `Population Counts v1` oder echte Species-Visuals begonnen
-werden.
+bevor Population Dynamics oder echte Species-Visuals begonnen werden.
 
 Konkreter Ablauf:
 
@@ -335,7 +376,7 @@ Wenn dieser Gate kippt:
 
 Ziel:
 Den neuen zweizeiligen Planet-Summary-Readout im echten Editor-/
-Playtest-Lauf validieren, bevor `Population Counts v1` oder weitere
+Playtest-Lauf validieren, bevor Population Dynamics oder weitere
 HUD-Politur begonnen wird.
 
 Konkreter Ablauf:
@@ -649,19 +690,25 @@ Wenn dieser Gate kippt:
 - stattdessen einen kleinen Korrekturblock direkt aus Inspector-,
   Snapshot- oder Derived-Interest-Befunden schneiden
 
-## Prioritaet 1 - Naechster Simulationsblock: Population Counts v1
+## Prioritaet 1 - Naechster Simulationsblock nach Estimates
 
 Ziel:
-Nach einem sauberen `Life v2`-, `GeneticSpecies`-, `LifeEcology`- und
-`Survey UX v2`-Acceptance-Run den ersten echten Count-/
-Population-/Settlement-Unterbau schneiden.
+Nach einem sauberen `Life v2`-, `GeneticSpecies`-, `LifeEcology`-,
+`Population Estimates`- und `Survey UX v2`-Acceptance-Run den naechsten
+Life-Slice planen, ohne Panel-Texte als Ersatz fuer echte Simulation zu
+missbrauchen.
 
 Bevorzugte Richtung:
 
-- eigener `PopulationState` / `SettlementState`
-- erste ungefaehre planetare Population-Counts auf Basis von
-  `World + Life Potential + Life v2 + GeneticSpecies + LifeEcology`
-- noch keine Civics, keine Factions, keine Makropolitik
+- `Population Dynamics v1`:
+  erster echter zeitlicher PopulationState mit Hysterese/Trend, aber
+  weiterhin ohne Kriege, Katastrophen, Zivilisationen oder Settlements
+- alternativ `Evolution Competition v1`:
+  Konkurrenz und langsame Verschiebung zwischen bestehenden
+  Lifeform-Profilen, aber noch ohne exakte Counts oder Event-System
+- in beiden Varianten bleiben `LifePopulationEstimateService` und
+  `LifeEcologyService` read-only Ausgangspunkte, keine zweite
+  Dominanz- oder Species-Wahrheit
 
 Fallback-Reihenfolge:
 
@@ -674,7 +721,8 @@ Fallback-Reihenfolge:
   Survey-/Overview-Bewegung schneiden
 - wenn Mehrstern-Faelle die neue `Life v2`-Lesart sichtbar verziehen,
   zuerst einen expliziten `Mehrquellenstrahlung`-Block vorziehen
-- wenn der Editor-Run sauber ist, danach direkt `Population Counts v1`
+- wenn der Editor-Run zeigt, dass `Estimate:` als Census missverstanden
+  wird, zuerst Sprache/Formatter/Panel-Lesbarkeit korrigieren
 
 ## Akut - Backdrop-Flicker im Editor beseitigen - erledigt
 

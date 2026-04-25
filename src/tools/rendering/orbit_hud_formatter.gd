@@ -10,6 +10,7 @@ const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_
 const NativeSpeciesServiceScript = preload("res://src/sim/life/native_species_service.gd")
 const GeneticSpeciesServiceScript = preload("res://src/sim/life/genetic_species_service.gd")
 const LifeEcologyServiceScript = preload("res://src/sim/life/life_ecology_service.gd")
+const LifePopulationEstimateServiceScript = preload("res://src/sim/life/life_population_estimate_service.gd")
 const OrbitReadoutServiceScript = preload("res://src/sim/orbit/orbit_readout_service.gd")
 
 const MINUTE_S: float = 60.0
@@ -222,6 +223,26 @@ static func format_population(life_ecology_desc: Dictionary) -> String:
 	if hidden_count > 0:
 		parts.append("+%d forms" % hidden_count)
 	return "Population: %s" % " | ".join(parts)
+
+
+static func format_population_estimate(population_estimate_desc: Dictionary) -> String:
+	if not bool(population_estimate_desc.get(LifePopulationEstimateServiceScript.KEY_HAS_POPULATION_ESTIMATE_BASIS, false)):
+		return "Estimate: n/a"
+	var profiles: Array = population_estimate_desc.get(
+		LifePopulationEstimateServiceScript.KEY_POPULATION_ESTIMATE_PROFILES,
+		[]
+	)
+	if profiles.is_empty():
+		return "Estimate: n/a"
+	var parts: Array[String] = []
+	var visible_count: int = mini(profiles.size(), 3)
+	for index in range(visible_count):
+		var profile: Dictionary = profiles[index]
+		parts.append(_population_estimate_range_text(profile))
+	var hidden_count: int = profiles.size() - visible_count
+	if hidden_count > 0:
+		parts.append("+%d forms" % hidden_count)
+	return "Estimate: %s" % " | ".join(parts)
 
 
 static func format_visual_profile(genetic_species_desc: Dictionary) -> String:
@@ -758,6 +779,32 @@ static func _population_class_text(profile: Dictionary) -> String:
 		LifeEcologyServiceScript.KEY_POPULATION_CLASS,
 		LifeEcologyServiceScript.PopulationClass.NONE
 	)))
+
+
+static func _population_estimate_range_text(profile: Dictionary) -> String:
+	var estimate_min: int = int(profile.get(LifePopulationEstimateServiceScript.KEY_ESTIMATE_MIN, 0))
+	var estimate_max: int = int(profile.get(LifePopulationEstimateServiceScript.KEY_ESTIMATE_MAX, 0))
+	if estimate_min <= 0 or estimate_max <= 0:
+		return "n/a"
+	if estimate_min == estimate_max:
+		return "~%s" % _estimate_quantity_text(estimate_min)
+	return "~%s-%s" % [
+		_estimate_quantity_text(estimate_min),
+		_estimate_quantity_text(estimate_max),
+	]
+
+
+static func _estimate_quantity_text(value: int) -> String:
+	var safe_value: int = maxi(value, 0)
+	if safe_value >= 1_000_000_000_000:
+		return "%dT" % int(roundf(float(safe_value) / 1_000_000_000_000.0))
+	if safe_value >= 1_000_000_000:
+		return "%dB" % int(roundf(float(safe_value) / 1_000_000_000.0))
+	if safe_value >= 1_000_000:
+		return "%dM" % int(roundf(float(safe_value) / 1_000_000.0))
+	if safe_value >= 1_000:
+		return "%dK" % int(roundf(float(safe_value) / 1_000.0))
+	return str(safe_value)
 
 
 static func _density_class_text(biosphere_desc: Dictionary) -> String:

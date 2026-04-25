@@ -8,6 +8,7 @@ const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_
 const NativeSpeciesServiceScript = preload("res://src/sim/life/native_species_service.gd")
 const GeneticSpeciesServiceScript = preload("res://src/sim/life/genetic_species_service.gd")
 const LifeEcologyServiceScript = preload("res://src/sim/life/life_ecology_service.gd")
+const LifePopulationEstimateServiceScript = preload("res://src/sim/life/life_population_estimate_service.gd")
 const ProtoBiosphereSimulationServiceScript = preload("res://src/sim/life/proto_biosphere_simulation_service.gd")
 const SimTestHarnessScript = preload("res://src/tests/helpers/sim_test_harness.gd")
 
@@ -42,6 +43,7 @@ class SnapshotCacheProbe:
 	var native_species_by_id: Dictionary = {}
 	var genetic_species_by_id: Dictionary = {}
 	var life_ecology_by_id: Dictionary = {}
+	var population_estimate_by_id: Dictionary = {}
 	var life_potential_by_id: Dictionary = {}
 
 	func get_environment_desc(id: StringName) -> Dictionary:
@@ -61,6 +63,9 @@ class SnapshotCacheProbe:
 
 	func get_life_ecology_desc(id: StringName) -> Dictionary:
 		return life_ecology_by_id.get(id, {})
+
+	func get_population_estimate_desc(id: StringName) -> Dictionary:
+		return population_estimate_by_id.get(id, {})
 
 	func get_life_potential_desc(id: StringName) -> Dictionary:
 		return life_potential_by_id.get(id, {})
@@ -98,11 +103,12 @@ static func _test_panel_reuses_formatter_lines_and_placeholders(ctx) -> void:
 	ctx.assert_true(lines.has("Biomass: 0.42"), "Panel reusst format_biomass")
 	ctx.assert_true(
 		snapshot.get("placeholder_texts", PackedStringArray()) == PackedStringArray([
-			"Population: STABLE | SPARSE",
 			"Native forms: PRODUCER DOMINANT/LOW | GRAZER_FILTER COMMON/LOW",
+			"Population: STABLE | SPARSE",
+			"Estimate: ~10M-100M | ~1M-10M",
 			"Visual profile: MACRO_SESSILE / GREEN_BLUE / DRIFTING_OR_CRAWLING",
 		]),
-		"Panel zeigt Genetic-Species-Readouts ueber zentrale Formatter und keine Populationszahl"
+		"Panel zeigt Genetic-/Ecology-/Estimate-Readouts ueber zentrale Formatter"
 	)
 	panel.free()
 	registry.free()
@@ -127,6 +133,10 @@ static func _test_panel_missing_basis_stays_na(ctx) -> void:
 	ctx.assert_true(
 		panel.get_debug_snapshot().get("placeholder_texts", PackedStringArray()).has("Population: not established"),
 		"Fehlende Life-Ecology-Basis bleibt in Population explizit not established"
+	)
+	ctx.assert_true(
+		panel.get_debug_snapshot().get("placeholder_texts", PackedStringArray()).has("Estimate: n/a"),
+		"Fehlende Population-Estimate-Basis bleibt explizit n/a"
 	)
 	ctx.assert_true(
 		panel.get_debug_snapshot().get("placeholder_texts", PackedStringArray()).has("Native forms: n/a"),
@@ -193,6 +203,10 @@ static func _test_panel_integration_pins_prebiotic_and_complex_lifeform_outputs(
 		starter_placeholders.has("Population: not established"),
 		"Integration pinnt Gamma IV ohne stabile Population-Profile"
 	)
+	ctx.assert_true(
+		starter_placeholders.has("Estimate: n/a"),
+		"Integration pinnt Gamma IV ohne Estimate-Basis"
+	)
 	starter_panel.free()
 	SimTestHarnessScript.teardown_context(starter_setup)
 
@@ -223,6 +237,10 @@ static func _test_panel_integration_pins_prebiotic_and_complex_lifeform_outputs(
 	ctx.assert_true(
 		sample_placeholders.has("Population: STABLE"),
 		"Integration pinnt Planet-A-Population qualitativ ohne Counts: %s" % [str(sample_placeholders)]
+	)
+	ctx.assert_true(
+		sample_placeholders.has("Estimate: ~10M-100M"),
+		"Integration pinnt Planet-A-Estimate als grobe Magnitude: %s" % [str(sample_placeholders)]
 	)
 	ctx.assert_true(
 		sample_placeholders.has("Visual profile: MACRO_SESSILE / GREEN_BLUE / ANCHORED"),
@@ -297,6 +315,11 @@ static func _seed_full_descriptions(cache: SnapshotCacheProbe, id: StringName) -
 		cache.genetic_species_by_id[id],
 		id
 	)
+	cache.population_estimate_by_id[id] = LifePopulationEstimateServiceScript.evaluate_from_descriptions(
+		cache.biosphere_scale_by_id[id],
+		cache.life_ecology_by_id[id],
+		id
+	)
 	cache.life_potential_by_id[id] = {
 		LifePotentialServiceScript.KEY_HAS_LIFE_POTENTIAL_BASIS: true,
 		LifePotentialServiceScript.KEY_DOMINANT_TRACK_ID: LifePotentialServiceScript.Track.WATER_CARBON,
@@ -311,6 +334,7 @@ static func _seed_from_services(cache: SnapshotCacheProbe, setup: Dictionary, id
 	cache.native_species_by_id[id] = setup[SimTestHarnessScript.HARNESS_KEY_NATIVE_SPECIES_SERVICE].describe_body(id)
 	cache.genetic_species_by_id[id] = setup[SimTestHarnessScript.HARNESS_KEY_GENETIC_SPECIES_SERVICE].describe_body(id)
 	cache.life_ecology_by_id[id] = setup[SimTestHarnessScript.HARNESS_KEY_LIFE_ECOLOGY_SERVICE].describe_body(id)
+	cache.population_estimate_by_id[id] = setup[SimTestHarnessScript.HARNESS_KEY_LIFE_POPULATION_ESTIMATE_SERVICE].describe_body(id)
 	cache.life_potential_by_id[id] = setup[SimTestHarnessScript.HARNESS_KEY_LIFE_POTENTIAL_SERVICE].describe_body(id)
 
 

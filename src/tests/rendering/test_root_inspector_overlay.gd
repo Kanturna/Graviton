@@ -477,7 +477,8 @@ static func _build_starter_root_context() -> Dictionary:
 		setup.get(SimTestHarnessScript.HARNESS_KEY_ORBIT_READOUT_SERVICE),
 		setup.get(SimTestHarnessScript.HARNESS_KEY_NATIVE_SPECIES_SERVICE),
 		setup.get(SimTestHarnessScript.HARNESS_KEY_GENETIC_SPECIES_SERVICE),
-		setup.get(SimTestHarnessScript.HARNESS_KEY_LIFE_ECOLOGY_SERVICE)
+		setup.get(SimTestHarnessScript.HARNESS_KEY_LIFE_ECOLOGY_SERVICE),
+		setup.get(SimTestHarnessScript.HARNESS_KEY_LIFE_POPULATION_ESTIMATE_SERVICE)
 	)
 	snapshot_cache.set_interest_ids(
 		_planetary_interest_ids_for_root(

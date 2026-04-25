@@ -16,6 +16,7 @@ const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_
 const NativeSpeciesServiceScript = preload("res://src/sim/life/native_species_service.gd")
 const GeneticSpeciesServiceScript = preload("res://src/sim/life/genetic_species_service.gd")
 const LifeEcologyServiceScript = preload("res://src/sim/life/life_ecology_service.gd")
+const LifePopulationEstimateServiceScript = preload("res://src/sim/life/life_population_estimate_service.gd")
 const OrbitReadoutServiceScript = preload("res://src/sim/orbit/orbit_readout_service.gd")
 const PerfProbeScript = preload("res://src/tools/debug/perf_probe.gd")
 
@@ -75,6 +76,7 @@ var _biosphere_scale_service = BiosphereScaleServiceScript.new()
 var _native_species_service = NativeSpeciesServiceScript.new()
 var _genetic_species_service = GeneticSpeciesServiceScript.new()
 var _life_ecology_service = LifeEcologyServiceScript.new()
+var _life_population_estimate_service = LifePopulationEstimateServiceScript.new()
 var _orbit_readout_service = OrbitReadoutServiceScript.new()
 var _focus_order: Array[StringName] = []
 var _topology = null
@@ -186,6 +188,11 @@ func _ready() -> void:
 		_biosphere_scale_service,
 		_genetic_species_service
 	)
+	_life_population_estimate_service.configure(
+		UniverseRegistry,
+		_biosphere_scale_service,
+		_life_ecology_service
+	)
 	_orbit_readout_service.configure(UniverseRegistry)
 
 	_renderer.configure(UniverseRegistry, _bubble, _topology, TimeService)
@@ -207,7 +214,8 @@ func _ready() -> void:
 		_orbit_readout_service,
 		_native_species_service,
 		_genetic_species_service,
-		_life_ecology_service
+		_life_ecology_service,
+		_life_population_estimate_service
 	)
 	_configure_life_detail_panel()
 	_configure_root_inspector()
@@ -287,6 +295,9 @@ func _exit_tree() -> void:
 	if _native_species_service != null:
 		_native_species_service.free()
 		_native_species_service = null
+	if _life_population_estimate_service != null:
+		_life_population_estimate_service.free()
+		_life_population_estimate_service = null
 	if _life_ecology_service != null:
 		_life_ecology_service.free()
 		_life_ecology_service = null
@@ -568,6 +579,7 @@ func _derived_cache_debug_snapshot() -> Dictionary:
 			"native_species": _derived_snapshot_cache.get_focus_native_species_desc(),
 			"genetic_species": _derived_snapshot_cache.get_focus_genetic_species_desc(),
 			"life_ecology": _derived_snapshot_cache.get_focus_life_ecology_desc(),
+			"population_estimate": _derived_snapshot_cache.get_focus_population_estimate_desc(),
 		},
 	}
 

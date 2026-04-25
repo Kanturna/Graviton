@@ -362,6 +362,8 @@ static func _assert_no_count_or_event_scope_keys(ctx, life_ecology_desc: Diction
 	for key in [
 		&"count_estimate_basis",
 		&"count_estimate_range",
+		&"has_population_estimate_basis",
+		&"population_estimate_profiles",
 		&"war_state",
 		&"catastrophe_state",
 		&"civilization_state",
@@ -376,6 +378,8 @@ static func _assert_no_count_or_event_scope_keys(ctx, life_ecology_desc: Diction
 		for key in [
 			&"count_estimate",
 			&"count_range",
+			&"estimate_min",
+			&"estimate_max",
 			&"war_state",
 			&"catastrophe_state",
 			&"civilization_state",

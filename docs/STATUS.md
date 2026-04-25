@@ -124,10 +124,19 @@ Darauf sitzt jetzt zusaetzlich `Life Ecology Foundation v1`:
 `GeneticSpeciesService` eine qualitative `PopulationClass` pro
 stabiler Lifeform ab. `Population:` im `LifeDetailPanel` zeigt damit
 jetzt spielbare Praesenz wie `FLOURISHING`, `STABLE` oder `SPARSE`,
-aber keine Counts, Count-Ranges, Kriege, Katastrophen, Zivilisationen
-oder Settlement-Zahlen. Der neue `population_index` ist nur ein
+aber in `Population:` selbst keine Counts, Kriege, Katastrophen,
+Zivilisationen oder Settlement-Zahlen. Der neue `population_index` ist nur ein
 normalisierter Praesenz-Hook fuer spaetere echte Count-Slices und kein
 Census.
+Darauf sitzt jetzt zusaetzlich `Population Estimates v1`:
+`LifePopulationEstimateService` leitet read-only aus
+`BiosphereScaleService` und `LifeEcologyService` grobe
+Order-of-Magnitude-Ranges pro Lifeform ab. Das `LifeDetailPanel` zeigt
+dadurch eine neue `Estimate:`-Zeile wie `~10M-100M`, ohne daraus einen
+echten `PopulationState`, Census, Settlement-State oder dynamische
+Population zu machen. Rollen-, Pressure- und Abundance-Effekte werden
+nicht doppelt gezaehlt, weil der Service direkt auf dem bereits
+kalibrierten `population_index` aufsetzt.
 Ein anschliessender Root-Overview-Performance-Fix macht den
 `GalaxyProxyRenderer` dirty-getrieben: der 100-Root-Proxy-Pfad queued
 nicht mehr jedes Render-Frame pauschal ein Redraw, sondern nur noch bei
@@ -793,7 +802,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist weiter reproduzierbar: `run_tests.bat`
-  laeuft nach dem Perf-Snapshot-Sidecar mit `7880`
+  laeuft nach `Population Estimates v1` mit `7960`
   erfolgreichen Assertions bei `0` Failures.
 
 ### Aktuelle Praesentation
@@ -1365,12 +1374,12 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   aktuellen Performance-/Focus-Smoothing-Gates gemeinsam im Editor
   validieren
 - die Headless-Basis ist dabei bereits sichtbar:
-  `./run_tests.bat` lief nach dem Perf-Snapshot-Sidecar mit `7880`
+  `./run_tests.bat` lief nach `Population Estimates v1` mit `7960`
   Passed und `0` Failed; gezielte Tests decken unter anderem
   HUD-Modi, Root-Inspector-Testbed-Regeln, Root-Inspector-
   Model-Caching, Planet-Badge-Text-/Candidate-Caching,
   Perf-Snapshot-JSON-Konvertierung, Life-Detail-Panel,
-  Genetic-/Pressure-/Life-Ecology-Ableitung und
+  Genetic-/Pressure-/Life-Ecology-/Population-Estimate-Ableitung und
   `scaleup_galaxy_100`-Streaming ab
 - diese Tests ersetzen das offene Editor-Gate nicht:
   `sample_system.planet_a`, `starter_world.gamma_iv`,
@@ -1380,27 +1389,27 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - dabei im Summary-/Details-Flow pruefen:
   `Environment` bleibt "jetzt", `World` bleibt "ueber das Jahr",
   `Life` bleibt quantitative Biosphaerenstufe, `Biomass` bleibt Menge,
-  `Life Potential` bleibt dominanter Chemiepfad, und `Population:`
-  bleibt qualitativ ohne Counts, Count-Ranges, Kriege, Katastrophen,
-  Zivilisationen oder Settlement-Zahlen
+  `Life Potential` bleibt dominanter Chemiepfad, `Population:` bleibt
+  qualitativ und `Estimate:` bleibt grobe Magnitude ohne echten Census,
+  Kriege, Katastrophen, Zivilisationen oder Settlement-Zahlen
 - denselben Acceptance-Run mit den offenen Large-World-/Performance-
   Gates koppeln:
   `scaleup_galaxy_30` und `scaleup_galaxy_100` mit offenem Inspector im
   `ROOT_OVERVIEW` pruefen, inklusive `model_apply_count`,
   `badge_text_apply_count`, `badge_candidate_rebuild_count`,
   Proxy-Culling, Focus-Smoothing, View-Bookmarks und unlocked-FPS-Haptik
-- wenn dieses Bundle sauber ist, danach als naechsten Simulationsblock
-  `Population Counts v1` schneiden:
-  erster echter Population-/Settlement-State auf Basis von
-  `World + Life Potential + Life v2 + GeneticSpecies + LifeEcology`
+- wenn dieses Bundle sauber ist, danach als naechsten Life-Slice
+  `Population Dynamics v1` oder `Evolution Competition v1` planen:
+  zeitliche Entwicklung und Konkurrenz sollen erst auf den jetzt
+  vorhandenen Estimate-Ranges aufsetzen, nicht im Panel erfunden werden
 - falls der Playtest stattdessen zeigt, dass
   `has_primary_source_only_basis` fuer Mehrstern-Faelle zu stoerend
   wird, zuerst einen expliziten `Mehrquellenstrahlung`-Block vorziehen
 - den produktiven Large-World-Pfad weiter nur ueber Proxy-/Perf-Trim
   oder planetare Derived-Folgearbeit ausbauen, nicht ueber noch mehr
   Root-Anzahl ohne echten Editor-/Feel-Playtest
-- Headless-Basis nach `Life Ecology Foundation v1`:
-  `./run_tests.bat` laeuft gruen mit `7822` Passed, `0` Failed;
+- Headless-Basis nach `Population Estimates v1`:
+  `./run_tests.bat` laeuft gruen mit `7960` Passed, `0` Failed;
   der reale Lauf meldet am Prozessende aber weiter generische
   `ObjectDB instances leaked`- und
   `resources still in use`-Hinweise

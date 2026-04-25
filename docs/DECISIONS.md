@@ -1,5 +1,27 @@
 # Graviton - Decisions
 
+## 2026-04-25 - Population Estimates sind Readout-Ranges, kein PopulationState
+
+Die fruehere Zurueckhaltung "keine Count-Ranges vor einem zweiten
+realen Zustand" wird fuer einen engen Readout-Slice relativiert:
+`Population Estimates v1` darf Order-of-Magnitude-Ranges aus dem
+bereits vorhandenen `LifeEcologyService.population_index` ableiten.
+Diese Ranges sind kein Census, kein persistenter PopulationState und
+keine Settlement-Wahrheit.
+
+Konsequenz:
+
+- `LifePopulationEstimateService` ist ein read-only Sim-Service ueber
+  `BiosphereScaleService` und `LifeEcologyService`
+- Rollen-, Pressure- und Abundance-Effekte werden nicht erneut
+  gewichtet; sie stecken bereits im `population_index`
+- die Estimate-Ranges sind Anzeige-Groessenordnungen fuer den Spieler,
+  keine echte Individuenzaehlung und keine Biomasse dieses Lifeforms
+- `LifeEcologyService` bleibt qualitativ und bekommt keine Estimate-
+  oder Count-Keys
+- echter PopulationState, SettlementState, Hysterese, Kriege,
+  Katastrophen und Zivilisationen bleiben eigene Folgeentscheidungen
+
 ## 2026-04-25 - P-Dump bekommt einen On-Demand-JSON-Sidecar
 
 `PerfProbe` bleibt die kontinuierliche, billige Frame-Zeitreihe im
@@ -90,8 +112,10 @@ Konsequenz:
   kein Census und keine echte Biomasse dieses Lifeforms
 - `PopulationClass` beschreibt in v1 Etablierung in der planetaren
   Oekologie, nicht absolute Individuenzahlen
-- es gibt kein `CountEstimateBasis` und keine Count-Ranges, solange es
-  noch keinen zweiten realen Zustand neben qualitativem Readout gibt
+- fuer diesen Slice gibt es kein `CountEstimateBasis` und keine
+  Count-Ranges. Die spaetere `Population Estimates v1`-Decision
+  relativiert diese Zurueckhaltung eng fuer read-only
+  Order-of-Magnitude-Anzeige-Ranges, nicht fuer einen echten Census
 - `Population:` folgt der Reihenfolge von `Native forms`, damit beide
   Zeilen direkt vergleichbar bleiben, wiederholt aber keine Rollen
 - echte Counts, PopulationState, SettlementState, Kriege,

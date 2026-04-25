@@ -5,6 +5,7 @@ const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_
 const NativeSpeciesServiceScript = preload("res://src/sim/life/native_species_service.gd")
 const GeneticSpeciesServiceScript = preload("res://src/sim/life/genetic_species_service.gd")
 const LifeEcologyServiceScript = preload("res://src/sim/life/life_ecology_service.gd")
+const LifePopulationEstimateServiceScript = preload("res://src/sim/life/life_population_estimate_service.gd")
 
 
 static func run(ctx) -> void:
@@ -21,6 +22,7 @@ static func run(ctx) -> void:
 	_test_species_formatter_reuses_caps_style(ctx)
 	_test_genetic_species_formatters_render_native_forms_and_visual_profile(ctx)
 	_test_life_ecology_formatter_renders_population_without_counts(ctx)
+	_test_population_estimate_formatter_renders_order_of_magnitude_ranges(ctx)
 	_test_life_detail_species_line_switches_to_dominant_form_only_for_ecosystems(ctx)
 	_test_summary_formatters_use_compact_survey_language(ctx)
 	_test_density_formatter_maps_life_stages_without_extra_thresholds(ctx)
@@ -275,6 +277,23 @@ static func _test_life_ecology_formatter_renders_population_without_counts(ctx) 
 	ctx.assert_true(
 		not formatted.contains("M") and not formatted.contains("~") and not formatted.contains("0."),
 		"Population-Formatter zeigt keine Pseudo-Counts oder numerische Population-Indizes"
+	)
+
+
+static func _test_population_estimate_formatter_renders_order_of_magnitude_ranges(ctx) -> void:
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_population_estimate(_sample_population_estimate_desc())
+			== "Estimate: ~100M-1B | ~10M-100M | ~10K-100K | +2 forms",
+		"Estimate-Formatter rendert grobe Magnituden in Ecology-Profil-Reihenfolge und capped lange Listen"
+	)
+	ctx.assert_true(
+		OrbitHudFormatterScript.format_population_estimate({}) == "Estimate: n/a",
+		"Ohne Estimate-Basis bleibt Estimate explizit n/a"
+	)
+	var formatted: String = OrbitHudFormatterScript.format_population_estimate(_sample_population_estimate_desc())
+	ctx.assert_true(
+		not formatted.contains("0.") and not formatted.contains("population_index"),
+		"Estimate-Formatter zeigt keine raw floats und keinen internen population_index"
 	)
 
 
@@ -657,4 +676,70 @@ static func _population_profile(
 		LifeEcologyServiceScript.KEY_SELECTION_PRESSURE_CLASS: selection_pressure_class,
 		LifeEcologyServiceScript.KEY_POPULATION_INDEX: population_index,
 		LifeEcologyServiceScript.KEY_POPULATION_CLASS: population_class,
+	}
+
+
+static func _sample_population_estimate_desc() -> Dictionary:
+	return {
+		LifePopulationEstimateServiceScript.KEY_HAS_POPULATION_ESTIMATE_BASIS: true,
+		LifePopulationEstimateServiceScript.KEY_POPULATION_ESTIMATE_PROFILES: [
+			_population_estimate_profile(
+				&"planet_a_producer",
+				GeneticSpeciesServiceScript.RoleClass.PRODUCER,
+				LifeEcologyServiceScript.PopulationClass.FLOURISHING,
+				0.80,
+				100_000_000,
+				1_000_000_000
+			),
+			_population_estimate_profile(
+				&"planet_a_grazer_filter",
+				GeneticSpeciesServiceScript.RoleClass.GRAZER_FILTER,
+				LifeEcologyServiceScript.PopulationClass.STABLE,
+				0.24,
+				10_000_000,
+				100_000_000
+			),
+			_population_estimate_profile(
+				&"planet_a_decomposer",
+				GeneticSpeciesServiceScript.RoleClass.DECOMPOSER,
+				LifeEcologyServiceScript.PopulationClass.SPARSE,
+				0.01,
+				10_000,
+				100_000
+			),
+			_population_estimate_profile(
+				&"planet_a_predator",
+				GeneticSpeciesServiceScript.RoleClass.PREDATOR,
+				LifeEcologyServiceScript.PopulationClass.EMERGING,
+				0.001,
+				1_000,
+				10_000
+			),
+			_population_estimate_profile(
+				&"planet_a_parasite_symbiont",
+				GeneticSpeciesServiceScript.RoleClass.PARASITE_SYMBIONT,
+				LifeEcologyServiceScript.PopulationClass.EMERGING,
+				0.001,
+				1_000,
+				10_000
+			),
+		],
+	}
+
+
+static func _population_estimate_profile(
+		lifeform_id: StringName,
+		role_class: int,
+		population_class: int,
+		population_index: float,
+		estimate_min: int,
+		estimate_max: int
+	) -> Dictionary:
+	return {
+		LifePopulationEstimateServiceScript.KEY_LIFEFORM_ID: lifeform_id,
+		LifePopulationEstimateServiceScript.KEY_ROLE_CLASS: role_class,
+		LifePopulationEstimateServiceScript.KEY_POPULATION_CLASS: population_class,
+		LifePopulationEstimateServiceScript.KEY_POPULATION_INDEX: population_index,
+		LifePopulationEstimateServiceScript.KEY_ESTIMATE_MIN: estimate_min,
+		LifePopulationEstimateServiceScript.KEY_ESTIMATE_MAX: estimate_max,
 	}

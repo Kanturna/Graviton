@@ -224,6 +224,23 @@ class LifeEcologyStub:
 		}
 
 
+class PopulationEstimateStub:
+	extends Node
+
+	var describe_calls: int = 0
+	var describe_calls_by_id: Dictionary = {}
+
+	func describe_body(id: StringName) -> Dictionary:
+		describe_calls += 1
+		describe_calls_by_id[id] = int(describe_calls_by_id.get(id, 0)) + 1
+		return {
+			"body_id": id,
+			"is_supported_body_kind": id != &"genesis",
+			"has_population_estimate_basis": id == &"planet_a" or id == &"moon_a",
+			"population_estimate_profiles": [],
+		}
+
+
 static func run(ctx) -> void:
 	ctx.current_suite = "test_derived_snapshot_cache"
 	_test_cache_tracks_interest_and_dirty_updates(ctx)
@@ -247,6 +264,7 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	var native_species_service := NativeSpeciesStub.new()
 	var genetic_species_service := GeneticSpeciesStub.new()
 	var life_ecology_service := LifeEcologyStub.new()
+	var population_estimate_service := PopulationEstimateStub.new()
 	var cache = DerivedSnapshotCacheScript.new()
 
 	bubble.set_focus(&"planet_a")
@@ -265,7 +283,8 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 		orbit_readout_service,
 		native_species_service,
 		genetic_species_service,
-		life_ecology_service
+		life_ecology_service,
+		population_estimate_service
 	)
 
 	ctx.assert_true(cache.get_revision() == 1, "configure baut den ersten Snapshot sofort")
@@ -283,6 +302,7 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	ctx.assert_true(cache.get_focus_native_species_desc().get("body_id", &"") == &"planet_a", "configure baut auch den Native-Species-Focus-Snapshot")
 	ctx.assert_true(cache.get_focus_genetic_species_desc().get("body_id", &"") == &"planet_a", "configure baut auch den Genetic-Species-Focus-Snapshot")
 	ctx.assert_true(cache.get_focus_life_ecology_desc().get("body_id", &"") == &"planet_a", "configure baut auch den Life-Ecology-Focus-Snapshot")
+	ctx.assert_true(cache.get_focus_population_estimate_desc().get("body_id", &"") == &"planet_a", "configure baut auch den Population-Estimate-Focus-Snapshot")
 	ctx.assert_true(cache.get_environment_desc(&"moon_a").is_empty(), "nicht interessierte Bodies bleiben ungecacht")
 
 	cache.set_interest_ids([&"planet_a", &"moon_a"])
@@ -298,6 +318,7 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	ctx.assert_true(cache.get_native_species_desc(&"moon_a").get("body_id", &"") == &"moon_a", "interessierter Mond bekommt auch einen Native-Species-Snapshot")
 	ctx.assert_true(cache.get_genetic_species_desc(&"moon_a").get("body_id", &"") == &"moon_a", "interessierter Mond bekommt auch einen Genetic-Species-Snapshot")
 	ctx.assert_true(cache.get_life_ecology_desc(&"moon_a").get("body_id", &"") == &"moon_a", "interessierter Mond bekommt auch einen Life-Ecology-Snapshot")
+	ctx.assert_true(cache.get_population_estimate_desc(&"moon_a").get("body_id", &"") == &"moon_a", "interessierter Mond bekommt auch einen Population-Estimate-Snapshot")
 
 	var revision_before_irrelevant_update: int = cache.get_revision()
 	var thermal_calls_before_irrelevant_update: int = thermal_service.describe_calls
@@ -338,6 +359,7 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	native_species_service.free()
 	genetic_species_service.free()
 	life_ecology_service.free()
+	population_estimate_service.free()
 	world_loader.free()
 	time_service.free()
 	registry.free()
