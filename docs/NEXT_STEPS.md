@@ -16,7 +16,7 @@ abgesicherten Slices, jetzt inklusive `Asteroiden v1`.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Asteroiden-v1.1-Root-Frame-Freiflug-/Tuning-Slice mit `8326`
+- `run_tests.bat` lief nach dem Asteroiden-v1.1-Root-Frame-Freiflug-/Tuning-Slice mit `8331`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -40,7 +40,9 @@ Headless-Basis:
   Sternfokus keine planetennahen Detail-Badges scannt; zusaetzlich
   pinnen Inspector-Tests jetzt, dass sichtbare Rows einzelne
   `RootInspectorRow`-Controls ohne Label-/Chip-Unterbaum sind und der
-  Life-Chip-Hit-Test getrennt vom Row-Fokus bleibt
+  Life-Chip-Hit-Test getrennt vom Row-Fokus bleibt; zusaetzlich pinnt
+  ein Asteroid-Renderer-Test jetzt die View-/Screen-Bounds im
+  Debug-Snapshot fuer verschwundene-aber-nicht-despawnte Asteroiden
 
 Offene Editor-/Feel-/FPS-Gates:
 
@@ -151,7 +153,13 @@ Konkreter Ablauf:
   `body_screen_culled_count`, `orbit_screen_culled_line_count`,
   `orbit_visible_point_count`, `render_primitives` und `draw_calls`
   zeigen, ob Screen-Culling und Orbit-LOD den lokalen View-Hotpath
-  ausreichend reduzieren
+  ausreichend reduzieren. Fuer Asteroiden zusaetzlich
+  `asteroid_screen_visible_count`, `asteroid_screen_culled_count`,
+  `asteroid_view_max_abs_ru` und `asteroid_screen_max_abs_px`
+  vergleichen: wenn `active_asteroids` stabil bleibt, aber
+  `asteroid_screen_culled_count` hoch ist, sind die Steine noch live,
+  liegen aber ausserhalb des aktuellen Screens oder zu weit weg fuer
+  die aktuelle Kamera-/Pan-Geschwindigkeit
 - `P`-Dump ausloesen:
   Service-/Renderer-Snapshots und Perf-Counter fuer aktive
   Asteroiden, Attractor-Checks, Substeps, Freiflug und Despawns muessen

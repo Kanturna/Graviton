@@ -130,6 +130,16 @@ Closeup-Schwellenbereich erreichte. `OrbitBodyVisual` zeichnet deshalb
 die sternspezifischen Closeup-Spicules/Prominence-Arcs nicht mehr als
 CPU-Canvas-Linien; die Sternoberflaeche und der Closeup-Eindruck
 bleiben ueber den bestehenden `body_star.gdshader`-Pfad erhalten.
+Nach dem Bericht, dass Asteroiden nach dem Verlassen des sichtbaren
+Bereichs trotz Kamerabewegung nicht wieder auftauchen, wurde kein
+neuer Sim-Fix gesetzt, sondern der Renderer-Diagnosepfad erweitert:
+`AsteroidFieldRenderer.get_debug_snapshot()` meldet jetzt View- und
+Screen-Bounds, `screen_visible_count`, `screen_culled_count`,
+`view_max_abs_ru` und `screen_max_abs_px`; die Testbed-Perf-Probe
+schreibt diese Werte in den naechsten `P`-Dump. Damit laesst sich
+trennen, ob Asteroiden wirklich despawnen, nur weit ausserhalb des
+erreichbaren Kameraausschnitts liegen oder im Projektion-/Renderpfad
+falsch positioniert werden.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und

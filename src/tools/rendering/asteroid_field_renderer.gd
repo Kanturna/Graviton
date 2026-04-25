@@ -5,6 +5,7 @@ const TRAIL_POINT_CAP: int = 10
 const MIN_TRAIL_STEP_PX: float = 1.0
 const POINT_RADIUS_PX: float = 1.9
 const TRAIL_WIDTH_PX: float = 0.9
+const SCREEN_DEBUG_MARGIN_PX: float = 96.0
 
 var _snapshot_cache = null
 var _entries_by_id: Dictionary = {}
@@ -63,7 +64,7 @@ func sync_visuals_now(force: bool = false, refresh_snapshot: bool = true) -> voi
 
 
 func get_debug_snapshot() -> Dictionary:
-	return {
+	var snapshot := {
 		"visible_count": _entries_by_id.size(),
 		"trail_count": _trail_histories_by_id.size(),
 		"trail_point_count": _trail_point_count(),
@@ -71,6 +72,10 @@ func get_debug_snapshot() -> Dictionary:
 		"source_revision": _last_source_revision,
 		"sync_count": _sync_count,
 	}
+	var bounds: Dictionary = _debug_bounds_snapshot()
+	for key in bounds.keys():
+		snapshot[key] = bounds[key]
+	return snapshot
 
 
 func _draw() -> void:
@@ -160,12 +165,84 @@ func _trail_point_count() -> int:
 	return total
 
 
+func _debug_bounds_snapshot() -> Dictionary:
+	var finite_count: int = 0
+	var screen_visible_count: int = 0
+	var view_min := Vector2(INF, INF)
+	var view_max := Vector2(-INF, -INF)
+	var screen_min := Vector2(INF, INF)
+	var screen_max := Vector2(-INF, -INF)
+	var viewport_size := Vector2.ZERO
+	var has_viewport: bool = is_inside_tree()
+	if has_viewport:
+		viewport_size = get_viewport_rect().size
+		has_viewport = viewport_size.x > 0.0 and viewport_size.y > 0.0
+	var canvas_xform: Transform2D = get_global_transform_with_canvas() if is_inside_tree() else get_global_transform()
+	for raw_entry in _entries_by_id.values():
+		if typeof(raw_entry) != TYPE_DICTIONARY:
+			continue
+		var entry: Dictionary = raw_entry
+		var view_ru: Vector2 = _entry_position_ru(entry)
+		if not _is_finite_vec2(view_ru):
+			continue
+		var screen_px: Vector2 = canvas_xform * view_ru
+		if not _is_finite_vec2(screen_px):
+			continue
+		finite_count += 1
+		view_min.x = minf(view_min.x, view_ru.x)
+		view_min.y = minf(view_min.y, view_ru.y)
+		view_max.x = maxf(view_max.x, view_ru.x)
+		view_max.y = maxf(view_max.y, view_ru.y)
+		screen_min.x = minf(screen_min.x, screen_px.x)
+		screen_min.y = minf(screen_min.y, screen_px.y)
+		screen_max.x = maxf(screen_max.x, screen_px.x)
+		screen_max.y = maxf(screen_max.y, screen_px.y)
+		if not has_viewport or _screen_point_visible(screen_px, viewport_size, SCREEN_DEBUG_MARGIN_PX):
+			screen_visible_count += 1
+
+	var has_bounds: bool = finite_count > 0
+	var view_max_abs_ru: float = 0.0
+	var screen_max_abs_px: float = 0.0
+	if has_bounds:
+		view_max_abs_ru = maxf(
+			maxf(absf(view_min.x), absf(view_min.y)),
+			maxf(absf(view_max.x), absf(view_max.y))
+		)
+		screen_max_abs_px = maxf(
+			maxf(absf(screen_min.x), absf(screen_min.y)),
+			maxf(absf(screen_max.x), absf(screen_max.y))
+		)
+	return {
+		"screen_bounds_valid": has_bounds,
+		"screen_viewport_valid": has_viewport,
+		"screen_visible_count": screen_visible_count,
+		"screen_culled_count": max(0, finite_count - screen_visible_count),
+		"view_min_x_ru": view_min.x if has_bounds else 0.0,
+		"view_max_x_ru": view_max.x if has_bounds else 0.0,
+		"view_min_y_ru": view_min.y if has_bounds else 0.0,
+		"view_max_y_ru": view_max.y if has_bounds else 0.0,
+		"view_max_abs_ru": view_max_abs_ru,
+		"screen_min_x_px": screen_min.x if has_bounds else 0.0,
+		"screen_max_x_px": screen_max.x if has_bounds else 0.0,
+		"screen_min_y_px": screen_min.y if has_bounds else 0.0,
+		"screen_max_y_px": screen_max.y if has_bounds else 0.0,
+		"screen_max_abs_px": screen_max_abs_px,
+	}
+
+
 static func _is_finite_vec2(value: Vector2) -> bool:
 	return is_finite(value.x) and is_finite(value.y)
 
 
 static func _is_finite_vec3(value: Vector3) -> bool:
 	return is_finite(value.x) and is_finite(value.y) and is_finite(value.z)
+
+
+static func _screen_point_visible(point_px: Vector2, viewport_size: Vector2, margin_px: float) -> bool:
+	return point_px.x >= -margin_px \
+		and point_px.y >= -margin_px \
+		and point_px.x <= viewport_size.x + margin_px \
+		and point_px.y <= viewport_size.y + margin_px
 
 
 static func _color_for(visual_class: StringName) -> Color:

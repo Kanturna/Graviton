@@ -426,6 +426,10 @@ func _sample_asteroid_perf_probe() -> void:
 		PerfProbeScript.sample(&"asteroid_visible_count", int(renderer_snapshot.get("visible_count", 0)))
 		PerfProbeScript.sample(&"asteroid_trail_count", int(renderer_snapshot.get("trail_count", 0)))
 		PerfProbeScript.sample(&"asteroid_trail_point_count", int(renderer_snapshot.get("trail_point_count", 0)))
+		PerfProbeScript.sample(&"asteroid_screen_visible_count", int(renderer_snapshot.get("screen_visible_count", 0)))
+		PerfProbeScript.sample(&"asteroid_screen_culled_count", int(renderer_snapshot.get("screen_culled_count", 0)))
+		PerfProbeScript.sample(&"asteroid_view_max_abs_ru", float(renderer_snapshot.get("view_max_abs_ru", 0.0)))
+		PerfProbeScript.sample(&"asteroid_screen_max_abs_px", float(renderer_snapshot.get("screen_max_abs_px", 0.0)))
 	_last_asteroid_perf_counter_snapshot = snapshot.duplicate()
 
 

@@ -71,6 +71,7 @@ static func run(ctx) -> void:
 	ctx.current_suite = "test_asteroid_field_renderer"
 	_test_renderer_keeps_trails_as_local_history(ctx)
 	_test_renderer_path_composes_once_per_anchor_per_sync(ctx)
+	_test_renderer_debug_snapshot_exposes_view_and_screen_bounds(ctx)
 
 
 static func _test_renderer_keeps_trails_as_local_history(ctx) -> void:
@@ -119,6 +120,29 @@ static func _test_renderer_path_composes_once_per_anchor_per_sync(ctx) -> void:
 		"Renderer/Snapshot-Pfad komponiert pro sync genau einmal pro unique Asteroid-Anchor")
 	ctx.assert_true(renderer.get_debug_snapshot().get("anchor_view_count", 0) == 1,
 		"Renderer nutzt einen per-frame Anchor-View-Cache fuer Trail-Reprojektion")
+	renderer.free()
+
+
+static func _test_renderer_debug_snapshot_exposes_view_and_screen_bounds(ctx) -> void:
+	var renderer = load("res://src/tools/rendering/asteroid_field_renderer.gd").new()
+	var cache := SnapshotCacheProbe.new()
+	cache.entries = [
+		_entry(&"ast_a", Vector3(UnitSystem.RENDER_SCALE_M_PER_UNIT * -4.0, 0.0, 0.0)),
+		_entry(&"ast_b", Vector3(UnitSystem.RENDER_SCALE_M_PER_UNIT * 8.0, UnitSystem.RENDER_SCALE_M_PER_UNIT * 2.0, 0.0)),
+	]
+	renderer.configure(cache)
+
+	var debug: Dictionary = renderer.get_debug_snapshot()
+	ctx.assert_true(bool(debug.get("screen_bounds_valid", false)),
+		"AsteroidFieldRenderer meldet gueltige Debug-Bounds fuer finite Asteroiden")
+	ctx.assert_true(int(debug.get("screen_visible_count", 0)) == 2,
+		"AsteroidFieldRenderer zaehlt ohne Viewport alle finiten Asteroiden als screen-visible Diagnosepunkte")
+	ctx.assert_true(float(debug.get("view_min_x_ru", 0.0)) == -4.0,
+		"AsteroidFieldRenderer exponiert min View-X in Render-Units")
+	ctx.assert_true(float(debug.get("view_max_x_ru", 0.0)) == 8.0,
+		"AsteroidFieldRenderer exponiert max View-X in Render-Units")
+	ctx.assert_true(float(debug.get("view_max_abs_ru", 0.0)) == 8.0,
+		"AsteroidFieldRenderer exponiert maximale View-Distanz fuer Kamera-Diagnose")
 	renderer.free()
 
 
