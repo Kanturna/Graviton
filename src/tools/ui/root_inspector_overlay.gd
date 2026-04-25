@@ -30,6 +30,7 @@ var _rebuild_count: int = 0
 var _model_apply_count: int = 0
 var _last_model_signature: String = ""
 var _compact_root_overview: bool = false
+var _compact_focus_branch: bool = false
 
 var _title_label: Label = null
 var _type_label: Label = null
@@ -74,9 +75,24 @@ func set_root_context(root_id: StringName, focused_body_id: StringName, auto_ope
 
 
 func set_compact_root_overview(value: bool) -> void:
-	if value == _compact_root_overview:
+	_set_compact_display_modes(value, _compact_focus_branch)
+
+
+func set_compact_focus_branch(value: bool) -> void:
+	_set_compact_display_modes(_compact_root_overview, value)
+
+
+func set_compact_display_modes(root_overview: bool, focus_branch: bool) -> void:
+	_set_compact_display_modes(root_overview, focus_branch)
+
+
+func _set_compact_display_modes(root_overview: bool, focus_branch: bool) -> void:
+	if root_overview:
+		focus_branch = false
+	if root_overview == _compact_root_overview and focus_branch == _compact_focus_branch:
 		return
-	_compact_root_overview = value
+	_compact_root_overview = root_overview
+	_compact_focus_branch = focus_branch
 	_last_sim_tick_rebuild_usec = 0
 	if visible:
 		_rebuild()
@@ -97,6 +113,8 @@ func clear_state() -> void:
 	_row_body_ids.clear()
 	_last_sim_tick_rebuild_usec = 0
 	_last_model_signature = ""
+	_compact_root_overview = false
+	_compact_focus_branch = false
 	_apply_empty_model()
 
 
@@ -117,6 +135,7 @@ func get_debug_snapshot() -> Dictionary:
 		"visible_row_count": _row_body_ids.size(),
 		"full_row_count": _full_model_row_count(),
 		"compact_root_overview": _compact_root_overview,
+		"compact_focus_branch": _compact_focus_branch,
 		"summary": _current_model.get("summary", {}).duplicate(),
 		"rebuild_count": _rebuild_count,
 		"model_apply_count": _model_apply_count,
@@ -294,8 +313,14 @@ static func _format_row_text(row: Dictionary) -> String:
 
 
 func _display_model_for_current_mode(model: Dictionary) -> Dictionary:
-	if not _compact_root_overview:
-		return model
+	if _compact_root_overview:
+		return _compact_root_overview_model(model)
+	if _compact_focus_branch:
+		return _compact_focus_branch_model(model)
+	return model
+
+
+func _compact_root_overview_model(model: Dictionary) -> Dictionary:
 	var compact_model: Dictionary = model.duplicate(true)
 	var compact_rows: Array[Dictionary] = []
 	for row_variant in model.get("rows", []):
@@ -307,8 +332,52 @@ func _display_model_for_current_mode(model: Dictionary) -> Dictionary:
 	return compact_model
 
 
+func _compact_focus_branch_model(model: Dictionary) -> Dictionary:
+	var compact_model: Dictionary = model.duplicate(true)
+	var compact_rows: Array[Dictionary] = []
+	var rows: Array = model.get("rows", [])
+	var parent_by_id: Dictionary = _parent_map_for_rows(rows)
+	for row_variant in rows:
+		var row: Dictionary = row_variant
+		if _is_compact_focus_branch_row(row, _focused_body_id, parent_by_id):
+			compact_rows.append(row)
+	compact_model["rows"] = compact_rows
+	compact_model["display_mode"] = "compact_focus_branch:%s" % String(_focused_body_id)
+	return compact_model
+
+
 static func _is_compact_root_overview_row(row: Dictionary) -> bool:
 	return int(row.get("depth", 0)) <= 1
+
+
+static func _is_compact_focus_branch_row(row: Dictionary, focused_body_id: StringName, parent_by_id: Dictionary) -> bool:
+	if int(row.get("depth", 0)) <= 1:
+		return true
+	var body_id: StringName = row.get("body_id", StringName(""))
+	if focused_body_id == StringName("") or body_id == StringName(""):
+		return false
+	return _is_same_or_ancestor(body_id, focused_body_id, parent_by_id) \
+		or _is_same_or_ancestor(focused_body_id, body_id, parent_by_id)
+
+
+static func _is_same_or_ancestor(candidate_id: StringName, body_id: StringName, parent_by_id: Dictionary) -> bool:
+	var current_id: StringName = body_id
+	while current_id != StringName(""):
+		if current_id == candidate_id:
+			return true
+		current_id = StringName(parent_by_id.get(current_id, StringName("")))
+	return false
+
+
+static func _parent_map_for_rows(rows: Array) -> Dictionary:
+	var parent_by_id: Dictionary = {}
+	for row_variant in rows:
+		var row: Dictionary = row_variant
+		var body_id: StringName = row.get("body_id", StringName(""))
+		if body_id == StringName(""):
+			continue
+		parent_by_id[body_id] = StringName(row.get("parent_id", StringName("")))
+	return parent_by_id
 
 
 func _full_model_row_count() -> int:
@@ -331,6 +400,7 @@ static func _model_signature(model: Dictionary) -> String:
 		var row: Dictionary = row_variant
 		parts.append("row")
 		parts.append(String(row.get("body_id", StringName(""))))
+		parts.append(String(row.get("parent_id", StringName(""))))
 		parts.append(str(int(row.get("depth", 0))))
 		parts.append(str(int(row.get("kind_id", -1))))
 		parts.append(String(row.get("name_text", "")))

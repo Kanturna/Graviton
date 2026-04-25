@@ -98,6 +98,7 @@ func _append_rows(
 	var life_badge_text: String = _life_badge_text_for_body(def, biosphere_desc)
 	rows.append({
 		"body_id": body_id,
+		"parent_id": def.parent_id,
 		"depth": depth,
 		"kind_id": def.kind,
 		"name_text": _display_name(def),

@@ -1,26 +1,34 @@
 # Graviton - Decisions
 
-## 2026-04-25 - Root-Inspector rendert Root-Ansichten kompakt
+## 2026-04-25 - Root-Inspector rendert Fokuszweige kompakt
 
 Der rechte Root-Inspector bleibt ein Navigationswerkzeug, rendert im
 `ROOT_OVERVIEW` und beim direkten Root-/BH-Fokus aber nicht mehr die
 komplette Planet-/Moon-/Chip-Hierarchie. Die aktuellen Perf-Dumps
 zeigten, dass der offene Inspector nicht durch staendige
 Model-Rebuilds teuer war, sondern durch die dauerhaft sichtbaren
-Control-/Panel-/Label-/Chip-Nodes.
+Control-/Panel-/Label-/Chip-Nodes. Dasselbe Prinzip gilt jetzt auch
+fuer lokale Stern-/Planet-/Mond-Foki: detailliert materialisiert wird
+nur der fokussierte Teilbaum; Geschwistersterne bleiben kompakte
+Navigationszeilen.
 
 Konsequenz:
 
 - im `ROOT_OVERVIEW` und beim fokussierten Root/BH materialisiert der
   Inspector nur Root plus direkte Stern-Rows als schnellen Navigator
+- im Sternfokus materialisiert der Inspector Root plus direkte Sterne
+  und nur fuer den fokussierten Stern dessen Planeten-/Mond-Unterbaum
+- im Planet-/Mondfokus materialisiert der Inspector Root plus direkte
+  Sterne, den Fokuspfad und den Fokus-Unterbaum; Geschwisterplanetensysteme
+  bleiben unmaterialisiert
 - Summary-Zahlen bleiben aus dem vollen Modell sichtbar, damit Root-
   Umfang und Umweltzaehlung nicht verloren gehen
-- Planet-/Moon-Rows samt Environment-/Life-Chips bleiben im vollen
-  Inspector-Modus fuer lokale Stern-/Planet-/Mond-Fokusansichten
-  erhalten
+- Planet-/Moon-Rows samt Environment-/Life-Chips bleiben fuer den
+  fokussierten lokalen Zweig erhalten
 - neue PerfProbe-Spalten `root_inspector_full_row_count` und
-  `root_inspector_compact_root_overview` trennen sichtbare Row-Kosten
-  von der vollen Modellgroesse
+  `root_inspector_compact_root_overview` sowie
+  `root_inspector_compact_focus_branch` trennen sichtbare Row-Kosten
+  von der vollen Modellgroesse und vom aktiven Kompaktmodus
 - diese Aenderung bleibt rein View-/UI-seitig und fuehrt keine neue
   Simulations- oder Snapshot-Wahrheit ein
 

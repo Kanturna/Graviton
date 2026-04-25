@@ -47,6 +47,7 @@ static func run(ctx) -> void:
 	_test_model_builder_builds_hierarchy_and_summary_for_starter_root(ctx)
 	_test_overlay_formats_navigation_first_rows(ctx)
 	_test_overlay_compact_root_overview_limits_visible_rows(ctx)
+	_test_overlay_compact_focus_branch_keeps_focused_subtree(ctx)
 	_test_overlay_starts_closed_and_emits_focus_requests(ctx)
 	_test_overlay_life_chip_emits_details_without_focus_request(ctx)
 	_test_overlay_throttles_sim_tick_rebuilds_but_not_user_events(ctx)
@@ -215,6 +216,56 @@ static func _test_overlay_compact_root_overview_limits_visible_rows(ctx) -> void
 	ctx.assert_true(not bool(full_snapshot.get("compact_root_overview", true)), "Voller Inspector-Modus ist im Debug-Snapshot sichtbar")
 	ctx.assert_true(int(full_snapshot.get("visible_row_count", 0)) == 18, "Voller Inspector-Modus materialisiert wieder alle Rows")
 	ctx.assert_true(_find_row_panel_by_body_id(overlay, &"gamma_iv") != null, "Voller Inspector-Modus stellt planetare Rows wieder her")
+
+	overlay.free()
+	_teardown_starter_root_context(context)
+
+
+static func _test_overlay_compact_focus_branch_keeps_focused_subtree(ctx) -> void:
+	var context: Dictionary = _build_starter_root_context()
+	var overlay = RootInspectorOverlayScript.new()
+	overlay.configure(
+		context.get("registry"),
+		context.get("topology"),
+		context.get("snapshot_cache")
+	)
+	overlay.set_compact_focus_branch(true)
+	overlay.set_root_context(&"obsidian", &"alpha", true)
+
+	var star_snapshot: Dictionary = overlay.get_debug_snapshot()
+	ctx.assert_true(bool(star_snapshot.get("compact_focus_branch", false)), "Focus-Branch-Modus ist im Debug-Snapshot sichtbar")
+	ctx.assert_true(int(star_snapshot.get("full_row_count", 0)) == 18, "Focus-Branch-Modus behaelt das volle Inspector-Modell fuer Summary/Diagnose")
+	ctx.assert_true(
+		star_snapshot.get("row_body_ids", []) == [
+			&"obsidian",
+			&"alpha",
+			&"alpha_i",
+			&"alpha_i_m",
+			&"alpha_ii",
+			&"alpha_iii",
+			&"beta",
+			&"gamma",
+			&"delta",
+		],
+		"Focus-Branch-Modus materialisiert den fokussierten Stern-Teilbaum und kollabiert Geschwistersterne"
+	)
+	ctx.assert_true(_find_row_panel_by_body_id(overlay, &"alpha_i_m") != null, "Focus-Branch-Modus behaelt Monde im fokussierten Stern-Teilbaum")
+	ctx.assert_true(_find_row_panel_by_body_id(overlay, &"beta_i") == null, "Focus-Branch-Modus materialisiert keine Planeten unter Geschwistersternen")
+
+	overlay.set_root_context(&"obsidian", &"alpha_i", false)
+	var planet_snapshot: Dictionary = overlay.get_debug_snapshot()
+	ctx.assert_true(
+		planet_snapshot.get("row_body_ids", []) == [
+			&"obsidian",
+			&"alpha",
+			&"alpha_i",
+			&"alpha_i_m",
+			&"beta",
+			&"gamma",
+			&"delta",
+		],
+		"Focus-Branch-Modus materialisiert beim Planetenfokus nur Pfad plus Unterbaum und kollabiert Stern-Geschwister"
+	)
 
 	overlay.free()
 	_teardown_starter_root_context(context)

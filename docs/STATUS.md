@@ -187,12 +187,15 @@ gemessenen offenen Inspector-Zustand direkt:
 im `ROOT_OVERVIEW` und beim direkten Root-/BH-Fokus rendert der rechte
 Inspector jetzt nur noch Root plus direkte Sterne als kompakten
 Navigator, waehrend Summary-Zahlen weiter aus dem vollen Modell kommen.
-Planet-/Moon-Rows samt Environment- und Life-Chips bleiben im vollen
-Inspector-Modus fuer lokale Stern-/Planet-/Mond-Fokusansichten
-erhalten. Neue `PerfProbe`-Spalten
+Im lokalen Sternfokus rendert derselbe Inspector jetzt nur den
+fokussierten Stern detailliert mit dessen Planeten-/Mond-Unterbaum;
+andere Sterne bleiben reine Navigationszeilen. Im Planet-/Mondfokus
+bleibt entsprechend nur der Fokuspfad plus Fokus-Unterbaum
+materialisiert. Neue `PerfProbe`-Spalten
 `root_inspector_full_row_count` und
-`root_inspector_compact_root_overview` trennen sichtbare Row-Kosten von
-der vollen Modellgroesse.
+`root_inspector_compact_root_overview` sowie
+`root_inspector_compact_focus_branch` trennen sichtbare Row-Kosten von
+der vollen Modellgroesse und vom aktiven Kompaktmodus.
 Ein direkter Follow-up adressiert den danach sichtbaren Fokus-Ruckler
 bei deaktiviertem VSync: `TimeService` merkt das letzte autoritative
 Sim-dt, `LocalBubbleManager` kann daraus rein view-seitig eine
@@ -773,7 +776,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist weiter reproduzierbar: `run_tests.bat`
-  laeuft nach dem kompakten Root-Inspector-Overview mit `7858`
+  laeuft nach dem kompakten Root-Inspector-Fokuszweig mit `7867`
   erfolgreichen Assertions bei `0` Failures.
 
 ### Aktuelle Praesentation
@@ -1345,7 +1348,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   aktuellen Performance-/Focus-Smoothing-Gates gemeinsam im Editor
   validieren
 - die Headless-Basis ist dabei bereits sichtbar:
-  `./run_tests.bat` lief nach dem kompakten Root-Inspector-Overview mit `7858`
+  `./run_tests.bat` lief nach dem kompakten Root-Inspector-Fokuszweig mit `7867`
   Passed und `0` Failed; gezielte Tests decken unter anderem
   HUD-Modi, Root-Inspector-Testbed-Regeln, Root-Inspector-
   Model-Caching, Planet-Badge-Text-/Candidate-Caching,

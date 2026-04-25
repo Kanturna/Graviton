@@ -336,6 +336,7 @@ func _sample_perf_probe() -> void:
 		PerfProbeScript.sample(&"root_inspector_row_count", row_ids.size())
 		PerfProbeScript.sample(&"root_inspector_full_row_count", int(inspector_snapshot.get("full_row_count", row_ids.size())))
 		PerfProbeScript.sample(&"root_inspector_compact_root_overview", int(bool(inspector_snapshot.get("compact_root_overview", false))))
+		PerfProbeScript.sample(&"root_inspector_compact_focus_branch", int(bool(inspector_snapshot.get("compact_focus_branch", false))))
 		PerfProbeScript.sample(&"root_inspector_model_apply_count", int(inspector_snapshot.get("model_apply_count", 0)))
 
 
@@ -780,9 +781,17 @@ func _toggle_root_inspector_for_current_root() -> void:
 
 
 func _sync_root_inspector_display_mode(frame_label: StringName) -> void:
-	if _root_inspector == null or not _root_inspector.has_method("set_compact_root_overview"):
+	if _root_inspector == null:
 		return
-	_root_inspector.set_compact_root_overview(_should_compact_root_inspector(frame_label))
+	var compact_root_overview: bool = _should_compact_root_inspector(frame_label)
+	var compact_focus_branch: bool = _should_compact_root_inspector_focus_branch(compact_root_overview)
+	if _root_inspector.has_method("set_compact_display_modes"):
+		_root_inspector.set_compact_display_modes(compact_root_overview, compact_focus_branch)
+		return
+	if _root_inspector.has_method("set_compact_root_overview"):
+		_root_inspector.set_compact_root_overview(compact_root_overview)
+	if _root_inspector.has_method("set_compact_focus_branch"):
+		_root_inspector.set_compact_focus_branch(compact_focus_branch)
 
 
 func _should_compact_root_inspector(frame_label: StringName) -> bool:
@@ -796,6 +805,18 @@ func _should_compact_root_inspector(frame_label: StringName) -> bool:
 	if focus_id == StringName(""):
 		return false
 	return _topology.root_id_of(focus_id) == focus_id
+
+
+func _should_compact_root_inspector_focus_branch(compact_root_overview: bool) -> bool:
+	if not _is_large_world or compact_root_overview:
+		return false
+	if _bubble == null or _topology == null:
+		return false
+	var focus_id: StringName = _bubble.get_focus()
+	if focus_id == StringName(""):
+		return false
+	var focus_root_id: StringName = _topology.root_id_of(focus_id)
+	return focus_root_id != StringName("") and focus_root_id != focus_id
 
 
 func _planetary_interest_ids_for_root(root_id: StringName) -> Array[StringName]:

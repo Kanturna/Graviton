@@ -69,6 +69,7 @@ class RootInspectorProbe:
 	var focused_body_id: StringName = &""
 	var auto_open_count: int = 0
 	var compact_root_overview: bool = false
+	var compact_focus_branch: bool = false
 
 	func set_root_context(next_root_id: StringName, next_focused_body_id: StringName, auto_open: bool = false) -> void:
 		root_id = next_root_id
@@ -79,6 +80,13 @@ class RootInspectorProbe:
 
 	func set_compact_root_overview(value: bool) -> void:
 		compact_root_overview = value
+
+	func set_compact_focus_branch(value: bool) -> void:
+		compact_focus_branch = value
+
+	func set_compact_display_modes(root_overview: bool, focus_branch: bool) -> void:
+		compact_root_overview = root_overview
+		compact_focus_branch = focus_branch and not root_overview
 
 	func is_open() -> bool:
 		return open
@@ -93,6 +101,8 @@ class RootInspectorProbe:
 		open = false
 		root_id = StringName("")
 		focused_body_id = StringName("")
+		compact_root_overview = false
+		compact_focus_branch = false
 
 
 class DerivedSnapshotCacheProbe:
@@ -234,15 +244,18 @@ static func _test_root_inspector_tracks_root_overview_compact_mode(ctx) -> void:
 	camera.frame_label = OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW
 	testbed._sync_view_lod_state(true, false)
 	ctx.assert_true(inspector.compact_root_overview, "Root-Overview setzt den Inspector in den kompakten Navigator-Modus")
+	ctx.assert_true(not inspector.compact_focus_branch, "Root-Overview nutzt nicht gleichzeitig den Focus-Branch-Modus")
 
 	camera.frame_label = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
 	bubble.set_focus(&"obsidian")
 	testbed._sync_view_lod_state(true, false)
 	ctx.assert_true(inspector.compact_root_overview, "Root-/BH-Fokus behaelt den kompakten Navigator-Modus")
+	ctx.assert_true(not inspector.compact_focus_branch, "Root-/BH-Fokus nutzt keinen lokalen Focus-Branch")
 
 	bubble.set_focus(&"alpha")
 	testbed._sync_view_lod_state(true, false)
-	ctx.assert_true(not inspector.compact_root_overview, "Lokaler Stern-/Detailblick stellt den vollen Inspector-Modus wieder her")
+	ctx.assert_true(not inspector.compact_root_overview, "Lokaler Sternfokus deaktiviert den Root-Overview-Kompaktmodus")
+	ctx.assert_true(inspector.compact_focus_branch, "Lokaler Sternfokus nutzt den kompakten fokussierten Teilbaum")
 	_destroy_testbed_probe(testbed)
 
 
