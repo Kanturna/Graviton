@@ -126,6 +126,7 @@ static func run(ctx) -> void:
 	_test_proxy_renderer_culls_offscreen_roots_for_scaleup_galaxy_100(ctx)
 	_test_renderer_shortcuts_cross_root_detail_localization_for_pilot_and_scaleup(ctx)
 	_test_root_overview_lod_hides_planetary_descendants_and_tracks_debug_counts(ctx)
+	_test_root_lock_lod_keeps_focus_branch_and_compacts_sibling_branches(ctx)
 	_test_root_overview_trail_resume_avoids_bridge_and_rebuild_clears_pause_state(ctx)
 	_test_30_root_stress_keeps_resident_count_and_snapshot_refreshes_bounded(ctx)
 
@@ -923,6 +924,60 @@ static func _test_root_overview_lod_hides_planetary_descendants_and_tracks_debug
 		alpha_orbit_line.visible and alpha_orbit_line.points.size() >= OrbitViewRendererScript.ORBIT_SAMPLE_COUNT,
 		"Detailmodus stellt direkte Stern-Orbits wieder mit voller Liniengeometrie her"
 	)
+
+	bubble_probe.free()
+	renderer.free()
+	registry.free()
+	loader.free()
+
+
+static func _test_root_lock_lod_keeps_focus_branch_and_compacts_sibling_branches(ctx) -> void:
+	var loader = WorldLoaderScript.new()
+	var registry: Node = load("res://src/sim/universe/universe_registry.gd").new()
+	var galaxy = loader.load_named_galaxy(&"pilot_galaxy")
+	ctx.assert_true(loader.materialize_galaxy_roots(galaxy, [&"obsidian"], registry), "Pilot-Root laesst sich fuer den Root-Lock-LOD-Test materialisieren")
+
+	var bubble_probe := StatefulBubbleProbe.new()
+	bubble_probe.positions_by_id = {
+		&"obsidian": Vector3.ZERO,
+		&"alpha": Vector3(1.0e3, 0.0, 0.0),
+		&"beta": Vector3(2.0e3, 0.0, 0.0),
+		&"gamma": Vector3(3.0e3, 0.0, 0.0),
+		&"delta": Vector3(4.0e3, 0.0, 0.0),
+		&"alpha_i": Vector3(1.1e3, 0.0, 0.0),
+		&"alpha_i_m": Vector3(1.12e3, 0.0, 0.0),
+		&"alpha_ii": Vector3(1.2e3, 0.0, 0.0),
+		&"alpha_iii": Vector3(1.3e3, 0.0, 0.0),
+	}
+	var topology = UniverseTopologyScript.new()
+	topology.configure(registry)
+	var renderer = _make_renderer_probe(registry, bubble_probe, topology)
+	renderer.set_focus(&"alpha")
+	bubble_probe.compose_call_ids.clear()
+	renderer.set_frame_label(OrbitCameraFramingScript.FRAME_LABEL_ROOT_LOCK)
+	renderer._sync_visual_positions(true)
+
+	var alpha_planet_visual: CanvasItem = renderer._body_visuals.get(&"alpha_i", null)
+	var beta_visual: CanvasItem = renderer._body_visuals.get(&"beta", null)
+	var beta_planet_visual: CanvasItem = renderer._body_visuals.get(&"beta_i", null)
+	var alpha_planet_orbit_entry: Dictionary = renderer._orbit_visuals.get(&"alpha_i", {})
+	var beta_orbit_entry: Dictionary = renderer._orbit_visuals.get(&"beta", {})
+	var beta_planet_orbit_entry: Dictionary = renderer._orbit_visuals.get(&"beta_i", {})
+	var alpha_planet_orbit_line: CanvasItem = alpha_planet_orbit_entry.get("line", null)
+	var beta_orbit_line: CanvasItem = beta_orbit_entry.get("line", null)
+	var beta_planet_orbit_line: CanvasItem = beta_planet_orbit_entry.get("line", null)
+	var beta_planet_trail: CanvasItem = renderer._trail_visuals.get(&"beta_i", null)
+	var snapshot: Dictionary = renderer.get_debug_snapshot()
+
+	ctx.assert_true(alpha_planet_visual != null and alpha_planet_visual.visible, "ROOT_LOCK behaelt den fokussierten Sternzweig sichtbar")
+	ctx.assert_true(alpha_planet_orbit_line != null and alpha_planet_orbit_line.visible, "ROOT_LOCK behaelt Orbitlinien im Fokuszweig sichtbar")
+	ctx.assert_true(beta_visual != null and beta_visual.visible, "ROOT_LOCK behaelt direkte Geschwistersterne als Kontext sichtbar")
+	ctx.assert_true(beta_orbit_line != null and not beta_orbit_line.visible, "ROOT_LOCK blendet Orbitlinien von Geschwistersternen aus")
+	ctx.assert_true(beta_planet_visual != null and not beta_planet_visual.visible, "ROOT_LOCK blendet Planetenzweige von Geschwistersternen aus")
+	ctx.assert_true(beta_planet_orbit_line != null and not beta_planet_orbit_line.visible, "ROOT_LOCK blendet Orbitlinien in Geschwisterzweigen aus")
+	ctx.assert_true(beta_planet_trail != null and not beta_planet_trail.visible, "ROOT_LOCK pausiert Trails in Geschwisterzweigen")
+	ctx.assert_true(int(snapshot.get("root_lock_hidden_body_count", 0)) > 0, "ROOT_LOCK zaehlt ausgeblendete Nicht-Fokus-Bodies")
+	ctx.assert_true(not bubble_probe.compose_call_ids.has(&"beta_i"), "ROOT_LOCK lokalisiert ausgeblendete Geschwisterplaneten nicht ueber die Bubble")
 
 	bubble_probe.free()
 	renderer.free()

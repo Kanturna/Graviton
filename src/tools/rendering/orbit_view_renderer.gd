@@ -58,6 +58,7 @@ var _last_debug_snapshot: Dictionary = {
 	"compose_view_position_distinct_body_count": 0,
 	"trail_update_distinct_body_count": 0,
 	"overview_hidden_descendant_count": 0,
+	"root_lock_hidden_body_count": 0,
 	"overview_visible_star_count": 0,
 	"body_visible_count": 0,
 	"body_detail_factor_max": 0.0,
@@ -335,8 +336,10 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 	_compose_view_position_body_ids.clear()
 	var presentation_offset_s: float = _presentation_offset_s()
 	var overview_hidden_descendant_count: int = 0
+	var root_lock_hidden_body_count: int = 0
 	var overview_visible_star_count: int = 0
 	var root_overview_active: bool = _is_root_overview_active()
+	var root_lock_lod_active: bool = _is_root_lock_lod_active()
 	var positions_by_id: Dictionary = {}
 	var body_screen_visible_by_id: Dictionary = {}
 	var visible_orbit_line_count: int = 0
@@ -363,6 +366,11 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 
 		if root_overview_active and _should_hide_in_root_overview(id, def):
 			overview_hidden_descendant_count += 1
+			_hide_visual_stack(visual, orbit_line, trail_line)
+			_pause_trail(id)
+			continue
+		if root_lock_lod_active and _should_hide_in_root_lock(id, def):
+			root_lock_hidden_body_count += 1
 			_hide_visual_stack(visual, orbit_line, trail_line)
 			_pause_trail(id)
 			continue
@@ -434,6 +442,8 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 			var parent_id: StringName = orbit_entry.get("parent_id", &"")
 			if orbit_line != null:
 				var orbit_visible: bool = not root_overview_active or _should_show_orbit_in_root_overview(def)
+				if orbit_visible and root_lock_lod_active:
+					orbit_visible = _should_show_orbit_in_root_lock(id, def)
 				if orbit_visible:
 					var parent_pos: Vector2 = positions_by_id.get(parent_id, Vector2(INF, INF))
 					if not _is_finite_vec2(parent_pos):
@@ -473,6 +483,7 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 		"compose_view_position_distinct_body_count": _compose_view_position_body_ids.size(),
 		"trail_update_distinct_body_count": _trail_update_body_ids.size(),
 		"overview_hidden_descendant_count": overview_hidden_descendant_count,
+		"root_lock_hidden_body_count": root_lock_hidden_body_count,
 		"overview_visible_star_count": overview_visible_star_count,
 		"visible_orbit_line_count": visible_orbit_line_count,
 		"root_overview_orbit_line_count": root_overview_orbit_line_count,
@@ -491,6 +502,7 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 	PerfProbeScript.sample(&"compose_view_position_body_count", _compose_view_position_body_ids.size())
 	PerfProbeScript.sample(&"body_visible_count", body_visible_count)
 	PerfProbeScript.sample(&"root_overview_visible_star_count", overview_visible_star_count)
+	PerfProbeScript.sample(&"root_lock_hidden_body_count", root_lock_hidden_body_count)
 	PerfProbeScript.sample(&"orbit_visible_line_count", visible_orbit_line_count)
 	PerfProbeScript.sample(&"orbit_root_overview_line_count", root_overview_orbit_line_count)
 	PerfProbeScript.sample(&"orbit_visible_point_count", visible_orbit_point_count)
@@ -579,12 +591,16 @@ func _update_trails_for_sim_tick(reset_trails: bool = false) -> void:
 	if _registry == null or _bubble == null:
 		return
 	var root_overview_active: bool = _is_root_overview_active()
+	var root_lock_lod_active: bool = _is_root_lock_lod_active()
 	for id in _registry_update_order():
 		var line: AntialiasedLine2D = _trail_visuals.get(id, null)
 		if line == null:
 			continue
 		var def: BodyDef = _registry.get_def(id)
-		if def == null or root_overview_active or not _body_shares_focus_root(id):
+		if def == null \
+				or root_overview_active \
+				or (root_lock_lod_active and _should_hide_in_root_lock(id, def)) \
+				or not _body_shares_focus_root(id):
 			_pause_trail(id)
 			continue
 		if not line.visible:
@@ -890,6 +906,13 @@ func _is_root_overview_active() -> bool:
 	return focus_def != null and focus_def.is_root()
 
 
+func _is_root_lock_lod_active() -> bool:
+	if _frame_label != OrbitCameraFramingScript.FRAME_LABEL_ROOT_LOCK:
+		return false
+	var focus_def: BodyDef = null if _registry == null else _registry.get_def(_focus_id)
+	return focus_def != null and not focus_def.is_root()
+
+
 func _should_hide_in_root_overview(id: StringName, def: BodyDef) -> bool:
 	if not _is_root_overview_active():
 		return false
@@ -902,6 +925,58 @@ func _should_hide_in_root_overview(id: StringName, def: BodyDef) -> bool:
 
 func _is_visible_root_overview_star(def: BodyDef) -> bool:
 	return def != null and def.kind == BodyType.Kind.STAR and def.parent_id == _focus_id
+
+
+func _should_hide_in_root_lock(id: StringName, def: BodyDef) -> bool:
+	if not _is_root_lock_lod_active():
+		return false
+	if def == null:
+		return false
+	if id == _focus_id or _is_focus_root(id):
+		return false
+	if _is_focus_path_body(id):
+		return false
+	if _is_direct_star_in_focus_root(def):
+		return false
+	if _is_descendant_of_focus(id):
+		return false
+	return true
+
+
+func _should_show_orbit_in_root_lock(id: StringName, _def: BodyDef) -> bool:
+	if not _is_root_lock_lod_active():
+		return true
+	if id == _focus_id:
+		return true
+	if _is_focus_path_body(id):
+		return true
+	return _is_descendant_of_focus(id)
+
+
+func _is_focus_root(id: StringName) -> bool:
+	if _topology == null or _focus_id == StringName(""):
+		return false
+	return id == _topology.root_id_of(_focus_id)
+
+
+func _is_direct_star_in_focus_root(def: BodyDef) -> bool:
+	if def == null or def.kind != BodyType.Kind.STAR or _topology == null:
+		return false
+	var focus_root_id: StringName = _topology.root_id_of(_focus_id)
+	return focus_root_id != StringName("") and def.parent_id == focus_root_id
+
+
+func _is_focus_path_body(id: StringName) -> bool:
+	if _topology == null or id == StringName("") or _focus_id == StringName(""):
+		return false
+	var path: Array[StringName] = _topology.ancestor_path_root_to_leaf(_focus_id)
+	return path.has(id)
+
+
+func _is_descendant_of_focus(id: StringName) -> bool:
+	if _topology == null or id == StringName("") or _focus_id == StringName(""):
+		return false
+	return _topology.is_descendant_of(id, _focus_id)
 
 
 func _body_parent_frame_position_ru(id: StringName) -> Vector2:

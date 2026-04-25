@@ -29,6 +29,7 @@ var _cached_candidates: Array[Dictionary] = []
 var _candidate_rebuild_dirty: bool = true
 var _candidate_rebuild_immediate: bool = true
 var _last_candidate_rebuild_usec: int = 0
+var _last_candidate_focus_id: StringName = StringName("")
 var _last_candidate_focus_root_id: StringName = StringName("")
 var _last_candidate_frame_label: StringName = StringName("")
 var _last_candidate_viewport_size: Vector2 = Vector2.ZERO
@@ -71,11 +72,11 @@ func refresh() -> void:
 	if _registry == null or _topology == null or _bubble == null or _snapshot_cache == null or _renderer == null:
 		_hide_all_badges()
 		return
-	if _frame_label == OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW:
+	var focus_id: StringName = _bubble.get_focus()
+	if not _should_show_badges_for_focus(focus_id):
 		_hide_all_badges()
 		return
 
-	var focus_id: StringName = _bubble.get_focus()
 	var focus_root_id: StringName = _topology.root_id_of(focus_id)
 	if focus_root_id == StringName(""):
 		_hide_all_badges()
@@ -83,13 +84,15 @@ func refresh() -> void:
 
 	var viewport: Viewport = get_viewport()
 	var viewport_size: Vector2 = viewport.get_visible_rect().size if viewport != null else Vector2.ZERO
-	_refresh_candidate_context(focus_root_id, viewport_size)
+	_refresh_candidate_context(focus_id, focus_root_id, viewport_size)
 	if _should_rebuild_candidates():
 		_rebuild_cached_candidates(focus_root_id, viewport_size)
 	_apply_cached_candidates(viewport_size)
 
 
-func _refresh_candidate_context(focus_root_id: StringName, viewport_size: Vector2) -> void:
+func _refresh_candidate_context(focus_id: StringName, focus_root_id: StringName, viewport_size: Vector2) -> void:
+	if _last_candidate_focus_id != focus_id:
+		_mark_candidate_rebuild_dirty(true)
 	if _last_candidate_focus_root_id != focus_root_id:
 		_mark_candidate_rebuild_dirty(true)
 	if _last_candidate_frame_label != _frame_label:
@@ -97,6 +100,7 @@ func _refresh_candidate_context(focus_root_id: StringName, viewport_size: Vector
 	if not _last_candidate_viewport_size.is_equal_approx(viewport_size) \
 			and (_last_candidate_viewport_size - viewport_size).length() > VIEWPORT_SIZE_EPSILON_PX:
 		_mark_candidate_rebuild_dirty(true)
+	_last_candidate_focus_id = focus_id
 	_last_candidate_focus_root_id = focus_root_id
 	_last_candidate_frame_label = _frame_label
 	_last_candidate_viewport_size = viewport_size
@@ -211,6 +215,9 @@ func get_debug_snapshot() -> Dictionary:
 		"cached_candidate_count": _cached_candidates.size(),
 		"candidate_rebuild_interval_usec": CANDIDATE_REBUILD_INTERVAL_USEC,
 		"candidate_background_rebuild_interval_usec": CANDIDATE_BACKGROUND_REBUILD_INTERVAL_USEC,
+		"badges_enabled_for_focus": _should_show_badges_for_focus(
+			_bubble.get_focus() if _bubble != null and _bubble.has_method("get_focus") else StringName("")
+		),
 	}
 
 
@@ -234,6 +241,17 @@ func _sort_candidates_by_radius_desc(a: Dictionary, b: Dictionary) -> bool:
 	if is_equal_approx(a_radius, b_radius):
 		return String(a.get("body_id", "")).naturalnocasecmp_to(String(b.get("body_id", ""))) < 0
 	return a_radius > b_radius
+
+
+func _should_show_badges_for_focus(focus_id: StringName) -> bool:
+	if _frame_label != OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK:
+		return false
+	if _registry == null or focus_id == StringName(""):
+		return true
+	var focus_def: BodyDef = _registry.get_def(focus_id)
+	if focus_def == null:
+		return true
+	return focus_def.kind == BodyType.Kind.PLANET or focus_def.kind == BodyType.Kind.MOON
 
 
 func _ensure_ui() -> void:

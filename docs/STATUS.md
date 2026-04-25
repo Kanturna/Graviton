@@ -58,6 +58,17 @@ aktuellen Screen-Ausschnitt mit Margin. Neue PerfProbe-Spalten
 `body_screen_culled_count` und `orbit_screen_culled_line_count` zeigen
 im naechsten Dump, ob lokale Sternsystem-Foki weiterhin offscreen
 Sibling-Systeme zeichnen.
+Der anschliessende `P`-Dump zeigte: lokaler Focus-lock cullt nun
+korrekt auf wenige Bodies/Orbitlinien, aber Root-lock/wide und
+Sternfokus-Badges blieben teuer. `OrbitViewRenderer` kompaktet deshalb
+jetzt auch im Root-lock den View-Zweig: direkte Geschwistersterne
+bleiben als Kontext sichtbar, deren Planet-/Mond-Zweige, Trails und
+Orbitlinien werden ausgeblendet; der Fokuszweig bleibt sichtbar.
+`PlanetBadgeOverlay` zeigt planetennahe `LIFE`-Badges ausserdem nur
+noch in echten Planet-/Mond-Detailfoki und scannt im Stern-/Root-lock
+keine Badge-Kandidaten. Der neue Counter
+`root_lock_hidden_body_count` macht diesen LOD-Pfad im naechsten
+`P`-Dump messbar.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und

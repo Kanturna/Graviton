@@ -1,6 +1,7 @@
 extends RefCounted
 
 const PlanetBadgeOverlayScript = preload("res://src/tools/rendering/planet_badge_overlay.gd")
+const OrbitCameraFramingScript = preload("res://src/tools/rendering/orbit_camera_framing.gd")
 const BiosphereScaleServiceScript = preload("res://src/sim/life/biosphere_scale_service.gd")
 const LifePotentialServiceScript = preload("res://src/sim/life/life_potential_service.gd")
 const NativeSpeciesServiceScript = preload("res://src/sim/life/native_species_service.gd")
@@ -50,8 +51,10 @@ class FakeTopology:
 class FakeBubble:
 	extends RefCounted
 
+	var focus_id: StringName = &"root"
+
 	func get_focus() -> StringName:
-		return &"root"
+		return focus_id
 
 
 class FakeSnapshotCache:
@@ -103,6 +106,7 @@ static func run(ctx) -> void:
 	_test_badge_click_contract_and_debug_snapshot(ctx)
 	_test_badge_text_layout_is_cached_for_stable_lines(ctx)
 	_test_refresh_throttles_candidate_scans_but_moves_cached_badges(ctx)
+	_test_star_focus_suppresses_detail_badges(ctx)
 
 
 static func _test_badge_lines_hide_second_row_for_prebiotic_worlds(ctx) -> void:
@@ -274,5 +278,38 @@ static func _test_refresh_throttles_candidate_scans_but_moves_cached_badges(ctx)
 		int(overlay.get_debug_snapshot().get("badge_candidate_rebuild_count", -1)) == first_rebuild_count + 1,
 		"Fokus-/Kontext-Dirty erzwingt den naechsten Badge-Full-Scan sofort"
 	)
+	overlay.free()
+	registry.free()
+
+
+static func _test_star_focus_suppresses_detail_badges(ctx) -> void:
+	var registry := FakeRegistry.new()
+	registry.add_body(&"alpha", BodyType.Kind.STAR)
+	registry.add_body(&"alpha_ii", BodyType.Kind.PLANET)
+	var topology := FakeTopology.new()
+	var bubble := FakeBubble.new()
+	bubble.focus_id = &"alpha"
+	var snapshot_cache := FakeSnapshotCache.new()
+	var renderer := FakeRenderer.new()
+	renderer.set_metric(&"alpha_ii", Vector2.ZERO, 24.0)
+
+	var overlay = PlanetBadgeOverlayScript.new()
+	overlay.configure(registry, topology, bubble, snapshot_cache, renderer)
+	overlay.set_frame_label(OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK)
+	overlay.refresh()
+	var snapshot: Dictionary = overlay.get_debug_snapshot()
+	ctx.assert_true(
+		not bool(snapshot.get("badges_enabled_for_focus", true)),
+		"Sternfokus deaktiviert planetennahe Detail-Badges als View-LOD"
+	)
+	ctx.assert_true(
+		int(snapshot.get("visible_badge_count", -1)) == 0,
+		"Sternfokus zeigt keine planetennahen Life-Badges"
+	)
+	ctx.assert_true(
+		snapshot_cache.biosphere_call_count == 0 and renderer.metrics_call_count == 0,
+		"Sternfokus scannt keine Badge-Kandidaten"
+	)
+
 	overlay.free()
 	registry.free()

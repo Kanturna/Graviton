@@ -16,7 +16,7 @@ abgesicherten Slices, jetzt inklusive `Asteroiden v1`.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach `Asteroiden v1` mit `8177`
+- `run_tests.bat` lief nach dem Root-lock-/Badge-LOD-Follow-up mit `8193`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -31,8 +31,10 @@ Headless-Basis:
   Single-World-/Large-World-Lifecycle, SnapshotCache-Trennung und
   Renderer-only Trails; zusaetzlich pinnen Recorder-
   Tests jetzt die Reihenfolge Kamera -> Frame-/LOD-Kontext -> Renderer
-  sowie Renderer -> Streaming, und Numeric-Exit-Tests pinnen
-  Counter-/Warning-Dedup-Semantik
+  sowie Renderer -> Streaming, Numeric-Exit-Tests pinnen
+  Counter-/Warning-Dedup-Semantik; zusaetzlich pinnen View-Tests jetzt,
+  dass Root-lock nur Fokuszweig plus direkte Sterne zeichnet und
+  Sternfokus keine planetennahen Detail-Badges scannt
 
 Offene Editor-/Feel-/FPS-Gates:
 
@@ -62,8 +64,12 @@ Offene Editor-/Feel-/FPS-Gates:
   Catchup deutlich niedriger als vorher ausfallen. Nach dem Orbit-LOD-
   und Screen-Culling-Follow-up sollten ausserdem
   `orbit_visible_point_count`, `render_primitives`, `body_visible_count`
-  und `draw_calls` im lokalen Fokus sinken; bei weiterem Einbruch direkt
-  wieder zwei `P`-Dumps vergleichen.
+  und `draw_calls` im lokalen Fokus sinken. Nach dem Root-lock-/Badge-
+  LOD-Follow-up sollte bei Kamerabewegung im Sternfokus
+  `root_lock_hidden_body_count` groesser 0 sein, `visible_badges` im
+  Sternfokus 0 bleiben und `draw_calls`/`render_objects` gegenueber den
+  17:40-Dumps weiter sinken; bei weiterem Einbruch direkt wieder zwei
+  `P`-Dumps vergleichen.
 
 Erst wenn diese Gates sauber sind, ist ein Folgeblock wie
 `Population Dynamics v1` oder `Evolution Competition v1` sinnvoll.
