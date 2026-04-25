@@ -590,7 +590,7 @@ static func _json_safe(value: Variant) -> Variant:
 			var float_value: float = float(value)
 			return float_value if is_finite(float_value) else str(float_value)
 		TYPE_STRING_NAME, TYPE_NODE_PATH:
-			return String(value)
+			return str(value)
 		TYPE_VECTOR2:
 			var vector2: Vector2 = value
 			return {"x": vector2.x, "y": vector2.y}
@@ -604,7 +604,7 @@ static func _json_safe(value: Variant) -> Variant:
 			var safe_dict: Dictionary = {}
 			var source_dict: Dictionary = value
 			for key in source_dict.keys():
-				safe_dict[String(key)] = _json_safe(source_dict[key])
+				safe_dict[str(key)] = _json_safe(source_dict[key])
 			return safe_dict
 		TYPE_ARRAY:
 			var safe_array: Array = []

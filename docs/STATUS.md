@@ -202,7 +202,10 @@ jetzt einen gleichnamigen JSON-Sidecar mit punktuellen On-Demand-
 Snapshots fuer Szene, Zeit, Fokus, Registry, Kamera, Aktiv-Set,
 Derived-Cache, Renderer, Proxy, Streaming, UI-Panels, Backdrop und
 Service-Counter. Der Sidecar wird nur beim Tastendruck gebaut und ist
-Diagnoseausgabe, keine Simulationswahrheit.
+Diagnoseausgabe, keine Simulationswahrheit. Ein direkter Bugfix macht
+die JSON-Safe-Konvertierung fuer `StringName`-/`NodePath`-Werte und
+`StringName`-Dictionary-Keys runtime-sicher, damit der `P`-Dump im
+Editor nicht am Sidecar-Schreiben scheitert.
 Ein direkter Follow-up adressiert den danach sichtbaren Fokus-Ruckler
 bei deaktiviertem VSync: `TimeService` merkt das letzte autoritative
 Sim-dt, `LocalBubbleManager` kann daraus rein view-seitig eine
@@ -783,7 +786,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist weiter reproduzierbar: `run_tests.bat`
-  laeuft nach dem Perf-Snapshot-Sidecar mit `7879`
+  laeuft nach dem Perf-Snapshot-Sidecar mit `7880`
   erfolgreichen Assertions bei `0` Failures.
 
 ### Aktuelle Praesentation
@@ -1355,7 +1358,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   aktuellen Performance-/Focus-Smoothing-Gates gemeinsam im Editor
   validieren
 - die Headless-Basis ist dabei bereits sichtbar:
-  `./run_tests.bat` lief nach dem Perf-Snapshot-Sidecar mit `7879`
+  `./run_tests.bat` lief nach dem Perf-Snapshot-Sidecar mit `7880`
   Passed und `0` Failed; gezielte Tests decken unter anderem
   HUD-Modi, Root-Inspector-Testbed-Regeln, Root-Inspector-
   Model-Caching, Planet-Badge-Text-/Candidate-Caching,

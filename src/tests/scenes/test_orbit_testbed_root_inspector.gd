@@ -383,12 +383,14 @@ static func _test_view_bookmark_restore_ignores_stale_or_cross_world_slots(ctx) 
 static func _test_perf_snapshot_json_safe_converts_godot_variants(ctx) -> void:
 	var safe: Dictionary = OrbitTestbedScript._json_safe({
 		"id": &"alpha",
+		&"named_key": "named-value",
 		"position": Vector2(1.5, -2.0),
 		"velocity": Vector3(3.0, 4.0, 5.0),
 		"labels": PackedStringArray(["one", "two"]),
 		"colors": PackedColorArray([Color(0.1, 0.2, 0.3, 0.4)]),
 	})
 	ctx.assert_true(safe.get("id", "") == "alpha", "Perf-Snapshot JSON-Safe wandelt StringName in String")
+	ctx.assert_true(safe.get("named_key", "") == "named-value", "Perf-Snapshot JSON-Safe wandelt StringName-Keys in Strings")
 	ctx.assert_true(safe.get("position", {}).get("x", 0.0) == 1.5, "Perf-Snapshot JSON-Safe wandelt Vector2 in Dictionary")
 	ctx.assert_true(safe.get("velocity", {}).get("z", 0.0) == 5.0, "Perf-Snapshot JSON-Safe wandelt Vector3 in Dictionary")
 	ctx.assert_true(safe.get("labels", []).size() == 2, "Perf-Snapshot JSON-Safe wandelt PackedStringArray in Array")

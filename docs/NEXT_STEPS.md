@@ -16,7 +16,7 @@ bereits headless abgesicherten Slices.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Perf-Snapshot-Sidecar mit `7879`
+- `run_tests.bat` lief nach dem Perf-Snapshot-Sidecar mit `7880`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
