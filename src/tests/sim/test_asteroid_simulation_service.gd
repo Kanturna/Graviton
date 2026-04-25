@@ -408,11 +408,19 @@ static func _test_sync_resident_roots_lifecycle_is_idempotent(ctx) -> void:
 	service.sync_resident_roots(&"scope_a", [&"root_a", &"root_b"], 20.0)
 	ctx.assert_true(int(service.get_state_snapshot().get("count", 0)) == AsteroidSimulationServiceScript.ASTEROIDS_PER_ROOT * 2,
 		"neue residente Roots spawnen eigene Asteroiden")
+	var spawned_after_two_roots: int = int(service.get_perf_counter_snapshot().get(AsteroidSimulationServiceScript.PERF_KEY_SPAWNED, 0))
 	service.sync_resident_roots(&"scope_a", [&"root_b"], 30.0)
 	ctx.assert_true(int(service.get_state_snapshot().get("count", 0)) == AsteroidSimulationServiceScript.ASTEROIDS_PER_ROOT,
-		"nichtresidente Roots werden entfernt")
-	ctx.assert_true(int(service.get_perf_counter_snapshot().get(AsteroidSimulationServiceScript.PERF_KEY_DESPAWNED, 0)) == AsteroidSimulationServiceScript.ASTEROIDS_PER_ROOT,
-		"Despawn-Counter zaehlt entfernte Root-Asteroiden")
+		"nicht aktive Roots verschwinden aus dem sichtbaren State-Snapshot")
+	var parked_perf: Dictionary = service.get_perf_counter_snapshot()
+	ctx.assert_true(int(parked_perf.get("total_state_count", 0)) == AsteroidSimulationServiceScript.ASTEROIDS_PER_ROOT * 2,
+		"Root-Wechsel parkt vorhandene Asteroiden statt sie zu loeschen")
+	ctx.assert_true(int(parked_perf.get(AsteroidSimulationServiceScript.PERF_KEY_DESPAWNED, 0)) == 0,
+		"Fokus-/Root-Wechsel zaehlt nicht als Asteroiden-Despawn")
+
+	service.sync_resident_roots(&"scope_a", [&"root_a"], 40.0)
+	ctx.assert_true(int(service.get_perf_counter_snapshot().get(AsteroidSimulationServiceScript.PERF_KEY_SPAWNED, 0)) == spawned_after_two_roots,
+		"Rueckkehr zu einem geparkten Root respawnt keine Asteroiden")
 
 	service.free()
 	reg.free()

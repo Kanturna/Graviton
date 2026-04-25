@@ -85,22 +85,9 @@ func sync_resident_roots(scope_id: StringName, root_ids: Array[StringName], t_s:
 		reset_for_world(scope_id, root_ids, t_s)
 		return
 	var next_roots: Array[StringName] = _normalized_root_ids(root_ids)
-	var next_lookup: Dictionary = {}
+	var changed: bool = not _root_id_arrays_equal(_resident_root_ids, next_roots)
 	for root_id in next_roots:
-		next_lookup[root_id] = true
-
-	var changed: bool = false
-	for existing_id in _resident_root_ids.duplicate():
-		if next_lookup.has(existing_id):
-			continue
-		_despawn_root(existing_id)
-		changed = true
-
-	var current_lookup: Dictionary = {}
-	for root_id in _resident_root_ids:
-		current_lookup[root_id] = true
-	for root_id in next_roots:
-		if current_lookup.has(root_id):
+		if _has_root_state(root_id):
 			continue
 		_spawn_root(root_id, t_s)
 		changed = true
@@ -120,6 +107,8 @@ func advance_to_time(t_s: float, dt_s: float) -> void:
 	for id in _state_order.duplicate():
 		var state = _states_by_id.get(id, null)
 		if state == null or not state.is_active:
+			continue
+		if not _resident_root_ids.has(state.root_id):
 			continue
 		var attractor_ids: Array[StringName] = state.current_attractor_ids
 		if _should_refresh_attractors(state, tick_index):
@@ -158,6 +147,8 @@ func get_state_snapshot() -> Dictionary:
 		var state = _states_by_id.get(id, null)
 		if state == null or not state.is_active:
 			continue
+		if not _resident_root_ids.has(state.root_id):
+			continue
 		var def = _defs_by_id.get(id, null)
 		entries.append(state.clone_snapshot(def))
 	return {
@@ -174,6 +165,7 @@ func get_perf_counter_snapshot() -> Dictionary:
 	out["revision"] = _revision
 	out["resident_root_count"] = _resident_root_ids.size()
 	out["total_state_count"] = _state_order.size()
+	out["stored_root_count"] = _stored_root_count()
 	return out
 
 
@@ -222,6 +214,23 @@ func _despawn_root(root_id: StringName) -> void:
 		_state_order.erase(id)
 		_perf_counters[PERF_KEY_DESPAWNED] = int(_perf_counters.get(PERF_KEY_DESPAWNED, 0)) + 1
 	_resident_root_ids.erase(root_id)
+
+
+func _has_root_state(root_id: StringName) -> bool:
+	for id in _state_order:
+		var state = _states_by_id.get(id, null)
+		if state != null and state.root_id == root_id:
+			return true
+	return false
+
+
+func _stored_root_count() -> int:
+	var roots: Dictionary = {}
+	for id in _state_order:
+		var state = _states_by_id.get(id, null)
+		if state != null and state.root_id != StringName(""):
+			roots[state.root_id] = true
+	return roots.size()
 
 
 func _select_spawn_origins(root_id: StringName) -> Array[StringName]:
@@ -529,6 +538,15 @@ static func _normalized_root_ids(root_ids: Array[StringName]) -> Array[StringNam
 	return out
 
 
+static func _root_id_arrays_equal(a: Array[StringName], b: Array[StringName]) -> bool:
+	if a.size() != b.size():
+		return false
+	for idx in range(a.size()):
+		if a[idx] != b[idx]:
+			return false
+	return true
+
+
 func _asteroid_id_for(root_id: StringName, idx: int) -> StringName:
 	return StringName("ast_%s_%s_%02d" % [_sanitize_id(_scope_id), _sanitize_id(root_id), idx])
 
@@ -575,7 +593,7 @@ func _update_active_counter() -> void:
 	var count: int = 0
 	for id in _state_order:
 		var state = _states_by_id.get(id, null)
-		if state != null and state.is_active:
+		if state != null and state.is_active and _resident_root_ids.has(state.root_id):
 			count += 1
 	_perf_counters[PERF_KEY_ACTIVE_ASTEROIDS] = count
 

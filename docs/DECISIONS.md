@@ -33,6 +33,10 @@ Konsequenz:
   Einflussradien groesser und die Default-Startgeschwindigkeiten
   weniger escape-lastig; ein deterministischer Minderheitsanteil bleibt
   als Wanderer/Flyby erhalten
+- Large-World-Fokuswechsel parken bereits erzeugte Root-Asteroiden
+  statt sie zu despawnen; Snapshots und Integration bleiben auf den
+  aktuellen Asteroiden-Root begrenzt, Rueckkehr zu einem geparkten Root
+  respawnt aber nicht neu
 - `orbit_step_core_us` kommt als read-only OrbitService-Diagnosewert
   dazu, damit der naechste `P`-Dump den Physics-Hotpath klarer trennt
 - Gravitationskonstanten bleiben zentral in `UnitSystem`; der
@@ -71,9 +75,11 @@ Konsequenz:
 - `OrbitService.step_completed(dt_s, t_s)` ist das explizite
   Tick-Completion-Signal fuer abhaengige Sim-Services; es feuert pro
   Sim-Tick genau einmal und ist nicht an `bodies_updated` gekoppelt
-- Large-World-Asteroiden folgen in v1 dem aktuellen Fokus-Root; ein
-  residenter oder vorgewaermter Neighbor-Root spawnt nicht automatisch
-  zusaetzliche aktive Asteroiden
+- Large-World-Asteroiden folgen in v1 aktiv dem aktuellen Fokus-Root;
+  ein residenter oder vorgewaermter Neighbor-Root spawnt nicht
+  automatisch zusaetzliche aktive Asteroiden. Bereits besuchte Root-
+  Asteroiden bleiben aber als geparkter Minor-Body-State erhalten und
+  werden beim Rueckwechsel nicht neu geseedet
 - `AsteroidSnapshotCache` ist ein eigener Runtime-Helper und erweitert
   nicht den planetaren `DerivedSnapshotCache`
 - Trails sind reine Renderer-History und keine Sim- oder Snapshot-

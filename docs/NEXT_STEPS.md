@@ -16,7 +16,7 @@ abgesicherten Slices, jetzt inklusive `Asteroiden v1`.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Asteroiden-v1.1-Root-Frame-Freiflug-/Tuning-Slice mit `8331`
+- `run_tests.bat` lief nach dem Asteroiden-v1.1-Root-Frame-Freiflug-/Tuning-Slice mit `8333`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -42,7 +42,10 @@ Headless-Basis:
   `RootInspectorRow`-Controls ohne Label-/Chip-Unterbaum sind und der
   Life-Chip-Hit-Test getrennt vom Row-Fokus bleibt; zusaetzlich pinnt
   ein Asteroid-Renderer-Test jetzt die View-/Screen-Bounds im
-  Debug-Snapshot fuer verschwundene-aber-nicht-despawnte Asteroiden
+  Debug-Snapshot fuer verschwundene-aber-nicht-despawnte Asteroiden;
+  Asteroiden-Lifecycle-Tests pinnen ausserdem, dass Large-World-
+  Fokuswechsel Root-Asteroiden parken statt sie zu despawnen oder beim
+  Rueckwechsel neu zu seeden
 
 Offene Editor-/Feel-/FPS-Gates:
 
@@ -143,8 +146,12 @@ Konkreter Ablauf:
 - Streaming/Fokuswechsel zwischen Root-Systemen pruefen:
   in Large-Worlds spawnt v1 Asteroiden nur fuer den aktuellen Fokus-
   Root; residenter Neighbor-/Prewarm-Zustand darf keine zusaetzlichen
-  aktiven Asteroiden im lokalen Fokus erzeugen. Fokuswechsel muessen
-  ohne Duplikate und ohne alte Trail-Reste bleiben
+  aktiven Asteroiden im lokalen Fokus erzeugen. Bereits besuchte Roots
+  duerfen beim Verlassen aber nicht despawnen; `total_state_count` darf
+  gespeicherte/geparkte Root-Asteroiden enthalten, waehrend
+  `active_asteroids` im Fokus-Root bei 24 bleibt. Rueckwechsel zu einem
+  Root darf `spawned` nicht erneut erhoehen. Fokuswechsel muessen ohne
+  Duplikate und ohne alte Trail-Reste bleiben
 - im Sternfokus bei FPS-Einbruch `P`-Dump pruefen:
   `active_asteroids` soll 24 sein und `attractor_checks` soll durch
   das Attractor-Refresh-Fenster nicht mehr in jedem Catchup-Tick fuer

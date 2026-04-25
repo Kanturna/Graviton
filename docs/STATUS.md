@@ -77,10 +77,16 @@ Residency: waehrend im lokalen Fokus nur 24 Asteroiden sichtbar waren,
 wurden durch einen residenten Neighbor-Root 48 Asteroiden simuliert.
 Der Testbed-Composition-Root bridged Asteroiden in Large-Worlds deshalb
 jetzt nur noch fuer den aktuellen Fokus-Root; Single-Worlds behalten
-weiter ihre geladenen Roots. Beim Fokuswechsel wird ausserdem die reine
-Renderer-Trail-History nur noch bei Root-/World-Wechsel oder Despawn
-geleert; Fokuswechsel innerhalb desselben Roots duerfen Trails behalten,
-weil sie aus stabilen Samples re-projiziert werden.
+weiter ihre geladenen Roots. Nach Editor-Feedback wurde der Lifecycle
+dabei korrigiert: ein Large-World-Fokuswechsel loescht die Asteroiden
+des alten Roots nicht mehr. Bereits erzeugte Root-Asteroiden bleiben im
+Service geparkt, werden aber nicht gesnapshottet oder integriert, bis
+dieser Root wieder aktiver Asteroiden-Root ist. Rueckkehr zu einem Root
+respawnt deshalb nicht erneut deterministisch vom Stern/BH-Kontext.
+Beim Fokuswechsel wird ausserdem die reine Renderer-Trail-History nur
+noch bei Root-/World-Wechsel oder echtem Despawn geleert; Fokuswechsel
+innerhalb desselben Roots duerfen Trails behalten, weil sie aus stabilen
+Samples re-projiziert werden.
 Der folgende Dump zeigte danach noch einen Sternfokus-Engpass durch
 Sim-Catchup: bei 6 FPS holte Godot bis zu acht Asteroiden-Ticks pro
 Renderframe nach. Der Restricted-Gravity-Integrator nutzt deshalb im

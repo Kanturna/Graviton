@@ -467,6 +467,10 @@ Missing-Request-Grace, Rejoin-Budget und `BodyState.current_mode`.
 - Ein leerer Attractor-Satz bedeutet linearen Freiflug mit
   unveraenderter Velocity. In v1.1 gibt es keinen Re-Spawn; driftet ein
   Asteroid out-of-bounds, wird er deaktiviert.
+- Large-World-Fokuswechsel sind kein Despawn. Asteroiden eines nicht
+  aktiven Roots werden geparkt, aus dem Snapshot ausgeblendet und nicht
+  weiter integriert; bei Rueckkehr zum Root wird derselbe State wieder
+  genutzt, nicht neu geseedet.
 - Gravitationskonstanten kommen aus `UnitSystem`, z. B. ueber
   `UnitSystem.mu_from_mass(...)`. `sim/asteroids/` darf keinen zweiten
   `G`-Konstantenort einfuehren.

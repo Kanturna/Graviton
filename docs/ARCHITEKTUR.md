@@ -560,7 +560,13 @@ geladenen Root-IDs gespawnt. In Large-World-Szenen folgt der
 Asteroiden-Slice bewusst nur dem aktuellen Fokus-Root, nicht allen
 residenten oder vorgewaermten Neighbor-Roots. Neighbor-Residency bleibt
 Streaming-/Registry-Zustand fuer Major Bodies; sie erweitert in v1
-nicht automatisch die aktive Minor-Body-Physik.
+nicht automatisch die aktive Minor-Body-Physik. Fokus-Root-Wechsel
+loeschen bereits erzeugte Asteroiden aber nicht mehr: nicht aktive
+Root-Asteroiden werden im `AsteroidSimulationService` geparkt, aus dem
+Snapshot ausgeblendet und nicht weiter integriert, bis dieser Root
+wieder aktiver Asteroiden-Root ist. Dadurch bleibt der aktive
+Large-World-Pfad bei 24 Asteroiden pro Fokus-Root, ohne deterministisch
+neu zu spawnen.
 
 **Physik v1.1:** Restricted Gravity mit Freiflug. `STAR`, `PLANET`
 und `MOON` ziehen Asteroiden nur innerhalb expliziter Einflussradien
