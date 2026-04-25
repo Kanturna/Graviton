@@ -54,9 +54,9 @@ Offene Editor-/Feel-/FPS-Gates:
   sichtbare Punkte und kurze Trails beobachten, Bahnverformung nahe
   Major Bodies pruefen und sicherstellen, dass HUD/Inspector/Life-
   Panels keine Kollisionen, Katastrophen oder Life-Folgen behaupten.
-  Nach dem Relative-State-Cache-Follow-up speziell die vorherigen
-  3-4-FPS-Fokusfaelle erneut pruefen und bei weiterem Einbruch direkt
-  wieder zwei `P`-Dumps vergleichen.
+  Nach dem Relative-State-Cache- und Trail-Batching-Follow-up speziell
+  die vorherigen 3-6-FPS-Fokusfaelle erneut pruefen und bei weiterem
+  Einbruch direkt wieder zwei `P`-Dumps vergleichen.
 
 Erst wenn diese Gates sauber sind, ist ein Folgeblock wie
 `Population Dynamics v1` oder `Evolution Competition v1` sinnvoll.
@@ -98,8 +98,8 @@ Wenn dieses Gate kippt:
 - keinen Impact-, Merge-/Split- oder Katastrophen-Slice anfangen
 - zuerst nur den kleinen V1-Pfad korrigieren:
   Spawn-Dichte, Renderer-Sichtbarkeit, Snapshot-Projektion,
-  Attractor-Hysterese, Relative-State-Cache, Perf-Counter oder
-  Streaming-Lifecycle
+  Attractor-Hysterese, Relative-State-Cache, Trail-Batching,
+  Perf-Counter oder Streaming-Lifecycle
 
 ## Meta - Agentenvertrag / Repo-Hygiene - erledigt
 

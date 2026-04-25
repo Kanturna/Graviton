@@ -1,10 +1,10 @@
 class_name AsteroidFieldRenderer
 extends Node2D
 
-const TRAIL_POINT_CAP: int = 18
+const TRAIL_POINT_CAP: int = 10
 const MIN_TRAIL_STEP_PX: float = 1.0
-const POINT_RADIUS_PX: float = 2.3
-const TRAIL_WIDTH_PX: float = 1.2
+const POINT_RADIUS_PX: float = 1.9
+const TRAIL_WIDTH_PX: float = 0.9
 
 var _snapshot_cache = null
 var _entries_by_id: Dictionary = {}
@@ -59,6 +59,7 @@ func get_debug_snapshot() -> Dictionary:
 	return {
 		"visible_count": _entries_by_id.size(),
 		"trail_count": _trail_histories_by_id.size(),
+		"trail_point_count": _trail_point_count(),
 		"source_revision": _last_source_revision,
 		"sync_count": _sync_count,
 	}
@@ -72,11 +73,10 @@ func _draw() -> void:
 		var history: Array = _trail_histories_by_id[id]
 		if history.size() < 2:
 			continue
-		for idx in range(1, history.size()):
-			var a: Vector2 = history[idx - 1]
-			var b: Vector2 = history[idx]
-			var alpha: float = float(idx) / float(maxi(1, history.size() - 1))
-			draw_line(a, b, Color(0.72, 0.78, 0.84, 0.18 + alpha * 0.34), trail_width, true)
+		var points := PackedVector2Array()
+		for point in history:
+			points.append(point)
+		draw_polyline(points, Color(0.72, 0.78, 0.84, 0.34), trail_width, true)
 	for id in _entries_by_id.keys():
 		var entry: Dictionary = _entries_by_id[id]
 		var color: Color = _color_for(entry.get("visual_class", StringName("")))
@@ -103,6 +103,14 @@ func _pixel_scale() -> float:
 	if scale_x <= 0.000001:
 		return 1.0
 	return 1.0 / scale_x
+
+
+func _trail_point_count() -> int:
+	var total: int = 0
+	for id in _trail_histories_by_id.keys():
+		var history: Array = _trail_histories_by_id[id]
+		total += history.size()
+	return total
 
 
 static func _color_for(visual_class: StringName) -> Color:

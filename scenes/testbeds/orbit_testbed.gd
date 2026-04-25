@@ -414,6 +414,11 @@ func _sample_asteroid_perf_probe() -> void:
 	_bump_asteroid_perf_counter_delta(snapshot, AsteroidSimulationServiceScript.PERF_KEY_SPAWNED)
 	_bump_asteroid_perf_counter_delta(snapshot, AsteroidSimulationServiceScript.PERF_KEY_DESPAWNED)
 	_bump_asteroid_perf_counter_delta(snapshot, AsteroidSimulationServiceScript.PERF_KEY_OUT_OF_BOUNDS)
+	if _asteroid_renderer != null and _asteroid_renderer.has_method("get_debug_snapshot"):
+		var renderer_snapshot: Dictionary = _asteroid_renderer.get_debug_snapshot()
+		PerfProbeScript.sample(&"asteroid_visible_count", int(renderer_snapshot.get("visible_count", 0)))
+		PerfProbeScript.sample(&"asteroid_trail_count", int(renderer_snapshot.get("trail_count", 0)))
+		PerfProbeScript.sample(&"asteroid_trail_point_count", int(renderer_snapshot.get("trail_point_count", 0)))
 	_last_asteroid_perf_counter_snapshot = snapshot.duplicate()
 
 

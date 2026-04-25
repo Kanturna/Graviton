@@ -28,6 +28,12 @@ relative Major-Body-Zustaende pro `(anchor_id, body_id)` innerhalb
 eines Asteroiden-Ticks. Damit werden identische Topologie-/Frame-
 Aufloesungen nicht mehr fuer jeden Asteroid erneut berechnet, waehrend
 Attractor-Auswahl und Restricted-Gravity-Ergebnis unveraendert bleiben.
+Ein zweiter Follow-up reduziert den sichtbaren Trail-Hotpath:
+Asteroid-Trails werden jetzt kuerzer gehalten und pro Asteroid als
+eine Polyline statt als viele einzelne Liniensegmente gezeichnet.
+Zusaetzliche Perf-Probe-Spalten `asteroid_visible_count`,
+`asteroid_trail_count` und `asteroid_trail_point_count` machen diesen
+Renderpfad im naechsten `P`-Dump direkt messbar.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und
