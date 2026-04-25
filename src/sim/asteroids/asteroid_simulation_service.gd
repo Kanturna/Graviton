@@ -32,6 +32,7 @@ var _resident_root_ids: Array[StringName] = []
 var _defs_by_id: Dictionary = {}
 var _states_by_id: Dictionary = {}
 var _state_order: Array[StringName] = []
+var _relative_state_cache: Dictionary = {}
 var _revision: int = 0
 var _perf_counters: Dictionary = {
 	PERF_KEY_ACTIVE_ASTEROIDS: 0,
@@ -102,6 +103,7 @@ func sync_resident_roots(scope_id: StringName, root_ids: Array[StringName], t_s:
 func advance_to_time(t_s: float, dt_s: float) -> void:
 	if not _configured or dt_s <= 0.0:
 		return
+	_relative_state_cache.clear()
 	var changed: bool = false
 	for id in _state_order.duplicate():
 		var state = _states_by_id.get(id, null)
@@ -130,6 +132,7 @@ func advance_to_time(t_s: float, dt_s: float) -> void:
 	if changed:
 		_revision += 1
 	_update_active_counter()
+	_relative_state_cache.clear()
 
 
 func get_state_snapshot() -> Dictionary:
@@ -322,7 +325,7 @@ func _rank_attractor_candidates(state) -> Array:
 			continue
 		if _topology.root_id_of(body_id) != state.root_id:
 			continue
-		var relative: Dictionary = _relative_resolver.resolve_body_relative_to_anchor(body_id, state.anchor_id)
+		var relative: Dictionary = _resolve_body_relative_to_anchor_cached(body_id, state.anchor_id)
 		if not bool(relative.get("ok", false)):
 			continue
 		var dx: float = float(relative.get("x_m", 0.0)) - state.x_m
@@ -348,7 +351,7 @@ func _build_attractor_entries(state, attractor_ids: Array[StringName]) -> Array:
 		var def: BodyDef = _registry.get_def(id)
 		if def == null:
 			continue
-		var relative: Dictionary = _relative_resolver.resolve_body_relative_to_anchor(id, state.anchor_id)
+		var relative: Dictionary = _resolve_body_relative_to_anchor_cached(id, state.anchor_id)
 		if not bool(relative.get("ok", false)):
 			continue
 		out.append({
@@ -402,6 +405,15 @@ static func _candidate_id_present(candidates: Array, id: StringName) -> bool:
 		if entry.get("id", StringName("")) == id:
 			return true
 	return false
+
+
+func _resolve_body_relative_to_anchor_cached(body_id: StringName, anchor_id: StringName) -> Dictionary:
+	var cache_key: String = "%s|%s" % [str(anchor_id), str(body_id)]
+	if _relative_state_cache.has(cache_key):
+		return _relative_state_cache[cache_key]
+	var resolved: Dictionary = _relative_resolver.resolve_body_relative_to_anchor(body_id, anchor_id)
+	_relative_state_cache[cache_key] = resolved
+	return resolved
 
 
 static func _is_v1_attractor_kind(kind: int) -> bool:

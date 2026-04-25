@@ -23,6 +23,11 @@ deterministisch pro Root. View-seitig projiziert ein separater
 History zeichnet. Impacts, Merge/Split, Life-Folgen,
 Asteroid-Asteroid-Kollisionen, Anchor-Switching und Fokusnavigation auf
 Asteroiden bleiben bewusst Folge-Slices.
+Ein direkter Performance-Follow-up cached im Asteroid-Service
+relative Major-Body-Zustaende pro `(anchor_id, body_id)` innerhalb
+eines Asteroiden-Ticks. Damit werden identische Topologie-/Frame-
+Aufloesungen nicht mehr fuer jeden Asteroid erneut berechnet, waehrend
+Attractor-Auswahl und Restricted-Gravity-Ergebnis unveraendert bleiben.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und
