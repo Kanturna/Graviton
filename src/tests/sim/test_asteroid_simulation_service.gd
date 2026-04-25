@@ -10,11 +10,15 @@ static func run(ctx) -> void:
 	_test_trajectory_is_deterministic(ctx)
 	_test_major_body_states_stay_read_only(ctx)
 	_test_anchor_id_stays_stable(ctx)
+	_test_black_hole_mu_fit_interpolates_and_clamps(ctx)
+	_test_influence_index_uses_asteroid_effective_mu(ctx)
 	_test_black_holes_steer_inside_explicit_influence(ctx)
+	_test_black_hole_zone_entry_has_no_empty_refresh_delay(ctx)
+	_test_black_hole_flyby_curves_without_clean_capture(ctx)
 	_test_initial_spawn_has_radial_drift_and_fast_flybys(ctx)
 	_test_free_drift_without_attractors_is_linear(ctx)
 	_test_influence_radius_and_hysteresis(ctx)
-	_test_out_of_bounds_free_drift_deactivates(ctx)
+	_test_far_retire_threshold_deactivates(ctx)
 	_test_sync_resident_roots_lifecycle_is_idempotent(ctx)
 	_test_single_world_spawns_without_streaming_controller(ctx)
 	_test_sim_asteroids_imports_no_runtime_tools_or_scenes(ctx)
@@ -60,6 +64,28 @@ static func _make_two_root_registry() -> Node:
 	return reg
 
 
+static func _make_bh_fit_registry() -> Node:
+	var reg = load("res://src/sim/universe/universe_registry.gd").new()
+	for def in [
+		_root_def(&"root_fit"),
+		_star_def(&"fit_star_a", &"root_fit", 1.0e11, 0.0, 4.0e4),
+		_star_def(&"fit_star_b", &"root_fit", 4.0e11, 1.0, 1.0e5),
+		_planet_def(&"fit_planet_ignored", &"fit_star_a", 1.2e11, 0.0, UnitSystem.EARTH_MASS_KG),
+	]:
+		reg.register_body(def)
+	var orbit_service = load("res://src/sim/orbit/orbit_service.gd").new()
+	var time_service = load("res://src/core/time/time_service.gd").new()
+	orbit_service.configure(reg, time_service)
+	orbit_service.recompute_all_at_time(0.0)
+	reg.get_state(&"fit_star_a").position_parent_frame_m = Vector3(9.0e15, 0.0, 0.0)
+	reg.get_state(&"fit_star_a").velocity_parent_frame_mps = Vector3.ZERO
+	reg.get_state(&"fit_star_b").position_parent_frame_m = Vector3(-9.0e15, 0.0, 0.0)
+	reg.get_state(&"fit_star_b").velocity_parent_frame_mps = Vector3.ZERO
+	orbit_service.free()
+	time_service.free()
+	return reg
+
+
 static func _make_service(registry: Node):
 	var service = AsteroidSimulationServiceScript.new()
 	service.configure(registry)
@@ -78,7 +104,7 @@ static func _root_def(id: StringName) -> BodyDef:
 	return def
 
 
-static func _star_def(id: StringName, parent_id: StringName, radius_m: float, phase_rad: float) -> BodyDef:
+static func _star_def(id: StringName, parent_id: StringName, radius_m: float, phase_rad: float, period_s: float = 9.0e6) -> BodyDef:
 	var def := BodyDef.new()
 	def.id = id
 	def.display_name = String(id)
@@ -89,7 +115,7 @@ static func _star_def(id: StringName, parent_id: StringName, radius_m: float, ph
 	var profile := OrbitProfile.new()
 	profile.mode = OrbitMode.Kind.AUTHORED_ORBIT
 	profile.authored_radius_m = radius_m
-	profile.authored_period_s = 9.0e6
+	profile.authored_period_s = period_s
 	profile.authored_phase_rad = phase_rad
 	def.orbit_profile = profile
 	return def
@@ -149,7 +175,7 @@ static func _test_spawn_is_deterministic(ctx) -> void:
 		ctx.assert_almost(float(a.get("x_m", 0.0)), float(b.get("x_m", 0.0)), 1.0e-6,
 			"deterministischer Spawn haelt Positionen stabil")
 		ctx.assert_true(StringName(a.get("anchor_id", StringName(""))) == &"root_a",
-			"Asteroid nutzt in v1.1 den Root als stabilen Frame-Anchor")
+			"Asteroid nutzt seit v1.1 den Root als stabilen Frame-Anchor")
 		var spawn_origin_id: StringName = a.get("spawn_origin_id", StringName(""))
 		var spawn_origin_def: BodyDef = reg.get_def(spawn_origin_id)
 		ctx.assert_true(spawn_origin_def != null and spawn_origin_def.kind == BodyType.Kind.STAR,
@@ -223,6 +249,67 @@ static func _test_anchor_id_stays_stable(ctx) -> void:
 	reg.free()
 
 
+static func _test_black_hole_mu_fit_interpolates_and_clamps(ctx) -> void:
+	var reg := _make_bh_fit_registry()
+	var service = _make_service(reg)
+	service.reset_for_world(&"scope_fit", [&"root_fit"], 0.0)
+	var root_def: BodyDef = reg.get_def(&"root_fit")
+	var mu_a: float = AsteroidSimulationServiceScript._authored_orbit_mu_m3ps2(1.0e11, 4.0e4)
+	var mu_b: float = AsteroidSimulationServiceScript._authored_orbit_mu_m3ps2(4.0e11, 1.0e5)
+
+	ctx.assert_almost(float(service.call("_black_hole_fitted_mu_m3ps2", root_def, 1.0e11)), mu_a, mu_a * 1.0e-6,
+		"BH-mu-fit trifft den inneren authored Sternorbit-Samplepunkt")
+	ctx.assert_almost(float(service.call("_black_hole_fitted_mu_m3ps2", root_def, 4.0e11)), mu_b, mu_b * 1.0e-6,
+		"BH-mu-fit trifft den aeusseren authored Sternorbit-Samplepunkt")
+	var mid_mu: float = float(service.call("_black_hole_fitted_mu_m3ps2", root_def, 2.0e11))
+	ctx.assert_true(mid_mu > minf(mu_a, mu_b) and mid_mu < maxf(mu_a, mu_b),
+		"BH-mu-fit interpoliert zwischen den authored Sternorbit-Samples")
+	ctx.assert_almost(float(service.call("_black_hole_fitted_mu_m3ps2", root_def, 1.0e9)), mu_a, mu_a * 1.0e-6,
+		"BH-mu-fit klemmt unterhalb der Sample-Spanne")
+	ctx.assert_almost(float(service.call("_black_hole_fitted_mu_m3ps2", root_def, 1.0e13)), mu_b, mu_b * 1.0e-6,
+		"BH-mu-fit klemmt oberhalb der Sample-Spanne")
+
+	service.free()
+	reg.free()
+
+
+static func _test_influence_index_uses_asteroid_effective_mu(ctx) -> void:
+	var reg := _make_bh_fit_registry()
+	var service = _make_service(reg)
+	service.reset_for_world(&"scope_fit", [&"root_fit"], 0.0)
+	var zones: Array = service.call("_influence_zones_for_root", &"root_fit")
+	var bh_zone: Dictionary = _zone_by_id(zones, &"root_fit")
+	var star_zone: Dictionary = _zone_by_id(zones, &"fit_star_a")
+	var planet_zone: Dictionary = _zone_by_id(zones, &"fit_planet_ignored")
+
+	ctx.assert_true(not bh_zone.is_empty(), "Influence-Index enthaelt den Root-BH")
+	ctx.assert_true(not star_zone.is_empty(), "Influence-Index enthaelt direkte Sterne")
+	ctx.assert_true(not planet_zone.is_empty(), "Influence-Index enthaelt Planeten desselben Roots")
+	ctx.assert_true(absf(float(bh_zone.get("mu_m3ps2", 0.0)) - UnitSystem.mu_from_mass(reg.get_def(&"root_fit").mass_kg)) > 1.0,
+		"BH-Zone nutzt asteroid-internes effective_mu statt BodyDef.mass_kg")
+	var bh_samples: Array = bh_zone.get("bh_mu_samples", [])
+	ctx.assert_true(bh_samples.size() == 2,
+		"BH-Zone cached nur direkte authored Sternkind-Samples fuer den Fit")
+	for sample in bh_samples:
+		var sample_id: StringName = sample.get("id", StringName("")) if typeof(sample) == TYPE_DICTIONARY else StringName("")
+		var sample_def: BodyDef = reg.get_def(sample_id)
+		ctx.assert_true(sample_def != null and sample_def.kind == BodyType.Kind.STAR and sample_def.parent_id == &"root_fit",
+			"BH-Fit-Sample stammt von einem direkten Sternkind des Root-BH")
+	ctx.assert_almost(float(star_zone.get("mu_m3ps2", 0.0)), UnitSystem.mu_from_mass(reg.get_def(&"fit_star_a").mass_kg), 1.0e-3,
+		"STAR-Zone nutzt weiter UnitSystem.mu_from_mass")
+	ctx.assert_almost(float(planet_zone.get("mu_m3ps2", 0.0)), UnitSystem.mu_from_mass(reg.get_def(&"fit_planet_ignored").mass_kg), 1.0e-3,
+		"PLANET-Zone nutzt weiter UnitSystem.mu_from_mass")
+	for zone in zones:
+		if typeof(zone) != TYPE_DICTIONARY:
+			continue
+		var id: StringName = zone.get("id", StringName(""))
+		ctx.assert_true(id == StringName("") or _root_id_of(reg, id) == &"root_fit",
+			"Influence-Index enthaelt nur Bodies des aktiven Roots")
+
+	service.free()
+	reg.free()
+
+
 static func _test_black_holes_steer_inside_explicit_influence(ctx) -> void:
 	var reg := _make_registry()
 	var service = _make_service(reg)
@@ -246,6 +333,63 @@ static func _test_black_holes_steer_inside_explicit_influence(ctx) -> void:
 	selected = service.call("_select_attractors_for", state)
 	ctx.assert_true(not selected.has(&"root_a"),
 		"ausserhalb des BH-Einflussradius gibt es keine unbegrenzte Root-Dauerschwerkraft")
+
+	service.free()
+	reg.free()
+
+
+static func _test_black_hole_zone_entry_has_no_empty_refresh_delay(ctx) -> void:
+	var reg := _make_bh_fit_registry()
+	var service = _make_service(reg)
+	service.reset_for_world(&"scope_fit", [&"root_fit"], 0.0)
+	var state = service._states_by_id[service._state_order[0]]
+	state.root_id = &"root_fit"
+	state.anchor_id = &"root_fit"
+	state.current_attractor_ids.clear()
+	state.x_m = float(service.call("_influence_radius_m", reg.get_def(&"root_fit"))) * 0.5
+	state.y_m = 0.0
+	state.z_m = 0.0
+	state.vx_mps = 0.0
+	state.vy_mps = 0.0
+	state.vz_mps = 0.0
+	service._perf_counters[AsteroidSimulationServiceScript.PERF_KEY_ADVANCE_TICKS] = 3
+	service.advance_to_time(1.0, 1.0)
+
+	ctx.assert_true(state.current_attractor_ids.has(&"root_fit"),
+		"leeres Attractor-Set aktiviert BH-Zone im naechsten Tick ohne Refresh-Verzoegerung")
+
+	service.free()
+	reg.free()
+
+
+static func _test_black_hole_flyby_curves_without_clean_capture(ctx) -> void:
+	var reg := _make_bh_fit_registry()
+	var service = _make_service(reg)
+	service.reset_for_world(&"scope_fit", [&"root_fit"], 0.0)
+	var root_def: BodyDef = reg.get_def(&"root_fit")
+	var near_state = service._states_by_id[service._state_order[0]]
+	_prepare_bh_flyby_state(near_state, -2.0e11, 6.0e10, 2.5e7)
+	var linear_near_y: float = near_state.y_m + near_state.vy_mps * 8000.0
+	service.advance_to_time(8000.0, 8000.0)
+	var near_deflection: float = absf(near_state.y_m - linear_near_y)
+	var near_r: float = sqrt(near_state.x_m * near_state.x_m + near_state.y_m * near_state.y_m + near_state.z_m * near_state.z_m)
+	var near_v2: float = near_state.vx_mps * near_state.vx_mps + near_state.vy_mps * near_state.vy_mps + near_state.vz_mps * near_state.vz_mps
+	var near_mu: float = float(service.call("_asteroid_effective_mu_m3ps2", root_def, near_r))
+	var near_energy: float = 0.5 * near_v2 - near_mu / maxf(near_r, 1.0)
+
+	service.reset_for_world(&"scope_fit_far", [&"root_fit"], 0.0)
+	var far_state = service._states_by_id[service._state_order[0]]
+	_prepare_bh_flyby_state(far_state, -2.0e11, 3.0e11, 2.5e7)
+	var linear_far_y: float = far_state.y_m + far_state.vy_mps * 8000.0
+	service.advance_to_time(8000.0, 8000.0)
+	var far_deflection: float = absf(far_state.y_m - linear_far_y)
+
+	ctx.assert_true(near_deflection > 1.0e9,
+		"naher BH-Flyby weicht sichtbar von linearer Drift ab")
+	ctx.assert_true(near_energy > 0.0,
+		"schneller BH-Flyby bleibt ungebunden statt eine saubere Kreisbahn zu schliessen")
+	ctx.assert_true(near_deflection > far_deflection * 2.0,
+		"naeherer BH-Pass erzeugt staerkere Ablenkung als weiter Pass")
 
 	service.free()
 	reg.free()
@@ -348,8 +492,6 @@ static func _test_influence_radius_and_hysteresis(ctx) -> void:
 		"Attractor-Auswahl bleibt auf MAX_ATTRACTORS gecappt")
 	ctx.assert_true(selected.has(&"star_a") and selected.has(&"planet_a"),
 		"Eintritt in Stern-/Planeten-Einflussradien aktiviert passende Attraktoren")
-	ctx.assert_true(selected.has(&"root_a"),
-		"Root-Schwarzes-Loch kann zusaetzlich als lenkender Attraktor aktiv sein")
 
 	var moon_state: BodyState = reg.get_state(&"moon_a")
 	moon_state.position_parent_frame_m = Vector3(1.0e8, 0.0, 0.0)
@@ -386,7 +528,7 @@ static func _test_influence_radius_and_hysteresis(ctx) -> void:
 	reg.free()
 
 
-static func _test_out_of_bounds_free_drift_deactivates(ctx) -> void:
+static func _test_far_retire_threshold_deactivates(ctx) -> void:
 	var reg := _make_registry()
 	var service = _make_service(reg)
 	service.reset_for_world(&"scope_a", [&"root_a"], 0.0)
@@ -394,20 +536,28 @@ static func _test_out_of_bounds_free_drift_deactivates(ctx) -> void:
 	state.root_id = &"root_a"
 	state.anchor_id = &"root_a"
 	state.current_attractor_ids.clear()
-	state.x_m = AsteroidSimulationServiceScript.OUT_OF_BOUNDS_M - 100.0
+	state.x_m = 5.0e15
 	state.y_m = 0.0
 	state.z_m = 0.0
-	state.vx_mps = 1000.0
+	state.vx_mps = 0.0
 	state.vy_mps = 0.0
 	state.vz_mps = 0.0
 
 	service.advance_to_time(1.0, 1.0)
 
-	ctx.assert_true(not state.is_active, "Out-of-Bounds-Freiflug deaktiviert den Asteroid")
-	ctx.assert_true(int(service.get_perf_counter_snapshot().get(AsteroidSimulationServiceScript.PERF_KEY_OUT_OF_BOUNDS, 0)) == 1,
-		"Out-of-Bounds-Despawn erhoeht den Counter")
+	ctx.assert_true(state.is_active, "Asteroid bleibt unterhalb der neuen Numerik-Grenze aktiv")
+	ctx.assert_true(int(service.get_perf_counter_snapshot().get(AsteroidSimulationServiceScript.PERF_KEY_FAR_RETIRED_COUNT, 0)) == 0,
+		"Far-Retire zaehlt nicht unterhalb der Numerik-Grenze")
+
+	state.x_m = 1.5e16
+	state.current_attractor_ids.clear()
+	service.advance_to_time(2.0, 1.0)
+
+	ctx.assert_true(not state.is_active, "Far-Retire deaktiviert Asteroiden jenseits der Numerik-Grenze")
+	ctx.assert_true(int(service.get_perf_counter_snapshot().get(AsteroidSimulationServiceScript.PERF_KEY_FAR_RETIRED_COUNT, 0)) == 1,
+		"Far-Retire erhoeht den Counter")
 	ctx.assert_true(int(service.get_state_snapshot().get("count", 0)) == AsteroidSimulationServiceScript.ASTEROIDS_PER_ROOT - 1,
-		"deaktivierte Asteroiden verschwinden aus dem State-Snapshot")
+		"far-retired Asteroiden verschwinden aus dem State-Snapshot")
 
 	service.free()
 	reg.free()
@@ -509,6 +659,31 @@ static func _root_ids(registry: Node) -> Array[StringName]:
 		if def != null and def.is_root():
 			out.append(id)
 	return out
+
+
+static func _zone_by_id(zones: Array, id: StringName) -> Dictionary:
+	for zone in zones:
+		if typeof(zone) == TYPE_DICTIONARY and zone.get("id", StringName("")) == id:
+			return zone
+	return {}
+
+
+static func _root_id_of(registry: Node, body_id: StringName) -> StringName:
+	var topology := UniverseTopology.new()
+	topology.configure(registry)
+	return topology.root_id_of(body_id)
+
+
+static func _prepare_bh_flyby_state(state, x_m: float, y_m: float, vx_mps: float) -> void:
+	state.root_id = &"root_fit"
+	state.anchor_id = &"root_fit"
+	state.current_attractor_ids.clear()
+	state.x_m = x_m
+	state.y_m = y_m
+	state.z_m = 0.0
+	state.vx_mps = vx_mps
+	state.vy_mps = 0.0
+	state.vz_mps = 0.0
 
 
 static func _resolve_relative(registry: Node, body_id: StringName, anchor_id: StringName) -> Dictionary:

@@ -1,5 +1,45 @@
 # Graviton - Decisions
 
+## 2026-04-26 - Asteroiden v1.2 nutzen BH-effective-mu und Influence-Zones
+
+Das v1.1-BH-Steering war in der authored Root-Welt visuell zu schwach:
+die Sternorbits um Root-BHs bewegen sich so schnell, dass
+`BodyDef.mass_kg` des BH die Asteroidenbahnen kaum sichtbar kruemmt.
+Asteroiden v1.2 bleibt root-lokal und fuehrt deshalb ein
+Asteroiden-internes BH-`effective_mu` ein, statt Major-Body-Massen oder
+Parent-/Child-Topologie zu aendern.
+
+Konsequenz:
+
+- `BLACK_HOLE`-Gravitation im Asteroidenpfad nutzt ein
+  `sim/asteroids`-internes `effective_mu`, gefittet aus direkten
+  authored Sternkindern des Roots (`4*pi^2*r^3/T^2`, log-linear ueber
+  `r`) und skaliert mit `BH_FLYBY_GRAVITY_FACTOR = 0.45`
+- `BodyDef.mass_kg` bleibt die einzige Major-Body-Wahrheit; alle
+  nicht-Asteroiden-Services verwenden weiter
+  `UnitSystem.mu_from_mass(BodyDef.mass_kg)`
+- das `effective_mu` darf nicht ueber Registry, Runtime-Snapshots,
+  View-Code oder andere Services als globale Physikwahrheit sichtbar
+  werden
+- `AsteroidSimulationService` baut pro aktivem Root einen kompakten
+  Influence-Zone-Index; Asteroiden pruefen diesen Index, Bodies suchen
+  nicht nach Asteroiden
+- fuer `BLACK_HOLE` darf ein Zone-`mu_m3ps2` vom Major-Body-`mass_kg`
+  abweichen; fuer `STAR`, `PLANET` und `MOON` bleibt es exakt
+  `UnitSystem.mu_from_mass(mass_kg)`
+- leere Attractor-Sets pruefen die Zone-Entry-Regel jeden Tick, aktive
+  Sets behalten Exit-Hysterese und kurzes Refresh-Fenster
+- `ASTEROID_FAR_RETIRE_RADIUS_M = 1.0e16` ersetzt die fruehere
+  `2.0e14`-Out-of-Bounds-Deaktivierung als harte Numerik-Grenze;
+  Offscreen-Culling bleibt reine Darstellung
+- neue Counter (`bh_attractor_count`, `influence_zone_checks`,
+  `influence_index_rebuilds`, `total_active_attractors_per_tick`,
+  `attractor_set_changes`, `far_retired_count`) machen den naechsten
+  Editor-Dump auswertbar
+- sehr langsame Asteroiden koennen weiterhin physikalisch an den BH
+  gebunden werden; eine explizite Capture-/Escape-Policy bleibt eine
+  separate Folgeentscheidung
+
 ## 2026-04-25 - Asteroiden v1.1 nutzen Root-Frame-Freiflug
 
 Der erste sichtbare Asteroiden-Slice wird auf Root-Frame-Freiflug

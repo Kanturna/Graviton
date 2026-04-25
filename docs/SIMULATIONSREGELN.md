@@ -443,14 +443,14 @@ Missing-Request-Grace, Rejoin-Budget und `BodyState.current_mode`.
 - `INACTIVE_DISTANT` - fokus-relativ erreichbar, ausserhalb Radius
 - `INACTIVE_NO_LCA` - nicht fokus-relativ vergleichbar (anderer Baum)
 
-## Asteroiden v1.1
+## Asteroiden v1.2
 
 - Kleine sichtbare Asteroiden sind Minor Bodies in `sim/asteroids/`,
   keine `UniverseRegistry`-Bodies und keine `BodyDef.parent_id`-
   Reparenting-Faelle.
 - `AsteroidDef.spawn_origin_id` beschreibt das Stern-Spawnzentrum.
   `AsteroidState.anchor_id` beschreibt den Rechen-Frame und ist in
-  v1.1 stabil der jeweilige Root.
+  v1.2 weiter stabil der jeweilige Root.
 - Asteroidenpositionen und -velocities liegen als double-Felder im
   Root-Frame. `Vector3`-View-Positionen aus Snapshot-/Renderer-Pfaden
   sind abgeleitet und keine Sim-Wahrheit.
@@ -464,11 +464,22 @@ Missing-Request-Grace, Rejoin-Budget und `BodyState.current_mode`.
   damit lokale Sternsysteme Asteroiden sichtbar binden koennen.
 - `BLACK_HOLE` ist ein radiusbegrenzter Lenkungs-Attraktor, aber kein
   Mandatory-Attractor. Es gibt keine globale Asteroiden-
-  Dauerschwerkraft und keinen v1.1-Consume-/Kill-Radius fuer Schwarze
+  Dauerschwerkraft und keinen v1.2-Consume-/Kill-Radius fuer Schwarze
   Loecher.
+- Das BH-`effective_mu` ist nur eine `sim/asteroids`-interne
+  Restricted-Gravity-Groesse. `BodyDef.mass_kg` bleibt die einzige
+  Major-Body-Wahrheit; nicht-Asteroiden-Services muessen weiter
+  `UnitSystem.mu_from_mass(BodyDef.mass_kg)` verwenden.
+- Der Influence-Zone-Index ist asteroid-getrieben. Bodies suchen nicht
+  nach Asteroiden, und der Index darf keine `BodyState`-Refs oder
+  Mutationspfade halten.
+- Fuer `BLACK_HOLE` darf `mu_m3ps2` im Index von `BodyDef.mass_kg`
+  abweichen; fuer `STAR`, `PLANET` und `MOON` muss es exakt aus
+  `UnitSystem.mu_from_mass(...)` kommen.
 - Ein leerer Attractor-Satz bedeutet linearen Freiflug mit
-  unveraenderter Velocity. In v1.1 gibt es keinen Re-Spawn; driftet ein
-  Asteroid out-of-bounds, wird er deaktiviert.
+  unveraenderter Velocity. In v1.2 gibt es keinen Re-Spawn; driftet ein
+  Asteroid jenseits `ASTEROID_FAR_RETIRE_RADIUS_M`, wird er als harte
+  Numerik-Grenze deaktiviert.
 - Large-World-Fokuswechsel sind kein Despawn. Asteroiden eines nicht
   aktiven Roots werden geparkt, aus dem Snapshot ausgeblendet und nicht
   weiter integriert; bei Rueckkehr zum Root wird derselbe State wieder
@@ -502,9 +513,12 @@ Missing-Request-Grace, Rejoin-Budget und `BodyState.current_mode`.
   `scenes/` oder `src/tools/` einfuehren.
 - Asteroiden-v1 duerfen niemals Major-Body-`BodyState` schreiben oder
   `UniverseRegistry`-Bodies fuer kleine Steinchen anlegen.
-- Asteroiden-v1.1 duerfen `BLACK_HOLE`, `STAR`, `PLANET` und `MOON`
+- Asteroiden-v1.2 duerfen `BLACK_HOLE`, `STAR`, `PLANET` und `MOON`
   nur innerhalb expliziter Einflussradien als Attraktoren lesen; es
   gibt keine globale Root-/BH-Pflichtgravitation.
+- Asteroiden-`effective_mu` darf nicht ueber Registry, Runtime-
+  Snapshots, View-Code oder andere Services als globale Physikwahrheit
+  sichtbar werden.
 - Asteroiden-v1 haben keine Asteroid-Asteroid-Wechselwirkung: keine
   Gravitation, keine Kollisionen, kein Merge/Split.
 - Asteroiden-Trails sind reine Renderer-History und duerfen nicht in

@@ -1,6 +1,6 @@
 # Graviton - Next Steps
 
-Stand: 2026-04-25
+Stand: 2026-04-26
 
 Hinweis:
 Die aktuell im Repo eingecheckte `orbit_testbed.tscn` startet derzeit mit
@@ -16,7 +16,7 @@ abgesicherten Slices, jetzt inklusive `Asteroiden v1`.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Asteroiden-v1.1-Root-Frame-Freiflug-/Tuning-Slice mit `8319`
+- `run_tests.bat` lief nach dem Asteroiden-v1.2-BH-Steering-/Influence-Zone-Slice mit `8342`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -29,7 +29,7 @@ Headless-Basis:
   Tests deterministischen Spawn, `spawn_origin_id` vs. Root-Anchor,
   deterministische Trajektorien, Major-Body-Read-only,
   Root-Anchor-Stabilitaet, linearen Freiflug ohne Attraktoren,
-  Einflussradien/Exit-Hysterese, Out-of-Bounds-Despawn,
+  Einflussradien/Exit-Hysterese, Far-Retire-Numerikgrenze,
   Single-World-/Large-World-Lifecycle, SnapshotCache-Trennung,
   Root-Frame-Snapshot-Felder, Renderer-only Trails und den
   Compose-Cache pro unique Asteroiden-Anchor; zusaetzlich pinnen Recorder-
@@ -47,7 +47,10 @@ Headless-Basis:
   Fokuswechsel Root-Asteroiden parken statt sie zu despawnen oder beim
   Rueckwechsel neu zu seeden; Renderer-Tests pinnen die
   Asteroiden-Screen-Bounds-Culling-Regel und TimeService-Tests den
-  read-only `last_tick_emit_us`-Diagnosewert
+  read-only `last_tick_emit_us`-Diagnosewert; zusaetzlich pinnen
+  Asteroiden-v1.2-Tests BH-`effective_mu`, Influence-Zone-Heterogenitaet,
+  BH-Zone-Entry ohne Empty-Refresh-Delay, schnelle BH-Flyby-Kruemmung
+  ohne saubere Bindung und Far-Retire erst jenseits `1.0e16m`
 
 Offene Editor-/Feel-/FPS-Gates:
 
@@ -84,13 +87,16 @@ Offene Editor-/Feel-/FPS-Gates:
   3-6-FPS-Sternfoki erneut pruefen: im lokalen Sternfokus sollte
   `active_asteroids` bei 24 statt 48 liegen, Trails sollten bei
   Root-/World-Wechsel und Despawn verschwinden, aber innerhalb
-  desselben Roots stabil re-projiziert werden. Nach v1.1 sollten
+  desselben Roots stabil re-projiziert werden. Nach v1.2 sollten
   ausserdem freie Segmente ausserhalb aller BH-/Stern-/Planet-/Mond-
-  Einflussradien sichtbar sein. BHs duerfen schnelle Flybys sichtbar
-  lenken, sollen aber keine sauberen kleinen Asteroidenkreisbahnen
-  erzwingen. `free_drift_count` soll im Dump weiter steigen.
-  `attractor_checks`
-  sollte im Catchup deutlich niedriger als vorher ausfallen. Nach dem
+  Einflussradien sichtbar sein. BHs nutzen jetzt ein asteroid-internes
+  `effective_mu`, duerfen schnelle Flybys sichtbar lenken und sollen
+  keine sauberen kleinen Asteroidenkreisbahnen erzwingen.
+  `free_drift_count` soll im Dump weiter steigen. `bh_attractor_count`,
+  `influence_zone_checks`, `total_active_attractors_per_tick`,
+  `attractor_set_changes` und `far_retired_count` sind die relevanten
+  neuen Spalten. `attractor_checks`
+  sollte trotz Entry-Check pro leeres Attractor-Set niedrig bleiben. Nach dem
   Einflussradius-/Velocity-Tuning sollten mehr Asteroiden im
   Sternkontext eingefangen bleiben statt sofort als reine Flybys aus
   dem View zu verschwinden; `orbit_step_core_us` trennt im naechsten
@@ -140,10 +146,10 @@ Konkreter Ablauf:
   nahe Major Bodies sollen die Bahn leicht verformen; harte Impacts
   oder Kill-/Consume-Radien werden noch nicht behauptet
 - Root-/BH-Overview beobachten:
-  `BLACK_HOLE` ist in v1.1 wieder ein radiusbegrenzter
-  Lenkungs-Attraktor. Sichtbare Asteroiden duerfen durch den Root-BH
-  gekruemmt werden, sollen aber nicht als globale schwarze-Loch-
-  Dauerschwerkraft oder saubere Miniorbits erscheinen
+  `BLACK_HOLE` ist in v1.2 ein radiusbegrenzter Lenkungs-Attraktor mit
+  asteroid-internem `effective_mu`. Sichtbare Asteroiden duerfen durch
+  den Root-BH gekruemmt werden, sollen aber nicht als globale
+  schwarze-Loch-Dauerschwerkraft oder saubere Miniorbits erscheinen
 - Freiflug beobachten:
   ausserhalb aktiver BH-/Stern-/Planet-/Mond-Einflussradien sollen
   Asteroiden gerade bzw. leicht gekruemmte Freiflugsegmente zeigen,
@@ -173,10 +179,14 @@ Konkreter Ablauf:
   liegen aber ausserhalb des aktuellen Screens oder zu weit weg fuer
   die aktuelle Kamera-/Pan-Geschwindigkeit. Nach dem Offscreen-Culling
   im `AsteroidFieldRenderer` sollten solche offscreen Asteroiden keine
-  relevanten Draw-Kosten mehr verursachen
+  relevanten Draw-Kosten mehr verursachen. `far_retired_count` darf
+  dabei nicht steigen; sonst ist es echter Sim-Retire statt Rendering-
+  Culling
 - `P`-Dump ausloesen:
   Service-/Renderer-Snapshots und Perf-Counter fuer aktive
-  Asteroiden, Attractor-Checks, Substeps, Freiflug und Despawns muessen
+  Asteroiden, Influence-Zone-Checks, BH-Attractors, aktive
+  Attractor-Summen, Attractor-Set-Wechsel, Substeps, Freiflug und
+  Far-Retires muessen
   im Sidecar sichtbar sein; Stage-Timer fuer
   `asteroid_advance_us`, `asteroid_snapshot_refresh_us`,
   `asteroid_renderer_sync_us`, `orbit_renderer_sync_us`,

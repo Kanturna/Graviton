@@ -1,6 +1,6 @@
 # Graviton - Status
 
-Stand: 2026-04-25
+Stand: 2026-04-26
 
 ## Kurzfassung
 
@@ -42,8 +42,11 @@ Mandatory-Attraktoren sind entfernt; `BLACK_HOLE`, `STAR`, `PLANET`
 und `MOON` wirken nur innerhalb expliziter Einflussradien mit Exit-
 Hysterese.
 Ausserhalb dieser Felder driften Asteroiden linear weiter, ohne
-Velocity-Aenderung und ohne v1.1-Re-Spawn. Out-of-Bounds-Despawn ist
-bewusst akzeptiert und wird gezaehlt. Trails speichern jetzt stabile
+Velocity-Aenderung und ohne v1.1-Re-Spawn. Die alte
+Out-of-Bounds-Deaktivierung wurde in v1.2 durch eine harte
+Numerik-Grenze `ASTEROID_FAR_RETIRE_RADIUS_M = 1.0e16` ersetzt, damit
+offscreen Asteroiden nicht mit Despawn verwechselt werden. Trails
+speichern jetzt stabile
 Root-Frame-Samples und werden pro Frame re-projiziert, statt alte
 View-Pixel als Wahrheit mitzuschleppen.
 Nach dem ersten v1.1-Editor-Dump zeigte sich: wegdriftende Asteroiden
@@ -65,6 +68,19 @@ Set war zu hart: Asteroiden flogen im Root-Frame zu gerade. `BLACK_HOLE`
 ist deshalb wieder ein radiusbegrenzter Lenkungs-Attraktor, waehrend
 die Startgeschwindigkeiten nochmals hoeher liegen, damit BH-Felder eher
 ablenken als kleine Root-Orbits einfangen.
+Asteroiden v1.2 korrigiert die zu schwache BH-Ablenkung in der authored
+Root-Welt: `BLACK_HOLE` nutzt nur im Asteroiden-Restricted-Gravity-Pfad
+ein internes `effective_mu`, das aus direkten authored Sternkindern des
+Roots gefittet und mit `BH_FLYBY_GRAVITY_FACTOR = 0.45` skaliert wird.
+`BodyDef.mass_kg` bleibt die einzige Major-Body-Wahrheit; nicht-
+Asteroiden-Services verwenden weiter `UnitSystem.mu_from_mass(...)`.
+Die Attractor-Auswahl laeuft jetzt ueber einen pro aktivem Root
+gebauten Influence-Zone-Index, den Asteroiden pruefen. Bodies suchen
+weiter nicht nach Asteroiden. Neue Dump-Counter
+`bh_attractor_count`, `influence_zone_checks`,
+`influence_index_rebuilds`, `total_active_attractors_per_tick`,
+`attractor_set_changes` und `far_retired_count` trennen BH-Steering,
+Zone-Hotpath und echte Numerik-Deaktivierung von reinem Screen-Culling.
 Ein direkter Performance-Follow-up cached im Asteroid-Service
 relative Major-Body-Zustaende pro `(anchor_id, body_id)` innerhalb
 eines Asteroiden-Ticks. Damit werden identische Topologie-/Frame-

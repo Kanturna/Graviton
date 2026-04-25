@@ -11,19 +11,19 @@ const MAX_ATTRACTORS: int = 6
 const ATTRACTOR_REPLACE_FACTOR: float = 1.25
 const ATTRACTOR_REFRESH_INTERVAL_TICKS: int = 8
 const INFLUENCE_EXIT_FACTOR: float = 1.15
+const BH_FLYBY_GRAVITY_FACTOR: float = 0.45 # Tuned so asteroid flybys curve visibly without closing into clean BH orbits.
 const STAR_INFLUENCE_RADIUS_MULTIPLIER: float = 3.25
 const STAR_INFLUENCE_PADDING_M: float = 2.5e11
 const STAR_FALLBACK_INFLUENCE_M: float = 1.0e12
-const BLACK_HOLE_INFLUENCE_RADIUS_MULTIPLIER: float = 3.5
-const BLACK_HOLE_INFLUENCE_PADDING_M: float = 8.0e11
-const BLACK_HOLE_FALLBACK_INFLUENCE_M: float = 1.2e12
+const BLACK_HOLE_INFLUENCE_RADIUS_MULTIPLIER: float = 6.0
+const BLACK_HOLE_FALLBACK_INFLUENCE_M: float = 3.0e12
 const PLANET_RADIUS_INFLUENCE_MULTIPLIER: float = 160.0
 const PLANET_MOON_ORBIT_INFLUENCE_MULTIPLIER: float = 3.0
 const MOON_RADIUS_INFLUENCE_MULTIPLIER: float = 90.0
 const MOON_MIN_INFLUENCE_M: float = 4.0e8
 const TARGET_SUBSTEP_S: float = 1800.0
 const MAX_SUBSTEPS_PER_TICK: int = 32
-const OUT_OF_BOUNDS_M: float = 2.0e14
+const ASTEROID_FAR_RETIRE_RADIUS_M: float = 1.0e16
 const FALLBACK_BELT_INNER_M: float = 2.2e11
 const FALLBACK_BELT_OUTER_M: float = 5.0e11
 const PERF_KEY_ACTIVE_ASTEROIDS: StringName = &"active_asteroids"
@@ -32,9 +32,14 @@ const PERF_KEY_SUBSTEPS: StringName = &"substeps"
 const PERF_KEY_SUBSTEP_CAP_HITS: StringName = &"substep_cap_hits"
 const PERF_KEY_SPAWNED: StringName = &"spawned"
 const PERF_KEY_DESPAWNED: StringName = &"despawned"
-const PERF_KEY_OUT_OF_BOUNDS: StringName = &"out_of_bounds"
+const PERF_KEY_FAR_RETIRED_COUNT: StringName = &"far_retired_count"
 const PERF_KEY_ADVANCE_TICKS: StringName = &"advance_ticks"
 const PERF_KEY_FREE_DRIFT_COUNT: StringName = &"free_drift_count"
+const PERF_KEY_BH_ATTRACTOR_COUNT: StringName = &"bh_attractor_count"
+const PERF_KEY_INFLUENCE_ZONE_CHECKS: StringName = &"influence_zone_checks"
+const PERF_KEY_INFLUENCE_INDEX_REBUILDS: StringName = &"influence_index_rebuilds"
+const PERF_KEY_TOTAL_ACTIVE_ATTRACTORS_PER_TICK: StringName = &"total_active_attractors_per_tick"
+const PERF_KEY_ATTRACTOR_SET_CHANGES: StringName = &"attractor_set_changes"
 
 var _registry: Node = null
 var _topology: UniverseTopology = UniverseTopology.new()
@@ -45,6 +50,7 @@ var _resident_root_ids: Array[StringName] = []
 var _defs_by_id: Dictionary = {}
 var _states_by_id: Dictionary = {}
 var _state_order: Array[StringName] = []
+var _influence_zones_by_root: Dictionary = {}
 var _relative_state_cache: Dictionary = {}
 var _revision: int = 0
 var _perf_counters: Dictionary = {
@@ -54,9 +60,14 @@ var _perf_counters: Dictionary = {
 	PERF_KEY_SUBSTEP_CAP_HITS: 0,
 	PERF_KEY_SPAWNED: 0,
 	PERF_KEY_DESPAWNED: 0,
-	PERF_KEY_OUT_OF_BOUNDS: 0,
+	PERF_KEY_FAR_RETIRED_COUNT: 0,
 	PERF_KEY_ADVANCE_TICKS: 0,
 	PERF_KEY_FREE_DRIFT_COUNT: 0,
+	PERF_KEY_BH_ATTRACTOR_COUNT: 0,
+	PERF_KEY_INFLUENCE_ZONE_CHECKS: 0,
+	PERF_KEY_INFLUENCE_INDEX_REBUILDS: 0,
+	PERF_KEY_TOTAL_ACTIVE_ATTRACTORS_PER_TICK: 0,
+	PERF_KEY_ATTRACTOR_SET_CHANGES: 0,
 }
 
 
@@ -74,6 +85,7 @@ func reset_for_world(scope_id: StringName, root_ids: Array[StringName], t_s: flo
 	_defs_by_id.clear()
 	_states_by_id.clear()
 	_state_order.clear()
+	_influence_zones_by_root.clear()
 	_reset_perf_counters()
 	for root_id in _resident_root_ids:
 		_spawn_root(root_id, t_s)
@@ -90,6 +102,8 @@ func sync_resident_roots(scope_id: StringName, root_ids: Array[StringName], t_s:
 	var next_roots: Array[StringName] = _normalized_root_ids(root_ids)
 	var changed: bool = not _root_id_arrays_equal(_resident_root_ids, next_roots)
 	for root_id in next_roots:
+		if not _influence_zones_by_root.has(root_id):
+			_rebuild_influence_index_for_root(root_id)
 		if _has_root_state(root_id):
 			continue
 		_spawn_root(root_id, t_s)
@@ -115,8 +129,13 @@ func advance_to_time(t_s: float, dt_s: float) -> void:
 			continue
 		var attractor_ids: Array[StringName] = state.current_attractor_ids
 		if _should_refresh_attractors(state, tick_index):
+			var previous_attractor_ids: Array[StringName] = attractor_ids.duplicate()
 			attractor_ids = _select_attractors_for(state)
+			if not _string_name_arrays_equal(previous_attractor_ids, attractor_ids):
+				_perf_counters[PERF_KEY_ATTRACTOR_SET_CHANGES] = int(_perf_counters.get(PERF_KEY_ATTRACTOR_SET_CHANGES, 0)) + 1
 			state.current_attractor_ids = attractor_ids
+		_perf_counters[PERF_KEY_TOTAL_ACTIVE_ATTRACTORS_PER_TICK] = int(_perf_counters.get(PERF_KEY_TOTAL_ACTIVE_ATTRACTORS_PER_TICK, 0)) + attractor_ids.size()
+		_perf_counters[PERF_KEY_BH_ATTRACTOR_COUNT] = int(_perf_counters.get(PERF_KEY_BH_ATTRACTOR_COUNT, 0)) + _black_hole_attractor_count(attractor_ids)
 		var attractors: PackedFloat64Array = _build_attractor_entries(state, attractor_ids)
 		var result: Dictionary = INTEGRATOR_SCRIPT.integrate(
 			state,
@@ -131,10 +150,10 @@ func advance_to_time(t_s: float, dt_s: float) -> void:
 			_perf_counters[PERF_KEY_FREE_DRIFT_COUNT] = int(_perf_counters.get(PERF_KEY_FREE_DRIFT_COUNT, 0)) + 1
 		if bool(result.get("hit_substep_cap", false)):
 			_perf_counters[PERF_KEY_SUBSTEP_CAP_HITS] = int(_perf_counters.get(PERF_KEY_SUBSTEP_CAP_HITS, 0)) + 1
-		if _is_out_of_bounds(state):
+		if _is_far_retired(state):
 			state.is_active = false
 			state.current_attractor_ids.clear()
-			_perf_counters[PERF_KEY_OUT_OF_BOUNDS] = int(_perf_counters.get(PERF_KEY_OUT_OF_BOUNDS, 0)) + 1
+			_perf_counters[PERF_KEY_FAR_RETIRED_COUNT] = int(_perf_counters.get(PERF_KEY_FAR_RETIRED_COUNT, 0)) + 1
 		changed = true
 
 	_perf_counters[PERF_KEY_ADVANCE_TICKS] = int(_perf_counters.get(PERF_KEY_ADVANCE_TICKS, 0)) + 1
@@ -169,6 +188,7 @@ func get_perf_counter_snapshot() -> Dictionary:
 	out["resident_root_count"] = _resident_root_ids.size()
 	out["total_state_count"] = _state_order.size()
 	out["stored_root_count"] = _stored_root_count()
+	out["influence_zone_count"] = _resident_influence_zone_count()
 	return out
 
 
@@ -185,6 +205,7 @@ func get_debug_snapshot() -> Dictionary:
 func _spawn_root(root_id: StringName, t_s: float) -> void:
 	if _registry == null or not _registry.has_body(root_id):
 		return
+	_rebuild_influence_index_for_root(root_id)
 	var spawn_origins: Array[StringName] = _select_spawn_origins(root_id)
 	if spawn_origins.is_empty():
 		spawn_origins.append(root_id)
@@ -234,6 +255,51 @@ func _stored_root_count() -> int:
 		if state != null and state.root_id != StringName(""):
 			roots[state.root_id] = true
 	return roots.size()
+
+
+func _resident_influence_zone_count() -> int:
+	var count: int = 0
+	for root_id in _resident_root_ids:
+		count += _influence_zones_for_root(root_id).size()
+	return count
+
+
+func _rebuild_influence_index_for_root(root_id: StringName) -> void:
+	var zones: Array = []
+	if _registry == null or root_id == StringName("") or not _registry.has_body(root_id):
+		_influence_zones_by_root[root_id] = zones
+		return
+	for body_id in _registry.get_update_order():
+		var def: BodyDef = _registry.get_def(body_id)
+		if def == null or not _is_v1_attractor_kind(def.kind):
+			continue
+		if _topology.root_id_of(body_id) != root_id:
+			continue
+		var enter_radius_m: float = _influence_radius_m(def)
+		if enter_radius_m <= 0.0:
+			continue
+		zones.append({
+			"id": body_id,
+			"kind": def.kind,
+			"enter_radius_m": enter_radius_m,
+			"exit_radius_m": enter_radius_m * INFLUENCE_EXIT_FACTOR,
+			"mu_m3ps2": _asteroid_effective_mu_m3ps2(def, enter_radius_m),
+			"raw_mu_m3ps2": UnitSystem.mu_from_mass(maxf(def.mass_kg, 0.0)),
+			"bh_mu_samples": _black_hole_mu_fit_samples(body_id) if def.kind == BodyType.Kind.BLACK_HOLE else [],
+		})
+	_influence_zones_by_root[root_id] = zones
+	_perf_counters[PERF_KEY_INFLUENCE_INDEX_REBUILDS] = int(_perf_counters.get(PERF_KEY_INFLUENCE_INDEX_REBUILDS, 0)) + 1
+
+
+func _influence_zones_for_root(root_id: StringName) -> Array:
+	return _influence_zones_by_root.get(root_id, [])
+
+
+func _influence_zone_for_id(root_id: StringName, body_id: StringName) -> Dictionary:
+	for zone in _influence_zones_for_root(root_id):
+		if typeof(zone) == TYPE_DICTIONARY and zone.get("id", StringName("")) == body_id:
+			return zone
+	return {}
 
 
 func _select_spawn_origins(root_id: StringName) -> Array[StringName]:
@@ -364,7 +430,7 @@ func _select_attractors_for(state) -> Array[StringName]:
 
 func _should_refresh_attractors(state, tick_index: int) -> bool:
 	if state.current_attractor_ids.is_empty():
-		return tick_index % maxi(1, ATTRACTOR_REFRESH_INTERVAL_TICKS) == 0
+		return true
 	if tick_index % maxi(1, ATTRACTOR_REFRESH_INTERVAL_TICKS) == 0:
 		return true
 	return not _attractor_ids_still_valid(state)
@@ -386,12 +452,10 @@ func _attractor_ids_still_valid(state) -> bool:
 
 func _rank_attractor_candidates(state) -> Array:
 	var out: Array = []
-	for body_id in _registry.get_update_order():
-		var def: BodyDef = _registry.get_def(body_id)
-		if def == null or not _is_v1_attractor_kind(def.kind):
+	for zone in _influence_zones_for_root(state.root_id):
+		if typeof(zone) != TYPE_DICTIONARY:
 			continue
-		if _topology.root_id_of(body_id) != state.root_id:
-			continue
+		var body_id: StringName = zone.get("id", StringName(""))
 		var relative: Dictionary = _resolve_body_relative_to_anchor_cached(body_id, state.anchor_id)
 		if not bool(relative.get("ok", false)):
 			continue
@@ -400,12 +464,11 @@ func _rank_attractor_candidates(state) -> Array:
 		var dz: float = float(relative.get("z_m", 0.0)) - state.z_m
 		var distance2_m2: float = maxf(dx * dx + dy * dy + dz * dz, 1.0)
 		_perf_counters[PERF_KEY_ATTRACTOR_CHECKS] = int(_perf_counters.get(PERF_KEY_ATTRACTOR_CHECKS, 0)) + 1
-		var influence_radius_m: float = _influence_radius_m(def)
-		var radius_multiplier: float = INFLUENCE_EXIT_FACTOR if state.current_attractor_ids.has(body_id) else 1.0
-		var active_radius_m: float = influence_radius_m * radius_multiplier
+		_perf_counters[PERF_KEY_INFLUENCE_ZONE_CHECKS] = int(_perf_counters.get(PERF_KEY_INFLUENCE_ZONE_CHECKS, 0)) + 1
+		var active_radius_m: float = float(zone.get("exit_radius_m", 0.0)) if state.current_attractor_ids.has(body_id) else float(zone.get("enter_radius_m", 0.0))
 		if distance2_m2 > active_radius_m * active_radius_m:
 			continue
-		var score: float = UnitSystem.mu_from_mass(maxf(def.mass_kg, 0.0)) / distance2_m2
+		var score: float = _zone_effective_mu_m3ps2(zone, sqrt(distance2_m2)) / distance2_m2
 		out.append({"id": body_id, "score": score})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		var score_a: float = float(a.get("score", 0.0))
@@ -420,17 +483,107 @@ func _rank_attractor_candidates(state) -> Array:
 func _build_attractor_entries(state, attractor_ids: Array[StringName]) -> PackedFloat64Array:
 	var out := PackedFloat64Array()
 	for id in attractor_ids:
-		var def: BodyDef = _registry.get_def(id)
-		if def == null or not _is_v1_attractor_kind(def.kind):
+		var zone: Dictionary = _influence_zone_for_id(state.root_id, id)
+		if zone.is_empty():
 			continue
 		var relative: Dictionary = _resolve_body_relative_to_anchor_cached(id, state.anchor_id)
 		if not bool(relative.get("ok", false)):
 			continue
+		var dx: float = float(relative.get("x_m", 0.0)) - state.x_m
+		var dy: float = float(relative.get("y_m", 0.0)) - state.y_m
+		var dz: float = float(relative.get("z_m", 0.0)) - state.z_m
+		var distance_m: float = maxf(sqrt(dx * dx + dy * dy + dz * dz), 1.0)
 		out.append(float(relative.get("x_m", 0.0)))
 		out.append(float(relative.get("y_m", 0.0)))
 		out.append(float(relative.get("z_m", 0.0)))
-		out.append(UnitSystem.mu_from_mass(maxf(def.mass_kg, 0.0)))
+		out.append(_zone_effective_mu_m3ps2(zone, distance_m))
 	return out
+
+
+func _zone_effective_mu_m3ps2(zone: Dictionary, distance_m: float) -> float:
+	var kind: int = int(zone.get("kind", -1))
+	if kind != BodyType.Kind.BLACK_HOLE:
+		return float(zone.get("mu_m3ps2", 0.0))
+	var fallback_mu: float = float(zone.get("raw_mu_m3ps2", 0.0))
+	var samples: Array = zone.get("bh_mu_samples", [])
+	var fitted_mu: float = _black_hole_fit_from_samples(samples, distance_m, fallback_mu)
+	if fitted_mu <= 0.0:
+		return fallback_mu
+	return fitted_mu * BH_FLYBY_GRAVITY_FACTOR
+
+
+func _asteroid_effective_mu_m3ps2(def: BodyDef, distance_m: float) -> float:
+	if def == null:
+		return 0.0
+	if def.kind != BodyType.Kind.BLACK_HOLE:
+		return UnitSystem.mu_from_mass(maxf(def.mass_kg, 0.0))
+	var fitted_mu: float = _black_hole_fitted_mu_m3ps2(def, distance_m)
+	if fitted_mu <= 0.0:
+		return UnitSystem.mu_from_mass(maxf(def.mass_kg, 0.0))
+	return fitted_mu * BH_FLYBY_GRAVITY_FACTOR
+
+
+func _black_hole_fitted_mu_m3ps2(def: BodyDef, distance_m: float) -> float:
+	if def == null or def.kind != BodyType.Kind.BLACK_HOLE:
+		return 0.0
+	var samples: Array = _black_hole_mu_fit_samples(def.id)
+	var fallback_mu: float = UnitSystem.mu_from_mass(maxf(def.mass_kg, 0.0))
+	return _black_hole_fit_from_samples(samples, distance_m, fallback_mu)
+
+
+static func _black_hole_fit_from_samples(samples: Array, distance_m: float, fallback_mu: float) -> float:
+	if samples.is_empty():
+		return fallback_mu
+	var clamped_distance_m: float = maxf(distance_m, 1.0)
+	if samples.size() == 1:
+		return float(samples[0].get("mu_m3ps2", 0.0))
+	var first: Dictionary = samples[0]
+	var last: Dictionary = samples[samples.size() - 1]
+	if clamped_distance_m <= float(first.get("radius_m", 1.0)):
+		return float(first.get("mu_m3ps2", 0.0))
+	if clamped_distance_m >= float(last.get("radius_m", 1.0)):
+		return float(last.get("mu_m3ps2", 0.0))
+	for idx in range(samples.size() - 1):
+		var left: Dictionary = samples[idx]
+		var right: Dictionary = samples[idx + 1]
+		var left_r: float = float(left.get("radius_m", 1.0))
+		var right_r: float = float(right.get("radius_m", 1.0))
+		if clamped_distance_m < left_r or clamped_distance_m > right_r:
+			continue
+		var log_left_r: float = log(left_r)
+		var log_right_r: float = log(right_r)
+		var t: float = 0.0 if is_equal_approx(log_left_r, log_right_r) else clampf((log(clamped_distance_m) - log_left_r) / (log_right_r - log_left_r), 0.0, 1.0)
+		var log_mu: float = lerpf(log(float(left.get("mu_m3ps2", 1.0))), log(float(right.get("mu_m3ps2", 1.0))), t)
+		return exp(log_mu)
+	return float(last.get("mu_m3ps2", 0.0))
+
+
+func _black_hole_mu_fit_samples(black_hole_id: StringName) -> Array:
+	var samples: Array = []
+	if _registry == null or black_hole_id == StringName(""):
+		return samples
+	for child_id in _registry.get_children_of(black_hole_id):
+		var child_def: BodyDef = _registry.get_def(child_id)
+		if child_def == null or child_def.kind != BodyType.Kind.STAR or child_def.parent_id != black_hole_id:
+			continue
+		var profile: OrbitProfile = child_def.orbit_profile
+		if profile == null or profile.authored_radius_m <= 0.0 or profile.authored_period_s <= 0.0:
+			continue
+		samples.append({
+			"id": child_id,
+			"radius_m": float(profile.authored_radius_m),
+			"mu_m3ps2": _authored_orbit_mu_m3ps2(float(profile.authored_radius_m), float(profile.authored_period_s)),
+		})
+	samples.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.get("radius_m", 0.0)) < float(b.get("radius_m", 0.0))
+	)
+	return samples
+
+
+static func _authored_orbit_mu_m3ps2(radius_m: float, period_s: float) -> float:
+	if radius_m <= 0.0 or period_s <= 0.0:
+		return 0.0
+	return 4.0 * PI * PI * radius_m * radius_m * radius_m / (period_s * period_s)
 
 
 static func _weakest_optional_index(selected: Array[StringName], candidates: Array) -> int:
@@ -459,6 +612,15 @@ static func _candidate_id_present(candidates: Array, id: StringName) -> bool:
 	return false
 
 
+func _black_hole_attractor_count(attractor_ids: Array[StringName]) -> int:
+	var count: int = 0
+	for id in attractor_ids:
+		var def: BodyDef = _registry.get_def(id) if _registry != null and _registry.has_body(id) else null
+		if def != null and def.kind == BodyType.Kind.BLACK_HOLE:
+			count += 1
+	return count
+
+
 func _resolve_body_relative_to_anchor_cached(body_id: StringName, anchor_id: StringName) -> Dictionary:
 	var cache_key: String = "%s|%s" % [str(anchor_id), str(body_id)]
 	if _relative_state_cache.has(cache_key):
@@ -469,8 +631,8 @@ func _resolve_body_relative_to_anchor_cached(body_id: StringName, anchor_id: Str
 
 
 func _candidate_is_within_influence(state, body_id: StringName, use_exit_radius: bool) -> bool:
-	var def: BodyDef = _registry.get_def(body_id)
-	if def == null or not _is_v1_attractor_kind(def.kind):
+	var zone: Dictionary = _influence_zone_for_id(state.root_id, body_id)
+	if zone.is_empty():
 		return false
 	var relative: Dictionary = _resolve_body_relative_to_anchor_cached(body_id, state.anchor_id)
 	if not bool(relative.get("ok", false)):
@@ -478,9 +640,7 @@ func _candidate_is_within_influence(state, body_id: StringName, use_exit_radius:
 	var dx: float = float(relative.get("x_m", 0.0)) - state.x_m
 	var dy: float = float(relative.get("y_m", 0.0)) - state.y_m
 	var dz: float = float(relative.get("z_m", 0.0)) - state.z_m
-	var radius_m: float = _influence_radius_m(def)
-	if use_exit_radius:
-		radius_m *= INFLUENCE_EXIT_FACTOR
+	var radius_m: float = float(zone.get("exit_radius_m", 0.0)) if use_exit_radius else float(zone.get("enter_radius_m", 0.0))
 	return dx * dx + dy * dy + dz * dz <= radius_m * radius_m
 
 
@@ -492,10 +652,7 @@ func _influence_radius_m(def: BodyDef) -> float:
 			var outer_root_m: float = _max_child_orbit_radius_m(def.id)
 			if outer_root_m <= 0.0:
 				return BLACK_HOLE_FALLBACK_INFLUENCE_M
-			return maxf(
-				BLACK_HOLE_FALLBACK_INFLUENCE_M,
-				maxf(outer_root_m * BLACK_HOLE_INFLUENCE_RADIUS_MULTIPLIER, outer_root_m + BLACK_HOLE_INFLUENCE_PADDING_M)
-			)
+			return maxf(BLACK_HOLE_FALLBACK_INFLUENCE_M, outer_root_m * BLACK_HOLE_INFLUENCE_RADIUS_MULTIPLIER)
 		BodyType.Kind.STAR:
 			var outer_m: float = _max_child_orbit_radius_m(def.id)
 			if outer_m <= 0.0:
@@ -559,6 +716,15 @@ static func _root_id_arrays_equal(a: Array[StringName], b: Array[StringName]) ->
 	return true
 
 
+static func _string_name_arrays_equal(a: Array[StringName], b: Array[StringName]) -> bool:
+	if a.size() != b.size():
+		return false
+	for idx in range(a.size()):
+		if a[idx] != b[idx]:
+			return false
+	return true
+
+
 func _asteroid_id_for(root_id: StringName, idx: int) -> StringName:
 	return StringName("ast_%s_%s_%02d" % [_sanitize_id(_scope_id), _sanitize_id(root_id), idx])
 
@@ -596,9 +762,9 @@ static func _visual_class_from_seed(seed: int) -> StringName:
 			return &"metal"
 
 
-static func _is_out_of_bounds(state) -> bool:
+static func _is_far_retired(state) -> bool:
 	var r2: float = state.x_m * state.x_m + state.y_m * state.y_m + state.z_m * state.z_m
-	return r2 > OUT_OF_BOUNDS_M * OUT_OF_BOUNDS_M
+	return r2 > ASTEROID_FAR_RETIRE_RADIUS_M * ASTEROID_FAR_RETIRE_RADIUS_M
 
 
 func _update_active_counter() -> void:
