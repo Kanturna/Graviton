@@ -16,7 +16,7 @@ bereits headless abgesicherten Slices.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Badge-Candidate-Throttle mit `7829`
+- `run_tests.bat` lief nach dem Body-LOD-Rueckbau mit `7847`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -173,7 +173,11 @@ Konkreter Ablauf:
   die FPS duerfen durch die sichtbaren Rows fallen, aber nicht mehr um
   hunderte Punkte durch wiederholten identischen Row-Neuaufbau; der
   Debug-Snapshot `model_apply_count` soll im ruhigen Zustand nicht mit
-  jedem Refresh weiterlaufen
+  jedem Refresh weiterlaufen. Direkter BH-/Root-Fokus soll den
+  Inspector nicht mehr automatisch oeffnen; `I` ist der explizite
+  Toggle-Pfad. Im `PerfProbe`-Dump dafuer `root_inspector_open`,
+  `root_inspector_row_count` und `root_inspector_model_apply_count`
+  pruefen
 - planetennahe `LIFE`-Badges im Detailblick pruefen:
   Badges bleiben klickbar, folgen den Bodies und erzeugen keine
   auffaellige Transform-Query- oder Textlayout-Chatterei beim stabilen
@@ -575,7 +579,7 @@ Konkreter Ablauf:
 - `scaleup_galaxy_30` und `scaleup_galaxy_100` im Editor vergleichen
 - in beiden Welten bewusst dieselben Faelle pruefen:
   - `ROOT_OVERVIEW`, Inspector zu
-  - `ROOT_OVERVIEW`, Inspector offen
+  - `ROOT_OVERVIEW`, Inspector per `I` offen
   - Detailblick nach Fokus auf Stern / Planet / Mond
 - dabei besonders bestaetigen:
   - `resident_root_ids` bleibt weiter `1..2`
@@ -584,6 +588,9 @@ Konkreter Ablauf:
     `Life:` immer sichtbar, `World:` focused-row-only
   - `ROOT_OVERVIEW + Inspector offen` bleibt auf `scaleup_galaxy_100`
     weiter ruhig und interaktiv
+  - direkte BH-/Root- oder Proxy-Klicks oeffnen den Inspector nicht
+    mehr automatisch; Root-Fokus bleibt dadurch der leichte
+    Standardpfad
   - Inspector-Klicks auf Stern / Planet / Mond fuehren auch im
     Large-World-Pfad sofort zu sauberem Zentrieren/Fit
   - nicht residente Roots zeigen nach spaeterem Resident-Werden keinen
@@ -593,8 +600,28 @@ Konkreter Ablauf:
   - mit ausgeschaltetem VSync oder Godot-Profiler pruefen:
     `GalaxyProxyRenderer.redraw_request_count` steigt im stabilen
     Root-Overview nicht mehr jedes Render-Frame, sondern nur bei
-    Kamera-/Viewport-/Streaming-Aenderungen oder bei sichtbaren
-    Stern-Proxies mit Sim-Zeit
+    Kamera-/Viewport-/Streaming-Aenderungen; reine Sim-Zeit darf auch
+    mit sichtbaren Stern-Proxies keinen Redraw mehr triggern
+  - im `PerfProbe`-CSV fuer `scaleup_galaxy_100` pruefen:
+    `galaxy_proxy_star_proxy_roots` bleibt im Root-Overview bei
+    hoechstens acht, `galaxy_proxy_star_proxy_capped_roots` zeigt
+    gekappte Kandidaten, und `draw_calls` springt beim Stern-Proxy-Tier
+    nicht mehr in die alte 250er-Groessenordnung
+  - wenn bei Fokus auf den Root weiter ein 250er-Draw-Call-Zustand
+    sichtbar ist, zuerst `orbit_root_overview_line_count` und
+    `orbit_visible_point_count` pruefen: direkte Stern-Orbits muessen
+    im Root-Overview ausgeblendet sein und erst im Detailmodus wieder
+    sichtbar werden
+  - wenn der Rest-Ruckler danach weiter sichtbar ist, beim naechsten
+    `P`-Dump zuerst die Diagnose-Spalten
+    `galaxy_proxy_signature_change_labels`,
+    `galaxy_proxy_recompute_reason_labels`,
+    `galaxy_proxy_entries_empty`, `galaxy_proxy_cached_entry_count`,
+    `body_visible_count`, `body_detail_factor_max`,
+    `body_star_closeup_phase_max` und `body_effective_scale_max`
+    auswerten; keinen weiteren Visual-LOD-Schnitt machen, solange der
+    Dump nicht zwischen Kamera-/Canvas-Invalidierung, leerer
+    Proxy-Arbeit und Body-Visual-Skalierung trennt
 
 Wenn dieser Gate kippt:
 

@@ -82,7 +82,7 @@ class RootInspectorProbe:
 	func get_root_id() -> StringName:
 		return root_id
 
-	func close_panel() -> void:
+	func close_panel(_emit_close_signal: bool = true) -> void:
 		open = false
 
 	func clear_state() -> void:
@@ -172,6 +172,7 @@ class GalaxyProxyRendererProbe:
 static func run(ctx) -> void:
 	ctx.current_suite = "test_orbit_testbed_root_inspector"
 	_test_root_inspector_opens_only_explicitly_and_overrides_root_overview_interest(ctx)
+	_test_root_inspector_toggle_is_the_explicit_open_path(ctx)
 	_test_root_inspector_stays_closed_for_focus_and_streaming_events_and_resets_on_world_change(ctx)
 	_test_root_inspector_clicks_use_immediate_focus_fit(ctx)
 	_test_non_large_world_keeps_root_inspector_hidden(ctx)
@@ -198,6 +199,24 @@ static func _test_root_inspector_opens_only_explicitly_and_overrides_root_overvi
 	testbed._on_root_inspector_closed()
 	ctx.assert_true(not testbed._root_inspector.is_open(), "Schliessen blendet den Inspector wieder aus")
 	ctx.assert_true(testbed._derived_snapshot_cache.last_interest_ids.is_empty(), "Nach dem Schliessen faellt ROOT_OVERVIEW sofort auf fokus-only zurueck")
+	_destroy_testbed_probe(testbed)
+
+
+static func _test_root_inspector_toggle_is_the_explicit_open_path(ctx) -> void:
+	var testbed = _build_testbed_probe(true)
+	testbed._refresh_snapshot_interest_ids()
+	ctx.assert_true(not testbed._root_inspector.is_open(), "Root-Inspector startet fuer den Toggle-Test geschlossen")
+
+	testbed._toggle_root_inspector_for_current_root()
+	ctx.assert_true(testbed._root_inspector.is_open(), "I-/Toggle-Pfad oeffnet den Root-Inspector explizit")
+	ctx.assert_true(
+		testbed._derived_snapshot_cache.last_interest_ids == [&"alpha_i", &"alpha_i_m"],
+		"Geoeffneter Toggle-Inspector aktiviert denselben root-lokalen Interest wie explizites Oeffnen"
+	)
+
+	testbed._toggle_root_inspector_for_current_root()
+	ctx.assert_true(not testbed._root_inspector.is_open(), "I-/Toggle-Pfad schliesst den Root-Inspector wieder")
+	ctx.assert_true(testbed._derived_snapshot_cache.last_interest_ids.is_empty(), "Geschlossener Toggle-Inspector stellt ROOT_OVERVIEW fokus-only wieder her")
 	_destroy_testbed_probe(testbed)
 
 

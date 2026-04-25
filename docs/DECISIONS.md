@@ -1,5 +1,27 @@
 # Graviton - Decisions
 
+## 2026-04-25 - Root-Inspector oeffnet nicht mehr auf Root-Fokus
+
+Der Root-Inspector bleibt ein explizites Large-World-Navigationswerkzeug,
+oeffnet aber nicht mehr automatisch beim direkten BH-/Root-Fokus. Der
+aktuelle Perf-Dump und Playtest zeigten, dass der automatisch
+aufploppende rechte Inspector den Root-Fokus in einen deutlich
+schwereren UI-/Renderzustand schiebt.
+
+Konsequenz:
+
+- Links-Klick auf einen sichtbaren BH/Root fokussiert nur noch den Root
+- Proxy-Klicks auf andere Roots navigieren/fokussieren ebenfalls ohne
+  automatisches Inspector-Open
+- der explizite Inspector-Pfad ist der `I`-Toggle fuer den aktuellen
+  Fokus-Root
+- wenn der Inspector offen ist, bleibt der dokumentierte Ausnahmefall
+  bestehen: root-lokales Planet-/Moon-Interest darf fuer die
+  Inspector-Rows aktiv werden
+- neue PerfProbe-Spalten `root_inspector_open`,
+  `root_inspector_row_count` und `root_inspector_model_apply_count`
+  machen diesen UI-Zustand im Dump direkt sichtbar
+
 ## 2026-04-24 - Qualitative Life-Ecology kommt vor echten Counts
 
 Nach `Lifeform Pressure v1` wird Population bewusst nur als
@@ -435,9 +457,9 @@ Konsequenz:
 
 - V1 der Survey-UX ist ein `RootInspectorOverlay` fuer den aktuell
   ausgewaehlten BH-/Root
-- das Panel oeffnet nur bei expliziten Root-Klicks
-  (BH-Proxy oder BH-Body), nicht bei `Home`, `Tab`, `Backspace` oder
-  passiven Residency-Wechseln
+- das Panel oeffnet ueber den expliziten `I`-Toggle, nicht bei
+  normalem Root-Fokus, `Home`, `Tab`, `Backspace` oder passiven
+  Residency-Wechseln
 - das Panel zeigt nur residente Daten
   `BLACK_HOLE -> STAR -> PLANET -> MOON`; es gibt noch keine
   nichtresidenten Root-Summaries

@@ -15,7 +15,9 @@ static func run(ctx) -> void:
 	_test_root_proxies_reuse_black_hole_visual_contract(ctx)
 	_test_proxy_sizes_counter_scale_against_camera_zoom(ctx)
 	_test_star_proxy_tier_uses_hysteresis(ctx)
+	_test_star_proxy_root_selection_is_bounded_and_stable(ctx)
 	_test_root_proxy_culling_uses_envelope_margin(ctx)
+	_test_signature_change_reason_labels_are_explicit(ctx)
 	_test_proxy_redraw_is_dirty_driven(ctx)
 	_test_hidden_proxy_renderer_is_not_pickable(ctx)
 
@@ -71,6 +73,19 @@ static func _test_star_proxy_tier_uses_hysteresis(ctx) -> void:
 	)
 
 
+static func _test_star_proxy_root_selection_is_bounded_and_stable(ctx) -> void:
+	var selected: Dictionary = GalaxyProxyRendererScript.select_star_proxy_roots([
+		{"root_id": &"small_near", "projected_extent_px": 110.0, "screen_distance_px": 8.0},
+		{"root_id": &"large_far", "projected_extent_px": 140.0, "screen_distance_px": 400.0},
+		{"root_id": &"large_near", "projected_extent_px": 140.0, "screen_distance_px": 20.0},
+		{"root_id": &"medium", "projected_extent_px": 120.0, "screen_distance_px": 60.0},
+	], 2)
+	ctx.assert_true(selected.size() == 2, "Stern-Proxy-Root-Auswahl bleibt hart auf das angefragte Limit begrenzt")
+	ctx.assert_true(selected.has(&"large_near"), "groessere projizierte Roots werden fuer Stern-Proxies bevorzugt")
+	ctx.assert_true(selected.has(&"large_far"), "bei gleicher Groesse bleibt der zweite groessere Root vor kleineren Roots erhalten")
+	ctx.assert_true(not selected.has(&"small_near"), "kleinere Roots draengen trotz Screennaehe keine groesseren Stern-Proxies aus dem Budget")
+
+
 static func _test_root_proxy_culling_uses_envelope_margin(ctx) -> void:
 	var viewport_size_px := Vector2(800.0, 600.0)
 	ctx.assert_true(
@@ -89,6 +104,37 @@ static func _test_root_proxy_culling_uses_envelope_margin(ctx) -> void:
 		GalaxyProxyRendererScript.should_cull_root_proxy(Vector2(929.0, 300.0), viewport_size_px, 128.0),
 		"ein Root knapp ausserhalb der positiven Envelope-Grenze wird gecullt"
 	)
+
+
+static func _test_signature_change_reason_labels_are_explicit(ctx) -> void:
+	var previous: Dictionary = _proxy_signature_fixture()
+	var next: Dictionary = previous.duplicate(true)
+	next["canvas_origin"] = Vector2(4.0, 0.0)
+	next["canvas_x"] = Vector2(2.0, 0.0)
+	next["focus_root_view_ru"] = Vector2(12.0, 3.0)
+	next["resident_roots"] = [&"obsidian", &"umbra"]
+	var mask: int = GalaxyProxyRendererScript.signature_change_mask(previous, next)
+	ctx.assert_true(
+		(mask & GalaxyProxyRendererScript.SIG_CANVAS_ORIGIN) != 0,
+		"Signaturdiagnose markiert Canvas-Origin-Aenderungen separat"
+	)
+	ctx.assert_true(
+		(mask & GalaxyProxyRendererScript.SIG_CANVAS_BASIS) != 0,
+		"Signaturdiagnose markiert Canvas-Scale/Basis-Aenderungen separat"
+	)
+	ctx.assert_true(
+		(mask & GalaxyProxyRendererScript.SIG_FOCUS_ROOT_VIEW) != 0,
+		"Signaturdiagnose markiert Fokus-Root-View-Aenderungen separat"
+	)
+	ctx.assert_true(
+		(mask & GalaxyProxyRendererScript.SIG_RESIDENT_ROOTS) != 0,
+		"Signaturdiagnose markiert Resident-Root-Aenderungen separat"
+	)
+	var labels: String = GalaxyProxyRendererScript.signature_change_labels(mask)
+	ctx.assert_true(labels.find("canvas_origin") >= 0, "Signaturdiagnose schreibt Canvas-Origin als CSV-lesbares Label")
+	ctx.assert_true(labels.find("canvas_basis") >= 0, "Signaturdiagnose schreibt Canvas-Basis als CSV-lesbares Label")
+	ctx.assert_true(labels.find("focus_root_view") >= 0, "Signaturdiagnose schreibt Fokus-Root-View als CSV-lesbares Label")
+	ctx.assert_true(labels.find("resident_roots") >= 0, "Signaturdiagnose schreibt Resident-Roots als CSV-lesbares Label")
 
 
 static func _test_proxy_redraw_is_dirty_driven(ctx) -> void:
@@ -128,8 +174,8 @@ static func _test_proxy_redraw_is_dirty_driven(ctx) -> void:
 	renderer._process(0.0)
 	var star_time_snapshot: Dictionary = renderer.get_debug_snapshot()
 	ctx.assert_true(
-		int(star_time_snapshot.get("redraw_request_count", 0)) == int(clean_snapshot.get("redraw_request_count", 0)) + 1,
-		"Sim-Zeit queued Redraws erst, wenn Stern-Proxies sichtbar sind"
+		int(star_time_snapshot.get("redraw_request_count", 0)) == int(clean_snapshot.get("redraw_request_count", 0)),
+		"Sim-Zeit queued auch mit Stern-Proxies kein Root-Overview-Redraw mehr"
 	)
 	renderer.recompute_proxy_state()
 	var star_clean_snapshot: Dictionary = renderer.get_debug_snapshot()
@@ -150,6 +196,21 @@ static func _test_proxy_redraw_is_dirty_driven(ctx) -> void:
 	)
 	time_probe.free()
 	renderer.free()
+
+
+static func _proxy_signature_fixture() -> Dictionary:
+	return {
+		"configured": true,
+		"focus_id": &"obsidian",
+		"focus_root_id": &"obsidian",
+		"focus_root_view_ru": Vector2.ZERO,
+		"canvas_x": Vector2(1.0, 0.0),
+		"canvas_y": Vector2(0.0, 1.0),
+		"canvas_origin": Vector2.ZERO,
+		"viewport_size_px": Vector2(800.0, 600.0),
+		"sim_time_s": 0.0,
+		"resident_roots": [&"obsidian"],
+	}
 
 
 static func _test_hidden_proxy_renderer_is_not_pickable(ctx) -> void:

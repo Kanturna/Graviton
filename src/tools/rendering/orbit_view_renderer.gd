@@ -58,6 +58,12 @@ var _last_debug_snapshot: Dictionary = {
 	"trail_update_distinct_body_count": 0,
 	"overview_hidden_descendant_count": 0,
 	"overview_visible_star_count": 0,
+	"body_visible_count": 0,
+	"body_detail_factor_max": 0.0,
+	"body_star_closeup_phase_max": 0.0,
+	"body_effective_scale_max": 0.0,
+	"body_focus_detail_factor": 0.0,
+	"body_focus_effective_scale": 0.0,
 	"presentation_offset_s": 0.0,
 }
 
@@ -329,6 +335,15 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 	var overview_visible_star_count: int = 0
 	var root_overview_active: bool = _is_root_overview_active()
 	var positions_by_id: Dictionary = {}
+	var visible_orbit_line_count: int = 0
+	var root_overview_orbit_line_count: int = 0
+	var visible_orbit_point_count: int = 0
+	var body_visible_count: int = 0
+	var body_detail_factor_max: float = 0.0
+	var body_star_closeup_phase_max: float = 0.0
+	var body_effective_scale_max: float = 0.0
+	var body_focus_detail_factor: float = 0.0
+	var body_focus_effective_scale: float = 0.0
 
 	for id in _registry_update_order():
 		var def: BodyDef = _registry.get_def(id)
@@ -360,6 +375,7 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 
 		if visual != null:
 			visual.visible = true
+			body_visible_count += 1
 			visual.position = pos
 			var detail_factor: float = OrbitEmphasisRulesScript.body_detail_factor(
 				id,
@@ -385,8 +401,13 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 			# daher kuerzt sich world_scale raus und die effektive Pixel-Skala
 			# eines lokalen 1px-Radius ist detail_factor * star_scale.
 			var body_effective_scale: float = detail_factor * star_scale
+			body_detail_factor_max = maxf(body_detail_factor_max, detail_factor)
+			body_star_closeup_phase_max = maxf(body_star_closeup_phase_max, star_phase)
+			body_effective_scale_max = maxf(body_effective_scale_max, body_effective_scale)
 			visual.set_effective_screen_scale(body_effective_scale)
 			if id == _focus_id:
+				body_focus_detail_factor = detail_factor
+				body_focus_effective_scale = body_effective_scale
 				_update_close_zoom_state(body_effective_scale)
 
 		if root_overview_active and _is_visible_root_overview_star(def):
@@ -399,6 +420,10 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 				if orbit_line.visible != orbit_visible:
 					orbit_line.visible = orbit_visible
 				if orbit_visible:
+					visible_orbit_line_count += 1
+					visible_orbit_point_count += orbit_line.points.size()
+					if root_overview_active:
+						root_overview_orbit_line_count += 1
 					var parent_pos: Vector2 = positions_by_id.get(parent_id, Vector2(INF, INF))
 					if not _is_finite_vec2(parent_pos):
 						parent_pos = _compute_body_view_position_ru(parent_id, true, presentation_offset_s)
@@ -428,10 +453,29 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 		"trail_update_distinct_body_count": _trail_update_body_ids.size(),
 		"overview_hidden_descendant_count": overview_hidden_descendant_count,
 		"overview_visible_star_count": overview_visible_star_count,
+		"visible_orbit_line_count": visible_orbit_line_count,
+		"root_overview_orbit_line_count": root_overview_orbit_line_count,
+		"visible_orbit_point_count": visible_orbit_point_count,
+		"body_visible_count": body_visible_count,
+		"body_detail_factor_max": body_detail_factor_max,
+		"body_star_closeup_phase_max": body_star_closeup_phase_max,
+		"body_effective_scale_max": body_effective_scale_max,
+		"body_focus_detail_factor": body_focus_detail_factor,
+		"body_focus_effective_scale": body_focus_effective_scale,
 		"presentation_offset_s": presentation_offset_s,
 	}
 	PerfProbeScript.bump(&"sync_visuals")
 	PerfProbeScript.sample(&"compose_view_position_body_count", _compose_view_position_body_ids.size())
+	PerfProbeScript.sample(&"body_visible_count", body_visible_count)
+	PerfProbeScript.sample(&"root_overview_visible_star_count", overview_visible_star_count)
+	PerfProbeScript.sample(&"orbit_visible_line_count", visible_orbit_line_count)
+	PerfProbeScript.sample(&"orbit_root_overview_line_count", root_overview_orbit_line_count)
+	PerfProbeScript.sample(&"orbit_visible_point_count", visible_orbit_point_count)
+	PerfProbeScript.sample(&"body_detail_factor_max", body_detail_factor_max)
+	PerfProbeScript.sample(&"body_star_closeup_phase_max", body_star_closeup_phase_max)
+	PerfProbeScript.sample(&"body_effective_scale_max", body_effective_scale_max)
+	PerfProbeScript.sample(&"body_focus_detail_factor", body_focus_detail_factor)
+	PerfProbeScript.sample(&"body_focus_effective_scale", body_focus_effective_scale)
 
 
 func _apply_environment_visuals() -> void:
@@ -823,7 +867,9 @@ func _registry_update_order() -> Array[StringName]:
 
 
 func _should_show_orbit_in_root_overview(def: BodyDef) -> bool:
-	return _is_visible_root_overview_star(def)
+	# AntialiasedLine2D star orbits dominate the black-hole root overview
+	# render cost. The star bodies remain visible; detail mode restores orbits.
+	return false
 
 
 static func _hide_visual_stack(visual: CanvasItem, orbit_line: CanvasItem, trail_line: CanvasItem) -> void:

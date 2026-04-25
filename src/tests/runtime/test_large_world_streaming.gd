@@ -907,7 +907,7 @@ static func _test_root_overview_lod_hides_planetary_descendants_and_tracks_debug
 	var snapshot: Dictionary = renderer.get_debug_snapshot()
 
 	ctx.assert_true(alpha_visual != null and alpha_visual.visible, "ROOT_OVERVIEW behaelt direkte Sterne sichtbar")
-	ctx.assert_true(alpha_orbit_line != null and alpha_orbit_line.visible, "ROOT_OVERVIEW behaelt direkte Stern-Orbits sichtbar")
+	ctx.assert_true(alpha_orbit_line != null and not alpha_orbit_line.visible, "ROOT_OVERVIEW blendet direkte Stern-Orbits fuer stabile Renderkosten aus")
 	ctx.assert_true(alpha_planet_visual != null and not alpha_planet_visual.visible, "ROOT_OVERVIEW blendet planetare Descendants aus")
 	ctx.assert_true(alpha_planet_orbit_line != null and not alpha_planet_orbit_line.visible, "ROOT_OVERVIEW blendet planetare Orbitlinien aus")
 	ctx.assert_true(alpha_trail == null, "Sterne tragen grundsaetzlich keinen Trail; in ROOT_OVERVIEW trivial unsichtbar")
@@ -916,6 +916,13 @@ static func _test_root_overview_lod_hides_planetary_descendants_and_tracks_debug
 	ctx.assert_true(int(snapshot.get("overview_visible_star_count", 0)) == 4, "ROOT_OVERVIEW meldet genau vier sichtbare direkte Sterne fuer obsidian")
 	ctx.assert_true(int(snapshot.get("overview_hidden_descendant_count", 0)) > 0, "ROOT_OVERVIEW zaehlt ausgeblendete Descendants explizit mit")
 	ctx.assert_true(not bubble_probe.compose_call_ids.has(&"alpha_i"), "ROOT_OVERVIEW ruft fuer ausgeblendete Planeten keine Bubble-Komposition auf")
+
+	renderer.set_frame_label(OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK)
+	renderer._sync_visual_positions(false)
+	ctx.assert_true(
+		alpha_orbit_line.visible and alpha_orbit_line.points.size() >= OrbitViewRendererScript.ORBIT_SAMPLE_COUNT,
+		"Detailmodus stellt direkte Stern-Orbits wieder mit voller Liniengeometrie her"
+	)
 
 	bubble_probe.free()
 	renderer.free()

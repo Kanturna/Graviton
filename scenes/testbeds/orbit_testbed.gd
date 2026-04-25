@@ -329,6 +329,12 @@ func _sample_perf_probe() -> void:
 	if _planet_badge_overlay != null:
 		var badge_snapshot: Dictionary = _planet_badge_overlay.get_debug_snapshot()
 		PerfProbeScript.sample(&"visible_badges", int(badge_snapshot.get("visible_badge_count", 0)))
+	if _root_inspector != null and _root_inspector.has_method("get_debug_snapshot"):
+		var inspector_snapshot: Dictionary = _root_inspector.get_debug_snapshot()
+		var row_ids: Array = inspector_snapshot.get("row_body_ids", [])
+		PerfProbeScript.sample(&"root_inspector_open", int(bool(inspector_snapshot.get("is_open", false))))
+		PerfProbeScript.sample(&"root_inspector_row_count", row_ids.size())
+		PerfProbeScript.sample(&"root_inspector_model_apply_count", int(inspector_snapshot.get("model_apply_count", 0)))
 
 
 func _sample_orbit_service_perf_probe() -> void:
@@ -391,6 +397,9 @@ func _unhandled_input(event: InputEvent) -> void:
 					var rows_written: int = PerfProbeScript.dump_csv(dump_path)
 					print("[PerfProbe] dumped %d rows to %s" % [rows_written, dump_path])
 				get_viewport().set_input_as_handled()
+			KEY_I:
+				_toggle_root_inspector_for_current_root()
+				get_viewport().set_input_as_handled()
 			KEY_BACKSPACE:
 				_camera_controller.fit_current_focus()
 				get_viewport().set_input_as_handled()
@@ -402,9 +411,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				if picked_id != StringName(""):
 					_focus_index = maxi(_focus_order.find(picked_id), 0)
 					_set_focus(picked_id)
-					var picked_def: BodyDef = UniverseRegistry.get_def(picked_id)
-					if picked_def != null and picked_def.is_root():
-						_open_root_inspector_for_current_root()
 					get_viewport().set_input_as_handled()
 				elif _is_large_world:
 					var picked_root_id: StringName = _galaxy_proxy_renderer.pick_root_at_screen(event.position)
@@ -413,7 +419,6 @@ func _unhandled_input(event: InputEvent) -> void:
 						_refresh_focus_order()
 						_focus_index = maxi(_focus_order.find(picked_root_id), 0)
 						_set_focus(picked_root_id, true, true)
-						_open_root_inspector_for_current_root()
 						get_viewport().set_input_as_handled()
 			MOUSE_BUTTON_WHEEL_UP:
 				_camera_controller.handle_zoom_multiplier(ZOOM_FACTOR_STEP)
@@ -548,7 +553,7 @@ func _update_hud() -> void:
 		if _cycle_value.visible:
 			_cycle_value.text = OrbitHudFormatterScript.format_cycle(orbit_readout_desc)
 
-	_hint_label.text = "LMB focus   Tab / Shift+Tab focus   Home root overview   Ctrl+1-5 save view   1-5 recall view   Q/E or PgUp/PgDn speed   WASD pan   Wheel zoom   Backspace fit focus   Space pause   F3 debug   P perf dump   Shift+P perf clear"
+	_hint_label.text = "LMB focus   I root inspector   Tab / Shift+Tab focus   Home root overview   Ctrl+1-5 save view   1-5 recall view   Q/E or PgUp/PgDn speed   WASD pan   Wheel zoom   Backspace fit focus   Space pause   F3 debug   P perf dump   Shift+P perf clear"
 
 
 func _pan_input_dir() -> Vector2:
@@ -757,6 +762,17 @@ func _open_root_inspector_for_current_root() -> void:
 	_sync_root_inspector_context(true)
 	_refresh_snapshot_interest_ids()
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
+
+
+func _toggle_root_inspector_for_current_root() -> void:
+	if not _is_large_world or _root_inspector == null:
+		return
+	if _root_inspector.is_open():
+		_root_inspector.close_panel(false)
+		_refresh_snapshot_interest_ids()
+		_debug_overlay.mark_dirty(_debug_overlay.visible)
+		return
+	_open_root_inspector_for_current_root()
 
 
 func _planetary_interest_ids_for_root(root_id: StringName) -> Array[StringName]:

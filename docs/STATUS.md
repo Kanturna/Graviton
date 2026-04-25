@@ -131,8 +131,57 @@ Census.
 Ein anschliessender Root-Overview-Performance-Fix macht den
 `GalaxyProxyRenderer` dirty-getrieben: der 100-Root-Proxy-Pfad queued
 nicht mehr jedes Render-Frame pauschal ein Redraw, sondern nur noch bei
-Kamera-/Canvas-, Viewport-, Fokus-/Resident- oder bei sichtbaren
-Stern-Proxies auch Sim-Zeit-Aenderungen.
+Kamera-/Canvas-, Viewport- oder Fokus-/Resident-Aenderungen. Sichtbare
+Stern-Proxies sind bewusst keine Sim-Zeit-Quelle fuer Redraws mehr,
+damit ein stabiler Root-Overview nicht periodisch die gesamte
+Proxy-Projektion neu aufbaut.
+Ein direkter Folgefix deckelt denselben Stern-Proxy-Pfad auf maximal
+acht Root-Systeme pro Redraw. Die Auswahl bevorzugt groessere
+projizierte Root-Systeme und nutzt Screennaehe nur als Tie-Breaker;
+uebrige sichtbare Roots fallen weiterhin auf BH-only-Proxies zurueck.
+Neue `PerfProbe`-Spalten wie `galaxy_proxy_star_proxies`,
+`galaxy_proxy_star_proxy_roots`,
+`galaxy_proxy_star_proxy_capped_roots`,
+`galaxy_proxy_recomputes` und `galaxy_proxy_redraw_requests` machen den
+Pfad im CSV-Dump direkt beobachtbar.
+Der anschliessende Re-Dump zeigte den Rest-Ruckler weiterhin, aber mit
+`galaxy_proxy_visible_roots = 0` und `galaxy_proxy_draw_entries = 0`;
+damit war der sichtbare 254-Draw-Call-Zustand nicht mehr den
+Galaxy-Proxies zuzuordnen. Eine 24-Sample-Linien-LOD reduzierte zwar
+die Primitive, aber nicht die Draw-Calls ausreichend. Deshalb blendet
+`OrbitViewRenderer` direkte `AntialiasedLine2D`-Stern-Orbits im
+`root-overview` jetzt komplett aus; die direkten Sterne bleiben
+sichtbar und der Detailmodus stellt die Orbitlinien wieder her.
+Neue `PerfProbe`-Spalten `orbit_visible_line_count`,
+`orbit_root_overview_line_count` und `orbit_visible_point_count`
+machen diesen Pfad messbar.
+Der naechste Dump zeigte den Rest-Ruckler erneut mit
+`orbit_* = 0`, `galaxy_proxy_* = 0` und `visible_badges = 0`, aber
+weiterem Sprung von `draw_calls 51 -> 250` genau bei
+`body_visual_draws = 5` und `body_overlay_draws = 4`. Ein kurz
+getesteter Body-Visual-LOD-Schnitt fuer Fokus-BH und direkte Sterne
+wurde danach bewusst wieder zurueckgenommen, weil der spaetere
+Before-/After-Dump den rechten Inspector als eigentlichen Restpfad
+bestaetigte und der Body-LOD-Versuch visuelle Regressionen riskierte.
+Ein direkter Diagnose-Follow-up erweitert denselben Messpfad, ohne
+Rendering- oder Simulationslogik weiter umzubauen:
+`GalaxyProxyRenderer` sampelt jetzt Signatur-Aenderungsgruende wie
+`focus_root_view`, `canvas_basis`, `canvas_origin`,
+`resident_roots`, leere Proxy-Recomputes und cached Entry Counts.
+`OrbitViewRenderer` sampelt zusaetzlich sichtbare Body-Anzahl sowie
+Detail-/Star-Closeup-/Effective-Scale-Maxima. Damit soll der naechste
+`P`-Dump den verbliebenen Fokus-Ruckler klarer zwischen Kamera-/Canvas-
+Invalidierung, leerer Proxy-Arbeit und Body-Visual-Skalierung trennen.
+Der direkte Before-/After-Dump plus Nutzerbeobachtung bestaetigten
+danach den eigentlichen Restpfad: nicht der BH-Fokus selbst, sondern der
+automatisch aufploppende rechte `RootInspectorOverlay` machte den
+Root-Overview schwer. Der Inspector oeffnet deshalb jetzt nicht mehr
+automatisch bei BH-/Root- oder Proxy-Klicks; diese Klicks fokussieren
+nur noch. Der explizite Inspector-Pfad ist jetzt `I` als Toggle fuer
+den aktuellen Fokus-Root. Neue `PerfProbe`-Spalten
+`root_inspector_open`, `root_inspector_row_count` und
+`root_inspector_model_apply_count` machen diesen UI-Zustand im Dump
+direkt sichtbar.
 Ein direkter Follow-up adressiert den danach sichtbaren Fokus-Ruckler
 bei deaktiviertem VSync: `TimeService` merkt das letzte autoritative
 Sim-dt, `LocalBubbleManager` kann daraus rein view-seitig eine
@@ -631,8 +680,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   behalten.
 - Large-World-Testbeds haben jetzt rechts angedockt einen ersten
   `RootInspectorOverlay`:
-  ein expliziter BH-Proxy- oder BH-Body-Klick oeffnet fuer den aktuell
-  residenten Fokus-Root ein read-only Hierarchiepanel
+  der explizite `I`-Toggle oeffnet fuer den aktuell residenten
+  Fokus-Root ein read-only Hierarchiepanel
   `BLACK_HOLE -> STAR -> PLANET -> MOON`.
 - Der neue `RootInspectorModelBuilder` baut diese Hierarchie rein
   view-seitig aus `UniverseRegistry`, `UniverseTopology` und
@@ -643,8 +692,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Mapping-Logik in Overlay und HUD zu duplizieren.
 - `orbit_testbed.gd` bleibt die einzige Controller-Stelle fuer den
   Inspector:
-  explizite Root-Klicks oeffnen ihn, normale Fokuswechsel oder passive
-  Residency-Wechsel nicht.
+  der `I`-Toggle oeffnet ihn, normale Root-Klicks, Fokuswechsel oder
+  passive Residency-Wechsel nicht.
 - Der `ROOT_OVERVIEW`-Performance-Contract bleibt ausserhalb des
   offenen Inspectors unveraendert fokus-only.
   Als dokumentierter Ausnahmefall darf ein offener Inspector fuer genau
@@ -713,7 +762,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist weiter reproduzierbar: `run_tests.bat`
-  laeuft nach `Life Ecology Foundation v1` mit `7822`
+  laeuft nach dem Body-LOD-Rueckbau mit `7847`
   erfolgreichen Assertions bei `0` Failures.
 
 ### Aktuelle Praesentation
@@ -1285,7 +1334,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   aktuellen Performance-/Focus-Smoothing-Gates gemeinsam im Editor
   validieren
 - die Headless-Basis ist dabei bereits sichtbar:
-  `./run_tests.bat` lief nach dem Badge-Candidate-Throttle mit `7829`
+  `./run_tests.bat` lief nach dem Body-LOD-Rueckbau mit `7847`
   Passed und `0` Failed; gezielte Tests decken unter anderem
   HUD-Modi, Root-Inspector-Testbed-Regeln, Root-Inspector-
   Model-Caching, Planet-Badge-Text-/Candidate-Caching,
