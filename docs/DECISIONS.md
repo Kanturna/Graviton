@@ -1,5 +1,38 @@
 # Graviton - Decisions
 
+## 2026-04-25 - Asteroiden v1 sind Minor Bodies mit Restricted Gravity
+
+Asteroiden werden fuer v1 nicht als normale `UniverseRegistry`-
+Bodies eingefuehrt. Die vielen kleinen, kurzlebigen Steine leben in
+einem eigenen `sim/asteroids/`-Slice mit eigenem `AsteroidState`,
+eigenem ID-Raum und eigenem Schreibmonopol. `BodyType.Kind.ASTEROID`
+bleibt damit fuer spaetere benannte Grossasteroiden reserviert, die
+bewusst als vollwertige Bodies modelliert werden koennen.
+
+Konsequenz:
+
+- `BodyDef.parent_id` bleibt Major-Body-Topologie und wird nicht fuer
+  Asteroiden-Vorbeifluege umgeschrieben
+- v1 nutzt `anchor_id` im Asteroid-State als lokale Rechenbasis; der
+  Anchor bleibt in v1 stabil und wechselt nicht
+- Asteroiden lesen `BLACK_HOLE`, `STAR`, `PLANET` und `MOON` als
+  Attractors, schreiben aber niemals Major-Body-`BodyState`
+- Asteroid-Positionen/Velozitaeten liegen als double-Felder im
+  `AsteroidState`, nicht als `Vector3`-Wahrheit
+- das Attractor-Set ist gecappt und hysterese-stabilisiert; pro
+  Tick/Substep bleibt es fix, optionale Quellen werden nur bei klar
+  staerkerem Ersatz ausgetauscht
+- `OrbitService.step_completed(dt_s, t_s)` ist das explizite
+  Tick-Completion-Signal fuer abhaengige Sim-Services; es feuert pro
+  Sim-Tick genau einmal und ist nicht an `bodies_updated` gekoppelt
+- `AsteroidSnapshotCache` ist ein eigener Runtime-Helper und erweitert
+  nicht den planetaren `DerivedSnapshotCache`
+- Trails sind reine Renderer-History und keine Sim- oder Snapshot-
+  Wahrheit
+- Impacts, Merge/Split, Life-Destruction, Field-Proxies,
+  Fokusnavigation und Asteroid-Asteroid-Wechselwirkungen bleiben
+  separate Folgeentscheidungen
+
 ## 2026-04-25 - Population Estimates sind Readout-Ranges, kein PopulationState
 
 Die fruehere Zurueckhaltung "keine Count-Ranges vor einem zweiten

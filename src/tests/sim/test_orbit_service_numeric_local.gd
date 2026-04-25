@@ -18,6 +18,7 @@ static func run(ctx) -> void:
 	_test_request_replace_semantics_drop_old_wish_after_grace(ctx)
 	_test_identical_request_is_idempotent(ctx)
 	_test_update_order_stays_topological(ctx)
+	_test_step_completed_fires_on_empty_updated_ids(ctx)
 
 
 static func _make_registry() -> Node:
@@ -279,6 +280,36 @@ static func _test_capped_numeric_local_keeps_mode_and_sets_warning_flag(ctx) -> 
 	_emit_sim_tick(time_service, 1.0)
 	ctx.assert_true(not service._substep_cap_warning_active_by_id.has(&"planet_a"),
 		"ein uncapped Tick setzt das Cap-Warning-Flag wieder zurueck")
+
+	service.free()
+	time_service.free()
+	reg.free()
+
+
+static func _test_step_completed_fires_on_empty_updated_ids(ctx) -> void:
+	var reg = load("res://src/sim/universe/universe_registry.gd").new()
+	reg.register_body(_root_def())
+	var time_service := _make_time_service()
+	var service = _make_orbit_service(reg, time_service)
+	var body_updates: Array = []
+	var step_updates: Array = []
+	service.bodies_updated.connect(func(ids: Array[StringName], reason: StringName) -> void:
+		body_updates.append({"ids": ids, "reason": reason})
+	)
+	service.step_completed.connect(func(dt_s: float, t_s: float) -> void:
+		step_updates.append({"dt_s": dt_s, "t_s": t_s})
+	)
+
+	_emit_sim_tick(time_service, 1.0)
+
+	ctx.assert_true(body_updates.is_empty(),
+		"bodies_updated bleibt bei leerem updated_ids ein Dirty-Signal ohne Emit")
+	ctx.assert_true(step_updates.size() == 1,
+		"step_completed feuert trotzdem genau einmal fuer den Sim-Tick")
+	ctx.assert_almost(float(step_updates[0].get("dt_s", 0.0)), 1.0, 1.0e-9,
+		"step_completed uebergibt dt_s")
+	ctx.assert_almost(float(step_updates[0].get("t_s", 0.0)), 1.0, 1.0e-9,
+		"step_completed uebergibt t_s nach dem TimeService-Tick")
 
 	service.free()
 	time_service.free()

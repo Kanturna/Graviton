@@ -35,6 +35,7 @@ const PERF_KEY_SUBSTEP_CAP_HITS: StringName = &"substep_cap_hits"
 const PERF_KEY_REGIME_EXIT_NUMERIC: StringName = &"regime_exit_numeric"
 
 signal bodies_updated(ids: Array[StringName], reason: StringName)
+signal step_completed(dt_s: float, t_s: float)
 
 @export_range(0.0, 3600.0, 1.0, "or_greater") var numeric_local_target_substep_s: float = 10.0
 @export_range(1, 4096, 1, "or_greater") var numeric_local_max_substeps_per_tick: int = 64
@@ -100,6 +101,7 @@ func _on_sim_tick(_dt: float) -> void:
 		if _runtime_state_changed(before, state):
 			updated_ids.append(id)
 	_emit_bodies_updated(updated_ids, UPDATE_REASON_SIM_TICK)
+	step_completed.emit(_dt, t)
 
 
 func get_numeric_local_count() -> int:

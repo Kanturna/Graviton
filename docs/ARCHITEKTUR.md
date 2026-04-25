@@ -20,7 +20,8 @@ scenes/     (duenn, nur Projektion + Composition Root,
    |
    v
 src/runtime/       LocalBubbleManager, BubbleActivationSet,
-                   DerivedSnapshotCache, GalaxyStreamingController
+                   DerivedSnapshotCache, AsteroidSnapshotCache,
+                   GalaxyStreamingController
    |
    v
 src/sim/           UniverseRegistry, WorldLoader, OrbitService, LocalOrbitIntegrator,
@@ -30,6 +31,7 @@ src/sim/           UniverseRegistry, WorldLoader, OrbitService, LocalOrbitIntegr
                    BiosphereScaleService, NativeSpeciesService,
                    GeneticSpeciesService, LifeEcologyService,
                    LifePopulationEstimateService,
+                   AsteroidSimulationService/AsteroidState,
                    GalaxyDef/RootSystemManifest/RootSystemGenerator,
                    BodyDef/State, OrbitProfile, OrbitMode
    |
@@ -49,6 +51,7 @@ noch `runtime/` noch `scenes/`. `sim/` haengt nur von `core/` ab.
 | Bekannte Bodies & Topologie | `UniverseRegistry` (Autoload) | nur Registry-API   |
 | Parent-Frame-Position/-Velo | `BodyState`                   | nur `OrbitService` |
 | Orbit-Modus pro Body        | `BodyState.current_mode`      | nur `OrbitService` |
+| Asteroiden-Minor-Bodies     | `AsteroidState`               | nur `AsteroidSimulationService` |
 | Residenter Galaxy-Slice     | `GalaxyStreamingController`   | nur Streaming-API  |
 | Fokus / View                | `LocalBubbleManager` (Node)   | nur Bubble-API     |
 | Aktiv-Set                   | `BubbleActivationSet` (Node)  | nur Activation-API |
@@ -511,6 +514,49 @@ diesen Hook bleibt `TimeService.sim_tick` der konservative Fallback.
 **Wichtig:** Keine stillen Rebuilds im Frame-Loop; `_process()`
 konsumiert nur den letzten Snapshot.
 
+## Minor Bodies / Asteroiden - ADR
+
+**Entscheidung:** Asteroiden v1 sind Minor Bodies in einem eigenen
+`src/sim/asteroids/`-Slice. Sie sind keine normalen
+`UniverseRegistry`-Bodies, bekommen kein dynamisches
+`BodyDef.parent_id`-Reparenting und schreiben niemals Major-Body-
+`BodyState`.
+
+**Grund:** Asteroiden sollen viele kleine, chaotisch wirkende Koerper
+sein, ohne die bestehende Parent-/Child-Topologie der grossen
+Himmelskoerper zu zerlegen. Die Major-Body-Simulation bleibt die
+Quelle fuer `BLACK_HOLE`, `STAR`, `PLANET` und `MOON`; Asteroiden
+lesen diese Zustande nur als Attraktoren.
+
+**State und Autoritaet:** `AsteroidState` speichert `anchor_id`,
+Position und Velocity in double-Feldern im Anchor-Frame. Nur
+`AsteroidSimulationService` darf diesen State schreiben. Asteroiden
+haben einen eigenen ID-Raum ausserhalb `IdRegistry`; `BodyType.Kind.ASTEROID`
+bleibt fuer spaetere benannte Grossasteroiden reserviert.
+
+**Frame-Politik v1:** v1 fuehrt kein `FrameDef` ein. `anchor_id` ist ein
+Minor-Body-internes Bezugskonzept und bleibt ueber die Lebenszeit eines
+Asteroiden stabil. Anchor-Switching, Stetigkeitsgarantien beim Switch
+und eine moegliche Vereinheitlichung mit einem spaeteren Frame-Modell
+sind Folge-Slices.
+
+**Physik v1:** Restricted Gravity. `BLACK_HOLE`, `STAR`, `PLANET` und
+`MOON` ziehen Asteroiden an; Asteroiden ziehen nichts an. Es gibt keine
+Asteroid-Asteroid-Gravitation, keine Asteroid-Kollisionen, keine
+Impacts, kein Merge/Split und keine Life-Folgen.
+
+**Attractor-Auswahl:** Pro Tick wird ein fixes Attractor-Set fuer alle
+Substeps genutzt, capped auf sechs Eintraege. Bereits genutzte
+Attraktoren bleiben stabil, solange ein neuer Kandidat den schwaechsten
+aktuellen optionalen Attraktor nicht mindestens um Faktor `1.25`
+uebertrifft.
+
+**Runtime/View:** `AsteroidSnapshotCache` lebt getrennt von
+`DerivedSnapshotCache` in `runtime/derived/` und ist read-only Glue fuer
+Renderer. `AsteroidFieldRenderer` rendert Punkte und kurze Trails aus
+Snapshots. Trail-History ist ein reiner Renderer-Ringbuffer und keine
+Simulations- oder Snapshot-Wahrheit.
+
 ## Large-World Proxy-Layer - ADR
 
 **Entscheidung:** Cross-Root-Uebersicht fuer grosse Galaxien lebt in
@@ -578,6 +624,13 @@ autoritativ `NUMERIC_LOCAL`.
 per Substepping bis zu einem festen Budget und nutzt darueber hinaus
 `Cap+Warn`. Das ist bewusst Best-Effort und kein Garant fuer beliebig
 hohe `time_scale`.
+
+**Tick-Completion-Signal:** `OrbitService.step_completed(dt_s, t_s)`
+feuert bei jedem `_on_sim_tick` genau einmal und bedingungslos nach dem
+Orbit-Step. Es ist nicht an die `bodies_updated`-Empty-Guard gekoppelt.
+`bodies_updated(ids, reason)` bleibt ein Dirty-/Interest-Signal;
+`step_completed` ist das explizite Completion-Signal fuer abgeleitete
+Services wie `AsteroidSimulationService`.
 
 ## Frame-Modell - ADR (vorlaeufig)
 

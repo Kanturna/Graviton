@@ -10,13 +10,13 @@ Szenen-Override vor dem Editor-Run bewusst umstellen.
 
 ## Aktiver Fokus - Acceptance-Bundle
 
-Der naechste Arbeitsblock ist aktuell kein neuer Simulationslayer,
-sondern ein gebuendelter Editor-/Feel-/FPS-Acceptance-Run ueber die
-bereits headless abgesicherten Slices.
+Der naechste Arbeitsblock ist ein gebuendelter
+Editor-/Feel-/FPS-Acceptance-Run ueber die bereits headless
+abgesicherten Slices, jetzt inklusive `Asteroiden v1`.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach `Population Estimates v1` mit `7960`
+- `run_tests.bat` lief nach `Asteroiden v1` mit `8177`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -25,7 +25,11 @@ Headless-Basis:
   Planet-Badge-Text-/Candidate-Caching, Perf-Snapshot-JSON-
   Konvertierung, Orbit-/Time-Formatter, Genetic/Pressure-/
   Life-Ecology-/Population-Estimate-Ableitungen und den bounded
-  `scaleup_galaxy_100`-Streamingpfad; zusaetzlich pinnen Recorder-
+  `scaleup_galaxy_100`-Streamingpfad; zusaetzlich pinnen Asteroid-
+  Tests deterministischen Spawn, deterministische Trajektorien,
+  Major-Body-Read-only, Anchor-Stabilitaet, Attractor-Hysterese,
+  Single-World-/Large-World-Lifecycle, SnapshotCache-Trennung und
+  Renderer-only Trails; zusaetzlich pinnen Recorder-
   Tests jetzt die Reihenfolge Kamera -> Frame-/LOD-Kontext -> Renderer
   sowie Renderer -> Streaming, und Numeric-Exit-Tests pinnen
   Counter-/Warning-Dedup-Semantik
@@ -45,11 +49,53 @@ Offene Editor-/Feel-/FPS-Gates:
   `scaleup_galaxy_100` und offenem Inspector pruefen; vor einem
   `FramePoseCache` bleiben Detail-Fokus-`P`-Dumps fuer Stern/Planet/Mond
   das naechste Evidence-Gate
+- Asteroiden v1:
+  `scaleup_galaxy_100` im Root-/Stern-/Planet-Fokus pruefen,
+  sichtbare Punkte und kurze Trails beobachten, Bahnverformung nahe
+  Major Bodies pruefen und sicherstellen, dass HUD/Inspector/Life-
+  Panels keine Kollisionen, Katastrophen oder Life-Folgen behaupten
 
 Erst wenn diese Gates sauber sind, ist ein Folgeblock wie
 `Population Dynamics v1` oder `Evolution Competition v1` sinnvoll.
 Wenn ein Gate kippt, wird zuerst der kleinste konkrete View-, Life-
 oder Performance-Fix geschnitten.
+
+## Prioritaet 0 - Asteroiden v1 Acceptance Gate
+
+Ziel:
+Den headless-gruenen Minor-Body-Slice im echten Editor validieren,
+bevor Impacts, Merge/Split, Life-Folgen oder Fokusnavigation fuer
+Asteroiden begonnen werden.
+
+Konkreter Ablauf:
+
+- `scaleup_galaxy_100` starten und Root-/BH-Overview pruefen:
+  Asteroiden duerfen die bestehenden Galaxy-Proxies nicht als zweite
+  Simulationswahrheit ersetzen
+- auf einen Stern fokussieren:
+  Asteroiden sollen als kleine Punkte mit kurzen Trails sichtbar sein
+  und sich erkennbar gegen die planetaren Orbits bewegen
+- einen Planeten-/Mondnahbereich beobachten:
+  nahe Major Bodies sollen die Bahn leicht verformen; harte Impacts
+  oder Kill-/Consume-Radien werden noch nicht behauptet
+- Streaming/Fokuswechsel zwischen Root-Systemen pruefen:
+  residente Roots spawnen Asteroiden, nichtresidente Roots verlieren
+  ihre Asteroiden ohne Duplikate oder Trail-Reste
+- `P`-Dump ausloesen:
+  Service-/Renderer-Snapshots und Perf-Counter fuer aktive
+  Asteroiden, Attractor-Checks, Substeps und Despawns muessen im
+  Sidecar sichtbar sein
+- dabei explizit pruefen:
+  kein HUD, Inspector oder Life-Panel behauptet Kollisionen,
+  Katastrophen, Life-Destruction, Merge/Split oder
+  Asteroid-Asteroid-Physik
+
+Wenn dieses Gate kippt:
+
+- keinen Impact-, Merge-/Split- oder Katastrophen-Slice anfangen
+- zuerst nur den kleinen V1-Pfad korrigieren:
+  Spawn-Dichte, Renderer-Sichtbarkeit, Snapshot-Projektion,
+  Attractor-Hysterese, Perf-Counter oder Streaming-Lifecycle
 
 ## Meta - Agentenvertrag / Repo-Hygiene - erledigt
 

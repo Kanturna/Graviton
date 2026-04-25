@@ -8,6 +8,22 @@ Stand: 2026-04-25
 Weltraum-/Systemsimulation und eine erste stilisierte 2D-
 Praesentationsschicht.
 
+Darauf sitzt jetzt zusaetzlich `Asteroiden v1` als sichtbare
+Minor-Body-Simulation:
+Asteroiden leben in einem eigenen `sim/asteroids/`-Slice mit eigenem
+`AsteroidState`, stabilem `anchor_id`, eigenem ID-Raum und
+Restricted-Gravity-Integrator. `BLACK_HOLE`, `STAR`, `PLANET` und
+`MOON` ziehen Asteroiden an, aber Asteroiden schreiben nie
+Major-Body-`BodyState` und wirken nicht aufeinander. Die Szene bridged
+`OrbitService.step_completed(dt_s, t_s)` explizit in den
+Asteroid-Service; Single-World- und Large-World-Residency spawnen
+deterministisch pro Root. View-seitig projiziert ein separater
+`AsteroidSnapshotCache` read-only in Bubble-View-Koordinaten, waehrend
+`AsteroidFieldRenderer` Punkte und kurze Trails als reine Renderer-
+History zeichnet. Impacts, Merge/Split, Life-Folgen,
+Asteroid-Asteroid-Kollisionen, Anchor-Switching und Fokusnavigation auf
+Asteroiden bleiben bewusst Folge-Slices.
+
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und
 100-Root-Galaxien mit Proxy-Layer, Streaming, deterministischem

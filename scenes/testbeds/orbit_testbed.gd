@@ -7,7 +7,10 @@ const OrbitTimeScaleControllerScript = preload("res://src/tools/rendering/orbit_
 const PlanetBadgeOverlayScript = preload("res://src/tools/rendering/planet_badge_overlay.gd")
 const UniverseTopologyScript = preload("res://src/sim/topology/universe_topology.gd")
 const DerivedSnapshotCacheScript = preload("res://src/runtime/derived/derived_snapshot_cache.gd")
+const AsteroidSnapshotCacheScript = preload("res://src/runtime/derived/asteroid_snapshot_cache.gd")
 const GalaxyStreamingControllerScript = preload("res://src/runtime/streaming/galaxy_streaming_controller.gd")
+const AsteroidSimulationServiceScript = preload("res://src/sim/asteroids/asteroid_simulation_service.gd")
+const AsteroidFieldRendererScript = preload("res://src/tools/rendering/asteroid_field_renderer.gd")
 const PlanetaryYearSamplerScript = preload("res://src/sim/planetary/planetary_year_sampler.gd")
 const PlanetaryStateServiceScript = preload("res://src/sim/planetary/planetary_state_service.gd")
 const LifePotentialServiceScript = preload("res://src/sim/life/life_potential_service.gd")
@@ -67,6 +70,9 @@ const VIEW_BOOKMARK_SLOT_COUNT: int = 5
 var _camera_controller = OrbitCameraControllerScript.new()
 var _time_scale_controller = OrbitTimeScaleControllerScript.new()
 var _derived_snapshot_cache = DerivedSnapshotCacheScript.new()
+var _asteroid_snapshot_cache = null
+var _asteroid_service = null
+var _asteroid_renderer = null
 var _streaming_controller = GalaxyStreamingControllerScript.new()
 var _planetary_year_sampler = PlanetaryYearSamplerScript.new()
 var _planetary_state_service = PlanetaryStateServiceScript.new()
@@ -88,6 +94,7 @@ var _last_frame_label: StringName = StringName("")
 var _active_world_scope_id: StringName = StringName("")
 var _hud_details_enabled: bool = false
 var _last_orbit_perf_counter_snapshot: Dictionary = {}
+var _last_asteroid_perf_counter_snapshot: Dictionary = {}
 
 
 func _ready() -> void:
@@ -95,6 +102,11 @@ func _ready() -> void:
 	TimeService.set_paused(false)
 	UniverseRegistry.clear()
 	_orbit_service.configure(UniverseRegistry, TimeService)
+	_asteroid_snapshot_cache = AsteroidSnapshotCacheScript.new()
+	_asteroid_service = AsteroidSimulationServiceScript.new()
+	_asteroid_service.configure(UniverseRegistry)
+	if not _orbit_service.step_completed.is_connected(_on_orbit_service_step_completed):
+		_orbit_service.step_completed.connect(_on_orbit_service_step_completed)
 
 	_is_large_world = _is_large_world_id(StringName(initial_world_id))
 	_topology = UniverseTopologyScript.new()
@@ -139,6 +151,7 @@ func _ready() -> void:
 		_orbit_service.bodies_updated.connect(_on_orbit_service_bodies_updated)
 	_orbit_service.request_numeric_local_candidates(_activation_set.get_active_ids())
 	_orbit_service.recompute_all_at_time(TimeService.sim_time_s)
+	_reset_asteroids_for_current_roots(TimeService.sim_time_s)
 
 	_thermal_service.configure(UniverseRegistry)
 	_atmosphere_service.configure(UniverseRegistry, _thermal_service)
@@ -197,6 +210,8 @@ func _ready() -> void:
 
 	_renderer.configure(UniverseRegistry, _bubble, _topology, TimeService)
 	_renderer.set_environment_service(_environment_service)
+	_asteroid_snapshot_cache.configure(_asteroid_service, _bubble)
+	_configure_asteroid_renderer()
 	if not _world_loader.world_loaded.is_connected(_on_world_loader_world_loaded):
 		_world_loader.world_loaded.connect(_on_world_loader_world_loaded)
 	_derived_snapshot_cache.configure(
@@ -271,12 +286,21 @@ func _ready() -> void:
 	_sync_galaxy_proxy_transform()
 	if _planet_badge_overlay != null:
 		_planet_badge_overlay.refresh()
+	_sync_asteroid_renderer(true)
 	_update_hud()
 
 
 func _exit_tree() -> void:
 	_time_scale_controller.dispose()
 	_derived_snapshot_cache.dispose()
+	if _asteroid_snapshot_cache != null:
+		_asteroid_snapshot_cache.dispose()
+		_asteroid_snapshot_cache = null
+	if _orbit_service != null and _orbit_service.has_signal("step_completed") and _orbit_service.step_completed.is_connected(_on_orbit_service_step_completed):
+		_orbit_service.step_completed.disconnect(_on_orbit_service_step_completed)
+	if _asteroid_service != null:
+		_asteroid_service.free()
+		_asteroid_service = null
 	if _orbit_readout_service != null:
 		_orbit_readout_service.free()
 		_orbit_readout_service = null
@@ -319,6 +343,7 @@ func _process(delta: float) -> void:
 	_sync_view_lod_state(false, false)
 	if _renderer != null:
 		_renderer.sync_visuals_now()
+	_sync_asteroid_renderer()
 	if _is_large_world:
 		_streaming_controller.update(delta, _camera_controller.get_zoom_factor())
 	_sync_galaxy_proxy_transform()
@@ -330,6 +355,7 @@ func _process(delta: float) -> void:
 
 func _sample_perf_probe() -> void:
 	_sample_orbit_service_perf_probe()
+	_sample_asteroid_perf_probe()
 	if _activation_set != null:
 		PerfProbeScript.sample(&"active_ids", _activation_set.get_active_ids().size())
 	if _camera_controller != null:
@@ -374,6 +400,31 @@ func _bump_perf_counter_delta(snapshot: Dictionary, key: StringName) -> void:
 		PerfProbeScript.bump(key, delta)
 
 
+func _sample_asteroid_perf_probe() -> void:
+	if _asteroid_service == null:
+		return
+	var snapshot: Dictionary = _asteroid_service.get_perf_counter_snapshot()
+	PerfProbeScript.sample(
+		AsteroidSimulationServiceScript.PERF_KEY_ACTIVE_ASTEROIDS,
+		int(snapshot.get(AsteroidSimulationServiceScript.PERF_KEY_ACTIVE_ASTEROIDS, 0))
+	)
+	_bump_asteroid_perf_counter_delta(snapshot, AsteroidSimulationServiceScript.PERF_KEY_ATTRACTOR_CHECKS)
+	_bump_asteroid_perf_counter_delta(snapshot, AsteroidSimulationServiceScript.PERF_KEY_SUBSTEPS)
+	_bump_asteroid_perf_counter_delta(snapshot, AsteroidSimulationServiceScript.PERF_KEY_SUBSTEP_CAP_HITS)
+	_bump_asteroid_perf_counter_delta(snapshot, AsteroidSimulationServiceScript.PERF_KEY_SPAWNED)
+	_bump_asteroid_perf_counter_delta(snapshot, AsteroidSimulationServiceScript.PERF_KEY_DESPAWNED)
+	_bump_asteroid_perf_counter_delta(snapshot, AsteroidSimulationServiceScript.PERF_KEY_OUT_OF_BOUNDS)
+	_last_asteroid_perf_counter_snapshot = snapshot.duplicate()
+
+
+func _bump_asteroid_perf_counter_delta(snapshot: Dictionary, key: StringName) -> void:
+	var current: int = int(snapshot.get(key, 0))
+	var previous: int = int(_last_asteroid_perf_counter_snapshot.get(key, 0))
+	var delta: int = current - previous
+	if delta > 0:
+		PerfProbeScript.bump(key, delta)
+
+
 func _dump_perf_probe_snapshot_json(path: String, csv_path: String, csv_rows: int) -> bool:
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
@@ -402,6 +453,8 @@ func _build_perf_probe_snapshot(csv_path: String, csv_rows: int) -> Dictionary:
 		"activation_set": _activation_debug_snapshot(),
 		"derived_snapshot_cache": _derived_cache_debug_snapshot(),
 		"renderer": _debug_snapshot_from(_renderer),
+		"asteroid_renderer": _debug_snapshot_from(_asteroid_renderer),
+		"asteroid_snapshot_cache": _debug_snapshot_from(_asteroid_snapshot_cache),
 		"galaxy_proxy": _debug_snapshot_from(_galaxy_proxy_renderer),
 		"streaming": _debug_snapshot_from(_streaming_controller),
 		"ui": {
@@ -413,6 +466,8 @@ func _build_perf_probe_snapshot(csv_path: String, csv_rows: int) -> Dictionary:
 		"backdrop": _debug_snapshot_from(_backdrop, "debug_snapshot"),
 		"services": {
 			"orbit_perf_counters": _orbit_service.get_perf_counter_snapshot() if _orbit_service != null else {},
+			"asteroid_perf_counters": _asteroid_service.get_perf_counter_snapshot() if _asteroid_service != null else {},
+			"asteroids": _debug_snapshot_from(_asteroid_service),
 			"proto_biosphere": _debug_snapshot_from(_proto_biosphere_service),
 		},
 		"perf_probe": {
@@ -970,12 +1025,15 @@ func _sync_immediate_view_state(force_interest_refresh: bool) -> void:
 	_sync_view_lod_state(force_interest_refresh, _debug_overlay.visible)
 	if _renderer != null:
 		_renderer.sync_visuals_now(true)
+	_sync_asteroid_renderer(true)
 	_sync_galaxy_proxy_transform()
 
 
 func _on_streaming_residency_changed(_resident_root_ids: Array[StringName], focus_root_id: StringName) -> void:
 	_refresh_focus_order()
 	_renderer.rebuild_from_registry()
+	if _asteroid_service != null:
+		_asteroid_service.sync_resident_roots(_active_world_scope_id, _resident_root_ids, TimeService.sim_time_s)
 	if not UniverseRegistry.has_body(_bubble.get_focus()) and UniverseRegistry.has_body(focus_root_id):
 		_focus_index = maxi(_focus_order.find(focus_root_id), 0)
 		_set_focus(focus_root_id, true, true)
@@ -984,10 +1042,16 @@ func _on_streaming_residency_changed(_resident_root_ids: Array[StringName], focu
 	_sync_view_lod_state(true, _debug_overlay.visible)
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
 	_sync_galaxy_proxy_transform()
+	_sync_asteroid_renderer(true)
 
 
 func _on_orbit_service_bodies_updated(ids: Array[StringName], _reason: StringName) -> void:
 	_activation_set.mark_ids_dirty(ids)
+
+
+func _on_orbit_service_step_completed(dt_s: float, t_s: float) -> void:
+	if _asteroid_service != null:
+		_asteroid_service.advance_to_time(t_s, dt_s)
 
 
 static func _is_large_world_id(world_id: StringName) -> bool:
@@ -1012,6 +1076,38 @@ func _sync_view_lod_state(force_interest_refresh: bool, immediate_debug_refresh:
 	if frame_changed:
 		_debug_overlay.mark_dirty(immediate_debug_refresh)
 	_last_frame_label = frame_label
+
+
+func _configure_asteroid_renderer() -> void:
+	if _renderer == null:
+		return
+	if _asteroid_renderer == null:
+		_asteroid_renderer = AsteroidFieldRendererScript.new()
+		_asteroid_renderer.name = "AsteroidFieldRenderer"
+		_renderer.add_child(_asteroid_renderer)
+	_asteroid_renderer.configure(_asteroid_snapshot_cache)
+
+
+func _sync_asteroid_renderer(force: bool = false) -> void:
+	if _asteroid_renderer != null:
+		_asteroid_renderer.sync_visuals_now(force)
+
+
+func _reset_asteroids_for_current_roots(t_s: float) -> void:
+	if _asteroid_service == null:
+		return
+	_asteroid_service.reset_for_world(_active_world_scope_id, _current_resident_root_ids(), t_s)
+
+
+func _current_resident_root_ids() -> Array[StringName]:
+	if _is_large_world and _streaming_controller != null and _streaming_controller.has_method("get_resident_root_ids"):
+		return _streaming_controller.get_resident_root_ids()
+	var root_ids: Array[StringName] = []
+	for id in UniverseRegistry.get_update_order_ref():
+		var def: BodyDef = UniverseRegistry.get_def(id)
+		if def != null and def.is_root():
+			root_ids.append(id)
+	return root_ids
 
 
 func _configure_root_inspector() -> void:
@@ -1156,6 +1252,10 @@ func _on_world_loader_world_loaded(world_id: StringName) -> void:
 		_root_inspector.clear_state()
 	if _life_detail_panel != null:
 		_life_detail_panel.close_panel()
+	_reset_asteroids_for_current_roots(TimeService.sim_time_s)
+	if _asteroid_snapshot_cache != null:
+		_asteroid_snapshot_cache.clear()
+	_sync_asteroid_renderer(true)
 	_refresh_snapshot_interest_ids()
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
 
