@@ -16,7 +16,7 @@ bereits headless abgesicherten Slices.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Body-LOD-Rueckbau mit `7847`
+- `run_tests.bat` lief nach dem kompakten Root-Inspector-Overview mit `7857`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -176,8 +176,12 @@ Konkreter Ablauf:
   jedem Refresh weiterlaufen. Direkter BH-/Root-Fokus soll den
   Inspector nicht mehr automatisch oeffnen; `I` ist der explizite
   Toggle-Pfad. Im `PerfProbe`-Dump dafuer `root_inspector_open`,
-  `root_inspector_row_count` und `root_inspector_model_apply_count`
-  pruefen
+  `root_inspector_row_count`, `root_inspector_full_row_count`,
+  `root_inspector_compact_root_overview` und
+  `root_inspector_model_apply_count` pruefen. Im `ROOT_OVERVIEW` soll
+  der offene Inspector nur Root plus direkte Sterne materialisieren;
+  im Detail-/Fokusblick darf die volle Planet-/Moon-Hierarchie wieder
+  sichtbar werden
 - planetennahe `LIFE`-Badges im Detailblick pruefen:
   Badges bleiben klickbar, folgen den Bodies und erzeugen keine
   auffaellige Transform-Query- oder Textlayout-Chatterei beim stabilen

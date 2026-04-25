@@ -334,6 +334,8 @@ func _sample_perf_probe() -> void:
 		var row_ids: Array = inspector_snapshot.get("row_body_ids", [])
 		PerfProbeScript.sample(&"root_inspector_open", int(bool(inspector_snapshot.get("is_open", false))))
 		PerfProbeScript.sample(&"root_inspector_row_count", row_ids.size())
+		PerfProbeScript.sample(&"root_inspector_full_row_count", int(inspector_snapshot.get("full_row_count", row_ids.size())))
+		PerfProbeScript.sample(&"root_inspector_compact_root_overview", int(bool(inspector_snapshot.get("compact_root_overview", false))))
 		PerfProbeScript.sample(&"root_inspector_model_apply_count", int(inspector_snapshot.get("model_apply_count", 0)))
 
 
@@ -716,6 +718,7 @@ func _sync_view_lod_state(force_interest_refresh: bool, immediate_debug_refresh:
 		_galaxy_proxy_renderer.visible = frame_label == OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW
 	if _planet_badge_overlay != null:
 		_planet_badge_overlay.set_frame_label(frame_label)
+	_sync_root_inspector_display_mode(frame_label)
 	_debug_overlay.set_view_context(_is_large_world, frame_label)
 	var frame_changed: bool = frame_label != _last_frame_label
 	if force_interest_refresh or frame_changed:
@@ -751,6 +754,7 @@ func _configure_life_detail_panel() -> void:
 func _sync_root_inspector_context(auto_open: bool = false) -> void:
 	if not _is_large_world or _root_inspector == null:
 		return
+	_sync_root_inspector_display_mode(_camera_controller.get_frame_label())
 	var focus_id: StringName = _bubble.get_focus()
 	var focus_root_id: StringName = _topology.root_id_of(focus_id)
 	_root_inspector.set_root_context(focus_root_id, focus_id, auto_open)
@@ -773,6 +777,14 @@ func _toggle_root_inspector_for_current_root() -> void:
 		_debug_overlay.mark_dirty(_debug_overlay.visible)
 		return
 	_open_root_inspector_for_current_root()
+
+
+func _sync_root_inspector_display_mode(frame_label: StringName) -> void:
+	if _root_inspector == null or not _root_inspector.has_method("set_compact_root_overview"):
+		return
+	_root_inspector.set_compact_root_overview(
+		_is_large_world and frame_label == OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW
+	)
 
 
 func _planetary_interest_ids_for_root(root_id: StringName) -> Array[StringName]:

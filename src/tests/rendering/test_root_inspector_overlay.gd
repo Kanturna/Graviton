@@ -46,6 +46,7 @@ static func run(ctx) -> void:
 	ctx.current_suite = "test_root_inspector_overlay"
 	_test_model_builder_builds_hierarchy_and_summary_for_starter_root(ctx)
 	_test_overlay_formats_navigation_first_rows(ctx)
+	_test_overlay_compact_root_overview_limits_visible_rows(ctx)
 	_test_overlay_starts_closed_and_emits_focus_requests(ctx)
 	_test_overlay_life_chip_emits_details_without_focus_request(ctx)
 	_test_overlay_throttles_sim_tick_rebuilds_but_not_user_events(ctx)
@@ -183,6 +184,37 @@ static func _test_overlay_formats_navigation_first_rows(ctx) -> void:
 		}) == "Gamma III   PLANET   HABITABLE / COLD   ECOSYSTEM   0 moons\nSpecies: CRYO / ABUNDANT",
 		"Fokussierte Species-Rows bekommen nur die definierte kompakte Zusatzzeile"
 	)
+
+	overlay.free()
+	_teardown_starter_root_context(context)
+
+
+static func _test_overlay_compact_root_overview_limits_visible_rows(ctx) -> void:
+	var context: Dictionary = _build_starter_root_context()
+	var overlay = RootInspectorOverlayScript.new()
+	overlay.configure(
+		context.get("registry"),
+		context.get("topology"),
+		context.get("snapshot_cache")
+	)
+	overlay.set_compact_root_overview(true)
+	overlay.set_root_context(&"obsidian", &"alpha", true)
+
+	var compact_snapshot: Dictionary = overlay.get_debug_snapshot()
+	ctx.assert_true(bool(compact_snapshot.get("compact_root_overview", false)), "Compact-Modus ist im Debug-Snapshot sichtbar")
+	ctx.assert_true(int(compact_snapshot.get("full_row_count", 0)) == 18, "Compact-Modus behaelt das volle Inspector-Modell fuer Summary/Diagnose")
+	ctx.assert_true(
+		compact_snapshot.get("row_body_ids", []) == [&"obsidian", &"alpha", &"beta", &"gamma", &"delta"],
+		"Compact-Modus materialisiert im Root-Overview nur Root plus direkte Stern-Navigation"
+	)
+	ctx.assert_true(_find_row_panel_by_body_id(overlay, &"alpha") != null, "Compact-Modus behaelt Stern-Rows klickbar")
+	ctx.assert_true(_find_row_panel_by_body_id(overlay, &"gamma_iv") == null, "Compact-Modus materialisiert keine planetaren Chip-Rows")
+
+	overlay.set_compact_root_overview(false)
+	var full_snapshot: Dictionary = overlay.get_debug_snapshot()
+	ctx.assert_true(not bool(full_snapshot.get("compact_root_overview", true)), "Voller Inspector-Modus ist im Debug-Snapshot sichtbar")
+	ctx.assert_true(int(full_snapshot.get("visible_row_count", 0)) == 18, "Voller Inspector-Modus materialisiert wieder alle Rows")
+	ctx.assert_true(_find_row_panel_by_body_id(overlay, &"gamma_iv") != null, "Voller Inspector-Modus stellt planetare Rows wieder her")
 
 	overlay.free()
 	_teardown_starter_root_context(context)

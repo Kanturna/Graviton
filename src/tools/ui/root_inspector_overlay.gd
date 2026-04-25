@@ -29,6 +29,7 @@ var _last_sim_tick_rebuild_usec: int = 0
 var _rebuild_count: int = 0
 var _model_apply_count: int = 0
 var _last_model_signature: String = ""
+var _compact_root_overview: bool = false
 
 var _title_label: Label = null
 var _type_label: Label = null
@@ -72,6 +73,15 @@ func set_root_context(root_id: StringName, focused_body_id: StringName, auto_ope
 		_rebuild()
 
 
+func set_compact_root_overview(value: bool) -> void:
+	if value == _compact_root_overview:
+		return
+	_compact_root_overview = value
+	_last_sim_tick_rebuild_usec = 0
+	if visible:
+		_rebuild()
+
+
 func close_panel(emit_close_signal: bool = true) -> void:
 	visible = false
 	_last_sim_tick_rebuild_usec = 0
@@ -104,6 +114,9 @@ func get_debug_snapshot() -> Dictionary:
 		"root_id": _root_id,
 		"focused_body_id": _focused_body_id,
 		"row_body_ids": _row_body_ids.duplicate(),
+		"visible_row_count": _row_body_ids.size(),
+		"full_row_count": _full_model_row_count(),
+		"compact_root_overview": _compact_root_overview,
 		"summary": _current_model.get("summary", {}).duplicate(),
 		"rebuild_count": _rebuild_count,
 		"model_apply_count": _model_apply_count,
@@ -198,11 +211,12 @@ func _rebuild() -> void:
 	if _current_model.is_empty():
 		_apply_empty_model()
 		return
-	var next_signature: String = _model_signature(_current_model)
+	var display_model: Dictionary = _display_model_for_current_mode(_current_model)
+	var next_signature: String = _model_signature(display_model)
 	if next_signature == _last_model_signature:
 		return
 	_last_model_signature = next_signature
-	_apply_model(_current_model)
+	_apply_model(display_model)
 
 
 func _apply_empty_model() -> void:
@@ -279,9 +293,33 @@ static func _format_row_text(row: Dictionary) -> String:
 	return "%s\n%s" % [line_one, detail_text]
 
 
+func _display_model_for_current_mode(model: Dictionary) -> Dictionary:
+	if not _compact_root_overview:
+		return model
+	var compact_model: Dictionary = model.duplicate(true)
+	var compact_rows: Array[Dictionary] = []
+	for row_variant in model.get("rows", []):
+		var row: Dictionary = row_variant
+		if _is_compact_root_overview_row(row):
+			compact_rows.append(row)
+	compact_model["rows"] = compact_rows
+	compact_model["display_mode"] = "compact_root_overview"
+	return compact_model
+
+
+static func _is_compact_root_overview_row(row: Dictionary) -> bool:
+	return int(row.get("depth", 0)) <= 1
+
+
+func _full_model_row_count() -> int:
+	var rows: Array = _current_model.get("rows", [])
+	return rows.size()
+
+
 static func _model_signature(model: Dictionary) -> String:
 	var parts: Array[String] = [
 		"root",
+		String(model.get("display_mode", "full")),
 		String(model.get("root_id", StringName(""))),
 		String(model.get("root_name", "")),
 		String(model.get("root_kind_text", "")),

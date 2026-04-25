@@ -68,6 +68,7 @@ class RootInspectorProbe:
 	var root_id: StringName = &""
 	var focused_body_id: StringName = &""
 	var auto_open_count: int = 0
+	var compact_root_overview: bool = false
 
 	func set_root_context(next_root_id: StringName, next_focused_body_id: StringName, auto_open: bool = false) -> void:
 		root_id = next_root_id
@@ -75,6 +76,9 @@ class RootInspectorProbe:
 		if auto_open:
 			open = true
 			auto_open_count += 1
+
+	func set_compact_root_overview(value: bool) -> void:
+		compact_root_overview = value
 
 	func is_open() -> bool:
 		return open
@@ -173,6 +177,7 @@ static func run(ctx) -> void:
 	ctx.current_suite = "test_orbit_testbed_root_inspector"
 	_test_root_inspector_opens_only_explicitly_and_overrides_root_overview_interest(ctx)
 	_test_root_inspector_toggle_is_the_explicit_open_path(ctx)
+	_test_root_inspector_tracks_root_overview_compact_mode(ctx)
 	_test_root_inspector_stays_closed_for_focus_and_streaming_events_and_resets_on_world_change(ctx)
 	_test_root_inspector_clicks_use_immediate_focus_fit(ctx)
 	_test_non_large_world_keeps_root_inspector_hidden(ctx)
@@ -217,6 +222,21 @@ static func _test_root_inspector_toggle_is_the_explicit_open_path(ctx) -> void:
 	testbed._toggle_root_inspector_for_current_root()
 	ctx.assert_true(not testbed._root_inspector.is_open(), "I-/Toggle-Pfad schliesst den Root-Inspector wieder")
 	ctx.assert_true(testbed._derived_snapshot_cache.last_interest_ids.is_empty(), "Geschlossener Toggle-Inspector stellt ROOT_OVERVIEW fokus-only wieder her")
+	_destroy_testbed_probe(testbed)
+
+
+static func _test_root_inspector_tracks_root_overview_compact_mode(ctx) -> void:
+	var testbed = _build_testbed_probe(true)
+	var camera: CameraControllerProbe = testbed._camera_controller
+	var inspector: RootInspectorProbe = testbed._root_inspector
+
+	camera.frame_label = OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW
+	testbed._sync_view_lod_state(true, false)
+	ctx.assert_true(inspector.compact_root_overview, "Root-Overview setzt den Inspector in den kompakten Navigator-Modus")
+
+	camera.frame_label = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
+	testbed._sync_view_lod_state(true, false)
+	ctx.assert_true(not inspector.compact_root_overview, "Lokaler Fokus-/Detailblick stellt den vollen Inspector-Modus wieder her")
 	_destroy_testbed_probe(testbed)
 
 

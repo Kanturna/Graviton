@@ -1,5 +1,27 @@
 # Graviton - Decisions
 
+## 2026-04-25 - Root-Inspector rendert im Root-Overview kompakt
+
+Der rechte Root-Inspector bleibt ein Navigationswerkzeug, rendert im
+`ROOT_OVERVIEW` aber nicht mehr die komplette Planet-/Moon-/Chip-
+Hierarchie. Der aktuelle Perf-Dump zeigte, dass der offene Inspector
+nicht durch staendige Model-Rebuilds teuer war, sondern durch die
+dauerhaft sichtbaren Control-/Panel-/Label-/Chip-Nodes.
+
+Konsequenz:
+
+- im `ROOT_OVERVIEW` materialisiert der Inspector nur Root plus direkte
+  Stern-Rows als schnellen Navigator
+- Summary-Zahlen bleiben aus dem vollen Modell sichtbar, damit Root-
+  Umfang und Umweltzaehlung nicht verloren gehen
+- Planet-/Moon-Rows samt Environment-/Life-Chips bleiben im vollen
+  Inspector-Modus fuer lokale Detail-/Fokusansichten erhalten
+- neue PerfProbe-Spalten `root_inspector_full_row_count` und
+  `root_inspector_compact_root_overview` trennen sichtbare Row-Kosten
+  von der vollen Modellgroesse
+- diese Aenderung bleibt rein View-/UI-seitig und fuehrt keine neue
+  Simulations- oder Snapshot-Wahrheit ein
+
 ## 2026-04-25 - Root-Inspector oeffnet nicht mehr auf Root-Fokus
 
 Der Root-Inspector bleibt ein explizites Large-World-Navigationswerkzeug,
