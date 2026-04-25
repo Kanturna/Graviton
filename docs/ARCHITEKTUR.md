@@ -76,6 +76,12 @@ per-frame Diagnose-Counter. Der `P`-Hotkey schreibt die bestehende
 CSV-Zeitreihe und zusaetzlich einen JSON-Sidecar mit punktuellen
 On-Demand-Snapshots fuer Szene, Fokus, Registry, Kamera, Aktiv-Set,
 Derived-Cache, Renderer, Streaming, UI und Service-Counter.
+Stage-Zeiten fuer Asteroiden- und Render-Hotpaths werden ebenfalls im
+Composition Root gemessen (`asteroid_advance_us`,
+`asteroid_snapshot_refresh_us`, `asteroid_renderer_sync_us`,
+`orbit_renderer_sync_us`). `sim/`-Services bleiben dabei frei von
+`PerfProbe`-Abhaengigkeiten und exponieren hoechstens read-only
+Counter wie `free_drift_count`.
 
 **Konsequenz:** `PerfProbe` ist CSV-/Playtest-Diagnostik, keine
 Simulationswahrheit. Der JSON-Sidecar ist ebenfalls nur Diagnoseausgabe
@@ -529,17 +535,22 @@ Quelle fuer `BLACK_HOLE`, `STAR`, `PLANET` und `MOON`; Asteroiden
 lesen diese Zustande nur als read-only Kontext. Als v1-Attraktoren
 gelten bewusst nur `STAR`, `PLANET` und `MOON`.
 
-**State und Autoritaet:** `AsteroidState` speichert `anchor_id`,
-Position und Velocity in double-Feldern im Anchor-Frame. Nur
-`AsteroidSimulationService` darf diesen State schreiben. Asteroiden
-haben einen eigenen ID-Raum ausserhalb `IdRegistry`; `BodyType.Kind.ASTEROID`
-bleibt fuer spaetere benannte Grossasteroiden reserviert.
+**State und Autoritaet:** `AsteroidDef.spawn_origin_id` beschreibt das
+deterministische Stern-Spawnzentrum. `AsteroidState.anchor_id`
+beschreibt dagegen den Rechen-Frame und ist in v1.1 stabil der
+`root_id`. Position und Velocity liegen als double-Felder im Root-
+Frame. Nur `AsteroidSimulationService` darf diesen State schreiben.
+Asteroiden haben einen eigenen ID-Raum ausserhalb `IdRegistry`;
+`BodyType.Kind.ASTEROID` bleibt fuer spaetere benannte Grossasteroiden
+reserviert.
 
-**Frame-Politik v1:** v1 fuehrt kein `FrameDef` ein. `anchor_id` ist ein
-Minor-Body-internes Bezugskonzept und bleibt ueber die Lebenszeit eines
-Asteroiden stabil. Anchor-Switching, Stetigkeitsgarantien beim Switch
-und eine moegliche Vereinheitlichung mit einem spaeteren Frame-Modell
-sind Folge-Slices.
+**Frame-Politik v1.1:** v1.1 fuehrt kein `FrameDef` ein und nutzt den
+Root als stabilen Asteroiden-Anchor. Damit entfaellt bewusst der
+urspruengliche lokale Anchor-Praezisionsvorteil aus v1; die double-
+Komponenten im Root-Frame sind fuer v1.1 ausreichend. Anchor-Switching
+zu naeheren Major-Body-Frames, Stetigkeitsgarantien beim Switch und
+eine moegliche Vereinheitlichung mit einem spaeteren Frame-Modell sind
+Folge-Slices.
 
 **Lifecycle v1:** In Single-World-Szenen werden Asteroiden fuer die
 geladenen Root-IDs gespawnt. In Large-World-Szenen folgt der
@@ -548,25 +559,40 @@ residenten oder vorgewaermten Neighbor-Roots. Neighbor-Residency bleibt
 Streaming-/Registry-Zustand fuer Major Bodies; sie erweitert in v1
 nicht automatisch die aktive Minor-Body-Physik.
 
-**Physik v1:** Restricted Gravity. `STAR`, `PLANET` und `MOON`
-ziehen Asteroiden an; Schwarze Loecher sind in v1 Root-/Anchor-Kontext,
-aber keine Asteroiden-Attraktoren. Asteroiden ziehen nichts an. Es gibt keine
-Asteroid-Asteroid-Gravitation, keine Asteroid-Kollisionen, keine
-Impacts, kein Merge/Split und keine Life-Folgen.
+**Physik v1.1:** Restricted Gravity mit Freiflug. `STAR`, `PLANET`
+und `MOON` ziehen Asteroiden nur innerhalb expliziter Einflussradien
+an; Schwarze Loecher sind in v1.1 Root-/Kontextkoerper, aber keine
+Asteroiden-Attraktoren. Ausserhalb aktiver Felder driftet ein
+Asteroid linear mit unveraenderter Velocity weiter. Es gibt keine
+globale Dauerschwerkraft, keinen Re-Spawn/Belt-Replenishment in v1.1
+und keinen Consume-/Kill-Radius fuer Schwarze Loecher. Out-of-Bounds-
+Despawn ist akzeptiertes v1.1-Verhalten. Asteroiden ziehen nichts an.
+Es gibt keine Asteroid-Asteroid-Gravitation, keine
+Asteroid-Kollisionen, keine Impacts, kein Merge/Split und keine
+Life-Folgen.
 
 **Attractor-Auswahl:** Pro Tick wird ein fixes Attractor-Set fuer alle
-Substeps genutzt, capped auf sechs Eintraege. Die teure Set-Auswahl
-darf in v1 ueber ein kurzes Refresh-Fenster wiederverwendet werden;
-die konkreten Major-Body-Positionen der ausgewaehlten Attraktoren
-werden trotzdem in jedem Tick neu gelesen. Bereits genutzte Attraktoren
-bleiben stabil, solange ein neuer Kandidat den schwaechsten aktuellen
-optionalen Attraktor nicht mindestens um Faktor `1.25` uebertrifft.
+Substeps genutzt, capped auf sechs Eintraege. Kandidaten muessen im
+Root des Asteroiden liegen, `STAR`/`PLANET`/`MOON` sein und innerhalb
+ihres Einflussradius liegen. Bereits aktive Attraktoren nutzen einen
+Exit-Radius mit Faktor `1.15`; optionale Quellen werden nur ersetzt,
+wenn ein neuer Kandidat den schwaechsten aktuellen Attraktor mindestens
+um Faktor `1.25` uebertrifft. Die teure Set-Auswahl darf in v1.1 ueber
+ein kurzes Refresh-Fenster wiederverwendet werden; die konkreten
+Major-Body-Positionen der ausgewaehlten Attraktoren werden trotzdem in
+jedem Tick neu gelesen.
 
 **Runtime/View:** `AsteroidSnapshotCache` lebt getrennt von
 `DerivedSnapshotCache` in `runtime/derived/` und ist read-only Glue fuer
-Renderer. `AsteroidFieldRenderer` rendert Punkte und kurze Trails aus
-Snapshots. Trail-History ist ein reiner Renderer-Ringbuffer und keine
-Simulations- oder Snapshot-Wahrheit.
+Renderer. Er exponiert Root-Frame-Komponenten plus abgeleitete
+View-Positionen, ohne Sim-State zu schreiben. `AsteroidFieldRenderer`
+rendert Punkte und kurze Trails aus Snapshots. Trail-History ist ein
+reiner Renderer-Ringbuffer aus stabilen Samples und keine Simulations-
+oder Snapshot-Wahrheit; die Reprojektion nutzt pro Frame einen
+Anchor-View-Cache, damit pro unique `anchor_id` nur eine
+`compose_view_position_m`-Komposition anfaellt. Trails duerfen bei
+Fokuswechseln innerhalb desselben Roots erhalten bleiben, muessen bei
+Root-/World-Wechsel und Despawn aber geloescht werden.
 
 ## Large-World Proxy-Layer - ADR
 

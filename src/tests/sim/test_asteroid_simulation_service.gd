@@ -1,6 +1,7 @@
 extends RefCounted
 
 const AsteroidSimulationServiceScript = preload("res://src/sim/asteroids/asteroid_simulation_service.gd")
+const RelativeStateResolverScript = preload("res://src/sim/topology/relative_state_resolver.gd")
 
 
 static func run(ctx) -> void:
@@ -11,7 +12,9 @@ static func run(ctx) -> void:
 	_test_anchor_id_stays_stable(ctx)
 	_test_black_holes_are_not_v1_attractors(ctx)
 	_test_initial_spawn_has_radial_drift(ctx)
-	_test_attractor_cap_and_hysteresis(ctx)
+	_test_free_drift_without_attractors_is_linear(ctx)
+	_test_influence_radius_and_hysteresis(ctx)
+	_test_out_of_bounds_free_drift_deactivates(ctx)
 	_test_sync_resident_roots_lifecycle_is_idempotent(ctx)
 	_test_single_world_spawns_without_streaming_controller(ctx)
 	_test_sim_asteroids_imports_no_runtime_tools_or_scenes(ctx)
@@ -145,8 +148,12 @@ static func _test_spawn_is_deterministic(ctx) -> void:
 			"deterministischer Spawn haelt IDs stabil")
 		ctx.assert_almost(float(a.get("x_m", 0.0)), float(b.get("x_m", 0.0)), 1.0e-6,
 			"deterministischer Spawn haelt Positionen stabil")
-		ctx.assert_true(StringName(a.get("anchor_id", StringName(""))) != StringName(""),
-			"Asteroid hat einen festen Anchor")
+		ctx.assert_true(StringName(a.get("anchor_id", StringName(""))) == &"root_a",
+			"Asteroid nutzt in v1.1 den Root als stabilen Frame-Anchor")
+		var spawn_origin_id: StringName = a.get("spawn_origin_id", StringName(""))
+		var spawn_origin_def: BodyDef = reg.get_def(spawn_origin_id)
+		ctx.assert_true(spawn_origin_def != null and spawn_origin_def.kind == BodyType.Kind.STAR,
+			"AsteroidDef.spawn_origin_id bleibt das deterministische Stern-Spawnzentrum")
 
 	service_a.free()
 	service_b.free()
@@ -202,6 +209,8 @@ static func _test_anchor_id_stays_stable(ctx) -> void:
 	var service = _make_service(reg)
 	service.reset_for_world(&"scope_a", [&"root_a"], 0.0)
 	var before: Dictionary = _anchors_by_id(service.get_state_snapshot().get("entries", []))
+	for id in before.keys():
+		ctx.assert_true(before[id] == &"root_a", "V1.1-Anchor ist initial der Root")
 	for step in range(8):
 		service.advance_to_time(float(step + 1) * 900.0, 900.0)
 	var after: Dictionary = _anchors_by_id(service.get_state_snapshot().get("entries", []))
@@ -241,10 +250,15 @@ static func _test_initial_spawn_has_radial_drift(ctx) -> void:
 	for entry in service.get_state_snapshot().get("entries", []):
 		if typeof(entry) != TYPE_DICTIONARY:
 			continue
-		var x: float = float(entry.get("x_m", 0.0))
-		var y: float = float(entry.get("y_m", 0.0))
+		var spawn_origin_id: StringName = entry.get("spawn_origin_id", StringName(""))
+		var origin: Dictionary = _resolve_relative(reg, spawn_origin_id, &"root_a")
+		ctx.assert_true(bool(origin.get("ok", false)), "Spawn-Origin laesst sich im Root-Frame aufloesen")
+		var x: float = float(entry.get("x_m", 0.0)) - float(origin.get("x_m", 0.0))
+		var y: float = float(entry.get("y_m", 0.0)) - float(origin.get("y_m", 0.0))
+		var vx: float = float(entry.get("vx_mps", 0.0)) - float(origin.get("vx_mps", 0.0))
+		var vy: float = float(entry.get("vy_mps", 0.0)) - float(origin.get("vy_mps", 0.0))
 		var radius: float = maxf(sqrt(x * x + y * y), 1.0)
-		var radial_speed: float = (x * float(entry.get("vx_mps", 0.0)) + y * float(entry.get("vy_mps", 0.0))) / radius
+		var radial_speed: float = (x * vx + y * vy) / radius
 		if absf(radial_speed) > 10.0:
 			drift_count += 1
 	ctx.assert_true(drift_count > 0,
@@ -254,37 +268,128 @@ static func _test_initial_spawn_has_radial_drift(ctx) -> void:
 	reg.free()
 
 
-static func _test_attractor_cap_and_hysteresis(ctx) -> void:
+static func _test_free_drift_without_attractors_is_linear(ctx) -> void:
 	var reg := _make_registry()
 	var service = _make_service(reg)
 	service.reset_for_world(&"scope_a", [&"root_a"], 0.0)
 	var state = service._states_by_id[service._state_order[0]]
-	state.anchor_id = &"star_a"
 	state.root_id = &"root_a"
-	state.x_m = 1.05e11
-	state.y_m = 0.0
-	state.z_m = 0.0
+	state.anchor_id = &"root_a"
+	state.current_attractor_ids.clear()
+	state.x_m = 1.0e13
+	state.y_m = -2.0e12
+	state.z_m = 7.0e8
+	state.vx_mps = 1234.0
+	state.vy_mps = -987.0
+	state.vz_mps = 55.0
+
+	service.advance_to_time(12.0, 12.0)
+
+	ctx.assert_almost(state.x_m, 1.0e13 + 1234.0 * 12.0, 1.0e-3,
+		"Freiflug ohne Attraktoren integriert x linear")
+	ctx.assert_almost(state.y_m, -2.0e12 - 987.0 * 12.0, 1.0e-3,
+		"Freiflug ohne Attraktoren integriert y linear")
+	ctx.assert_almost(state.vx_mps, 1234.0, 1.0e-9,
+		"Freiflug laesst Velocity unveraendert")
+	ctx.assert_true(state.current_attractor_ids.is_empty(),
+		"ausserhalb aller Einflussradien bleibt das Attractor-Set leer")
+	ctx.assert_true(int(service.get_perf_counter_snapshot().get(AsteroidSimulationServiceScript.PERF_KEY_FREE_DRIFT_COUNT, 0)) > 0,
+		"Freiflug erhoeht den free_drift_count")
+
+	service.free()
+	reg.free()
+
+
+static func _test_influence_radius_and_hysteresis(ctx) -> void:
+	var reg := _make_registry()
+	var service = _make_service(reg)
+	service.reset_for_world(&"scope_a", [&"root_a"], 0.0)
+	var state = service._states_by_id[service._state_order[0]]
+	state.root_id = &"root_a"
+	state.anchor_id = &"root_a"
+	state.current_attractor_ids.clear()
 	reg.get_def(&"star_b").mass_kg = 1.0
-	reg.get_def(&"moon_a").mass_kg = 1.0
+	var star_state: BodyState = reg.get_state(&"star_a")
+	star_state.position_parent_frame_m = Vector3.ZERO
+	star_state.velocity_parent_frame_mps = Vector3.ZERO
+	var planet_ids: Array[StringName] = [&"planet_a", &"planet_b", &"planet_c", &"planet_d", &"planet_e"]
 	for idx in range(5):
-		var planet_id: StringName = [&"planet_a", &"planet_b", &"planet_c", &"planet_d", &"planet_e"][idx]
+		var planet_id: StringName = planet_ids[idx]
 		reg.get_def(planet_id).mass_kg = UnitSystem.EARTH_MASS_KG
 		var planet_state: BodyState = reg.get_state(planet_id)
-		planet_state.position_parent_frame_m = Vector3(1.06e11 + float(idx) * 2.0e9, 0.0, 0.0)
+		planet_state.position_parent_frame_m = Vector3(1.06e11 + float(idx) * 1.0e8, 0.0, 0.0)
 		planet_state.velocity_parent_frame_mps = Vector3.ZERO
-	var current_attractor_ids: Array[StringName] = [&"root_a", &"star_a", &"planet_a", &"planet_b", &"planet_c", &"planet_d"]
-	state.current_attractor_ids = current_attractor_ids
+
+	state.x_m = 1.06e11
+	state.y_m = 0.0
+	state.z_m = 0.0
+	service._relative_state_cache.clear()
 
 	var selected: Array[StringName] = service.call("_select_attractors_for", state)
 	ctx.assert_true(selected.size() <= AsteroidSimulationServiceScript.MAX_ATTRACTORS,
 		"Attractor-Auswahl bleibt auf MAX_ATTRACTORS gecappt")
-	ctx.assert_true(selected.has(&"planet_d"),
-		"Hysterese behaelt einen aktuellen optionalen Attraktor bei knapper Konkurrenz")
+	ctx.assert_true(selected.has(&"star_a") and selected.has(&"planet_a"),
+		"Eintritt in Stern-/Planeten-Einflussradien aktiviert passende Attraktoren")
+	ctx.assert_true(not selected.has(&"root_a"),
+		"Root-Schwarzes-Loch bleibt aus der V1.1-Attractor-Auswahl ausgeschlossen")
 
-	reg.get_def(&"planet_e").mass_kg = UnitSystem.EARTH_MASS_KG * 20.0
-	var replaced: Array[StringName] = service.call("_select_attractors_for", state)
-	ctx.assert_true(replaced.has(&"planet_e"),
-		"Hysterese ersetzt erst bei deutlichem Score-Vorsprung")
+	var moon_state: BodyState = reg.get_state(&"moon_a")
+	moon_state.position_parent_frame_m = Vector3(1.0e8, 0.0, 0.0)
+	moon_state.velocity_parent_frame_mps = Vector3.ZERO
+	state.current_attractor_ids.clear()
+	state.x_m = 1.061e11
+	service._relative_state_cache.clear()
+	var moon_selected: Array[StringName] = service.call("_select_attractors_for", state)
+	ctx.assert_true(moon_selected.has(&"moon_a"),
+		"Eintritt in einen Mond-Einflussradius aktiviert den Mond als Attraktor")
+
+	var current_attractors: Array[StringName] = [&"planet_a"]
+	state.current_attractor_ids = current_attractors
+	state.x_m = 1.06e11 + float(service.call("_influence_radius_m", reg.get_def(&"planet_a"))) * 1.10
+	var hysteresis_selected: Array[StringName] = service.call("_select_attractors_for", state)
+	ctx.assert_true(hysteresis_selected.has(&"planet_a"),
+		"Exit-Hysterese behaelt einen aktuellen Planeten am Einflussrand")
+
+	state.current_attractor_ids = current_attractors
+	state.x_m = 1.06e11 + float(service.call("_influence_radius_m", reg.get_def(&"planet_a"))) * 1.20
+	var exited: Array[StringName] = service.call("_select_attractors_for", state)
+	ctx.assert_true(not exited.has(&"planet_a"),
+		"ausserhalb des Exit-Radius faellt der Planet aus dem Attractor-Set")
+
+	state.current_attractor_ids.clear()
+	state.x_m = 1.0e13
+	state.y_m = 0.0
+	state.z_m = 0.0
+	var empty_selected: Array[StringName] = service.call("_select_attractors_for", state)
+	ctx.assert_true(empty_selected.is_empty(),
+		"ausserhalb aller Einflussradien gibt es keine globale Dauerschwerkraft")
+
+	service.free()
+	reg.free()
+
+
+static func _test_out_of_bounds_free_drift_deactivates(ctx) -> void:
+	var reg := _make_registry()
+	var service = _make_service(reg)
+	service.reset_for_world(&"scope_a", [&"root_a"], 0.0)
+	var state = service._states_by_id[service._state_order[0]]
+	state.root_id = &"root_a"
+	state.anchor_id = &"root_a"
+	state.current_attractor_ids.clear()
+	state.x_m = AsteroidSimulationServiceScript.OUT_OF_BOUNDS_M - 100.0
+	state.y_m = 0.0
+	state.z_m = 0.0
+	state.vx_mps = 1000.0
+	state.vy_mps = 0.0
+	state.vz_mps = 0.0
+
+	service.advance_to_time(1.0, 1.0)
+
+	ctx.assert_true(not state.is_active, "Out-of-Bounds-Freiflug deaktiviert den Asteroid")
+	ctx.assert_true(int(service.get_perf_counter_snapshot().get(AsteroidSimulationServiceScript.PERF_KEY_OUT_OF_BOUNDS, 0)) == 1,
+		"Out-of-Bounds-Despawn erhoeht den Counter")
+	ctx.assert_true(int(service.get_state_snapshot().get("count", 0)) == AsteroidSimulationServiceScript.ASTEROIDS_PER_ROOT - 1,
+		"deaktivierte Asteroiden verschwinden aus dem State-Snapshot")
 
 	service.free()
 	reg.free()
@@ -378,3 +483,9 @@ static func _root_ids(registry: Node) -> Array[StringName]:
 		if def != null and def.is_root():
 			out.append(id)
 	return out
+
+
+static func _resolve_relative(registry: Node, body_id: StringName, anchor_id: StringName) -> Dictionary:
+	var resolver = RelativeStateResolverScript.new()
+	resolver.configure(registry)
+	return resolver.resolve_body_relative_to_anchor(body_id, anchor_id)

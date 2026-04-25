@@ -1,5 +1,7 @@
 extends RefCounted
 
+const AsteroidSnapshotCacheScript = preload("res://src/runtime/derived/asteroid_snapshot_cache.gd")
+
 
 class SnapshotCacheProbe:
 	extends RefCounted
@@ -18,9 +20,57 @@ class SnapshotCacheProbe:
 		return entries.duplicate(true)
 
 
+class AsteroidServiceProbe:
+	extends RefCounted
+
+	var snapshot: Dictionary = {
+		"revision": 1,
+		"entries": [
+			{
+				"id": &"ast_a",
+				"root_id": &"root",
+				"anchor_id": &"root",
+				"spawn_origin_id": &"star",
+				"x_m": 10.0,
+				"y_m": 0.0,
+				"z_m": 0.0,
+				"radius_m": 100.0,
+				"visual_class": &"silicate",
+			},
+			{
+				"id": &"ast_b",
+				"root_id": &"root",
+				"anchor_id": &"root",
+				"spawn_origin_id": &"star",
+				"x_m": 20.0,
+				"y_m": 0.0,
+				"z_m": 0.0,
+				"radius_m": 120.0,
+				"visual_class": &"metal",
+			},
+		],
+	}
+
+	func get_state_snapshot() -> Dictionary:
+		return snapshot
+
+
+class BubbleProbe:
+	extends RefCounted
+
+	var compose_calls: int = 0
+
+	func compose_view_position_m(id: StringName, _presentation_offset_s: float = 0.0) -> Vector3:
+		compose_calls += 1
+		if id == &"root":
+			return Vector3(100.0, 0.0, 0.0)
+		return Vector3.INF
+
+
 static func run(ctx) -> void:
 	ctx.current_suite = "test_asteroid_field_renderer"
 	_test_renderer_keeps_trails_as_local_history(ctx)
+	_test_renderer_path_composes_once_per_anchor_per_sync(ctx)
 
 
 static func _test_renderer_keeps_trails_as_local_history(ctx) -> void:
@@ -30,6 +80,9 @@ static func _test_renderer_keeps_trails_as_local_history(ctx) -> void:
 	renderer.configure(cache)
 	ctx.assert_true(renderer._trail_histories_by_id.has(&"ast_a"),
 		"AsteroidFieldRenderer baut Trail-History lokal aus Snapshots")
+	var first_sample: Dictionary = renderer._trail_histories_by_id[&"ast_a"][0]
+	ctx.assert_true(not first_sample.has("view_position_m"),
+		"Trail-History speichert keine View-Koordinaten als Wahrheit")
 
 	cache.revision = 2
 	cache.entries = [_entry(&"ast_a", Vector3(UnitSystem.RENDER_SCALE_M_PER_UNIT * 30.0, 0.0, 0.0))]
@@ -47,9 +100,38 @@ static func _test_renderer_keeps_trails_as_local_history(ctx) -> void:
 	renderer.free()
 
 
+static func _test_renderer_path_composes_once_per_anchor_per_sync(ctx) -> void:
+	var renderer = load("res://src/tools/rendering/asteroid_field_renderer.gd").new()
+	var service := AsteroidServiceProbe.new()
+	var bubble := BubbleProbe.new()
+	var cache = AsteroidSnapshotCacheScript.new()
+	cache.configure(service, bubble)
+	renderer.configure(cache)
+
+	bubble.compose_calls = 0
+	service.snapshot["revision"] = 2
+	for entry in service.snapshot.get("entries", []):
+		if typeof(entry) == TYPE_DICTIONARY:
+			entry["x_m"] = float(entry.get("x_m", 0.0)) + UnitSystem.RENDER_SCALE_M_PER_UNIT * 2.0
+	renderer.sync_visuals_now()
+
+	ctx.assert_true(bubble.compose_calls == 1,
+		"Renderer/Snapshot-Pfad komponiert pro sync genau einmal pro unique Asteroid-Anchor")
+	ctx.assert_true(renderer.get_debug_snapshot().get("anchor_view_count", 0) == 1,
+		"Renderer nutzt einen per-frame Anchor-View-Cache fuer Trail-Reprojektion")
+	renderer.free()
+
+
 static func _entry(id: StringName, position_m: Vector3) -> Dictionary:
 	return {
 		"id": id,
+		"root_id": &"root",
+		"anchor_id": &"root",
+		"spawn_origin_id": &"star",
+		"x_m": position_m.x,
+		"y_m": position_m.y,
+		"z_m": position_m.z,
+		"anchor_view_m": Vector3.ZERO,
 		"view_position_m": position_m,
 		"visual_class": &"silicate",
 		"is_finite": true,

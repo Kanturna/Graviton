@@ -443,6 +443,35 @@ Missing-Request-Grace, Rejoin-Budget und `BodyState.current_mode`.
 - `INACTIVE_DISTANT` - fokus-relativ erreichbar, ausserhalb Radius
 - `INACTIVE_NO_LCA` - nicht fokus-relativ vergleichbar (anderer Baum)
 
+## Asteroiden v1.1
+
+- Kleine sichtbare Asteroiden sind Minor Bodies in `sim/asteroids/`,
+  keine `UniverseRegistry`-Bodies und keine `BodyDef.parent_id`-
+  Reparenting-Faelle.
+- `AsteroidDef.spawn_origin_id` beschreibt das Stern-Spawnzentrum.
+  `AsteroidState.anchor_id` beschreibt den Rechen-Frame und ist in
+  v1.1 stabil der jeweilige Root.
+- Asteroidenpositionen und -velocities liegen als double-Felder im
+  Root-Frame. `Vector3`-View-Positionen aus Snapshot-/Renderer-Pfaden
+  sind abgeleitet und keine Sim-Wahrheit.
+- `AsteroidSimulationService` darf nur `AsteroidState` schreiben.
+  Major-Body-`BodyState` bleibt ausschliesslich `OrbitService`-
+  Autoritaet.
+- `STAR`, `PLANET` und `MOON` sind nur innerhalb expliziter
+  Einflussradien Attraktoren. Bereits aktive Attraktoren duerfen bis
+  zum `1.15`-Exit-Radius gehalten werden.
+- `BLACK_HOLE` ist kein Asteroiden-Attractor in v1.1. Es gibt keine
+  globale Asteroiden-Dauerschwerkraft.
+- Ein leerer Attractor-Satz bedeutet linearen Freiflug mit
+  unveraenderter Velocity. In v1.1 gibt es keinen Re-Spawn; driftet ein
+  Asteroid out-of-bounds, wird er deaktiviert.
+- Gravitationskonstanten kommen aus `UnitSystem`, z. B. ueber
+  `UnitSystem.mu_from_mass(...)`. `sim/asteroids/` darf keinen zweiten
+  `G`-Konstantenort einfuehren.
+- Trails gehoeren in den Renderer. Sie speichern stabile Samples, aber
+  keine View-Koordinaten als Wahrheit; Snapshot-Caches bleiben read-only
+  Durchreicher/Projektoren.
+
 ## Don'ts
 
 - Keine Physik-Engine (`RigidBody`, `Area` etc.) fuer Orbitdynamik.
@@ -465,9 +494,12 @@ Missing-Request-Grace, Rejoin-Budget und `BodyState.current_mode`.
   `scenes/` oder `src/tools/` einfuehren.
 - Asteroiden-v1 duerfen niemals Major-Body-`BodyState` schreiben oder
   `UniverseRegistry`-Bodies fuer kleine Steinchen anlegen.
-- Asteroiden-v1 duerfen `STAR`, `PLANET` und `MOON` als Attraktoren
-  lesen; `BLACK_HOLE` ist in v1 kein Asteroiden-Attractor.
+- Asteroiden-v1.1 duerfen `STAR`, `PLANET` und `MOON` nur innerhalb
+  expliziter Einflussradien als Attraktoren lesen; `BLACK_HOLE` ist in
+  v1.1 kein Asteroiden-Attractor.
 - Asteroiden-v1 haben keine Asteroid-Asteroid-Wechselwirkung: keine
   Gravitation, keine Kollisionen, kein Merge/Split.
 - Asteroiden-Trails sind reine Renderer-History und duerfen nicht in
   `AsteroidState` oder Snapshot-Caches gespeichert werden.
+- Keine zweite Gravitationskonstante in `sim/asteroids/`; `UnitSystem`
+  bleibt der einzige Konstantenort.

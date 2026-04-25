@@ -10,6 +10,14 @@ const ASTEROIDS_PER_ROOT: int = 24
 const MAX_ATTRACTORS: int = 6
 const ATTRACTOR_REPLACE_FACTOR: float = 1.25
 const ATTRACTOR_REFRESH_INTERVAL_TICKS: int = 4
+const INFLUENCE_EXIT_FACTOR: float = 1.15
+const STAR_INFLUENCE_RADIUS_MULTIPLIER: float = 1.45
+const STAR_INFLUENCE_PADDING_M: float = 1.0e11
+const STAR_FALLBACK_INFLUENCE_M: float = 3.4e11
+const PLANET_RADIUS_INFLUENCE_MULTIPLIER: float = 80.0
+const PLANET_MOON_ORBIT_INFLUENCE_MULTIPLIER: float = 2.0
+const MOON_RADIUS_INFLUENCE_MULTIPLIER: float = 50.0
+const MOON_MIN_INFLUENCE_M: float = 2.0e8
 const TARGET_SUBSTEP_S: float = 1800.0
 const MAX_SUBSTEPS_PER_TICK: int = 32
 const OUT_OF_BOUNDS_M: float = 2.0e14
@@ -23,6 +31,7 @@ const PERF_KEY_SPAWNED: StringName = &"spawned"
 const PERF_KEY_DESPAWNED: StringName = &"despawned"
 const PERF_KEY_OUT_OF_BOUNDS: StringName = &"out_of_bounds"
 const PERF_KEY_ADVANCE_TICKS: StringName = &"advance_ticks"
+const PERF_KEY_FREE_DRIFT_COUNT: StringName = &"free_drift_count"
 
 var _registry: Node = null
 var _topology: UniverseTopology = UniverseTopology.new()
@@ -44,6 +53,7 @@ var _perf_counters: Dictionary = {
 	PERF_KEY_DESPAWNED: 0,
 	PERF_KEY_OUT_OF_BOUNDS: 0,
 	PERF_KEY_ADVANCE_TICKS: 0,
+	PERF_KEY_FREE_DRIFT_COUNT: 0,
 }
 
 
@@ -125,10 +135,13 @@ func advance_to_time(t_s: float, dt_s: float) -> void:
 		)
 		state.last_update_time_s = t_s
 		_perf_counters[PERF_KEY_SUBSTEPS] = int(_perf_counters.get(PERF_KEY_SUBSTEPS, 0)) + int(result.get("substep_count", 0))
+		if bool(result.get("free_drift", false)):
+			_perf_counters[PERF_KEY_FREE_DRIFT_COUNT] = int(_perf_counters.get(PERF_KEY_FREE_DRIFT_COUNT, 0)) + 1
 		if bool(result.get("hit_substep_cap", false)):
 			_perf_counters[PERF_KEY_SUBSTEP_CAP_HITS] = int(_perf_counters.get(PERF_KEY_SUBSTEP_CAP_HITS, 0)) + 1
 		if _is_out_of_bounds(state):
 			state.is_active = false
+			state.current_attractor_ids.clear()
 			_perf_counters[PERF_KEY_OUT_OF_BOUNDS] = int(_perf_counters.get(PERF_KEY_OUT_OF_BOUNDS, 0)) + 1
 		changed = true
 
@@ -177,16 +190,16 @@ func get_debug_snapshot() -> Dictionary:
 func _spawn_root(root_id: StringName, t_s: float) -> void:
 	if _registry == null or not _registry.has_body(root_id):
 		return
-	var anchors: Array[StringName] = _select_spawn_anchors(root_id)
-	if anchors.is_empty():
-		anchors.append(root_id)
+	var spawn_origins: Array[StringName] = _select_spawn_origins(root_id)
+	if spawn_origins.is_empty():
+		spawn_origins.append(root_id)
 	for idx in range(ASTEROIDS_PER_ROOT):
-		var anchor_id: StringName = anchors[idx % anchors.size()]
+		var spawn_origin_id: StringName = spawn_origins[idx % spawn_origins.size()]
 		var seed: int = _stable_hash("%s/%s/%d" % [str(_scope_id), str(root_id), idx])
 		var asteroid_id: StringName = _asteroid_id_for(root_id, idx)
 		if _states_by_id.has(asteroid_id):
 			continue
-		var def = ASTEROID_DEF_SCRIPT.new(asteroid_id, root_id, anchor_id, seed)
+		var def = ASTEROID_DEF_SCRIPT.new(asteroid_id, root_id, spawn_origin_id, seed)
 		def.radius_m = _range_from_seed(seed, 1, 45.0, 260.0)
 		def.mass_kg = 4.0 / 3.0 * PI * def.radius_m * def.radius_m * def.radius_m * 2500.0
 		def.visual_class = _visual_class_from_seed(seed)
@@ -211,45 +224,60 @@ func _despawn_root(root_id: StringName) -> void:
 	_resident_root_ids.erase(root_id)
 
 
-func _select_spawn_anchors(root_id: StringName) -> Array[StringName]:
-	var anchors: Array[StringName] = []
+func _select_spawn_origins(root_id: StringName) -> Array[StringName]:
+	var origins: Array[StringName] = []
 	for id in _registry.get_update_order():
 		var def: BodyDef = _registry.get_def(id)
 		if def == null or def.kind != BodyType.Kind.STAR:
 			continue
 		if _topology.root_id_of(id) == root_id:
-			anchors.append(id)
-	if anchors.is_empty():
-		anchors.append(root_id)
-	return anchors
+			origins.append(id)
+	if origins.is_empty():
+		origins.append(root_id)
+	return origins
 
 
 func _build_initial_state(def, t_s: float):
 	var state = ASTEROID_STATE_SCRIPT.new()
 	state.id = def.id
 	state.root_id = def.root_id
-	state.anchor_id = def.anchor_id
+	state.anchor_id = def.root_id
 	state.last_update_time_s = t_s
-	var bounds: Dictionary = _spawn_radius_bounds(def.anchor_id)
+	var bounds: Dictionary = _spawn_radius_bounds(def.spawn_origin_id)
 	var inner_m: float = float(bounds.get("inner_m", FALLBACK_BELT_INNER_M))
 	var outer_m: float = maxf(float(bounds.get("outer_m", FALLBACK_BELT_OUTER_M)), inner_m * 1.05)
 	var radius_m: float = _range_from_seed(def.seed, 2, inner_m, outer_m)
 	var phase_rad: float = _range_from_seed(def.seed, 3, 0.0, TAU)
 	var z_m: float = _range_from_seed(def.seed, 4, -0.015, 0.015) * radius_m
-	state.x_m = cos(phase_rad) * radius_m
-	state.y_m = sin(phase_rad) * radius_m
-	state.z_m = z_m
+	var local_x_m: float = cos(phase_rad) * radius_m
+	var local_y_m: float = sin(phase_rad) * radius_m
+	var local_z_m: float = z_m
+	var origin_relative: Dictionary = _resolve_body_relative_to_anchor_cached(def.spawn_origin_id, def.root_id)
+	if not bool(origin_relative.get("ok", false)):
+		origin_relative = {
+			"ok": true,
+			"x_m": 0.0,
+			"y_m": 0.0,
+			"z_m": 0.0,
+			"vx_mps": 0.0,
+			"vy_mps": 0.0,
+			"vz_mps": 0.0,
+		}
+	state.x_m = float(origin_relative.get("x_m", 0.0)) + local_x_m
+	state.y_m = float(origin_relative.get("y_m", 0.0)) + local_y_m
+	state.z_m = float(origin_relative.get("z_m", 0.0)) + local_z_m
 
-	var anchor_def: BodyDef = _registry.get_def(def.anchor_id)
-	var mu: float = INTEGRATOR_SCRIPT.G_M3_PER_KG_S2 * maxf(anchor_def.mass_kg if anchor_def != null else 0.0, 1.0)
+	var origin_def: BodyDef = _registry.get_def(def.spawn_origin_id)
+	var origin_mass_kg: float = origin_def.mass_kg if origin_def != null and _is_v1_attractor_kind(origin_def.kind) else UnitSystem.SOLAR_MASS_KG
+	var mu: float = UnitSystem.mu_from_mass(maxf(origin_mass_kg, 1.0))
 	var circular_speed_mps: float = sqrt(mu / maxf(radius_m, 1.0))
 	var tangential_speed_mps: float = circular_speed_mps * _range_from_seed(def.seed, 5, 0.70, 1.22)
 	var radial_speed_mps: float = circular_speed_mps * _range_from_seed(def.seed, 7, -0.32, 0.32)
 	var direction: float = -1.0 if _range_from_seed(def.seed, 8, 0.0, 1.0) < 0.18 else 1.0
 	var tilt: float = _range_from_seed(def.seed, 6, -0.10, 0.10)
-	state.vx_mps = cos(phase_rad) * radial_speed_mps - sin(phase_rad) * tangential_speed_mps * direction
-	state.vy_mps = sin(phase_rad) * radial_speed_mps + cos(phase_rad) * tangential_speed_mps * direction
-	state.vz_mps = circular_speed_mps * tilt
+	state.vx_mps = float(origin_relative.get("vx_mps", 0.0)) + cos(phase_rad) * radial_speed_mps - sin(phase_rad) * tangential_speed_mps * direction
+	state.vy_mps = float(origin_relative.get("vy_mps", 0.0)) + sin(phase_rad) * radial_speed_mps + cos(phase_rad) * tangential_speed_mps * direction
+	state.vz_mps = float(origin_relative.get("vz_mps", 0.0)) + circular_speed_mps * tilt
 	return state
 
 
@@ -262,7 +290,7 @@ func _spawn_radius_bounds(anchor_id: StringName) -> Dictionary:
 			continue
 		if child_def.kind != BodyType.Kind.PLANET and child_def.kind != BodyType.Kind.MOON:
 			continue
-		var axis_m: float = maxf(float(child_def.orbit_profile.semi_major_axis_m), 1.0)
+		var axis_m: float = maxf(_orbit_radius_m(child_def), 1.0)
 		min_a = minf(min_a, axis_m)
 		max_a = maxf(max_a, axis_m)
 	if not is_finite(min_a) or max_a <= 0.0:
@@ -275,18 +303,7 @@ func _spawn_radius_bounds(anchor_id: StringName) -> Dictionary:
 
 func _select_attractors_for(state) -> Array[StringName]:
 	var candidates: Array = _rank_attractor_candidates(state)
-	var mandatory: Array[StringName] = []
-	for required_id in [state.anchor_id, state.root_id]:
-		_append_mandatory_attractor(mandatory, required_id)
-	var strongest_star: StringName = _strongest_star_for_root(state.root_id)
-	_append_mandatory_attractor(mandatory, strongest_star)
-
 	var selected: Array[StringName] = []
-	for id in mandatory:
-		if selected.size() >= MAX_ATTRACTORS:
-			break
-		selected.append(id)
-
 	for id in state.current_attractor_ids:
 		if selected.size() >= MAX_ATTRACTORS:
 			break
@@ -305,7 +322,7 @@ func _select_attractors_for(state) -> Array[StringName]:
 	if selected.size() < MAX_ATTRACTORS:
 		return selected
 
-	var weakest_idx: int = _weakest_optional_index(selected, mandatory, candidates)
+	var weakest_idx: int = _weakest_optional_index(selected, candidates)
 	var weakest_score: float = _score_for_candidate(candidates, selected[weakest_idx]) if weakest_idx >= 0 else INF
 	var best_outside_id: StringName = &""
 	var best_outside_score: float = 0.0
@@ -324,16 +341,13 @@ func _select_attractors_for(state) -> Array[StringName]:
 
 func _should_refresh_attractors(state, tick_index: int) -> bool:
 	if state.current_attractor_ids.is_empty():
-		return true
+		return tick_index % maxi(1, ATTRACTOR_REFRESH_INTERVAL_TICKS) == 0
 	if tick_index % maxi(1, ATTRACTOR_REFRESH_INTERVAL_TICKS) == 0:
 		return true
 	return not _attractor_ids_still_valid(state)
 
 
 func _attractor_ids_still_valid(state) -> bool:
-	for required_id in _required_attractor_ids_for(state):
-		if required_id != StringName("") and not state.current_attractor_ids.has(required_id):
-			return false
 	for id in state.current_attractor_ids:
 		if id == StringName("") or not _registry.has_body(id):
 			return false
@@ -341,6 +355,8 @@ func _attractor_ids_still_valid(state) -> bool:
 		if def == null or not _is_v1_attractor_kind(def.kind):
 			return false
 		if _topology.root_id_of(id) != state.root_id:
+			return false
+		if not _candidate_is_within_influence(state, id, true):
 			return false
 	return true
 
@@ -360,8 +376,13 @@ func _rank_attractor_candidates(state) -> Array:
 		var dy: float = float(relative.get("y_m", 0.0)) - state.y_m
 		var dz: float = float(relative.get("z_m", 0.0)) - state.z_m
 		var distance2_m2: float = maxf(dx * dx + dy * dy + dz * dz, 1.0)
-		var score: float = INTEGRATOR_SCRIPT.G_M3_PER_KG_S2 * maxf(def.mass_kg, 0.0) / distance2_m2
 		_perf_counters[PERF_KEY_ATTRACTOR_CHECKS] = int(_perf_counters.get(PERF_KEY_ATTRACTOR_CHECKS, 0)) + 1
+		var influence_radius_m: float = _influence_radius_m(def)
+		var radius_multiplier: float = INFLUENCE_EXIT_FACTOR if state.current_attractor_ids.has(body_id) else 1.0
+		var active_radius_m: float = influence_radius_m * radius_multiplier
+		if distance2_m2 > active_radius_m * active_radius_m:
+			continue
+		var score: float = UnitSystem.mu_from_mass(maxf(def.mass_kg, 0.0)) / distance2_m2
 		out.append({"id": body_id, "score": score})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		var score_a: float = float(a.get("score", 0.0))
@@ -385,48 +406,15 @@ func _build_attractor_entries(state, attractor_ids: Array[StringName]) -> Packed
 		out.append(float(relative.get("x_m", 0.0)))
 		out.append(float(relative.get("y_m", 0.0)))
 		out.append(float(relative.get("z_m", 0.0)))
-		out.append(INTEGRATOR_SCRIPT.G_M3_PER_KG_S2 * maxf(def.mass_kg, 0.0))
+		out.append(UnitSystem.mu_from_mass(maxf(def.mass_kg, 0.0)))
 	return out
 
 
-func _append_mandatory_attractor(mandatory: Array[StringName], body_id: StringName) -> void:
-	if body_id == StringName("") or mandatory.has(body_id) or not _registry.has_body(body_id):
-		return
-	var def: BodyDef = _registry.get_def(body_id)
-	if def == null or not _is_v1_attractor_kind(def.kind):
-		return
-	mandatory.append(body_id)
-
-
-func _required_attractor_ids_for(state) -> Array[StringName]:
-	var required: Array[StringName] = []
-	for id in [state.anchor_id, state.root_id, _strongest_star_for_root(state.root_id)]:
-		_append_mandatory_attractor(required, id)
-	return required
-
-
-func _strongest_star_for_root(root_id: StringName) -> StringName:
-	var best_id: StringName = &""
-	var best_mass: float = -1.0
-	for id in _registry.get_update_order():
-		var def: BodyDef = _registry.get_def(id)
-		if def == null or def.kind != BodyType.Kind.STAR:
-			continue
-		if _topology.root_id_of(id) != root_id:
-			continue
-		if def.mass_kg > best_mass:
-			best_id = id
-			best_mass = def.mass_kg
-	return best_id
-
-
-static func _weakest_optional_index(selected: Array[StringName], mandatory: Array[StringName], candidates: Array) -> int:
+static func _weakest_optional_index(selected: Array[StringName], candidates: Array) -> int:
 	var weakest_idx: int = -1
 	var weakest_score: float = INF
 	for idx in range(selected.size()):
 		var id: StringName = selected[idx]
-		if mandatory.has(id):
-			continue
 		var score: float = _score_for_candidate(candidates, id)
 		if score < weakest_score:
 			weakest_idx = idx
@@ -455,6 +443,61 @@ func _resolve_body_relative_to_anchor_cached(body_id: StringName, anchor_id: Str
 	var resolved: Dictionary = _relative_resolver.resolve_body_relative_to_anchor(body_id, anchor_id)
 	_relative_state_cache[cache_key] = resolved
 	return resolved
+
+
+func _candidate_is_within_influence(state, body_id: StringName, use_exit_radius: bool) -> bool:
+	var def: BodyDef = _registry.get_def(body_id)
+	if def == null or not _is_v1_attractor_kind(def.kind):
+		return false
+	var relative: Dictionary = _resolve_body_relative_to_anchor_cached(body_id, state.anchor_id)
+	if not bool(relative.get("ok", false)):
+		return false
+	var dx: float = float(relative.get("x_m", 0.0)) - state.x_m
+	var dy: float = float(relative.get("y_m", 0.0)) - state.y_m
+	var dz: float = float(relative.get("z_m", 0.0)) - state.z_m
+	var radius_m: float = _influence_radius_m(def)
+	if use_exit_radius:
+		radius_m *= INFLUENCE_EXIT_FACTOR
+	return dx * dx + dy * dy + dz * dz <= radius_m * radius_m
+
+
+func _influence_radius_m(def: BodyDef) -> float:
+	if def == null:
+		return 0.0
+	match def.kind:
+		BodyType.Kind.STAR:
+			var outer_m: float = _max_child_orbit_radius_m(def.id)
+			if outer_m <= 0.0:
+				return STAR_FALLBACK_INFLUENCE_M
+			return maxf(outer_m * STAR_INFLUENCE_RADIUS_MULTIPLIER, outer_m + STAR_INFLUENCE_PADDING_M)
+		BodyType.Kind.PLANET:
+			return maxf(
+				maxf(def.radius_m, 1.0) * PLANET_RADIUS_INFLUENCE_MULTIPLIER,
+				_max_child_orbit_radius_m(def.id) * PLANET_MOON_ORBIT_INFLUENCE_MULTIPLIER
+			)
+		BodyType.Kind.MOON:
+			return maxf(maxf(def.radius_m, 1.0) * MOON_RADIUS_INFLUENCE_MULTIPLIER, MOON_MIN_INFLUENCE_M)
+		_:
+			return 0.0
+
+
+func _max_child_orbit_radius_m(parent_id: StringName) -> float:
+	var out: float = 0.0
+	for child_id in _registry.get_children_of(parent_id):
+		var child_def: BodyDef = _registry.get_def(child_id)
+		if child_def == null:
+			continue
+		out = maxf(out, _orbit_radius_m(child_def))
+	return out
+
+
+static func _orbit_radius_m(def: BodyDef) -> float:
+	if def == null or def.orbit_profile == null:
+		return 0.0
+	var profile: OrbitProfile = def.orbit_profile
+	if profile.authored_radius_m > 0.0:
+		return float(profile.authored_radius_m)
+	return maxf(float(profile.semi_major_axis_m), 0.0)
 
 
 static func _is_v1_attractor_kind(kind: int) -> bool:

@@ -34,6 +34,16 @@ deterministisch pro Root. View-seitig projiziert ein separater
 History zeichnet. Impacts, Merge/Split, Life-Folgen,
 Asteroid-Asteroid-Kollisionen, Anchor-Switching und Fokusnavigation auf
 Asteroiden bleiben bewusst Folge-Slices.
+Asteroiden v1.1 korrigiert diesen Slice auf Root-Frame-Freiflug:
+`AsteroidDef.spawn_origin_id` bleibt das deterministische Stern-
+Spawnzentrum, waehrend `AsteroidState.anchor_id` stabil der Root ist.
+Mandatory-Attraktoren sind entfernt; `STAR`, `PLANET` und `MOON`
+wirken nur innerhalb expliziter Einflussradien mit Exit-Hysterese.
+Ausserhalb dieser Felder driften Asteroiden linear weiter, ohne
+Velocity-Aenderung und ohne v1.1-Re-Spawn. Out-of-Bounds-Despawn ist
+bewusst akzeptiert und wird gezaehlt. Trails speichern jetzt stabile
+Root-Frame-Samples und werden pro Frame re-projiziert, statt alte
+View-Pixel als Wahrheit mitzuschleppen.
 Ein direkter Qualitaets-Follow-up reduziert den zuvor zu sauberen
 Kreisbahn-Eindruck: Initiale Asteroiden-Velocities enthalten jetzt
 deterministischen radialen Drift und einen kleinen Anteil retrograder
@@ -58,8 +68,9 @@ wurden durch einen residenten Neighbor-Root 48 Asteroiden simuliert.
 Der Testbed-Composition-Root bridged Asteroiden in Large-Worlds deshalb
 jetzt nur noch fuer den aktuellen Fokus-Root; Single-Worlds behalten
 weiter ihre geladenen Roots. Beim Fokuswechsel wird ausserdem die reine
-Renderer-Trail-History geleert, damit keine alten Root-Overview-Linien
-in den lokalen Sternfokus hineinragen.
+Renderer-Trail-History nur noch bei Root-/World-Wechsel oder Despawn
+geleert; Fokuswechsel innerhalb desselben Roots duerfen Trails behalten,
+weil sie aus stabilen Samples re-projiziert werden.
 Der folgende Dump zeigte danach noch einen Sternfokus-Engpass durch
 Sim-Catchup: bei 6 FPS holte Godot bis zu acht Asteroiden-Ticks pro
 Renderframe nach. Der Restricted-Gravity-Integrator nutzt deshalb im

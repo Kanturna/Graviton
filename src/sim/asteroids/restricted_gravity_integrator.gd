@@ -1,7 +1,6 @@
 class_name RestrictedGravityIntegrator
 extends RefCounted
 
-const G_M3_PER_KG_S2: float = 6.67430e-11
 const MIN_DISTANCE_M: float = 1.0
 
 
@@ -13,11 +12,17 @@ static func integrate(
 		max_substeps_per_tick: int) -> Dictionary:
 	if state == null:
 		return _empty_result()
-	if dt_s <= 0.0 or _attractor_count(attractors) <= 0:
+	if dt_s <= 0.0:
+		return _empty_result()
+	if _attractor_count(attractors) <= 0:
+		state.x_m += state.vx_mps * dt_s
+		state.y_m += state.vy_mps * dt_s
+		state.z_m += state.vz_mps * dt_s
 		return {
 			"substep_count": 0,
-			"substep_dt_s": 0.0,
+			"substep_dt_s": dt_s,
 			"hit_substep_cap": false,
+			"free_drift": true,
 		}
 	if typeof(attractors) == TYPE_PACKED_FLOAT64_ARRAY:
 		return _integrate_packed(state, attractors, dt_s, target_substep_s, max_substeps_per_tick)
@@ -93,6 +98,7 @@ static func _integrate_packed(
 		"substep_count": substeps,
 		"substep_dt_s": h,
 		"hit_substep_cap": hit_cap,
+		"free_drift": false,
 	}
 
 
@@ -170,6 +176,7 @@ static func _integrate_dictionary_array(
 		"substep_count": substeps,
 		"substep_dt_s": h,
 		"hit_substep_cap": hit_cap,
+		"free_drift": false,
 	}
 
 
@@ -188,4 +195,5 @@ static func _empty_result() -> Dictionary:
 		"substep_count": 0,
 		"substep_dt_s": 0.0,
 		"hit_substep_cap": false,
+		"free_drift": false,
 	}

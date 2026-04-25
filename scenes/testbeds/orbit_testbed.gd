@@ -342,7 +342,9 @@ func _process(delta: float) -> void:
 	# View-Consumers spiegeln, bevor der Renderer seine Visuals synct.
 	_sync_view_lod_state(false, false)
 	if _renderer != null:
+		var renderer_sync_start_us: int = Time.get_ticks_usec()
 		_renderer.sync_visuals_now()
+		PerfProbeScript.sample(&"orbit_renderer_sync_us", Time.get_ticks_usec() - renderer_sync_start_us)
 	_sync_asteroid_renderer()
 	if _is_large_world:
 		_streaming_controller.update(delta, _camera_controller.get_zoom_factor())
@@ -414,6 +416,7 @@ func _sample_asteroid_perf_probe() -> void:
 	_bump_asteroid_perf_counter_delta(snapshot, AsteroidSimulationServiceScript.PERF_KEY_SPAWNED)
 	_bump_asteroid_perf_counter_delta(snapshot, AsteroidSimulationServiceScript.PERF_KEY_DESPAWNED)
 	_bump_asteroid_perf_counter_delta(snapshot, AsteroidSimulationServiceScript.PERF_KEY_OUT_OF_BOUNDS)
+	_bump_asteroid_perf_counter_delta(snapshot, AsteroidSimulationServiceScript.PERF_KEY_FREE_DRIFT_COUNT)
 	if _asteroid_renderer != null and _asteroid_renderer.has_method("get_debug_snapshot"):
 		var renderer_snapshot: Dictionary = _asteroid_renderer.get_debug_snapshot()
 		PerfProbeScript.sample(&"asteroid_visible_count", int(renderer_snapshot.get("visible_count", 0)))
@@ -778,7 +781,7 @@ func _set_focus(body_id: StringName, immediate: bool = false, force_fit: bool = 
 		return
 	var previous_focus_id: StringName = _bubble.get_focus() if _bubble != null else StringName("")
 	_camera_controller.set_focus(body_id, immediate, force_fit)
-	if body_id != previous_focus_id:
+	if body_id != previous_focus_id and not _focuses_share_root(previous_focus_id, body_id):
 		_clear_asteroid_renderer_state()
 	_sync_root_inspector_context(false)
 	_refresh_snapshot_interest_ids()
@@ -1059,7 +1062,9 @@ func _on_orbit_service_bodies_updated(ids: Array[StringName], _reason: StringNam
 
 func _on_orbit_service_step_completed(dt_s: float, t_s: float) -> void:
 	if _asteroid_service != null:
+		var advance_start_us: int = Time.get_ticks_usec()
 		_asteroid_service.advance_to_time(t_s, dt_s)
+		PerfProbeScript.sample(&"asteroid_advance_us", Time.get_ticks_usec() - advance_start_us)
 
 
 static func _is_large_world_id(world_id: StringName) -> bool:
@@ -1097,13 +1102,30 @@ func _configure_asteroid_renderer() -> void:
 
 
 func _sync_asteroid_renderer(force: bool = false) -> void:
-	if _asteroid_renderer != null:
-		_asteroid_renderer.sync_visuals_now(force)
+	if _asteroid_renderer == null:
+		return
+	if _asteroid_snapshot_cache != null and _asteroid_snapshot_cache.has_method("refresh"):
+		var snapshot_start_us: int = Time.get_ticks_usec()
+		_asteroid_snapshot_cache.refresh(&"manual")
+		PerfProbeScript.sample(&"asteroid_snapshot_refresh_us", Time.get_ticks_usec() - snapshot_start_us)
+	var renderer_start_us: int = Time.get_ticks_usec()
+	_asteroid_renderer.sync_visuals_now(force, false)
+	PerfProbeScript.sample(&"asteroid_renderer_sync_us", Time.get_ticks_usec() - renderer_start_us)
 
 
 func _clear_asteroid_renderer_state() -> void:
 	if _asteroid_renderer != null and _asteroid_renderer.has_method("clear_state"):
 		_asteroid_renderer.clear_state()
+
+
+func _focuses_share_root(a: StringName, b: StringName) -> bool:
+	if a == StringName("") or b == StringName("") or _topology == null:
+		return false
+	if not UniverseRegistry.has_body(a) or not UniverseRegistry.has_body(b):
+		return false
+	var root_a: StringName = _topology.root_id_of(a)
+	var root_b: StringName = _topology.root_id_of(b)
+	return root_a != StringName("") and root_a == root_b
 
 
 func _reset_asteroids_for_current_roots(t_s: float) -> void:

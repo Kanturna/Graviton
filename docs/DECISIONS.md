@@ -1,5 +1,40 @@
 # Graviton - Decisions
 
+## 2026-04-25 - Asteroiden v1.1 nutzen Root-Frame-Freiflug
+
+Der erste sichtbare Asteroiden-Slice wird auf Root-Frame-Freiflug
+korrigiert. Asteroiden spawnen weiter deterministisch an Sternen, aber
+`AsteroidDef.spawn_origin_id` und `AsteroidState.anchor_id` sind jetzt
+getrennte Konzepte: das Spawn-Origin ist der Stern, der stabile
+Frame-Anchor ist der Root.
+
+Konsequenz:
+
+- v1.1 integriert Asteroiden im Root-Frame; der lokale
+  Anchor-Praezisionsvorteil aus v1 entfaellt bewusst, double-Felder
+  bleiben fuer diesen Slice ausreichend
+- `RelativeStateResolver.resolve_body_relative_to_anchor(spawn_origin,
+  root)` seedet Initialposition und -velocity im Root-Frame
+- es gibt keine Mandatory-Attraktoren mehr; `STAR`, `PLANET` und
+  `MOON` wirken nur innerhalb expliziter Einflussradien mit `1.15`
+  Exit-Hysterese, `BLACK_HOLE` wirkt nicht auf v1.1-Asteroiden
+- ausserhalb aktiver Felder driftet ein Asteroid linear mit
+  unveraenderter Velocity weiter; `free_drift_count` macht diesen Pfad
+  in Perf-Dumps sichtbar
+- es gibt in v1.1 keinen Re-Spawn und kein Belt-Replenishment;
+  Out-of-Bounds-Despawn ist akzeptiertes Verhalten
+- Trails speichern keine alten View-Koordinaten als Wahrheit mehr,
+  sondern stabile Snapshot-Samples, die pro Frame mit einem
+  Anchor-View-Cache re-projiziert werden
+- Stage-Timer fuer Asteroiden-Advance, Snapshot-Refresh,
+  Asteroiden-Renderer-Sync und Orbit-Renderer-Sync werden im
+  Composition Root gemessen, nicht in `sim/`
+- Gravitationskonstanten bleiben zentral in `UnitSystem`; der
+  Asteroiden-Integrator fuehrt keinen zweiten `G`-Konstantenort
+- Anchor-Switching, Re-Spawn/Belt-Replenishment, Impacts, Merge/Split,
+  Life-Folgen und Fokusnavigation auf Asteroiden bleiben separate
+  Folgeentscheidungen
+
 ## 2026-04-25 - Asteroiden v1 sind Minor Bodies mit Restricted Gravity
 
 Asteroiden werden fuer v1 nicht als normale `UniverseRegistry`-
@@ -13,8 +48,9 @@ Konsequenz:
 
 - `BodyDef.parent_id` bleibt Major-Body-Topologie und wird nicht fuer
   Asteroiden-Vorbeifluege umgeschrieben
-- v1 nutzt `anchor_id` im Asteroid-State als lokale Rechenbasis; der
-  Anchor bleibt in v1 stabil und wechselt nicht
+- v1.1 trennt `spawn_origin_id` und `anchor_id`; der
+  Asteroid-State nutzt den Root als stabile Rechenbasis und wechselt
+  den Anchor nicht
 - Asteroiden lesen Major-Body-Zustaende nur read-only; als v1-
   Attractors gelten bewusst nur `STAR`, `PLANET` und `MOON`.
   `BLACK_HOLE` bleibt Root-/Kontextkoerper, zieht kleine v1-

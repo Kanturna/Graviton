@@ -16,7 +16,7 @@ abgesicherten Slices, jetzt inklusive `Asteroiden v1`.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Asteroiden-Drift-/Attractor-Follow-up mit `8233`
+- `run_tests.bat` lief nach dem Asteroiden-v1.1-Root-Frame-Freiflug-Slice mit `8325`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -26,10 +26,13 @@ Headless-Basis:
   Konvertierung, Orbit-/Time-Formatter, Genetic/Pressure-/
   Life-Ecology-/Population-Estimate-Ableitungen und den bounded
   `scaleup_galaxy_100`-Streamingpfad; zusaetzlich pinnen Asteroid-
-  Tests deterministischen Spawn, deterministische Trajektorien,
-  Major-Body-Read-only, Anchor-Stabilitaet, Attractor-Hysterese,
-  Single-World-/Large-World-Lifecycle, SnapshotCache-Trennung und
-  Renderer-only Trails; zusaetzlich pinnen Recorder-
+  Tests deterministischen Spawn, `spawn_origin_id` vs. Root-Anchor,
+  deterministische Trajektorien, Major-Body-Read-only,
+  Root-Anchor-Stabilitaet, linearen Freiflug ohne Attraktoren,
+  Einflussradien/Exit-Hysterese, Out-of-Bounds-Despawn,
+  Single-World-/Large-World-Lifecycle, SnapshotCache-Trennung,
+  Root-Frame-Snapshot-Felder, Renderer-only Trails und den
+  Compose-Cache pro unique Asteroiden-Anchor; zusaetzlich pinnen Recorder-
   Tests jetzt die Reihenfolge Kamera -> Frame-/LOD-Kontext -> Renderer
   sowie Renderer -> Streaming, Numeric-Exit-Tests pinnen
   Counter-/Warning-Dedup-Semantik; zusaetzlich pinnen View-Tests jetzt,
@@ -72,9 +75,13 @@ Offene Editor-/Feel-/FPS-Gates:
   Nach dem Relative-State-Cache-, Trail-Batching-, Fokus-Root-
   Lifecycle- und Integrator-Hotpath-Follow-up speziell die vorherigen
   3-6-FPS-Sternfoki erneut pruefen: im lokalen Sternfokus sollte
-  `active_asteroids` bei 24 statt 48 liegen, alte Root-Overview-Trails
-  sollten beim Fokuswechsel verschwinden, `attractor_checks` sollte im
-  Catchup deutlich niedriger als vorher ausfallen. Nach dem Orbit-LOD-
+  `active_asteroids` bei 24 statt 48 liegen, Trails sollten bei
+  Root-/World-Wechsel und Despawn verschwinden, aber innerhalb
+  desselben Roots stabil re-projiziert werden. Nach v1.1 sollten
+  ausserdem freie Segmente ausserhalb von Stern-/Planet-/Mond-
+  Einflussradien sichtbar sein, keine BH-gebundenen Asteroidenkreise
+  auftreten und `free_drift_count` im Dump steigen. `attractor_checks`
+  sollte im Catchup deutlich niedriger als vorher ausfallen. Nach dem Orbit-LOD-
   und Screen-Culling-Follow-up sollten ausserdem
   `orbit_visible_point_count`, `render_primitives`, `body_visible_count`
   und `draw_calls` im lokalen Fokus sinken. Nach dem Root-lock-/Badge-
@@ -123,6 +130,10 @@ Konkreter Ablauf:
   `BLACK_HOLE` ist in v1 kein Asteroiden-Attractor; sichtbare
   Asteroiden sollen von Stern-/Planet-/Mond-Kontexten gepraegt sein und
   nicht als schwarze-Loch-gebundene Miniorbits erscheinen
+- Freiflug beobachten:
+  ausserhalb aktiver Stern-/Planet-/Mond-Einflussradien sollen
+  Asteroiden gerade bzw. leicht gekruemmte Freiflugsegmente zeigen,
+  nicht weiter um leere Punkte kreisen
 - Streaming/Fokuswechsel zwischen Root-Systemen pruefen:
   in Large-Worlds spawnt v1 Asteroiden nur fuer den aktuellen Fokus-
   Root; residenter Neighbor-/Prewarm-Zustand darf keine zusaetzlichen
@@ -139,8 +150,11 @@ Konkreter Ablauf:
   ausreichend reduzieren
 - `P`-Dump ausloesen:
   Service-/Renderer-Snapshots und Perf-Counter fuer aktive
-  Asteroiden, Attractor-Checks, Substeps und Despawns muessen im
-  Sidecar sichtbar sein
+  Asteroiden, Attractor-Checks, Substeps, Freiflug und Despawns muessen
+  im Sidecar sichtbar sein; Stage-Timer fuer
+  `asteroid_advance_us`, `asteroid_snapshot_refresh_us`,
+  `asteroid_renderer_sync_us` und `orbit_renderer_sync_us` muessen in
+  der CSV-Zeitreihe auftauchen
 - dabei explizit pruefen:
   kein HUD, Inspector oder Life-Panel behauptet Kollisionen,
   Katastrophen, Life-Destruction, Merge/Split oder

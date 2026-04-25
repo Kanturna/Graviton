@@ -29,6 +29,7 @@ func clone_snapshot(def) -> Dictionary:
 		"current_attractor_ids": current_attractor_ids.duplicate(),
 		"last_update_time_s": last_update_time_s,
 		"is_active": is_active,
+		"spawn_origin_id": def.spawn_origin_id if def != null else StringName(""),
 		"radius_m": def.radius_m if def != null else 0.0,
 		"mass_kg": def.mass_kg if def != null else 0.0,
 		"visual_class": def.visual_class if def != null else StringName(""),

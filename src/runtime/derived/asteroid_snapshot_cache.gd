@@ -46,20 +46,29 @@ func refresh(reason: StringName = REASON_MANUAL) -> void:
 
 	var snapshot: Dictionary = _asteroid_service.get_state_snapshot()
 	_source_revision = int(snapshot.get("revision", -1))
+	var anchor_view_by_id: Dictionary = {}
 	for entry in snapshot.get("entries", []):
 		if typeof(entry) != TYPE_DICTIONARY:
 			continue
 		var anchor_id: StringName = entry.get("anchor_id", StringName(""))
-		var anchor_view_m: Vector3 = _bubble.compose_view_position_m(anchor_id)
+		var anchor_view_m: Vector3 = _anchor_view_m(anchor_id, anchor_view_by_id)
+		var x_m: float = float(entry.get("x_m", 0.0))
+		var y_m: float = float(entry.get("y_m", 0.0))
+		var z_m: float = float(entry.get("z_m", 0.0))
 		var view_m := Vector3(
-			anchor_view_m.x + float(entry.get("x_m", 0.0)),
-			anchor_view_m.y + float(entry.get("y_m", 0.0)),
-			anchor_view_m.z + float(entry.get("z_m", 0.0))
+			anchor_view_m.x + x_m,
+			anchor_view_m.y + y_m,
+			anchor_view_m.z + z_m
 		)
 		_entries.append({
 			"id": entry.get("id", StringName("")),
 			"root_id": entry.get("root_id", StringName("")),
 			"anchor_id": anchor_id,
+			"spawn_origin_id": entry.get("spawn_origin_id", StringName("")),
+			"x_m": x_m,
+			"y_m": y_m,
+			"z_m": z_m,
+			"anchor_view_m": anchor_view_m,
 			"view_position_m": view_m,
 			"radius_m": float(entry.get("radius_m", 0.0)),
 			"visual_class": entry.get("visual_class", StringName("")),
@@ -96,6 +105,14 @@ func get_debug_snapshot() -> Dictionary:
 		"last_refresh_reason": _last_refresh_reason,
 		"refresh_call_count": _refresh_call_count,
 	}
+
+
+func _anchor_view_m(anchor_id: StringName, anchor_view_by_id: Dictionary) -> Vector3:
+	if anchor_view_by_id.has(anchor_id):
+		return anchor_view_by_id[anchor_id]
+	var view_m: Vector3 = _bubble.compose_view_position_m(anchor_id)
+	anchor_view_by_id[anchor_id] = view_m
+	return view_m
 
 
 static func _is_finite_vec3(value: Vector3) -> bool:
