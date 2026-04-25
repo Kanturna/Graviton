@@ -21,7 +21,9 @@ Konsequenz:
   `AsteroidState`, nicht als `Vector3`-Wahrheit
 - das Attractor-Set ist gecappt und hysterese-stabilisiert; pro
   Tick/Substep bleibt es fix, optionale Quellen werden nur bei klar
-  staerkerem Ersatz ausgetauscht
+  staerkerem Ersatz ausgetauscht. Die Auswahl darf fuer ein kurzes
+  V1-Refresh-Fenster wiederverwendet werden, waehrend die Positionen
+  der gewaehlten Attraktoren weiter pro Tick aktualisiert werden
 - `OrbitService.step_completed(dt_s, t_s)` ist das explizite
   Tick-Completion-Signal fuer abhaengige Sim-Services; es feuert pro
   Sim-Tick genau einmal und ist nicht an `bodies_updated` gekoppelt

@@ -42,6 +42,14 @@ jetzt nur noch fuer den aktuellen Fokus-Root; Single-Worlds behalten
 weiter ihre geladenen Roots. Beim Fokuswechsel wird ausserdem die reine
 Renderer-Trail-History geleert, damit keine alten Root-Overview-Linien
 in den lokalen Sternfokus hineinragen.
+Der folgende Dump zeigte danach noch einen Sternfokus-Engpass durch
+Sim-Catchup: bei 6 FPS holte Godot bis zu acht Asteroiden-Ticks pro
+Renderframe nach. Der Restricted-Gravity-Integrator nutzt deshalb im
+normalen Asteroidenpfad jetzt flache `PackedFloat64Array`-Attractor-
+Daten statt Dictionary-Entries im inneren Loop, und die teure
+Attractor-Set-Auswahl wird ueber ein kurzes Refresh-Fenster
+wiederverwendet. Die Positionen der gewaehlten Major-Body-Attraktoren
+werden weiter pro Tick neu gelesen.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und

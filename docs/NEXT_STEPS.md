@@ -54,12 +54,13 @@ Offene Editor-/Feel-/FPS-Gates:
   sichtbare Punkte und kurze Trails beobachten, Bahnverformung nahe
   Major Bodies pruefen und sicherstellen, dass HUD/Inspector/Life-
   Panels keine Kollisionen, Katastrophen oder Life-Folgen behaupten.
-  Nach dem Relative-State-Cache-, Trail-Batching- und Fokus-Root-
-  Lifecycle-Follow-up speziell die vorherigen 3-6-FPS-Sternfoki erneut
-  pruefen: im lokalen Sternfokus sollte `active_asteroids` wieder bei
-  24 statt 48 liegen, alte Root-Overview-Trails sollten beim Fokuswechsel
-  verschwinden, und bei weiterem Einbruch direkt wieder zwei `P`-Dumps
-  vergleichen.
+  Nach dem Relative-State-Cache-, Trail-Batching-, Fokus-Root-
+  Lifecycle- und Integrator-Hotpath-Follow-up speziell die vorherigen
+  3-6-FPS-Sternfoki erneut pruefen: im lokalen Sternfokus sollte
+  `active_asteroids` bei 24 statt 48 liegen, alte Root-Overview-Trails
+  sollten beim Fokuswechsel verschwinden, `attractor_checks` sollte im
+  Catchup deutlich niedriger als vorher ausfallen, und bei weiterem
+  Einbruch direkt wieder zwei `P`-Dumps vergleichen.
 
 Erst wenn diese Gates sauber sind, ist ein Folgeblock wie
 `Population Dynamics v1` oder `Evolution Competition v1` sinnvoll.
@@ -89,6 +90,10 @@ Konkreter Ablauf:
   Root; residenter Neighbor-/Prewarm-Zustand darf keine zusaetzlichen
   aktiven Asteroiden im lokalen Fokus erzeugen. Fokuswechsel muessen
   ohne Duplikate und ohne alte Trail-Reste bleiben
+- im Sternfokus bei FPS-Einbruch `P`-Dump pruefen:
+  `active_asteroids` soll 24 sein und `attractor_checks` soll durch
+  das Attractor-Refresh-Fenster nicht mehr in jedem Catchup-Tick fuer
+  alle Asteroiden voll neu steigen
 - `P`-Dump ausloesen:
   Service-/Renderer-Snapshots und Perf-Counter fuer aktive
   Asteroiden, Attractor-Checks, Substeps und Despawns muessen im

@@ -9,6 +9,7 @@ const RELATIVE_STATE_RESOLVER_SCRIPT := preload("res://src/sim/topology/relative
 const ASTEROIDS_PER_ROOT: int = 24
 const MAX_ATTRACTORS: int = 6
 const ATTRACTOR_REPLACE_FACTOR: float = 1.25
+const ATTRACTOR_REFRESH_INTERVAL_TICKS: int = 4
 const TARGET_SUBSTEP_S: float = 1800.0
 const MAX_SUBSTEPS_PER_TICK: int = 32
 const OUT_OF_BOUNDS_M: float = 2.0e14
@@ -104,14 +105,17 @@ func advance_to_time(t_s: float, dt_s: float) -> void:
 	if not _configured or dt_s <= 0.0:
 		return
 	_relative_state_cache.clear()
+	var tick_index: int = int(_perf_counters.get(PERF_KEY_ADVANCE_TICKS, 0))
 	var changed: bool = false
 	for id in _state_order.duplicate():
 		var state = _states_by_id.get(id, null)
 		if state == null or not state.is_active:
 			continue
-		var attractor_ids: Array[StringName] = _select_attractors_for(state)
-		state.current_attractor_ids = attractor_ids
-		var attractors: Array = _build_attractor_entries(state, attractor_ids)
+		var attractor_ids: Array[StringName] = state.current_attractor_ids
+		if _should_refresh_attractors(state, tick_index):
+			attractor_ids = _select_attractors_for(state)
+			state.current_attractor_ids = attractor_ids
+		var attractors: PackedFloat64Array = _build_attractor_entries(state, attractor_ids)
 		var result: Dictionary = INTEGRATOR_SCRIPT.integrate(
 			state,
 			attractors,
@@ -317,6 +321,29 @@ func _select_attractors_for(state) -> Array[StringName]:
 	return selected
 
 
+func _should_refresh_attractors(state, tick_index: int) -> bool:
+	if state.current_attractor_ids.is_empty():
+		return true
+	if tick_index % maxi(1, ATTRACTOR_REFRESH_INTERVAL_TICKS) == 0:
+		return true
+	return not _attractor_ids_still_valid(state)
+
+
+func _attractor_ids_still_valid(state) -> bool:
+	for required_id in [state.root_id, state.anchor_id]:
+		if required_id != StringName("") and not state.current_attractor_ids.has(required_id):
+			return false
+	for id in state.current_attractor_ids:
+		if id == StringName("") or not _registry.has_body(id):
+			return false
+		var def: BodyDef = _registry.get_def(id)
+		if def == null or not _is_v1_attractor_kind(def.kind):
+			return false
+		if _topology.root_id_of(id) != state.root_id:
+			return false
+	return true
+
+
 func _rank_attractor_candidates(state) -> Array:
 	var out: Array = []
 	for body_id in _registry.get_update_order():
@@ -345,8 +372,8 @@ func _rank_attractor_candidates(state) -> Array:
 	return out
 
 
-func _build_attractor_entries(state, attractor_ids: Array[StringName]) -> Array:
-	var out: Array = []
+func _build_attractor_entries(state, attractor_ids: Array[StringName]) -> PackedFloat64Array:
+	var out := PackedFloat64Array()
 	for id in attractor_ids:
 		var def: BodyDef = _registry.get_def(id)
 		if def == null:
@@ -354,13 +381,10 @@ func _build_attractor_entries(state, attractor_ids: Array[StringName]) -> Array:
 		var relative: Dictionary = _resolve_body_relative_to_anchor_cached(id, state.anchor_id)
 		if not bool(relative.get("ok", false)):
 			continue
-		out.append({
-			"id": id,
-			"x_m": float(relative.get("x_m", 0.0)),
-			"y_m": float(relative.get("y_m", 0.0)),
-			"z_m": float(relative.get("z_m", 0.0)),
-			"mu_m3ps2": INTEGRATOR_SCRIPT.G_M3_PER_KG_S2 * maxf(def.mass_kg, 0.0),
-		})
+		out.append(float(relative.get("x_m", 0.0)))
+		out.append(float(relative.get("y_m", 0.0)))
+		out.append(float(relative.get("z_m", 0.0)))
+		out.append(INTEGRATOR_SCRIPT.G_M3_PER_KG_S2 * maxf(def.mass_kg, 0.0))
 	return out
 
 

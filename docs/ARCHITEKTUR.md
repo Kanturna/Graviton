@@ -553,10 +553,12 @@ Asteroid-Asteroid-Gravitation, keine Asteroid-Kollisionen, keine
 Impacts, kein Merge/Split und keine Life-Folgen.
 
 **Attractor-Auswahl:** Pro Tick wird ein fixes Attractor-Set fuer alle
-Substeps genutzt, capped auf sechs Eintraege. Bereits genutzte
-Attraktoren bleiben stabil, solange ein neuer Kandidat den schwaechsten
-aktuellen optionalen Attraktor nicht mindestens um Faktor `1.25`
-uebertrifft.
+Substeps genutzt, capped auf sechs Eintraege. Die teure Set-Auswahl
+darf in v1 ueber ein kurzes Refresh-Fenster wiederverwendet werden;
+die konkreten Major-Body-Positionen der ausgewaehlten Attraktoren
+werden trotzdem in jedem Tick neu gelesen. Bereits genutzte Attraktoren
+bleiben stabil, solange ein neuer Kandidat den schwaechsten aktuellen
+optionalen Attraktor nicht mindestens um Faktor `1.25` uebertrifft.
 
 **Runtime/View:** `AsteroidSnapshotCache` lebt getrennt von
 `DerivedSnapshotCache` in `runtime/derived/` und ist read-only Glue fuer
