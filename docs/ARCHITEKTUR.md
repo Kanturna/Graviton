@@ -540,10 +540,11 @@ Eligibility und ersetzt das Wunsch-Set bei jedem Aufruf vollstaendig.
 `NUMERIC_LOCAL`. Root-Bodies wechseln nie. Nur `KEPLER_APPROX` ist
 eligible.
 
-**Uebergangs-Logging:** Beim Austritt (`NUMERIC_LOCAL` ->
-`KEPLER_APPROX`) loggt `OrbitService` weiter Positions-/Velocity-Deltas.
-Wenn der Rejoin am Budget scheitert, wird dieser blocked Exit ebenfalls
-explizit per Warning sichtbar gemacht.
+**Uebergangs-Logging:** Beim erfolgreichen Austritt (`NUMERIC_LOCAL` ->
+`KEPLER_APPROX`) aktualisiert `OrbitService` den read-only
+Perf-Counter, loggt aber keine Warning. Wenn der Rejoin am Budget
+scheitert, wird dieser blocked Exit explizit per Warning sichtbar
+gemacht.
 
 **Eintritts-Seeding:** Beim Eintritt in `NUMERIC_LOCAL` seedet
 `OrbitService` Position und Velocity aus der analytischen Kepler-Loesung

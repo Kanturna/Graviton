@@ -281,6 +281,12 @@ Kamera-State lesen. Sofortige Fokus-/Bookmark-Restores duerfen den
 Renderer-Same-Frame-Guard gezielt uebersteuern, damit deferred
 UI-Klicks keinen alten Visual-State bis zum naechsten Frame behalten.
 Auch dieser Fix bleibt reine View-/Scene-Synchronisierung.
+Der kleine Folge-Slice pinnt diese Reihenfolge jetzt enger:
+Kamera-Frame, LOD-/Frame-Kontext, Renderer-Sync, danach Large-World-
+Streaming. Derselbe Immediate-Pfad gilt fuer Fokuswechsel und
+Bookmark-Restore. Erfolgreiche `NUMERIC_LOCAL -> KEPLER_APPROX`-Exits
+zaehlen weiterhin in den Perf-Countern, loggen aber nicht mehr als
+Warning; nur blocked Exits und Substep-Caps bleiben Warnpfade.
 Ein begleitender Workflow-/Repo-Hygiene-Slice haertet jetzt den
 Agentenvertrag:
 `AGENTS.md` beschreibt Startprotokoll, Validierung,
@@ -339,7 +345,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `OrbitService` budgetiert jetzt auch den Rueckwechsel
   `NUMERIC_LOCAL -> KEPLER_APPROX`: uebergrosse Rejoin-Deltas blockieren
   den Snap, halten den Body autoritativ im numerischen Regime und
-  integrieren im selben Tick weiter.
+  integrieren im selben Tick weiter. Erfolgreiche Rueckwechsel sind
+  Counter-only; nur blocked Exits warnen weiter.
 - `ThermalService` liefert jetzt on-demand minimale Insolation,
   global gemittelten absorbierten Fluss und einfache
   Gleichgewichtstemperatur aus `luminosity_w`, `albedo`, Parent-Kette

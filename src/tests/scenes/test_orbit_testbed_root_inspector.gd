@@ -7,6 +7,27 @@ const OrbitViewRendererScript = preload("res://src/tools/rendering/orbit_view_re
 const DebugOverlayScript = preload("res://src/tools/debug/debug_overlay.gd")
 
 
+class OrderTestbedProbe:
+	extends OrbitTestbedScript
+
+	var viewport_size: Vector2 = Vector2(1280.0, 720.0)
+
+	func _ready() -> void:
+		pass
+
+	func _current_viewport_size() -> Vector2:
+		return viewport_size
+
+	func _can_sync_immediate_view_state() -> bool:
+		return true
+
+	func _update_hud() -> void:
+		pass
+
+	func _sample_perf_probe() -> void:
+		pass
+
+
 class BubbleProbe:
 	extends LocalBubbleManagerScript
 
@@ -34,6 +55,10 @@ class CameraControllerProbe:
 	}
 	var restored_states: Array[Dictionary] = []
 	var restore_immediate_flags: Array[bool] = []
+	var order_log: Array = []
+	var zoom_factor: float = 1.0
+	var current_view_scale: float = 1.0
+	var zoom_mode: StringName = &"probe"
 
 	func set_focus(body_id: StringName, immediate := false, force_fit := false) -> void:
 		focused_ids.append(body_id)
@@ -42,11 +67,23 @@ class CameraControllerProbe:
 		if bubble != null:
 			bubble.set_focus(body_id)
 
-	func step(_delta: float, _viewport_size: Vector2) -> void:
+	func handle_pan_input(_pan_dir: Vector2, _delta: float) -> void:
 		pass
+
+	func step(_delta: float, _viewport_size: Vector2) -> void:
+		order_log.append("camera.step")
 
 	func get_frame_label() -> StringName:
 		return frame_label
+
+	func get_zoom_factor() -> float:
+		return zoom_factor
+
+	func get_current_view_scale() -> float:
+		return current_view_scale
+
+	func get_zoom_mode() -> StringName:
+		return zoom_mode
 
 	func fit_current_focus() -> void:
 		pass
@@ -124,6 +161,9 @@ class DerivedSnapshotCacheProbe:
 class DebugOverlayProbe:
 	extends DebugOverlayScript
 
+	func _process(_delta: float) -> void:
+		pass
+
 	func mark_dirty(_immediate: bool = false) -> void:
 		pass
 
@@ -136,9 +176,13 @@ class StreamingControllerProbe:
 
 	var focus_root_id: StringName = &"obsidian"
 	var resident_root_ids: Array[StringName] = [&"obsidian"]
+	var order_log: Array = []
 
 	func get_focus_root_id() -> StringName:
 		return focus_root_id
+
+	func update(_delta: float, _zoom_factor: float) -> void:
+		order_log.append("streaming.update")
 
 	func get_resident_root_ids() -> Array[StringName]:
 		var out: Array[StringName] = []
@@ -171,16 +215,52 @@ class RendererProbe:
 	extends OrbitViewRendererScript
 
 	var rebuild_count: int = 0
+	var order_log: Array = []
+	var sync_force_flags: Array[bool] = []
+
+	func _ready() -> void:
+		pass
+
+	func _process(_delta: float) -> void:
+		pass
 
 	func rebuild_from_registry() -> void:
 		rebuild_count += 1
 
 	func set_frame_label(_frame_label: StringName) -> void:
-		pass
+		order_log.append("view_lod.set_frame_label")
+
+	func sync_visuals_now(force: bool = false) -> void:
+		order_log.append("renderer.sync")
+		sync_force_flags.append(force)
 
 
 class GalaxyProxyRendererProbe:
 	extends Node2D
+
+
+class ActivationSetProcessProbe:
+	extends BubbleActivationSet
+
+	var active_ids: Array[StringName] = [&"alpha"]
+
+	func rebuild() -> void:
+		pass
+
+	func get_active_ids() -> Array[StringName]:
+		var out: Array[StringName] = []
+		out.append_array(active_ids)
+		return out
+
+
+class OrbitServiceProcessProbe:
+	extends OrbitService
+
+	var requested_ids: Array[StringName] = []
+
+	func request_numeric_local_candidates(ids: Array[StringName]) -> void:
+		requested_ids = []
+		requested_ids.append_array(ids)
 
 
 static func run(ctx) -> void:
@@ -192,6 +272,9 @@ static func run(ctx) -> void:
 	_test_root_inspector_clicks_use_immediate_focus_fit(ctx)
 	_test_non_large_world_keeps_root_inspector_hidden(ctx)
 	_test_galaxy_proxy_visibility_is_root_overview_only(ctx)
+	_test_process_syncs_view_lod_before_renderer_and_streaming(ctx)
+	_test_immediate_focus_syncs_view_lod_before_forced_renderer(ctx)
+	_test_view_bookmark_restore_syncs_view_lod_before_forced_renderer(ctx)
 	_test_view_bookmark_shortcuts_route_to_slots(ctx)
 	_test_view_bookmark_slots_store_and_restore_camera_state(ctx)
 	_test_view_bookmark_restore_ignores_stale_or_cross_world_slots(ctx)
@@ -304,6 +387,65 @@ static func _test_galaxy_proxy_visibility_is_root_overview_only(ctx) -> void:
 	camera.frame_label = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
 	testbed._sync_view_lod_state(false, false)
 	ctx.assert_true(not proxy.visible, "Galaxy-Proxies schlafen im lokalen Fokus-/Detailblick")
+	_destroy_testbed_probe(testbed)
+
+
+static func _test_process_syncs_view_lod_before_renderer_and_streaming(ctx) -> void:
+	var testbed = _build_testbed_probe(true, true)
+	var order: Array = []
+	_attach_order_log(testbed, order)
+	var activation := ActivationSetProcessProbe.new()
+	var orbit_service := OrbitServiceProcessProbe.new()
+	testbed.add_child(activation)
+	testbed.add_child(orbit_service)
+	testbed._activation_set = activation
+	testbed._orbit_service = orbit_service
+
+	testbed._process(0.016)
+
+	_assert_call_before(ctx, order, "camera.step", "view_lod.set_frame_label",
+		"_process aktualisiert erst die Kamera und dann den Frame-/LOD-Kontext")
+	_assert_call_before(ctx, order, "view_lod.set_frame_label", "renderer.sync",
+		"_process spiegelt den Frame-/LOD-Kontext vor dem Renderer-Sync")
+	_assert_call_before(ctx, order, "renderer.sync", "streaming.update",
+		"_process laesst Streaming nach dem Renderer-Sync")
+	_destroy_testbed_probe(testbed)
+
+
+static func _test_immediate_focus_syncs_view_lod_before_forced_renderer(ctx) -> void:
+	var testbed = _build_testbed_probe(true, true)
+	var order: Array = []
+	_attach_order_log(testbed, order)
+	var renderer: RendererProbe = testbed._renderer
+
+	testbed._set_focus(&"alpha", true, true)
+
+	_assert_call_before(ctx, order, "camera.step", "view_lod.set_frame_label",
+		"Immediate-Fokus aktualisiert erst die Kamera und dann den Frame-/LOD-Kontext")
+	_assert_call_before(ctx, order, "view_lod.set_frame_label", "renderer.sync",
+		"Immediate-Fokus spiegelt den Frame-/LOD-Kontext vor dem forced Renderer-Sync")
+	ctx.assert_true(renderer.sync_force_flags.size() == 1 and renderer.sync_force_flags[0],
+		"Immediate-Fokus erzwingt genau einen Renderer-Sync im selben Pfad")
+	_destroy_testbed_probe(testbed)
+
+
+static func _test_view_bookmark_restore_syncs_view_lod_before_forced_renderer(ctx) -> void:
+	var testbed = _build_testbed_probe(true, true)
+	var order: Array = []
+	_attach_order_log(testbed, order)
+	var renderer: RendererProbe = testbed._renderer
+	testbed._store_view_bookmark_slot(1)
+	order.clear()
+	renderer.sync_force_flags.clear()
+
+	testbed._restore_view_bookmark_slot(1)
+
+	_assert_call_before(ctx, order, "camera.step", "view_lod.set_frame_label",
+		"Bookmark-Restore aktualisiert erst die Kamera und dann den Frame-/LOD-Kontext")
+	_assert_call_before(ctx, order, "view_lod.set_frame_label", "renderer.sync",
+		"Bookmark-Restore spiegelt den Frame-/LOD-Kontext vor dem forced Renderer-Sync")
+	ctx.assert_true(renderer.sync_force_flags.size() == 1 and renderer.sync_force_flags[0],
+		"Bookmark-Restore erzwingt genau einen Renderer-Sync im selben Pfad")
 	_destroy_testbed_probe(testbed)
 
 
@@ -443,8 +585,26 @@ static func _key_press(keycode: int, ctrl_pressed: bool, shift_pressed: bool = f
 	return event
 
 
-static func _build_testbed_probe(is_large_world: bool):
-	var testbed = OrbitTestbedScript.new()
+static func _assert_call_before(ctx, order: Array, before: String, after: String, message: String) -> void:
+	var before_index: int = order.find(before)
+	var after_index: int = order.find(after)
+	ctx.assert_true(before_index >= 0, "%s: %s wurde aufgezeichnet" % [message, before])
+	ctx.assert_true(after_index >= 0, "%s: %s wurde aufgezeichnet" % [message, after])
+	ctx.assert_true(before_index >= 0 and after_index >= 0 and before_index < after_index,
+		"%s (%s vor %s, order=%s)" % [message, before, after, str(order)])
+
+
+static func _attach_order_log(testbed, order: Array) -> void:
+	var camera: CameraControllerProbe = testbed._camera_controller
+	var renderer: RendererProbe = testbed._renderer
+	var streaming: StreamingControllerProbe = testbed._streaming_controller
+	camera.order_log = order
+	renderer.order_log = order
+	streaming.order_log = order
+
+
+static func _build_testbed_probe(is_large_world: bool, order_testbed: bool = false):
+	var testbed = OrderTestbedProbe.new() if order_testbed else OrbitTestbedScript.new()
 	var bubble := BubbleProbe.new()
 	var camera := CameraControllerProbe.new()
 	camera.bubble = bubble

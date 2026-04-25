@@ -365,6 +365,7 @@ static func _test_empty_request_exits_back_to_kepler_after_grace(ctx) -> void:
 	ctx.assert_true(state.current_mode == OrbitMode.Kind.NUMERIC_LOCAL,
 		"ein fehlender Request-Tick bleibt wegen Grace noch numerisch")
 
+	service._exit_budget_warning_active_by_id[&"planet_a"] = true
 	_emit_sim_tick(time_service, 1.0)
 
 	var expected: Dictionary = _evaluate_kepler_state(def, profile, 3.0)
@@ -382,6 +383,21 @@ static func _test_empty_request_exits_back_to_kepler_after_grace(ctx) -> void:
 		1.0e-3,
 		"Rueckwechsel nach Grace setzt analytische Kepler-Velocity"
 	)
+	var after_exit: Dictionary = service.get_perf_counter_snapshot()
+	ctx.assert_true(int(after_exit.get(OrbitService.PERF_KEY_REGIME_EXIT_NUMERIC, 0)) == 1,
+		"erfolgreicher Rueckwechsel zaehlt weiter den Numeric-Exit")
+	ctx.assert_true(not service._exit_budget_warning_active_by_id.has(&"planet_a"),
+		"erfolgreicher Rueckwechsel loescht ein altes Exit-Budget-Warning-Flag")
+
+	service.numeric_local_exit_max_position_delta_ratio = 1.0e-12
+	service.numeric_local_exit_max_velocity_delta_ratio = 1.0e-12
+	service.request_numeric_local_candidates(_ids([&"planet_a"]))
+	service.recompute_all_at_time(time_service.sim_time_s)
+	service.request_numeric_local_candidates(_ids([]))
+	_emit_sim_tick(time_service, 1.0)
+	_emit_sim_tick(time_service, 1.0)
+	ctx.assert_true(service._exit_budget_warning_active_by_id.has(&"planet_a"),
+		"ein spaeterer blocked Exit derselben ID darf nach erfolgreichem Exit wieder warnen")
 
 	service.free()
 	time_service.free()

@@ -302,15 +302,14 @@ func _process(delta: float) -> void:
 	_activation_set.rebuild()
 	_orbit_service.request_numeric_local_candidates(_activation_set.get_active_ids())
 	_camera_controller.handle_pan_input(_pan_input_dir(), delta)
-	_camera_controller.step(delta, get_viewport_rect().size)
-	# Kamera zuerst anwenden, dann Visuals syncen: Fokuswechsel, Zoom und
-	# Manual-Pan muessen im selben Frame anliegen, bevor Body-Scale,
-	# Detail-LOD und Overlays aus dem Renderer gelesen werden.
+	_camera_controller.step(delta, _current_viewport_size())
+	# Kamera zuerst anwenden, dann den neuen Frame-/LOD-Kontext an alle
+	# View-Consumers spiegeln, bevor der Renderer seine Visuals synct.
+	_sync_view_lod_state(false, false)
 	if _renderer != null:
 		_renderer.sync_visuals_now()
 	if _is_large_world:
 		_streaming_controller.update(delta, _camera_controller.get_zoom_factor())
-	_sync_view_lod_state(false, false)
 	_sync_galaxy_proxy_transform()
 	if _planet_badge_overlay != null:
 		_planet_badge_overlay.refresh()
@@ -709,12 +708,8 @@ func _set_focus(body_id: StringName, immediate: bool = false, force_fit: bool = 
 	_sync_root_inspector_context(false)
 	_refresh_snapshot_interest_ids()
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
-	if immediate and is_inside_tree():
-		_camera_controller.step(0.0, get_viewport_rect().size)
-		if _renderer != null:
-			_renderer.sync_visuals_now(true)
-		_sync_view_lod_state(true, _debug_overlay.visible)
-		_sync_galaxy_proxy_transform()
+	if immediate and _can_sync_immediate_view_state():
+		_sync_immediate_view_state(true)
 
 
 func _update_hud() -> void:
@@ -911,10 +906,8 @@ func _restore_view_bookmark_slot(slot: int) -> void:
 	_sync_root_inspector_context(false)
 	_refresh_snapshot_interest_ids()
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
-	if is_inside_tree():
-		_camera_controller.step(0.0, get_viewport_rect().size)
-		if _renderer != null:
-			_renderer.sync_visuals_now(true)
+	if _can_sync_immediate_view_state():
+		_sync_immediate_view_state(true)
 
 
 func _root_focus_id() -> StringName:
@@ -950,6 +943,22 @@ func _sync_galaxy_proxy_transform() -> void:
 		return
 	_galaxy_proxy_renderer.scale = _renderer.scale
 	_galaxy_proxy_renderer.position = _renderer.position
+
+
+func _current_viewport_size() -> Vector2:
+	return get_viewport_rect().size
+
+
+func _can_sync_immediate_view_state() -> bool:
+	return is_inside_tree()
+
+
+func _sync_immediate_view_state(force_interest_refresh: bool) -> void:
+	_camera_controller.step(0.0, _current_viewport_size())
+	_sync_view_lod_state(force_interest_refresh, _debug_overlay.visible)
+	if _renderer != null:
+		_renderer.sync_visuals_now(true)
+	_sync_galaxy_proxy_transform()
 
 
 func _on_streaming_residency_changed(_resident_root_ids: Array[StringName], focus_root_id: StringName) -> void:

@@ -16,7 +16,7 @@ bereits headless abgesicherten Slices.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Perf-Snapshot-Sidecar mit `7880`
+- `run_tests.bat` lief nach dem Frame-Order-/Numeric-Exit-Slice mit `7906`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -25,7 +25,10 @@ Headless-Basis:
   Planet-Badge-Text-/Candidate-Caching, Perf-Snapshot-JSON-
   Konvertierung, Orbit-/Time-Formatter, Genetic/Pressure-/
   Life-Ecology-Ableitungen und den bounded
-  `scaleup_galaxy_100`-Streamingpfad
+  `scaleup_galaxy_100`-Streamingpfad; zusaetzlich pinnen Recorder-
+  Tests jetzt die Reihenfolge Kamera -> Frame-/LOD-Kontext -> Renderer
+  sowie Renderer -> Streaming, und Numeric-Exit-Tests pinnen
+  Counter-/Warning-Dedup-Semantik
 
 Offene Editor-/Feel-/FPS-Gates:
 
@@ -37,7 +40,9 @@ Offene Editor-/Feel-/FPS-Gates:
   echten Testbed validieren
 - Unlocked-FPS/Focus-Smoothing, View Bookmarks und Large-World-
   Regression: Runtime-Haptik und Performance mit
-  `scaleup_galaxy_100` und offenem Inspector pruefen
+  `scaleup_galaxy_100` und offenem Inspector pruefen; vor einem
+  `FramePoseCache` bleiben Detail-Fokus-`P`-Dumps fuer Stern/Planet/Mond
+  das naechste Evidence-Gate
 
 Erst wenn diese Gates sauber sind, ist `Population Counts v1` wieder der
 naechste sinnvolle Simulationsblock. Wenn ein Gate kippt, wird zuerst

@@ -336,16 +336,6 @@ func _exit_numeric_local_to_kepler(state: BodyState, def: BodyDef, profile: Orbi
 		_warn_on_exit_budget_block(def.id, pos_delta_m, vel_delta_mps, pos_budget_m, vel_budget_mps)
 		return false
 	_exit_budget_warning_active_by_id.erase(def.id)
-	push_warning(
-		"OrbitService: NUMERIC_LOCAL exit fuer %s pos_delta=%s vel_delta=%s pos_budget=%s vel_budget=%s"
-			% [
-				String(def.id),
-				str(pos_delta_m),
-				str(vel_delta_mps),
-				str(pos_budget_m),
-				str(vel_budget_mps),
-			]
-	)
 	state.position_parent_frame_m = analytical_pos
 	state.velocity_parent_frame_mps = analytical_vel
 	state.current_mode = OrbitMode.Kind.KEPLER_APPROX
