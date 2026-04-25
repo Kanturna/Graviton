@@ -1,9 +1,10 @@
 class_name OrbitViewRenderer
 extends Node2D
 
-const ORBIT_SAMPLE_COUNT: int = 120
+const ORBIT_SAMPLE_COUNT: int = 48
 const TRAIL_LINE_WIDTH_PX: float = 2.0
 const MIN_TRAIL_STEP_PX: float = 1.2
+const SCREEN_CULL_MARGIN_PX: float = 240.0
 const SIM_TICK_SIGNAL: StringName = &"sim_tick"
 # Close-zoom-LOD aktiviert sich, wenn der Fokus-Body derart gross auf
 # dem Screen ist, dass Trails + Orbitlinien fremder Bodies nur noch
@@ -65,6 +66,8 @@ var _last_debug_snapshot: Dictionary = {
 	"body_focus_detail_factor": 0.0,
 	"body_focus_effective_scale": 0.0,
 	"presentation_offset_s": 0.0,
+	"screen_culled_body_count": 0,
+	"screen_culled_orbit_line_count": 0,
 }
 
 
@@ -335,10 +338,13 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 	var overview_visible_star_count: int = 0
 	var root_overview_active: bool = _is_root_overview_active()
 	var positions_by_id: Dictionary = {}
+	var body_screen_visible_by_id: Dictionary = {}
 	var visible_orbit_line_count: int = 0
 	var root_overview_orbit_line_count: int = 0
 	var visible_orbit_point_count: int = 0
 	var body_visible_count: int = 0
+	var screen_culled_body_count: int = 0
+	var screen_culled_orbit_line_count: int = 0
 	var body_detail_factor_max: float = 0.0
 	var body_star_closeup_phase_max: float = 0.0
 	var body_effective_scale_max: float = 0.0
@@ -373,38 +379,49 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 				_clear_trail(id)
 			continue
 
+		var detail_factor: float = OrbitEmphasisRulesScript.body_detail_factor(
+			id,
+			def,
+			_focus_id,
+			_topology,
+			_focus_closeup_ratio
+		)
+		var star_phase: float = OrbitEmphasisRulesScript.star_closeup_phase(
+			id,
+			def,
+			_focus_id,
+			_focus_closeup_ratio
+		)
+		var star_scale: float = OrbitEmphasisRulesScript.star_focus_scale(star_phase)
+		var body_effective_scale: float = detail_factor * star_scale
+		var body_screen_visible: bool = _is_screen_circle_visible(
+			pos,
+			_pick_radius_local(def.kind) * body_effective_scale,
+			SCREEN_CULL_MARGIN_PX
+		)
+		body_screen_visible_by_id[id] = body_screen_visible
+		if not body_screen_visible:
+			screen_culled_body_count += 1
+
 		if visual != null:
-			visual.visible = true
-			body_visible_count += 1
-			visual.position = pos
-			var detail_factor: float = OrbitEmphasisRulesScript.body_detail_factor(
-				id,
-				def,
-				_focus_id,
-				_topology,
-				_focus_closeup_ratio
-			)
-			var star_phase: float = OrbitEmphasisRulesScript.star_closeup_phase(
-				id,
-				def,
-				_focus_id,
-				_focus_closeup_ratio
-			)
-			var star_scale: float = OrbitEmphasisRulesScript.star_focus_scale(star_phase)
+			visual.visible = body_screen_visible
 			var visual_scale: Vector2 = Vector2.ONE * ((detail_factor / _world_scale) * star_scale)
 			if not visual.scale.is_equal_approx(visual_scale):
 				visual.scale = visual_scale
-			visual.set_detail_factor(detail_factor)
-			visual.set_star_closeup_phase(star_phase)
+			if body_screen_visible:
+				body_visible_count += 1
+				visual.position = pos
+				visual.set_detail_factor(detail_factor)
+				visual.set_star_closeup_phase(star_phase)
 			# effective_screen_scale = finaler lokaler Zeichnen-zu-Pixel-Faktor.
 			# visual.scale kompensiert world_scale, renderer.scale = world_scale,
 			# daher kuerzt sich world_scale raus und die effektive Pixel-Skala
 			# eines lokalen 1px-Radius ist detail_factor * star_scale.
-			var body_effective_scale: float = detail_factor * star_scale
 			body_detail_factor_max = maxf(body_detail_factor_max, detail_factor)
 			body_star_closeup_phase_max = maxf(body_star_closeup_phase_max, star_phase)
 			body_effective_scale_max = maxf(body_effective_scale_max, body_effective_scale)
-			visual.set_effective_screen_scale(body_effective_scale)
+			if body_screen_visible:
+				visual.set_effective_screen_scale(body_effective_scale)
 			if id == _focus_id:
 				body_focus_detail_factor = detail_factor
 				body_focus_effective_scale = body_effective_scale
@@ -417,21 +434,25 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 			var parent_id: StringName = orbit_entry.get("parent_id", &"")
 			if orbit_line != null:
 				var orbit_visible: bool = not root_overview_active or _should_show_orbit_in_root_overview(def)
-				if orbit_line.visible != orbit_visible:
-					orbit_line.visible = orbit_visible
 				if orbit_visible:
-					visible_orbit_line_count += 1
-					visible_orbit_point_count += orbit_line.points.size()
-					if root_overview_active:
-						root_overview_orbit_line_count += 1
 					var parent_pos: Vector2 = positions_by_id.get(parent_id, Vector2(INF, INF))
 					if not _is_finite_vec2(parent_pos):
 						parent_pos = _compute_body_view_position_ru(parent_id, true, presentation_offset_s)
 						positions_by_id[parent_id] = parent_pos
-					orbit_line.position = parent_pos
+					orbit_visible = _is_finite_vec2(parent_pos) and _is_orbit_screen_visible(def, parent_pos)
+					if not orbit_visible:
+						screen_culled_orbit_line_count += 1
+					else:
+						visible_orbit_line_count += 1
+						visible_orbit_point_count += orbit_line.points.size()
+						if root_overview_active:
+							root_overview_orbit_line_count += 1
+						orbit_line.position = parent_pos
+				if orbit_line.visible != orbit_visible:
+					orbit_line.visible = orbit_visible
 
 		if trail_line != null:
-			var show_trail: bool = not root_overview_active
+			var show_trail: bool = not root_overview_active and bool(body_screen_visible_by_id.get(id, false))
 			if trail_line.visible != show_trail:
 				trail_line.visible = show_trail
 			if show_trail:
@@ -463,6 +484,8 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 		"body_focus_detail_factor": body_focus_detail_factor,
 		"body_focus_effective_scale": body_focus_effective_scale,
 		"presentation_offset_s": presentation_offset_s,
+		"screen_culled_body_count": screen_culled_body_count,
+		"screen_culled_orbit_line_count": screen_culled_orbit_line_count,
 	}
 	PerfProbeScript.bump(&"sync_visuals")
 	PerfProbeScript.sample(&"compose_view_position_body_count", _compose_view_position_body_ids.size())
@@ -476,6 +499,8 @@ func _sync_visual_positions(reset_trails: bool = false) -> void:
 	PerfProbeScript.sample(&"body_effective_scale_max", body_effective_scale_max)
 	PerfProbeScript.sample(&"body_focus_detail_factor", body_focus_detail_factor)
 	PerfProbeScript.sample(&"body_focus_effective_scale", body_focus_effective_scale)
+	PerfProbeScript.sample(&"body_screen_culled_count", screen_culled_body_count)
+	PerfProbeScript.sample(&"orbit_screen_culled_line_count", screen_culled_orbit_line_count)
 
 
 func _apply_environment_visuals() -> void:
@@ -797,6 +822,39 @@ func _compute_body_view_position_ru(
 	if not _is_finite_vec3(view_m):
 		return Vector2(INF, INF)
 	return Vector2(view_m.x, view_m.y) / UnitSystem.RENDER_SCALE_M_PER_UNIT
+
+
+func _is_screen_circle_visible(center_ru: Vector2, radius_px: float, margin_px: float) -> bool:
+	if not is_inside_tree():
+		return true
+	var viewport_size: Vector2 = get_viewport_rect().size
+	if viewport_size.x <= 1.0 or viewport_size.y <= 1.0:
+		return true
+	var screen_pos: Vector2 = center_ru * _world_scale + position
+	return _screen_circle_intersects_viewport(screen_pos, radius_px, viewport_size, margin_px)
+
+
+func _is_orbit_screen_visible(def: BodyDef, parent_pos_ru: Vector2) -> bool:
+	var extent_px: float = OrbitOrbitGeometryScript.orbit_extent_ru(def) * _world_scale
+	return _is_screen_circle_visible(parent_pos_ru, extent_px, SCREEN_CULL_MARGIN_PX)
+
+
+static func _screen_circle_intersects_viewport(
+	screen_pos: Vector2,
+	radius_px: float,
+	viewport_size: Vector2,
+	margin_px: float
+) -> bool:
+	var extent: float = maxf(radius_px, 0.0) + maxf(margin_px, 0.0)
+	if screen_pos.x < -extent:
+		return false
+	if screen_pos.y < -extent:
+		return false
+	if screen_pos.x > viewport_size.x + extent:
+		return false
+	if screen_pos.y > viewport_size.y + extent:
+		return false
+	return true
 
 
 func _presentation_offset_s() -> float:

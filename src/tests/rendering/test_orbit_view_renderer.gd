@@ -82,6 +82,7 @@ static func run(ctx) -> void:
 	_test_render_sync_does_not_write_trail_points_without_sim_tick(ctx)
 	_test_root_overview_sim_tick_does_not_write_trail_points(ctx)
 	_test_close_zoom_state_has_hysteresis(ctx)
+	_test_screen_circle_visibility_helper(ctx)
 	_test_sync_visuals_now_skips_redundant_process_sync(ctx)
 	_test_forced_sync_visuals_now_overrides_same_frame_guard(ctx)
 
@@ -302,6 +303,36 @@ static func _test_close_zoom_state_has_hysteresis(ctx) -> void:
 	)
 
 	renderer.free()
+
+
+static func _test_screen_circle_visibility_helper(ctx) -> void:
+	ctx.assert_true(
+		OrbitViewRendererScript._screen_circle_intersects_viewport(
+			Vector2(120.0, 120.0),
+			10.0,
+			Vector2(240.0, 240.0),
+			0.0
+		),
+		"Screen-Culling behaelt Kreise im Viewport sichtbar"
+	)
+	ctx.assert_true(
+		OrbitViewRendererScript._screen_circle_intersects_viewport(
+			Vector2(-30.0, 120.0),
+			20.0,
+			Vector2(240.0, 240.0),
+			15.0
+		),
+		"Screen-Culling nutzt Radius plus Margin gegen Rand-Popping"
+	)
+	ctx.assert_true(
+		not OrbitViewRendererScript._screen_circle_intersects_viewport(
+			Vector2(-80.0, 120.0),
+			20.0,
+			Vector2(240.0, 240.0),
+			15.0
+		),
+		"Screen-Culling verwirft eindeutig ausserhalb liegende Kreise"
+	)
 
 
 static func _test_sync_visuals_now_skips_redundant_process_sync(ctx) -> void:

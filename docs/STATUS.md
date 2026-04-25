@@ -50,6 +50,14 @@ Daten statt Dictionary-Entries im inneren Loop, und die teure
 Attractor-Set-Auswahl wird ueber ein kurzes Refresh-Fenster
 wiederverwendet. Die Positionen der gewaehlten Major-Body-Attraktoren
 werden weiter pro Tick neu gelesen.
+Der naechste Editor-Dump lag damit im Alpha-Fokus wieder bei grob
+43-65 FPS; der Restpfad war nun klar Render-LOD statt Asteroiden-
+Physik. `OrbitViewRenderer` baut Orbitlinien deshalb mit weniger
+Stuetzwerten und cullt Bodies, Orbitlinien und Trails gegen den
+aktuellen Screen-Ausschnitt mit Margin. Neue PerfProbe-Spalten
+`body_screen_culled_count` und `orbit_screen_culled_line_count` zeigen
+im naechsten Dump, ob lokale Sternsystem-Foki weiterhin offscreen
+Sibling-Systeme zeichnen.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und

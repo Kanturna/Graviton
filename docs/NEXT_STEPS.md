@@ -59,8 +59,11 @@ Offene Editor-/Feel-/FPS-Gates:
   3-6-FPS-Sternfoki erneut pruefen: im lokalen Sternfokus sollte
   `active_asteroids` bei 24 statt 48 liegen, alte Root-Overview-Trails
   sollten beim Fokuswechsel verschwinden, `attractor_checks` sollte im
-  Catchup deutlich niedriger als vorher ausfallen, und bei weiterem
-  Einbruch direkt wieder zwei `P`-Dumps vergleichen.
+  Catchup deutlich niedriger als vorher ausfallen. Nach dem Orbit-LOD-
+  und Screen-Culling-Follow-up sollten ausserdem
+  `orbit_visible_point_count`, `render_primitives`, `body_visible_count`
+  und `draw_calls` im lokalen Fokus sinken; bei weiterem Einbruch direkt
+  wieder zwei `P`-Dumps vergleichen.
 
 Erst wenn diese Gates sauber sind, ist ein Folgeblock wie
 `Population Dynamics v1` oder `Evolution Competition v1` sinnvoll.
@@ -94,6 +97,11 @@ Konkreter Ablauf:
   `active_asteroids` soll 24 sein und `attractor_checks` soll durch
   das Attractor-Refresh-Fenster nicht mehr in jedem Catchup-Tick fuer
   alle Asteroiden voll neu steigen
+- bei Kamerabewegung im Sternfokus `P`-Dump pruefen:
+  `body_screen_culled_count`, `orbit_screen_culled_line_count`,
+  `orbit_visible_point_count`, `render_primitives` und `draw_calls`
+  zeigen, ob Screen-Culling und Orbit-LOD den lokalen View-Hotpath
+  ausreichend reduzieren
 - `P`-Dump ausloesen:
   Service-/Renderer-Snapshots und Perf-Counter fuer aktive
   Asteroiden, Attractor-Checks, Substeps und Despawns muessen im
