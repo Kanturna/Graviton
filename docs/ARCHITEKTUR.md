@@ -535,8 +535,9 @@ konsumiert nur den letzten Snapshot.
 sein, ohne die bestehende Parent-/Child-Topologie der grossen
 Himmelskoerper zu zerlegen. Die Major-Body-Simulation bleibt die
 Quelle fuer `BLACK_HOLE`, `STAR`, `PLANET` und `MOON`; Asteroiden
-lesen diese Zustande nur als read-only Kontext. Als v1-Attraktoren
-gelten bewusst nur `STAR`, `PLANET` und `MOON`.
+lesen diese Zustande nur als read-only Kontext. Als v1.1-Attraktoren
+gelten `BLACK_HOLE`, `STAR`, `PLANET` und `MOON` nur innerhalb
+expliziter Einflussradien; es gibt keine globale Root-Dauerschwerkraft.
 
 **State und Autoritaet:** `AsteroidDef.spawn_origin_id` beschreibt das
 deterministische Stern-Spawnzentrum. `AsteroidState.anchor_id`
@@ -568,31 +569,38 @@ wieder aktiver Asteroiden-Root ist. Dadurch bleibt der aktive
 Large-World-Pfad bei 24 Asteroiden pro Fokus-Root, ohne deterministisch
 neu zu spawnen.
 
-**Physik v1.1:** Restricted Gravity mit Freiflug. `STAR`, `PLANET`
-und `MOON` ziehen Asteroiden nur innerhalb expliziter Einflussradien
-an; Schwarze Loecher sind in v1.1 Root-/Kontextkoerper, aber keine
-Asteroiden-Attraktoren. Ausserhalb aktiver Felder driftet ein
+**Physik v1.1:** Restricted Gravity mit Freiflug. `BLACK_HOLE`, `STAR`,
+`PLANET` und `MOON` ziehen Asteroiden nur innerhalb expliziter
+Einflussradien an. Schwarze Loecher sind keine Mandatory-Attraktoren
+und bekommen in v1.1 keinen Consume-/Kill-Radius; sie lenken schnelle
+Flybys nur innerhalb ihres lokalen Root-Einflussfelds. Ausserhalb
+aktiver Felder driftet ein
 Asteroid linear mit unveraenderter Velocity weiter. Es gibt keine
 globale Dauerschwerkraft, keinen Re-Spawn/Belt-Replenishment in v1.1
 und keinen Consume-/Kill-Radius fuer Schwarze Loecher. Out-of-Bounds-
-Despawn ist akzeptiertes v1.1-Verhalten. Asteroiden ziehen nichts an.
-Es gibt keine Asteroid-Asteroid-Gravitation, keine
+Despawn ist akzeptiertes v1.1-Verhalten. Initiale Velocities enthalten
+bewusst schnelle Flyby-Anteile, damit BH-Felder Asteroiden eher
+ablenken als als kleine Kreisbahn-Polygone einfangen. Asteroiden
+ziehen nichts an. Es gibt keine Asteroid-Asteroid-Gravitation, keine
 Asteroid-Kollisionen, keine Impacts, kein Merge/Split und keine
 Life-Folgen.
 
 **Attractor-Auswahl:** Pro Tick wird ein fixes Attractor-Set fuer alle
 Substeps genutzt, capped auf sechs Eintraege. Kandidaten muessen im
-Root des Asteroiden liegen, `STAR`/`PLANET`/`MOON` sein und innerhalb
-ihres Einflussradius liegen. Bereits aktive Attraktoren nutzen einen
+Root des Asteroiden liegen, `BLACK_HOLE`/`STAR`/`PLANET`/`MOON` sein
+und innerhalb ihres Einflussradius liegen. Bereits aktive Attraktoren
+nutzen einen
 Exit-Radius mit Faktor `1.15`; optionale Quellen werden nur ersetzt,
 wenn ein neuer Kandidat den schwaechsten aktuellen Attraktor mindestens
 um Faktor `1.25` uebertrifft. Die teure Set-Auswahl darf in v1.1 ueber
 ein kurzes Refresh-Fenster wiederverwendet werden. Nach dem ersten
 Editor-Freiflug-Feedback sind Stern-, Planet- und Mondradien bewusst
 grosszuegiger als die reinen visuellen Spawn-Belts, damit nicht fast
-jeder Asteroid sofort aus dem Systemfeld herausfaellt. Die konkreten
-Major-Body-Positionen der ausgewaehlten Attraktoren werden trotzdem in
-jedem Tick neu gelesen.
+jeder Asteroid sofort aus dem Systemfeld herausfaellt. Schwarze Loecher
+haben ebenfalls einen expliziten Root-Einflussradius, aber kein
+Pflichtgewicht ausserhalb dieses Radius. Die konkreten Major-Body-
+Positionen der ausgewaehlten Attraktoren werden trotzdem in jedem Tick
+neu gelesen.
 
 **Runtime/View:** `AsteroidSnapshotCache` lebt getrennt von
 `DerivedSnapshotCache` in `runtime/derived/` und ist read-only Glue fuer

@@ -10,8 +10,8 @@ static func run(ctx) -> void:
 	_test_trajectory_is_deterministic(ctx)
 	_test_major_body_states_stay_read_only(ctx)
 	_test_anchor_id_stays_stable(ctx)
-	_test_black_holes_are_not_v1_attractors(ctx)
-	_test_initial_spawn_has_radial_drift(ctx)
+	_test_black_holes_steer_inside_explicit_influence(ctx)
+	_test_initial_spawn_has_radial_drift_and_fast_flybys(ctx)
 	_test_free_drift_without_attractors_is_linear(ctx)
 	_test_influence_radius_and_hysteresis(ctx)
 	_test_out_of_bounds_free_drift_deactivates(ctx)
@@ -223,30 +223,41 @@ static func _test_anchor_id_stays_stable(ctx) -> void:
 	reg.free()
 
 
-static func _test_black_holes_are_not_v1_attractors(ctx) -> void:
+static func _test_black_holes_steer_inside_explicit_influence(ctx) -> void:
 	var reg := _make_registry()
 	var service = _make_service(reg)
 	service.reset_for_world(&"scope_a", [&"root_a"], 0.0)
-	service.advance_to_time(900.0, 900.0)
+	var state = service._states_by_id[service._state_order[0]]
+	state.root_id = &"root_a"
+	state.anchor_id = &"root_a"
+	state.current_attractor_ids.clear()
+	state.x_m = float(service.call("_influence_radius_m", reg.get_def(&"root_a"))) * 0.5
+	state.y_m = 0.0
+	state.z_m = 0.0
+	service._relative_state_cache.clear()
 
-	for entry in service.get_state_snapshot().get("entries", []):
-		if typeof(entry) != TYPE_DICTIONARY:
-			continue
-		ctx.assert_true(
-			not Array(entry.get("current_attractor_ids", [])).has(&"root_a"),
-			"Asteroiden-v1 nutzen Schwarze Loecher nicht als Attraktoren"
-		)
+	var selected: Array[StringName] = service.call("_select_attractors_for", state)
+	ctx.assert_true(selected.has(&"root_a"),
+		"Schwarze Loecher lenken Asteroiden innerhalb ihres expliziten Einflussradius")
+
+	state.current_attractor_ids.clear()
+	state.x_m = float(service.call("_influence_radius_m", reg.get_def(&"root_a"))) * 1.25
+	service._relative_state_cache.clear()
+	selected = service.call("_select_attractors_for", state)
+	ctx.assert_true(not selected.has(&"root_a"),
+		"ausserhalb des BH-Einflussradius gibt es keine unbegrenzte Root-Dauerschwerkraft")
 
 	service.free()
 	reg.free()
 
 
-static func _test_initial_spawn_has_radial_drift(ctx) -> void:
+static func _test_initial_spawn_has_radial_drift_and_fast_flybys(ctx) -> void:
 	var reg := _make_registry()
 	var service = _make_service(reg)
 	service.reset_for_world(&"scope_a", [&"root_a"], 0.0)
 
 	var drift_count: int = 0
+	var fast_flyby_count: int = 0
 	for entry in service.get_state_snapshot().get("entries", []):
 		if typeof(entry) != TYPE_DICTIONARY:
 			continue
@@ -259,10 +270,17 @@ static func _test_initial_spawn_has_radial_drift(ctx) -> void:
 		var vy: float = float(entry.get("vy_mps", 0.0)) - float(origin.get("vy_mps", 0.0))
 		var radius: float = maxf(sqrt(x * x + y * y), 1.0)
 		var radial_speed: float = (x * vx + y * vy) / radius
+		var local_speed: float = sqrt(vx * vx + vy * vy)
+		var origin_def: BodyDef = reg.get_def(spawn_origin_id)
+		var circular_speed: float = sqrt(UnitSystem.mu_from_mass(origin_def.mass_kg) / radius) if origin_def != null else INF
 		if absf(radial_speed) > 10.0:
 			drift_count += 1
+		if local_speed > circular_speed * 1.12:
+			fast_flyby_count += 1
 	ctx.assert_true(drift_count > 0,
 		"Initiale Asteroiden-Velocities sind nicht alle perfekte Kreisbahn-Tangenten")
+	ctx.assert_true(fast_flyby_count > 0,
+		"Initiale Asteroiden enthalten schnellere Flybys statt nur gebundene Kreisbahnen")
 
 	service.free()
 	reg.free()
@@ -330,8 +348,8 @@ static func _test_influence_radius_and_hysteresis(ctx) -> void:
 		"Attractor-Auswahl bleibt auf MAX_ATTRACTORS gecappt")
 	ctx.assert_true(selected.has(&"star_a") and selected.has(&"planet_a"),
 		"Eintritt in Stern-/Planeten-Einflussradien aktiviert passende Attraktoren")
-	ctx.assert_true(not selected.has(&"root_a"),
-		"Root-Schwarzes-Loch bleibt aus der V1.1-Attractor-Auswahl ausgeschlossen")
+	ctx.assert_true(selected.has(&"root_a"),
+		"Root-Schwarzes-Loch kann zusaetzlich als lenkender Attraktor aktiv sein")
 
 	var moon_state: BodyState = reg.get_state(&"moon_a")
 	moon_state.position_parent_frame_m = Vector3(1.0e8, 0.0, 0.0)

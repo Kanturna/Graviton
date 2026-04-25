@@ -267,7 +267,9 @@ func sync_visuals_now(force: bool = false) -> void:
 
 
 func _on_sim_tick(_dt: float) -> void:
+	var start_us: int = Time.get_ticks_usec()
 	_update_trails_for_sim_tick(false)
+	PerfProbeScript.bump(&"orbit_trail_update_us", Time.get_ticks_usec() - start_us)
 
 
 func _rebuild_visuals() -> void:
@@ -1000,9 +1002,7 @@ func _registry_update_order() -> Array[StringName]:
 
 
 func _should_show_orbit_in_root_overview(def: BodyDef) -> bool:
-	# AntialiasedLine2D star orbits dominate the black-hole root overview
-	# render cost. The star bodies remain visible; detail mode restores orbits.
-	return false
+	return _is_visible_root_overview_star(def)
 
 
 static func _hide_visual_stack(visual: CanvasItem, orbit_line: CanvasItem, trail_line: CanvasItem) -> void:

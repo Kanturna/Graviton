@@ -82,25 +82,41 @@ func _draw() -> void:
 	var pixel_scale: float = _pixel_scale()
 	var trail_width: float = TRAIL_WIDTH_PX * pixel_scale
 	var point_radius: float = POINT_RADIUS_PX * pixel_scale
+	var viewport_size := Vector2.ZERO
+	var has_viewport: bool = is_inside_tree()
+	if has_viewport:
+		viewport_size = get_viewport_rect().size
+		has_viewport = viewport_size.x > 0.0 and viewport_size.y > 0.0
+	var canvas_xform: Transform2D = get_global_transform_with_canvas() if is_inside_tree() else get_global_transform()
 	for id in _trail_histories_by_id.keys():
 		var history: Array = _trail_histories_by_id[id]
 		if history.size() < 2:
 			continue
 		var points := PackedVector2Array()
+		var screen_min := Vector2(INF, INF)
+		var screen_max := Vector2(-INF, -INF)
 		for sample in history:
 			if typeof(sample) != TYPE_DICTIONARY:
 				continue
 			var point: Vector2 = _sample_position_ru(sample, _anchor_view_by_id)
 			if _is_finite_vec2(point):
 				points.append(point)
+				var screen_px: Vector2 = canvas_xform * point
+				if _is_finite_vec2(screen_px):
+					screen_min.x = minf(screen_min.x, screen_px.x)
+					screen_min.y = minf(screen_min.y, screen_px.y)
+					screen_max.x = maxf(screen_max.x, screen_px.x)
+					screen_max.y = maxf(screen_max.y, screen_px.y)
 		if points.size() < 2:
+			continue
+		if has_viewport and not _screen_bounds_visible(screen_min, screen_max, viewport_size, SCREEN_DEBUG_MARGIN_PX):
 			continue
 		draw_polyline(points, Color(0.72, 0.78, 0.84, 0.34), trail_width, true)
 	for id in _entries_by_id.keys():
 		var entry: Dictionary = _entries_by_id[id]
 		var color: Color = _color_for(entry.get("visual_class", StringName("")))
 		var point: Vector2 = _entry_position_ru(entry)
-		if _is_finite_vec2(point):
+		if _is_finite_vec2(point) and (not has_viewport or _screen_point_visible(canvas_xform * point, viewport_size, SCREEN_DEBUG_MARGIN_PX)):
 			draw_circle(point, point_radius, color)
 
 
@@ -243,6 +259,15 @@ static func _screen_point_visible(point_px: Vector2, viewport_size: Vector2, mar
 		and point_px.y >= -margin_px \
 		and point_px.x <= viewport_size.x + margin_px \
 		and point_px.y <= viewport_size.y + margin_px
+
+
+static func _screen_bounds_visible(min_px: Vector2, max_px: Vector2, viewport_size: Vector2, margin_px: float) -> bool:
+	if not _is_finite_vec2(min_px) or not _is_finite_vec2(max_px):
+		return false
+	return max_px.x >= -margin_px \
+		and max_px.y >= -margin_px \
+		and min_px.x <= viewport_size.x + margin_px \
+		and min_px.y <= viewport_size.y + margin_px
 
 
 static func _color_for(visual_class: StringName) -> Color:

@@ -22,9 +22,10 @@ Darauf sitzt jetzt zusaetzlich `Asteroiden v1` als sichtbare
 Minor-Body-Simulation:
 Asteroiden leben in einem eigenen `sim/asteroids/`-Slice mit eigenem
 `AsteroidState`, stabilem `anchor_id`, eigenem ID-Raum und
-Restricted-Gravity-Integrator. `STAR`, `PLANET` und `MOON` ziehen
-Asteroiden an; `BLACK_HOLE` bleibt in v1 Root-/Kontextkoerper, aber
-kein Asteroiden-Attractor. Asteroiden schreiben nie
+Restricted-Gravity-Integrator. `BLACK_HOLE`, `STAR`, `PLANET` und
+`MOON` ziehen Asteroiden nur innerhalb expliziter Einflussradien an;
+`BLACK_HOLE` bleibt Root-/Kontextkoerper ohne globale
+Pflichtgravitation, Consume- oder Kill-Radius. Asteroiden schreiben nie
 Major-Body-`BodyState` und wirken nicht aufeinander. Die Szene bridged
 `OrbitService.step_completed(dt_s, t_s)` explizit in den
 Asteroid-Service; Single-World- und Large-World-Residency spawnen
@@ -37,8 +38,9 @@ Asteroiden bleiben bewusst Folge-Slices.
 Asteroiden v1.1 korrigiert diesen Slice auf Root-Frame-Freiflug:
 `AsteroidDef.spawn_origin_id` bleibt das deterministische Stern-
 Spawnzentrum, waehrend `AsteroidState.anchor_id` stabil der Root ist.
-Mandatory-Attraktoren sind entfernt; `STAR`, `PLANET` und `MOON`
-wirken nur innerhalb expliziter Einflussradien mit Exit-Hysterese.
+Mandatory-Attraktoren sind entfernt; `BLACK_HOLE`, `STAR`, `PLANET`
+und `MOON` wirken nur innerhalb expliziter Einflussradien mit Exit-
+Hysterese.
 Ausserhalb dieser Felder driften Asteroiden linear weiter, ohne
 Velocity-Aenderung und ohne v1.1-Re-Spawn. Out-of-Bounds-Despawn ist
 bewusst akzeptiert und wird gezaehlt. Trails speichern jetzt stabile
@@ -57,10 +59,12 @@ trennen.
 Ein direkter Qualitaets-Follow-up reduziert den zuvor zu sauberen
 Kreisbahn-Eindruck: Initiale Asteroiden-Velocities enthalten jetzt
 deterministischen radialen Drift und einen kleinen Anteil retrograder
-Starts, statt fast perfekte Tangenten um den Anchor zu sein. Zusammen
-mit dem Entfernen von `BLACK_HOLE` aus dem v1-Attractor-Set sollen die
-Steinchen im Root-/Sternfokus eher wie fliegendes Geroell statt wie
-kleine gezeichnete Mondorbits lesen.
+Starts, statt fast perfekte Tangenten um den Anchor zu sein. Die
+zwischenzeitliche Entfernung von `BLACK_HOLE` aus dem v1.1-Attractor-
+Set war zu hart: Asteroiden flogen im Root-Frame zu gerade. `BLACK_HOLE`
+ist deshalb wieder ein radiusbegrenzter Lenkungs-Attraktor, waehrend
+die Startgeschwindigkeiten nochmals hoeher liegen, damit BH-Felder eher
+ablenken als kleine Root-Orbits einfangen.
 Ein direkter Performance-Follow-up cached im Asteroid-Service
 relative Major-Body-Zustaende pro `(anchor_id, body_id)` innerhalb
 eines Asteroiden-Ticks. Damit werden identische Topologie-/Frame-
@@ -146,6 +150,15 @@ schreibt diese Werte in den naechsten `P`-Dump. Damit laesst sich
 trennen, ob Asteroiden wirklich despawnen, nur weit ausserhalb des
 erreichbaren Kameraausschnitts liegen oder im Projektion-/Renderpfad
 falsch positioniert werden.
+Der naechste Dump zeigte im langsamen Sternfokus 24 aktive, aber 0
+screen-sichtbare Asteroiden; alle Asteroiden lagen offscreen und wurden
+trotzdem noch als Canvas-Draw-Pfad aufgebaut. Der Asteroidenrenderer
+cullt deshalb jetzt Punkte und Trails in `_draw()` gegen den
+Screen-Ausschnitt. Zusaetzlich werden `orbit_trail_update_us` und
+`time_tick_emit_us` gemessen, weil der gleiche Dump einen grossen
+`physics_ms`-Block zeigte, den `orbit_step_core_us`,
+`asteroid_advance_us` und die Renderer-Stage-Timer noch nicht
+vollstaendig erklaerten.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und
@@ -296,10 +309,12 @@ Der anschliessende Re-Dump zeigte den Rest-Ruckler weiterhin, aber mit
 `galaxy_proxy_visible_roots = 0` und `galaxy_proxy_draw_entries = 0`;
 damit war der sichtbare 254-Draw-Call-Zustand nicht mehr den
 Galaxy-Proxies zuzuordnen. Eine 24-Sample-Linien-LOD reduzierte zwar
-die Primitive, aber nicht die Draw-Calls ausreichend. Deshalb blendet
-`OrbitViewRenderer` direkte `AntialiasedLine2D`-Stern-Orbits im
-`root-overview` jetzt komplett aus; die direkten Sterne bleiben
-sichtbar und der Detailmodus stellt die Orbitlinien wieder her.
+die Primitive, aber nicht die Draw-Calls ausreichend. Ein kurzer
+Root-Overview-LOD-Schnitt blendete direkte Stern-Orbits aus, wurde nach
+Editor-Feedback aber zurueckgenommen: `OrbitViewRenderer` zeigt im
+`root-overview` wieder die direkten Stern-Umlaufbahnen um den
+fokussierten Root/BH, waehrend planetare Descendants weiter ausgeblendet
+bleiben.
 Neue `PerfProbe`-Spalten `orbit_visible_line_count`,
 `orbit_root_overview_line_count` und `orbit_visible_point_count`
 machen diesen Pfad messbar.
@@ -849,9 +864,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   die same-root Bubble-Semantik anzufassen.
 - Derselbe `OrbitViewRenderer` behandelt `ROOT_OVERVIEW` jetzt als
   expliziten View-LOD statt als "Detailszene in klein":
-  sichtbar bleiben nur BH plus direkte Sterne des Fokus-Roots; Planeten,
-  Monde, ihre Orbitlinien und ihre Trails werden vor der
-  View-Positionspipeline frueh ausgesiebt.
+  sichtbar bleiben BH, direkte Sterne des Fokus-Roots und deren
+  Root-Umlaufbahnen; Planeten, Monde, ihre Orbitlinien und ihre Trails
+  werden vor der View-Positionspipeline frueh ausgesiebt.
 - `orbit_testbed.gd` koppelt den View-LOD jetzt bewusst an das
   `DerivedSnapshotCache`-Interest-Set:
   im `ROOT_OVERVIEW` bleibt Derived-Interesse fokus-only, waehrend

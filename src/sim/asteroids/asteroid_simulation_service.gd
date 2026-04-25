@@ -14,6 +14,9 @@ const INFLUENCE_EXIT_FACTOR: float = 1.15
 const STAR_INFLUENCE_RADIUS_MULTIPLIER: float = 3.25
 const STAR_INFLUENCE_PADDING_M: float = 2.5e11
 const STAR_FALLBACK_INFLUENCE_M: float = 1.0e12
+const BLACK_HOLE_INFLUENCE_RADIUS_MULTIPLIER: float = 3.5
+const BLACK_HOLE_INFLUENCE_PADDING_M: float = 8.0e11
+const BLACK_HOLE_FALLBACK_INFLUENCE_M: float = 1.2e12
 const PLANET_RADIUS_INFLUENCE_MULTIPLIER: float = 160.0
 const PLANET_MOON_ORBIT_INFLUENCE_MULTIPLIER: float = 3.0
 const MOON_RADIUS_INFLUENCE_MULTIPLIER: float = 90.0
@@ -284,14 +287,14 @@ func _build_initial_state(def, t_s: float):
 	var tangential_speed_mps: float = circular_speed_mps * _range_from_seed(
 		def.seed,
 		5,
-		0.78,
-		1.30 if wanderer_bias < 0.24 else 1.08
+		1.18 if wanderer_bias < 0.24 else 0.96,
+		1.65 if wanderer_bias < 0.24 else 1.22
 	)
 	var radial_speed_mps: float = circular_speed_mps * _range_from_seed(
 		def.seed,
 		7,
-		-0.28 if wanderer_bias < 0.24 else -0.12,
-		0.28 if wanderer_bias < 0.24 else 0.12
+		-0.45 if wanderer_bias < 0.24 else -0.18,
+		0.45 if wanderer_bias < 0.24 else 0.18
 	)
 	var direction: float = -1.0 if _range_from_seed(def.seed, 8, 0.0, 1.0) < 0.18 else 1.0
 	var tilt: float = _range_from_seed(def.seed, 6, -0.10, 0.10)
@@ -485,6 +488,14 @@ func _influence_radius_m(def: BodyDef) -> float:
 	if def == null:
 		return 0.0
 	match def.kind:
+		BodyType.Kind.BLACK_HOLE:
+			var outer_root_m: float = _max_child_orbit_radius_m(def.id)
+			if outer_root_m <= 0.0:
+				return BLACK_HOLE_FALLBACK_INFLUENCE_M
+			return maxf(
+				BLACK_HOLE_FALLBACK_INFLUENCE_M,
+				maxf(outer_root_m * BLACK_HOLE_INFLUENCE_RADIUS_MULTIPLIER, outer_root_m + BLACK_HOLE_INFLUENCE_PADDING_M)
+			)
 		BodyType.Kind.STAR:
 			var outer_m: float = _max_child_orbit_radius_m(def.id)
 			if outer_m <= 0.0:
@@ -522,7 +533,8 @@ static func _orbit_radius_m(def: BodyDef) -> float:
 
 static func _is_v1_attractor_kind(kind: int) -> bool:
 	return (
-		kind == BodyType.Kind.STAR
+		kind == BodyType.Kind.BLACK_HOLE
+		or kind == BodyType.Kind.STAR
 		or kind == BodyType.Kind.PLANET
 		or kind == BodyType.Kind.MOON
 	)

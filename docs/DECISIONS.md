@@ -15,9 +15,10 @@ Konsequenz:
   bleiben fuer diesen Slice ausreichend
 - `RelativeStateResolver.resolve_body_relative_to_anchor(spawn_origin,
   root)` seedet Initialposition und -velocity im Root-Frame
-- es gibt keine Mandatory-Attraktoren mehr; `STAR`, `PLANET` und
-  `MOON` wirken nur innerhalb expliziter Einflussradien mit `1.15`
-  Exit-Hysterese, `BLACK_HOLE` wirkt nicht auf v1.1-Asteroiden
+- es gibt keine Mandatory-Attraktoren mehr; `BLACK_HOLE`, `STAR`,
+  `PLANET` und `MOON` wirken nur innerhalb expliziter Einflussradien
+  mit `1.15` Exit-Hysterese. Schwarze Loecher sind wieder lenkende,
+  aber nicht globale oder verpflichtende Asteroiden-Attraktoren
 - ausserhalb aktiver Felder driftet ein Asteroid linear mit
   unveraenderter Velocity weiter; `free_drift_count` macht diesen Pfad
   in Perf-Dumps sichtbar
@@ -33,6 +34,10 @@ Konsequenz:
   Einflussradien groesser und die Default-Startgeschwindigkeiten
   weniger escape-lastig; ein deterministischer Minderheitsanteil bleibt
   als Wanderer/Flyby erhalten
+- nach dem folgenden Editor-Feedback wird `BLACK_HOLE` als
+  radiusbegrenzter Lenkungs-Attraktor wieder zugelassen und die
+  initialen Flyby-Geschwindigkeiten werden erhoeht, damit BH-Felder
+  Asteroiden eher ablenken als in kleine Root-Orbits einfangen
 - Large-World-Fokuswechsel parken bereits erzeugte Root-Asteroiden
   statt sie zu despawnen; Snapshots und Integration bleiben auf den
   aktuellen Asteroiden-Root begrenzt, Rueckkehr zu einem geparkten Root
@@ -61,10 +66,11 @@ Konsequenz:
 - v1.1 trennt `spawn_origin_id` und `anchor_id`; der
   Asteroid-State nutzt den Root als stabile Rechenbasis und wechselt
   den Anchor nicht
-- Asteroiden lesen Major-Body-Zustaende nur read-only; als v1-
-  Attractors gelten bewusst nur `STAR`, `PLANET` und `MOON`.
-  `BLACK_HOLE` bleibt Root-/Kontextkoerper, zieht kleine v1-
-  Asteroiden aber nicht an
+- Asteroiden lesen Major-Body-Zustaende nur read-only; als v1.1-
+  Attractors gelten `BLACK_HOLE`, `STAR`, `PLANET` und `MOON` nur
+  innerhalb expliziter Einflussradien. `BLACK_HOLE` bleibt Root-/
+  Kontextkoerper ohne globale Pflichtgravitation, Consume- oder
+  Kill-Radius
 - Asteroid-Positionen/Velozitaeten liegen als double-Felder im
   `AsteroidState`, nicht als `Vector3`-Wahrheit
 - das Attractor-Set ist gecappt und hysterese-stabilisiert; pro

@@ -72,6 +72,7 @@ static func run(ctx) -> void:
 	_test_renderer_keeps_trails_as_local_history(ctx)
 	_test_renderer_path_composes_once_per_anchor_per_sync(ctx)
 	_test_renderer_debug_snapshot_exposes_view_and_screen_bounds(ctx)
+	_test_renderer_screen_bounds_cull_logic(ctx)
 
 
 static func _test_renderer_keeps_trails_as_local_history(ctx) -> void:
@@ -144,6 +145,19 @@ static func _test_renderer_debug_snapshot_exposes_view_and_screen_bounds(ctx) ->
 	ctx.assert_true(float(debug.get("view_max_abs_ru", 0.0)) == 8.0,
 		"AsteroidFieldRenderer exponiert maximale View-Distanz fuer Kamera-Diagnose")
 	renderer.free()
+
+
+static func _test_renderer_screen_bounds_cull_logic(ctx) -> void:
+	var renderer_script = load("res://src/tools/rendering/asteroid_field_renderer.gd")
+	var viewport := Vector2(100.0, 80.0)
+	ctx.assert_true(renderer_script._screen_bounds_visible(Vector2(10.0, 10.0), Vector2(20.0, 20.0), viewport, 0.0),
+		"AsteroidFieldRenderer-Culling behaelt sichtbare Trail-Bounds")
+	ctx.assert_true(renderer_script._screen_bounds_visible(Vector2(-10.0, 20.0), Vector2(10.0, 40.0), viewport, 0.0),
+		"AsteroidFieldRenderer-Culling behaelt Bounds, die den Screen schneiden")
+	ctx.assert_true(not renderer_script._screen_bounds_visible(Vector2(120.0, 10.0), Vector2(140.0, 20.0), viewport, 0.0),
+		"AsteroidFieldRenderer-Culling verwirft Bounds rechts ausserhalb des Screens")
+	ctx.assert_true(not renderer_script._screen_bounds_visible(Vector2(-INF, 0.0), Vector2(10.0, 10.0), viewport, 0.0),
+		"AsteroidFieldRenderer-Culling verwirft nicht-finite Bounds")
 
 
 static func _entry(id: StringName, position_m: Vector3) -> Dictionary:

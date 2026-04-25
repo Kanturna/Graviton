@@ -358,6 +358,7 @@ func _process(delta: float) -> void:
 func _sample_perf_probe() -> void:
 	_sample_orbit_service_perf_probe()
 	_sample_asteroid_perf_probe()
+	PerfProbeScript.sample(&"time_tick_emit_us", TimeService.last_tick_emit_us)
 	if _activation_set != null:
 		PerfProbeScript.sample(&"active_ids", _activation_set.get_active_ids().size())
 	if _camera_controller != null:

@@ -16,7 +16,7 @@ abgesicherten Slices, jetzt inklusive `Asteroiden v1`.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Asteroiden-v1.1-Root-Frame-Freiflug-/Tuning-Slice mit `8333`
+- `run_tests.bat` lief nach dem Asteroiden-v1.1-Root-Frame-Freiflug-/Tuning-Slice mit `8319`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -45,7 +45,9 @@ Headless-Basis:
   Debug-Snapshot fuer verschwundene-aber-nicht-despawnte Asteroiden;
   Asteroiden-Lifecycle-Tests pinnen ausserdem, dass Large-World-
   Fokuswechsel Root-Asteroiden parken statt sie zu despawnen oder beim
-  Rueckwechsel neu zu seeden
+  Rueckwechsel neu zu seeden; Renderer-Tests pinnen die
+  Asteroiden-Screen-Bounds-Culling-Regel und TimeService-Tests den
+  read-only `last_tick_emit_us`-Diagnosewert
 
 Offene Editor-/Feel-/FPS-Gates:
 
@@ -83,9 +85,11 @@ Offene Editor-/Feel-/FPS-Gates:
   `active_asteroids` bei 24 statt 48 liegen, Trails sollten bei
   Root-/World-Wechsel und Despawn verschwinden, aber innerhalb
   desselben Roots stabil re-projiziert werden. Nach v1.1 sollten
-  ausserdem freie Segmente ausserhalb von Stern-/Planet-/Mond-
-  Einflussradien sichtbar sein, keine BH-gebundenen Asteroidenkreise
-  auftreten und `free_drift_count` im Dump steigen. `attractor_checks`
+  ausserdem freie Segmente ausserhalb aller BH-/Stern-/Planet-/Mond-
+  Einflussradien sichtbar sein. BHs duerfen schnelle Flybys sichtbar
+  lenken, sollen aber keine sauberen kleinen Asteroidenkreisbahnen
+  erzwingen. `free_drift_count` soll im Dump weiter steigen.
+  `attractor_checks`
   sollte im Catchup deutlich niedriger als vorher ausfallen. Nach dem
   Einflussradius-/Velocity-Tuning sollten mehr Asteroiden im
   Sternkontext eingefangen bleiben statt sofort als reine Flybys aus
@@ -136,11 +140,12 @@ Konkreter Ablauf:
   nahe Major Bodies sollen die Bahn leicht verformen; harte Impacts
   oder Kill-/Consume-Radien werden noch nicht behauptet
 - Root-/BH-Overview beobachten:
-  `BLACK_HOLE` ist in v1 kein Asteroiden-Attractor; sichtbare
-  Asteroiden sollen von Stern-/Planet-/Mond-Kontexten gepraegt sein und
-  nicht als schwarze-Loch-gebundene Miniorbits erscheinen
+  `BLACK_HOLE` ist in v1.1 wieder ein radiusbegrenzter
+  Lenkungs-Attraktor. Sichtbare Asteroiden duerfen durch den Root-BH
+  gekruemmt werden, sollen aber nicht als globale schwarze-Loch-
+  Dauerschwerkraft oder saubere Miniorbits erscheinen
 - Freiflug beobachten:
-  ausserhalb aktiver Stern-/Planet-/Mond-Einflussradien sollen
+  ausserhalb aktiver BH-/Stern-/Planet-/Mond-Einflussradien sollen
   Asteroiden gerade bzw. leicht gekruemmte Freiflugsegmente zeigen,
   nicht weiter um leere Punkte kreisen
 - Streaming/Fokuswechsel zwischen Root-Systemen pruefen:
@@ -166,14 +171,17 @@ Konkreter Ablauf:
   vergleichen: wenn `active_asteroids` stabil bleibt, aber
   `asteroid_screen_culled_count` hoch ist, sind die Steine noch live,
   liegen aber ausserhalb des aktuellen Screens oder zu weit weg fuer
-  die aktuelle Kamera-/Pan-Geschwindigkeit
+  die aktuelle Kamera-/Pan-Geschwindigkeit. Nach dem Offscreen-Culling
+  im `AsteroidFieldRenderer` sollten solche offscreen Asteroiden keine
+  relevanten Draw-Kosten mehr verursachen
 - `P`-Dump ausloesen:
   Service-/Renderer-Snapshots und Perf-Counter fuer aktive
   Asteroiden, Attractor-Checks, Substeps, Freiflug und Despawns muessen
   im Sidecar sichtbar sein; Stage-Timer fuer
   `asteroid_advance_us`, `asteroid_snapshot_refresh_us`,
-  `asteroid_renderer_sync_us`, `orbit_renderer_sync_us` und
-  `orbit_step_core_us` muessen in der CSV-Zeitreihe auftauchen
+  `asteroid_renderer_sync_us`, `orbit_renderer_sync_us`,
+  `orbit_step_core_us`, `orbit_trail_update_us` und
+  `time_tick_emit_us` muessen in der CSV-Zeitreihe auftauchen
 - dabei explizit pruefen:
   kein HUD, Inspector oder Life-Panel behauptet Kollisionen,
   Katastrophen, Life-Destruction, Merge/Split oder
@@ -802,9 +810,9 @@ Konkreter Ablauf:
     nicht mehr in die alte 250er-Groessenordnung
   - wenn bei Fokus auf den Root weiter ein 250er-Draw-Call-Zustand
     sichtbar ist, zuerst `orbit_root_overview_line_count` und
-    `orbit_visible_point_count` pruefen: direkte Stern-Orbits muessen
-    im Root-Overview ausgeblendet sein und erst im Detailmodus wieder
-    sichtbar werden
+    `orbit_visible_point_count` pruefen: direkte Stern-Orbits sollen im
+    Root-Overview wieder sichtbar sein, waehrend planetare Descendant-
+    Orbits dort ausgeblendet bleiben
   - wenn der Rest-Ruckler danach weiter sichtbar ist, beim naechsten
     `P`-Dump zuerst die Diagnose-Spalten
     `galaxy_proxy_signature_change_labels`,
@@ -1701,7 +1709,8 @@ Konkreter Arbeitsblock:
   Neighbor-/Prewarm-Wechsel, Keepalive, Fokus-Ping-Pong und
   Root-Wechsel ueber mehrere `shade_*`-Kandidaten
 - dabei jetzt explizit den neuen Overview-Contract pruefen:
-  im `ROOT_OVERVIEW` bleiben nur BH plus direkte Sterne sichtbar;
+  im `ROOT_OVERVIEW` bleiben nur BH plus direkte Sterne samt direkten
+  Stern-Orbits sichtbar;
   planetare Detailwolken, planetare Orbitlinien und planetare Trails
   verschwinden
 - dabei zusaetzlich gegenpruefen, dass generierte Root-Systeme

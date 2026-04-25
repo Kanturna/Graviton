@@ -457,13 +457,15 @@ Missing-Request-Grace, Rejoin-Budget und `BodyState.current_mode`.
 - `AsteroidSimulationService` darf nur `AsteroidState` schreiben.
   Major-Body-`BodyState` bleibt ausschliesslich `OrbitService`-
   Autoritaet.
-- `STAR`, `PLANET` und `MOON` sind nur innerhalb expliziter
-  Einflussradien Attraktoren. Bereits aktive Attraktoren duerfen bis
-  zum `1.15`-Exit-Radius gehalten werden. Diese Radien duerfen
-  spielerisch groesser als reine Spawn- oder Visual-Belts sein, damit
-  lokale Sternsysteme Asteroiden sichtbar binden koennen.
-- `BLACK_HOLE` ist kein Asteroiden-Attractor in v1.1. Es gibt keine
-  globale Asteroiden-Dauerschwerkraft.
+- `BLACK_HOLE`, `STAR`, `PLANET` und `MOON` sind nur innerhalb
+  expliziter Einflussradien Attraktoren. Bereits aktive Attraktoren
+  duerfen bis zum `1.15`-Exit-Radius gehalten werden. Diese Radien
+  duerfen spielerisch groesser als reine Spawn- oder Visual-Belts sein,
+  damit lokale Sternsysteme Asteroiden sichtbar binden koennen.
+- `BLACK_HOLE` ist ein radiusbegrenzter Lenkungs-Attraktor, aber kein
+  Mandatory-Attractor. Es gibt keine globale Asteroiden-
+  Dauerschwerkraft und keinen v1.1-Consume-/Kill-Radius fuer Schwarze
+  Loecher.
 - Ein leerer Attractor-Satz bedeutet linearen Freiflug mit
   unveraenderter Velocity. In v1.1 gibt es keinen Re-Spawn; driftet ein
   Asteroid out-of-bounds, wird er deaktiviert.
@@ -500,9 +502,9 @@ Missing-Request-Grace, Rejoin-Budget und `BodyState.current_mode`.
   `scenes/` oder `src/tools/` einfuehren.
 - Asteroiden-v1 duerfen niemals Major-Body-`BodyState` schreiben oder
   `UniverseRegistry`-Bodies fuer kleine Steinchen anlegen.
-- Asteroiden-v1.1 duerfen `STAR`, `PLANET` und `MOON` nur innerhalb
-  expliziter Einflussradien als Attraktoren lesen; `BLACK_HOLE` ist in
-  v1.1 kein Asteroiden-Attractor.
+- Asteroiden-v1.1 duerfen `BLACK_HOLE`, `STAR`, `PLANET` und `MOON`
+  nur innerhalb expliziter Einflussradien als Attraktoren lesen; es
+  gibt keine globale Root-/BH-Pflichtgravitation.
 - Asteroiden-v1 haben keine Asteroid-Asteroid-Wechselwirkung: keine
   Gravitation, keine Kollisionen, kein Merge/Split.
 - Asteroiden-Trails sind reine Renderer-History und duerfen nicht in
