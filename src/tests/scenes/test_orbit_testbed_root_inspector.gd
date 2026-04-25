@@ -227,6 +227,7 @@ static func _test_root_inspector_toggle_is_the_explicit_open_path(ctx) -> void:
 
 static func _test_root_inspector_tracks_root_overview_compact_mode(ctx) -> void:
 	var testbed = _build_testbed_probe(true)
+	var bubble: BubbleProbe = testbed._bubble
 	var camera: CameraControllerProbe = testbed._camera_controller
 	var inspector: RootInspectorProbe = testbed._root_inspector
 
@@ -235,8 +236,13 @@ static func _test_root_inspector_tracks_root_overview_compact_mode(ctx) -> void:
 	ctx.assert_true(inspector.compact_root_overview, "Root-Overview setzt den Inspector in den kompakten Navigator-Modus")
 
 	camera.frame_label = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
+	bubble.set_focus(&"obsidian")
 	testbed._sync_view_lod_state(true, false)
-	ctx.assert_true(not inspector.compact_root_overview, "Lokaler Fokus-/Detailblick stellt den vollen Inspector-Modus wieder her")
+	ctx.assert_true(inspector.compact_root_overview, "Root-/BH-Fokus behaelt den kompakten Navigator-Modus")
+
+	bubble.set_focus(&"alpha")
+	testbed._sync_view_lod_state(true, false)
+	ctx.assert_true(not inspector.compact_root_overview, "Lokaler Stern-/Detailblick stellt den vollen Inspector-Modus wieder her")
 	_destroy_testbed_probe(testbed)
 
 

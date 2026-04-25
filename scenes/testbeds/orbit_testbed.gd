@@ -782,9 +782,20 @@ func _toggle_root_inspector_for_current_root() -> void:
 func _sync_root_inspector_display_mode(frame_label: StringName) -> void:
 	if _root_inspector == null or not _root_inspector.has_method("set_compact_root_overview"):
 		return
-	_root_inspector.set_compact_root_overview(
-		_is_large_world and frame_label == OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW
-	)
+	_root_inspector.set_compact_root_overview(_should_compact_root_inspector(frame_label))
+
+
+func _should_compact_root_inspector(frame_label: StringName) -> bool:
+	if not _is_large_world:
+		return false
+	if frame_label == OrbitCameraFramingScript.FRAME_LABEL_ROOT_OVERVIEW:
+		return true
+	if _bubble == null or _topology == null:
+		return false
+	var focus_id: StringName = _bubble.get_focus()
+	if focus_id == StringName(""):
+		return false
+	return _topology.root_id_of(focus_id) == focus_id
 
 
 func _planetary_interest_ids_for_root(root_id: StringName) -> Array[StringName]:

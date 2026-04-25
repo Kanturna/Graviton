@@ -184,11 +184,12 @@ den aktuellen Fokus-Root. Neue `PerfProbe`-Spalten
 direkt sichtbar.
 Ein anschliessender gezielter Inspector-Perf-Slice reduziert den
 gemessenen offenen Inspector-Zustand direkt:
-im `ROOT_OVERVIEW` rendert der rechte Inspector jetzt nur noch Root plus
-direkte Sterne als kompakten Navigator, waehrend Summary-Zahlen weiter
-aus dem vollen Modell kommen. Planet-/Moon-Rows samt Environment- und
-Life-Chips bleiben im vollen Inspector-Modus fuer lokale
-Detail-/Fokusansichten erhalten. Neue `PerfProbe`-Spalten
+im `ROOT_OVERVIEW` und beim direkten Root-/BH-Fokus rendert der rechte
+Inspector jetzt nur noch Root plus direkte Sterne als kompakten
+Navigator, waehrend Summary-Zahlen weiter aus dem vollen Modell kommen.
+Planet-/Moon-Rows samt Environment- und Life-Chips bleiben im vollen
+Inspector-Modus fuer lokale Stern-/Planet-/Mond-Fokusansichten
+erhalten. Neue `PerfProbe`-Spalten
 `root_inspector_full_row_count` und
 `root_inspector_compact_root_overview` trennen sichtbare Row-Kosten von
 der vollen Modellgroesse.
@@ -772,7 +773,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist weiter reproduzierbar: `run_tests.bat`
-  laeuft nach dem kompakten Root-Inspector-Overview mit `7857`
+  laeuft nach dem kompakten Root-Inspector-Overview mit `7858`
   erfolgreichen Assertions bei `0` Failures.
 
 ### Aktuelle Praesentation
@@ -1344,7 +1345,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   aktuellen Performance-/Focus-Smoothing-Gates gemeinsam im Editor
   validieren
 - die Headless-Basis ist dabei bereits sichtbar:
-  `./run_tests.bat` lief nach dem kompakten Root-Inspector-Overview mit `7857`
+  `./run_tests.bat` lief nach dem kompakten Root-Inspector-Overview mit `7858`
   Passed und `0` Failed; gezielte Tests decken unter anderem
   HUD-Modi, Root-Inspector-Testbed-Regeln, Root-Inspector-
   Model-Caching, Planet-Badge-Text-/Candidate-Caching,
