@@ -68,13 +68,18 @@ Counter oder Snapshots exponieren, aber keine `scenes/`- oder
 liefert kumulative Diagnosezaehler fuer `NUMERIC_LOCAL`,
 Substeps, Cap-Hits und Sim-Ticks. `orbit_testbed.gd` sampelt diese
 Werte in `PerfProbe` und uebersetzt kumulative Service-Counter dort in
-per-frame Diagnose-Counter.
+per-frame Diagnose-Counter. Der `P`-Hotkey schreibt die bestehende
+CSV-Zeitreihe und zusaetzlich einen JSON-Sidecar mit punktuellen
+On-Demand-Snapshots fuer Szene, Fokus, Registry, Kamera, Aktiv-Set,
+Derived-Cache, Renderer, Streaming, UI und Service-Counter.
 
 **Konsequenz:** `PerfProbe` ist CSV-/Playtest-Diagnostik, keine
-Simulationswahrheit. Neue Messpunkte duerfen die Schichten nicht
-umdrehen: autoritative Schichten stellen hoechstens read-only Werte
-bereit; Sampling, Ringbuffer, Dumping und Hotkey-Bedienung bleiben im
-Composition Root oder in `src/tools/`.
+Simulationswahrheit. Der JSON-Sidecar ist ebenfalls nur Diagnoseausgabe
+und wird erst beim expliziten Dump gebaut, nicht pro Frame. Neue
+Messpunkte duerfen die Schichten nicht umdrehen: autoritative Schichten
+stellen hoechstens read-only Werte bereit; Sampling, Ringbuffer,
+Dumping und Hotkey-Bedienung bleiben im Composition Root oder in
+`src/tools/`.
 
 ## Autoloads - ADR
 

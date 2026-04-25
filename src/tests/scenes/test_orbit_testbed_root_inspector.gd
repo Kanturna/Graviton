@@ -195,6 +195,8 @@ static func run(ctx) -> void:
 	_test_view_bookmark_shortcuts_route_to_slots(ctx)
 	_test_view_bookmark_slots_store_and_restore_camera_state(ctx)
 	_test_view_bookmark_restore_ignores_stale_or_cross_world_slots(ctx)
+	_test_perf_snapshot_json_safe_converts_godot_variants(ctx)
+	_test_perf_snapshot_builds_json_sidecar_dictionary(ctx)
 
 
 static func _test_root_inspector_opens_only_explicitly_and_overrides_root_overview_interest(ctx) -> void:
@@ -375,6 +377,57 @@ static func _test_view_bookmark_restore_ignores_stale_or_cross_world_slots(ctx) 
 	}
 	testbed._restore_view_bookmark_slot(2)
 	ctx.assert_true(camera.restored_states.is_empty(), "Bookmarks aus anderem World-Scope werden ignoriert")
+	_destroy_testbed_probe(testbed)
+
+
+static func _test_perf_snapshot_json_safe_converts_godot_variants(ctx) -> void:
+	var safe: Dictionary = OrbitTestbedScript._json_safe({
+		"id": &"alpha",
+		"position": Vector2(1.5, -2.0),
+		"velocity": Vector3(3.0, 4.0, 5.0),
+		"labels": PackedStringArray(["one", "two"]),
+		"colors": PackedColorArray([Color(0.1, 0.2, 0.3, 0.4)]),
+	})
+	ctx.assert_true(safe.get("id", "") == "alpha", "Perf-Snapshot JSON-Safe wandelt StringName in String")
+	ctx.assert_true(safe.get("position", {}).get("x", 0.0) == 1.5, "Perf-Snapshot JSON-Safe wandelt Vector2 in Dictionary")
+	ctx.assert_true(safe.get("velocity", {}).get("z", 0.0) == 5.0, "Perf-Snapshot JSON-Safe wandelt Vector3 in Dictionary")
+	ctx.assert_true(safe.get("labels", []).size() == 2, "Perf-Snapshot JSON-Safe wandelt PackedStringArray in Array")
+	ctx.assert_almost(float(safe.get("colors", [])[0].get("a", 0.0)), 0.4, 1.0e-6, "Perf-Snapshot JSON-Safe wandelt PackedColorArray in Dictionaries")
+	ctx.assert_true(JSON.stringify(safe) != "", "Perf-Snapshot JSON-Safe bleibt JSON-stringifizierbar")
+
+
+static func _test_perf_snapshot_builds_json_sidecar_dictionary(ctx) -> void:
+	var testbed = OrbitTestbedScript.new()
+	var bubble := BubbleProbe.new()
+	var camera := CameraControllerProbe.new()
+	var topology := TopologyProbe.new()
+	camera.bubble = bubble
+	camera.frame_label = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
+	bubble.focus_id = &"alpha"
+
+	UniverseRegistry.clear()
+	_register_probe_body(&"obsidian", BodyType.Kind.BLACK_HOLE, StringName(""))
+	_register_probe_body(&"alpha", BodyType.Kind.STAR, &"obsidian")
+	_register_probe_body(&"alpha_i", BodyType.Kind.PLANET, &"alpha")
+
+	testbed._bubble = bubble
+	testbed._camera_controller = camera
+	testbed._topology = topology
+	testbed._is_large_world = true
+	testbed._active_world_scope_id = &"probe_galaxy"
+	var focus_order: Array[StringName] = [&"obsidian", &"alpha", &"alpha_i"]
+	testbed._focus_order = focus_order
+	testbed._focus_index = 1
+	testbed._last_frame_label = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
+
+	var snapshot: Dictionary = testbed._build_perf_probe_snapshot("user://perf_probe_probe.csv", 12)
+	var safe: Dictionary = OrbitTestbedScript._json_safe(snapshot)
+	ctx.assert_true(safe.get("schema", "") == "graviton_perf_probe_snapshot_v1", "Perf-Snapshot Sidecar traegt das Schema")
+	ctx.assert_true(int(safe.get("csv_rows", 0)) == 12, "Perf-Snapshot Sidecar referenziert die CSV-Zeilen")
+	ctx.assert_true(safe.get("focus", {}).get("id", "") == "alpha", "Perf-Snapshot Sidecar enthaelt den aktuellen Fokus")
+	ctx.assert_true(int(safe.get("registry", {}).get("body_count", 0)) == 3, "Perf-Snapshot Sidecar enthaelt Registry-Counts")
+	ctx.assert_true(safe.get("camera", {}).get("frame_label", "") == String(OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK), "Perf-Snapshot Sidecar enthaelt Kamera-Kontext")
+	ctx.assert_true(JSON.stringify(safe) != "", "Perf-Snapshot Sidecar bleibt JSON-stringifizierbar")
 	_destroy_testbed_probe(testbed)
 
 

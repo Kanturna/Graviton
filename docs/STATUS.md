@@ -196,6 +196,13 @@ materialisiert. Neue `PerfProbe`-Spalten
 `root_inspector_compact_root_overview` sowie
 `root_inspector_compact_focus_branch` trennen sichtbare Row-Kosten von
 der vollen Modellgroesse und vom aktiven Kompaktmodus.
+Ein anschliessender Diagnose-Slice erweitert den `P`-Dump ohne neue
+Dauerlast: neben der bisherigen CSV-Zeitreihe schreibt `orbit_testbed`
+jetzt einen gleichnamigen JSON-Sidecar mit punktuellen On-Demand-
+Snapshots fuer Szene, Zeit, Fokus, Registry, Kamera, Aktiv-Set,
+Derived-Cache, Renderer, Proxy, Streaming, UI-Panels, Backdrop und
+Service-Counter. Der Sidecar wird nur beim Tastendruck gebaut und ist
+Diagnoseausgabe, keine Simulationswahrheit.
 Ein direkter Follow-up adressiert den danach sichtbaren Fokus-Ruckler
 bei deaktiviertem VSync: `TimeService` merkt das letzte autoritative
 Sim-dt, `LocalBubbleManager` kann daraus rein view-seitig eine
@@ -776,7 +783,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist weiter reproduzierbar: `run_tests.bat`
-  laeuft nach dem kompakten Root-Inspector-Fokuszweig mit `7867`
+  laeuft nach dem Perf-Snapshot-Sidecar mit `7879`
   erfolgreichen Assertions bei `0` Failures.
 
 ### Aktuelle Praesentation
@@ -1348,11 +1355,12 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   aktuellen Performance-/Focus-Smoothing-Gates gemeinsam im Editor
   validieren
 - die Headless-Basis ist dabei bereits sichtbar:
-  `./run_tests.bat` lief nach dem kompakten Root-Inspector-Fokuszweig mit `7867`
+  `./run_tests.bat` lief nach dem Perf-Snapshot-Sidecar mit `7879`
   Passed und `0` Failed; gezielte Tests decken unter anderem
   HUD-Modi, Root-Inspector-Testbed-Regeln, Root-Inspector-
   Model-Caching, Planet-Badge-Text-/Candidate-Caching,
-  Life-Detail-Panel, Genetic-/Pressure-/Life-Ecology-Ableitung und
+  Perf-Snapshot-JSON-Konvertierung, Life-Detail-Panel,
+  Genetic-/Pressure-/Life-Ecology-Ableitung und
   `scaleup_galaxy_100`-Streaming ab
 - diese Tests ersetzen das offene Editor-Gate nicht:
   `sample_system.planet_a`, `starter_world.gamma_iv`,

@@ -16,14 +16,15 @@ bereits headless abgesicherten Slices.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem kompakten Root-Inspector-Fokuszweig mit `7867`
+- `run_tests.bat` lief nach dem Perf-Snapshot-Sidecar mit `7879`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
 - gezielte Coverage existiert fuer HUD-Modi, Root-Inspector-
   Testbed-Regeln, Root-Inspector-Model-Caching,
-  Planet-Badge-Text-/Candidate-Caching, Orbit-/Time-Formatter,
-  Genetic/Pressure-/Life-Ecology-Ableitungen und den bounded
+  Planet-Badge-Text-/Candidate-Caching, Perf-Snapshot-JSON-
+  Konvertierung, Orbit-/Time-Formatter, Genetic/Pressure-/
+  Life-Ecology-Ableitungen und den bounded
   `scaleup_galaxy_100`-Streamingpfad
 
 Offene Editor-/Feel-/FPS-Gates:
@@ -179,7 +180,11 @@ Konkreter Ablauf:
   `root_inspector_row_count`, `root_inspector_full_row_count`,
   `root_inspector_compact_root_overview` und
   `root_inspector_compact_focus_branch` sowie
-  `root_inspector_model_apply_count` pruefen. Im `ROOT_OVERVIEW` soll
+  `root_inspector_model_apply_count` pruefen. Seit dem Diagnose-Sidecar
+  liegt neben der CSV auch eine gleichnamige JSON-Datei; dort zusaetzlich
+  `ui.root_inspector`, `derived_snapshot_cache`, `registry`,
+  `renderer`, `streaming` und `camera` vergleichen, wenn ein Ruckler
+  nur punktuell sichtbar ist. Im `ROOT_OVERVIEW` soll
   der offene Inspector nur Root plus direkte Sterne materialisieren;
   dasselbe gilt beim direkten Root-/BH-Fokus. Im Sternfokus soll nur
   der fokussierte Stern dessen Planet-/Moon-Unterbaum materialisieren,
@@ -627,7 +632,11 @@ Konkreter Ablauf:
     `body_star_closeup_phase_max` und `body_effective_scale_max`
     auswerten; keinen weiteren Visual-LOD-Schnitt machen, solange der
     Dump nicht zwischen Kamera-/Canvas-Invalidierung, leerer
-    Proxy-Arbeit und Body-Visual-Skalierung trennt
+    Proxy-Arbeit und Body-Visual-Skalierung trennt. Die JSON-Sidecars
+    desselben Dumps dabei fuer punktuelle Zustaende wie
+    `ui.root_inspector.visible_row_count`, `ui.root_inspector.full_row_count`,
+    `derived_snapshot_cache.last_refreshed_body_count`, Registry-
+    Body-Counts und Streaming-/Kamera-State gegenueberstellen
 
 Wenn dieser Gate kippt:
 

@@ -1,5 +1,27 @@
 # Graviton - Decisions
 
+## 2026-04-25 - P-Dump bekommt einen On-Demand-JSON-Sidecar
+
+`PerfProbe` bleibt die kontinuierliche, billige Frame-Zeitreihe im
+Ringbuffer. Der `P`-Hotkey schreibt aber ab jetzt neben der CSV auch
+einen gleichnamigen JSON-Sidecar, der breitere Diagnosezustaende nur in
+diesem Moment sammelt.
+
+Konsequenz:
+
+- laufende Frames bleiben auf die bestehenden `PerfProbe`-Samples und
+  Counter begrenzt
+- teurere Strukturdiagnose wie Fokus-, Registry-, Cache-, Streaming-,
+  Renderer-, Proxy-, UI- und Service-Snapshots passiert nur beim
+  expliziten `P`-Dump
+- der Sidecar ist Diagnoseausgabe, keine neue Simulationswahrheit und
+  kein Steuerpfad
+- vorhandene Debug-Snapshots werden wiederverwendet; Sim-Services
+  exponieren hoechstens read-only Daten, das Schreiben lebt weiter im
+  Composition Root
+- der CSV-Pfad bleibt erhalten, damit Zeitreihen und der punktuelle
+  Sidecar gemeinsam vergleichbar bleiben
+
 ## 2026-04-25 - Root-Inspector rendert Fokuszweige kompakt
 
 Der rechte Root-Inspector bleibt ein Navigationswerkzeug, rendert im

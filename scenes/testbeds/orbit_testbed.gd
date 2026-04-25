@@ -364,6 +364,264 @@ func _bump_perf_counter_delta(snapshot: Dictionary, key: StringName) -> void:
 		PerfProbeScript.bump(key, delta)
 
 
+func _dump_perf_probe_snapshot_json(path: String, csv_path: String, csv_rows: int) -> bool:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		push_error("OrbitTestbed: cannot open perf snapshot '%s' for write" % path)
+		return false
+	var snapshot: Dictionary = _build_perf_probe_snapshot(csv_path, csv_rows)
+	file.store_string(JSON.stringify(_json_safe(snapshot), "\t"))
+	file.store_string("\n")
+	file.close()
+	return true
+
+
+func _build_perf_probe_snapshot(csv_path: String, csv_rows: int) -> Dictionary:
+	var focus_id: StringName = StringName("") if _bubble == null else _bubble.get_focus()
+	return {
+		"schema": "graviton_perf_probe_snapshot_v1",
+		"created_unix_time": Time.get_unix_time_from_system(),
+		"created_ticks_msec": Time.get_ticks_msec(),
+		"csv_path": csv_path,
+		"csv_rows": csv_rows,
+		"scene": _scene_debug_snapshot(),
+		"time": _time_debug_snapshot(),
+		"focus": _focus_debug_snapshot(focus_id),
+		"registry": _registry_debug_snapshot(focus_id),
+		"camera": _camera_debug_snapshot(),
+		"activation_set": _activation_debug_snapshot(),
+		"derived_snapshot_cache": _derived_cache_debug_snapshot(),
+		"renderer": _debug_snapshot_from(_renderer),
+		"galaxy_proxy": _debug_snapshot_from(_galaxy_proxy_renderer),
+		"streaming": _debug_snapshot_from(_streaming_controller),
+		"ui": {
+			"root_inspector": _debug_snapshot_from(_root_inspector),
+			"planet_badge_overlay": _debug_snapshot_from(_planet_badge_overlay),
+			"life_detail_panel": _debug_snapshot_from(_life_detail_panel),
+			"debug_overlay": _debug_snapshot_from(_debug_overlay),
+		},
+		"backdrop": _debug_snapshot_from(_backdrop, "debug_snapshot"),
+		"services": {
+			"orbit_perf_counters": _orbit_service.get_perf_counter_snapshot() if _orbit_service != null else {},
+			"proto_biosphere": _debug_snapshot_from(_proto_biosphere_service),
+		},
+		"perf_probe": {
+			"ring_rows": PerfProbeScript.rows_captured(),
+			"last_dump": PerfProbeScript.last_dump_summary(),
+		},
+	}
+
+
+func _scene_debug_snapshot() -> Dictionary:
+	var viewport_size: Vector2 = get_viewport_rect().size if is_inside_tree() else Vector2.ZERO
+	return {
+		"initial_world_id": initial_world_id,
+		"active_world_scope_id": _active_world_scope_id,
+		"is_large_world": _is_large_world,
+		"last_frame_label": _last_frame_label,
+		"hud_details_enabled": _hud_details_enabled,
+		"focus_index": _focus_index,
+		"focus_order_count": _focus_order.size(),
+		"focus_order": _focus_order.duplicate(),
+		"viewport_size": viewport_size,
+		"process_frame": Engine.get_process_frames(),
+		"galaxy": _galaxy_debug_snapshot(),
+	}
+
+
+func _galaxy_debug_snapshot() -> Dictionary:
+	if _current_galaxy == null:
+		return {}
+	var out: Dictionary = {
+		"galaxy_id": _current_galaxy.galaxy_id,
+		"focus_root_id": _current_galaxy.focus_root_id,
+		"default_resident_root_ids": _current_galaxy.default_resident_root_ids,
+	}
+	if _current_galaxy.has_method("root_ids"):
+		var root_ids: Array[StringName] = _current_galaxy.root_ids()
+		out["root_count"] = root_ids.size()
+		out["root_ids"] = root_ids
+	return out
+
+
+func _time_debug_snapshot() -> Dictionary:
+	return {
+		"sim_time_s": TimeService.sim_time_s,
+		"tick_count": TimeService.tick_count,
+		"time_scale": TimeService.time_scale,
+		"paused": TimeService.paused,
+		"last_sim_dt_s": TimeService.last_sim_dt_s,
+	}
+
+
+func _focus_debug_snapshot(focus_id: StringName) -> Dictionary:
+	var def: BodyDef = UniverseRegistry.get_def(focus_id) if focus_id != StringName("") else null
+	if def == null:
+		return {
+			"id": focus_id,
+			"present": false,
+		}
+	return {
+		"id": focus_id,
+		"present": true,
+		"display_name": def.display_name,
+		"kind": BodyType.to_string_kind(def.kind),
+		"kind_id": def.kind,
+		"parent_id": def.parent_id,
+		"root_id": _topology.root_id_of(focus_id) if _topology != null else StringName(""),
+		"is_root": def.is_root(),
+		"mass_kg": def.mass_kg,
+		"radius_m": def.radius_m,
+	}
+
+
+func _registry_debug_snapshot(focus_id: StringName) -> Dictionary:
+	var order: Array[StringName] = UniverseRegistry.get_update_order_ref()
+	var focus_root_id: StringName = _topology.root_id_of(focus_id) if _topology != null and focus_id != StringName("") else StringName("")
+	var root_ids: Array[StringName] = []
+	var body_rows: Array[Dictionary] = []
+	var kind_counts: Dictionary = {}
+	var focus_root_kind_counts: Dictionary = {}
+	var focus_root_body_count: int = 0
+	for id in order:
+		var def: BodyDef = UniverseRegistry.get_def(id)
+		if def == null:
+			continue
+		var kind_text: String = BodyType.to_string_kind(def.kind)
+		kind_counts[kind_text] = int(kind_counts.get(kind_text, 0)) + 1
+		var root_id: StringName = _topology.root_id_of(id) if _topology != null else StringName("")
+		if def.is_root():
+			root_ids.append(id)
+		if focus_root_id != StringName("") and root_id == focus_root_id:
+			focus_root_body_count += 1
+			focus_root_kind_counts[kind_text] = int(focus_root_kind_counts.get(kind_text, 0)) + 1
+		var state: BodyState = UniverseRegistry.get_state(id)
+		body_rows.append({
+			"id": id,
+			"display_name": def.display_name,
+			"kind": kind_text,
+			"kind_id": def.kind,
+			"parent_id": def.parent_id,
+			"root_id": root_id,
+			"current_mode": OrbitMode.to_string_kind(state.current_mode) if state != null else "n/a",
+			"parent_frame_position_m": Vector3.ZERO if state == null else state.position_parent_frame_m,
+			"parent_frame_position_m_length": 0.0 if state == null else state.position_parent_frame_m.length(),
+		})
+	return {
+		"body_count": UniverseRegistry.body_count(),
+		"update_order_count": order.size(),
+		"root_count": root_ids.size(),
+		"root_ids": root_ids,
+		"kind_counts": kind_counts,
+		"focus_root_id": focus_root_id,
+		"focus_root_body_count": focus_root_body_count,
+		"focus_root_kind_counts": focus_root_kind_counts,
+		"bodies": body_rows,
+	}
+
+
+func _camera_debug_snapshot() -> Dictionary:
+	if _camera_controller == null:
+		return {}
+	var out: Dictionary = {}
+	if _camera_controller.has_method("get_zoom_factor"):
+		out["zoom_factor"] = _camera_controller.get_zoom_factor()
+	if _camera_controller.has_method("get_current_view_scale"):
+		out["view_scale"] = _camera_controller.get_current_view_scale()
+	if _camera_controller.has_method("get_zoom_mode"):
+		out["zoom_mode"] = _camera_controller.get_zoom_mode()
+	if _camera_controller.has_method("get_frame_label"):
+		out["frame_label"] = _camera_controller.get_frame_label()
+	if _camera_controller.has_method("capture_view_state"):
+		out["view_state"] = _camera_controller.capture_view_state()
+	return out
+
+
+func _activation_debug_snapshot() -> Dictionary:
+	if _activation_set == null:
+		return {}
+	var out: Dictionary = _activation_set.describe() if _activation_set.has_method("describe") else {}
+	if _activation_set.has_method("get_active_ids"):
+		var active_ids: Array[StringName] = _activation_set.get_active_ids()
+		out["active_ids"] = active_ids
+		out["active_id_count"] = active_ids.size()
+	return out
+
+
+func _derived_cache_debug_snapshot() -> Dictionary:
+	if _derived_snapshot_cache == null:
+		return {}
+	return {
+		"revision": _derived_snapshot_cache.get_revision(),
+		"last_refresh_reason": _derived_snapshot_cache.get_last_refresh_reason(),
+		"last_refreshed_body_count": _derived_snapshot_cache.get_last_refreshed_body_count(),
+		"refresh_call_count_total": _derived_snapshot_cache.get_refresh_call_count_total(),
+		"refresh_throttled_count": _derived_snapshot_cache.get_refresh_throttled_count(),
+		"focus_id": _derived_snapshot_cache.get_focus_id(),
+		"focus_descs": {
+			"thermal": _derived_snapshot_cache.get_focus_thermal_desc(),
+			"environment": _derived_snapshot_cache.get_focus_environment_desc(),
+			"planetary_state": _derived_snapshot_cache.get_focus_planetary_state_desc(),
+			"life_potential": _derived_snapshot_cache.get_focus_life_potential_desc(),
+			"biosphere": _derived_snapshot_cache.get_focus_biosphere_desc(),
+			"biosphere_scale": _derived_snapshot_cache.get_focus_biosphere_scale_desc(),
+			"orbit_readout": _derived_snapshot_cache.get_focus_orbit_readout_desc(),
+			"native_species": _derived_snapshot_cache.get_focus_native_species_desc(),
+			"genetic_species": _derived_snapshot_cache.get_focus_genetic_species_desc(),
+			"life_ecology": _derived_snapshot_cache.get_focus_life_ecology_desc(),
+		},
+	}
+
+
+func _debug_snapshot_from(provider, method_name: String = "get_debug_snapshot") -> Dictionary:
+	if provider == null or not provider.has_method(method_name):
+		return {}
+	var snapshot = provider.call(method_name)
+	if typeof(snapshot) == TYPE_DICTIONARY:
+		return snapshot
+	return {"value": snapshot}
+
+
+static func _json_safe(value: Variant) -> Variant:
+	match typeof(value):
+		TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_STRING:
+			return value
+		TYPE_FLOAT:
+			var float_value: float = float(value)
+			return float_value if is_finite(float_value) else str(float_value)
+		TYPE_STRING_NAME, TYPE_NODE_PATH:
+			return String(value)
+		TYPE_VECTOR2:
+			var vector2: Vector2 = value
+			return {"x": vector2.x, "y": vector2.y}
+		TYPE_VECTOR3:
+			var vector3: Vector3 = value
+			return {"x": vector3.x, "y": vector3.y, "z": vector3.z}
+		TYPE_COLOR:
+			var color: Color = value
+			return {"r": color.r, "g": color.g, "b": color.b, "a": color.a}
+		TYPE_DICTIONARY:
+			var safe_dict: Dictionary = {}
+			var source_dict: Dictionary = value
+			for key in source_dict.keys():
+				safe_dict[String(key)] = _json_safe(source_dict[key])
+			return safe_dict
+		TYPE_ARRAY:
+			var safe_array: Array = []
+			for item in value:
+				safe_array.append(_json_safe(item))
+			return safe_array
+		TYPE_PACKED_BYTE_ARRAY, TYPE_PACKED_INT32_ARRAY, TYPE_PACKED_INT64_ARRAY, \
+		TYPE_PACKED_FLOAT32_ARRAY, TYPE_PACKED_FLOAT64_ARRAY, TYPE_PACKED_STRING_ARRAY, \
+		TYPE_PACKED_VECTOR2_ARRAY, TYPE_PACKED_VECTOR3_ARRAY, TYPE_PACKED_COLOR_ARRAY:
+			var packed_array: Array = []
+			for item in value:
+				packed_array.append(_json_safe(item))
+			return packed_array
+		_:
+			return str(value)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if _handle_view_bookmark_key_event(event):
@@ -396,9 +654,15 @@ func _unhandled_input(event: InputEvent) -> void:
 					PerfProbeScript.clear()
 					print("[PerfProbe] ring cleared")
 				else:
-					var dump_path: String = "user://perf_probe_%d.csv" % Time.get_unix_time_from_system()
+					var dump_stamp: int = int(Time.get_unix_time_from_system())
+					var dump_path: String = "user://perf_probe_%d.csv" % dump_stamp
 					var rows_written: int = PerfProbeScript.dump_csv(dump_path)
-					print("[PerfProbe] dumped %d rows to %s" % [rows_written, dump_path])
+					var snapshot_path: String = "user://perf_probe_%d.json" % dump_stamp
+					var snapshot_written: bool = _dump_perf_probe_snapshot_json(snapshot_path, dump_path, rows_written)
+					if snapshot_written:
+						print("[PerfProbe] dumped %d rows to %s and snapshot to %s" % [rows_written, dump_path, snapshot_path])
+					else:
+						print("[PerfProbe] dumped %d rows to %s; snapshot write failed for %s" % [rows_written, dump_path, snapshot_path])
 				get_viewport().set_input_as_handled()
 			KEY_I:
 				_toggle_root_inspector_for_current_root()
