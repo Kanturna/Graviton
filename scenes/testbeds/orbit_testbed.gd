@@ -95,6 +95,8 @@ var _active_world_scope_id: StringName = StringName("")
 var _hud_details_enabled: bool = false
 var _last_orbit_perf_counter_snapshot: Dictionary = {}
 var _last_asteroid_perf_counter_snapshot: Dictionary = {}
+var _last_time_tick_emit_total_us: int = 0
+var _last_derived_snapshot_refresh_total_us: int = 0
 
 
 func _ready() -> void:
@@ -359,6 +361,19 @@ func _sample_perf_probe() -> void:
 	_sample_orbit_service_perf_probe()
 	_sample_asteroid_perf_probe()
 	PerfProbeScript.sample(&"time_tick_emit_us", TimeService.last_tick_emit_us)
+	var current_time_tick_emit_total_us: int = TimeService.tick_emit_total_us
+	PerfProbeScript.sample(
+		&"time_tick_emit_total_us",
+		_delta_from_monotonic_total(current_time_tick_emit_total_us, _last_time_tick_emit_total_us)
+	)
+	_last_time_tick_emit_total_us = current_time_tick_emit_total_us
+	if _derived_snapshot_cache != null and _derived_snapshot_cache.has_method("get_refresh_total_us"):
+		var current_derived_refresh_total_us: int = _derived_snapshot_cache.get_refresh_total_us()
+		PerfProbeScript.sample(
+			&"derived_snapshot_refresh_total_us",
+			_delta_from_monotonic_total(current_derived_refresh_total_us, _last_derived_snapshot_refresh_total_us)
+		)
+		_last_derived_snapshot_refresh_total_us = current_derived_refresh_total_us
 	if _activation_set != null:
 		PerfProbeScript.sample(&"active_ids", _activation_set.get_active_ids().size())
 	if _camera_controller != null:
@@ -538,6 +553,8 @@ func _time_debug_snapshot() -> Dictionary:
 		"time_scale": TimeService.time_scale,
 		"paused": TimeService.paused,
 		"last_sim_dt_s": TimeService.last_sim_dt_s,
+		"last_tick_emit_us": TimeService.last_tick_emit_us,
+		"tick_emit_total_us": TimeService.tick_emit_total_us,
 	}
 
 
@@ -644,6 +661,8 @@ func _derived_cache_debug_snapshot() -> Dictionary:
 		"last_refreshed_body_count": _derived_snapshot_cache.get_last_refreshed_body_count(),
 		"refresh_call_count_total": _derived_snapshot_cache.get_refresh_call_count_total(),
 		"refresh_throttled_count": _derived_snapshot_cache.get_refresh_throttled_count(),
+		"last_refresh_us": _derived_snapshot_cache.get_last_refresh_us(),
+		"refresh_total_us": _derived_snapshot_cache.get_refresh_total_us(),
 		"focus_id": _derived_snapshot_cache.get_focus_id(),
 		"focus_descs": {
 			"thermal": _derived_snapshot_cache.get_focus_thermal_desc(),
@@ -1075,10 +1094,20 @@ func _on_orbit_service_bodies_updated(ids: Array[StringName], _reason: StringNam
 
 
 func _on_orbit_service_step_completed(dt_s: float, t_s: float) -> void:
+	if _orbit_service != null:
+		PerfProbeScript.bump(&"orbit_step_core_total_us", _orbit_service.get_last_step_core_us())
 	if _asteroid_service != null:
 		var advance_start_us: int = Time.get_ticks_usec()
 		_asteroid_service.advance_to_time(t_s, dt_s)
-		PerfProbeScript.sample(&"asteroid_advance_us", Time.get_ticks_usec() - advance_start_us)
+		var advance_elapsed_us: int = Time.get_ticks_usec() - advance_start_us
+		PerfProbeScript.sample(&"asteroid_advance_us", advance_elapsed_us)
+		PerfProbeScript.bump(&"asteroid_advance_total_us", advance_elapsed_us)
+
+
+static func _delta_from_monotonic_total(current: int, previous: int) -> int:
+	if current < previous:
+		return current
+	return current - previous
 
 
 static func _is_large_world_id(world_id: StringName) -> bool:

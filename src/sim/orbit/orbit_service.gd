@@ -113,6 +113,10 @@ func get_numeric_local_count() -> int:
 	return _numeric_local_count
 
 
+func get_last_step_core_us() -> int:
+	return _last_step_core_us
+
+
 func get_perf_counter_snapshot() -> Dictionary:
 	return {
 		PERF_KEY_NUMERIC_LOCAL_COUNT: _numeric_local_count,

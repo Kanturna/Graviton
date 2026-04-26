@@ -290,6 +290,8 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	ctx.assert_true(cache.get_revision() == 1, "configure baut den ersten Snapshot sofort")
 	ctx.assert_true(cache.get_last_refresh_reason() == DerivedSnapshotCacheScript.REASON_CONFIGURE, "configure markiert den Refresh-Grund")
 	ctx.assert_true(cache.get_last_refreshed_body_count() == 1, "configure refreshes nur den Fokuskoerper")
+	ctx.assert_true(cache.get_last_refresh_us() >= 0, "configure misst die letzte Refresh-Dauer")
+	ctx.assert_true(cache.get_refresh_total_us() >= cache.get_last_refresh_us(), "configure akkumuliert Refresh-Dauer")
 	ctx.assert_true(thermal_service.describe_calls == 1, "configure liest Thermalwerte nur fuer den Fokus")
 	ctx.assert_true(environment_service.describe_calls == 1, "configure liest Environment-Werte nur fuer den Fokus")
 	ctx.assert_true(cache.get_focus_id() == &"planet_a", "configure uebernimmt den aktuellen Fokus")
@@ -309,6 +311,7 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	ctx.assert_true(cache.get_revision() == 2, "interest change triggert sofortigen Refresh")
 	ctx.assert_true(cache.get_last_refresh_reason() == DerivedSnapshotCacheScript.REASON_INTEREST_CHANGED, "interest change setzt den passenden Grund")
 	ctx.assert_true(cache.get_last_refreshed_body_count() == 2, "interest change refresht nur Fokus plus explizites Interesse")
+	ctx.assert_true(cache.get_refresh_total_us() >= cache.get_last_refresh_us(), "interest change bleibt im akkumulierten Refresh-Timer sichtbar")
 	ctx.assert_true(cache.get_thermal_desc(&"moon_a").get("body_id", &"") == &"moon_a", "interessierter Mond wird gecacht")
 	ctx.assert_true(cache.get_planetary_state_desc(&"moon_a").get("body_id", &"") == &"moon_a", "interessierter Mond bekommt auch einen planetaren Snapshot")
 	ctx.assert_true(cache.get_life_potential_desc(&"moon_a").get("body_id", &"") == &"moon_a", "interessierter Mond bekommt auch einen Life-Potential-Snapshot")
@@ -347,6 +350,8 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	ctx.assert_true(cache.get_last_refreshed_body_count() == 3, "world reload refresht den Fokus plus explizite Interessen")
 
 	cache.dispose()
+	ctx.assert_true(cache.get_last_refresh_us() == 0, "dispose loescht last_refresh_us")
+	ctx.assert_true(cache.get_refresh_total_us() == 0, "dispose loescht refresh_total_us")
 	orbit_service.free()
 	bubble.free()
 	thermal_service.free()
@@ -388,6 +393,7 @@ static func _test_cache_throttles_sim_tick_refresh_but_not_user_events(ctx) -> v
 
 	var revision_after_configure: int = cache.get_revision()
 	var throttled_before: int = cache.get_refresh_throttled_count()
+	var refresh_total_after_configure: int = cache.get_refresh_total_us()
 
 	orbit_service.emit_bodies_updated([&"genesis"], DerivedSnapshotCacheScript.REASON_SIM_TICK)
 	ctx.assert_true(
@@ -404,6 +410,14 @@ static func _test_cache_throttles_sim_tick_refresh_but_not_user_events(ctx) -> v
 	ctx.assert_true(
 		cache.get_refresh_throttled_count() == throttled_before + 2,
 		"throttled_count zaehlt genau die geschluckten sim_tick-Refreshes"
+	)
+	ctx.assert_true(
+		cache.get_last_refresh_us() >= 0,
+		"auch der billige Throttle-Pfad schreibt last_refresh_us"
+	)
+	ctx.assert_true(
+		cache.get_refresh_total_us() >= refresh_total_after_configure,
+		"auch der billige Throttle-Pfad bleibt im akkumulierten Refresh-Timer sichtbar"
 	)
 
 	bubble.set_focus(&"moon_a")

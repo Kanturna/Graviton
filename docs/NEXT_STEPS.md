@@ -825,6 +825,10 @@ Konkreter Ablauf:
     Orbits dort ausgeblendet bleiben
   - wenn der Rest-Ruckler danach weiter sichtbar ist, beim naechsten
     `P`-Dump zuerst die Diagnose-Spalten
+    `time_tick_emit_total_us`,
+    `orbit_step_core_total_us`,
+    `asteroid_advance_total_us`,
+    `derived_snapshot_refresh_total_us`,
     `galaxy_proxy_signature_change_labels`,
     `galaxy_proxy_recompute_reason_labels`,
     `galaxy_proxy_entries_empty`, `galaxy_proxy_cached_entry_count`,
@@ -834,6 +838,10 @@ Konkreter Ablauf:
     Dump nicht zwischen Kamera-/Canvas-Invalidierung, leerer
     Proxy-Arbeit und Body-Visual-Skalierung trennt. Die JSON-Sidecars
     desselben Dumps dabei fuer punktuelle Zustaende wie
+    `time.last_tick_emit_us`, `time.tick_emit_total_us`,
+    `derived_snapshot_cache.last_refresh_us`,
+    `derived_snapshot_cache.refresh_total_us`,
+    `derived_snapshot_cache.refresh_throttled_count`,
     `ui.root_inspector.visible_row_count`, `ui.root_inspector.full_row_count`,
     `derived_snapshot_cache.last_refreshed_body_count`, Registry-
     Body-Counts und Streaming-/Kamera-State gegenueberstellen

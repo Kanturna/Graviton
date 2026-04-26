@@ -82,9 +82,16 @@ Composition Root gemessen (`asteroid_advance_us`,
 `orbit_renderer_sync_us`). Der OrbitService exponiert zusaetzlich den
 letzten reinen Orbit-Step als read-only `orbit_step_core_us`, damit
 Physics-Zeit in `P`-Dumps nicht mit Asteroiden- oder View-Arbeit
-verwechselt wird. `sim/`-Services bleiben dabei frei von
-`PerfProbe`-Abhaengigkeiten und exponieren hoechstens read-only Counter
-wie `free_drift_count`.
+verwechselt wird. `TimeService` exponiert analog den letzten Tick-Emit
+und den kumulativen `tick_emit_total_us` als read-only Diagnosewerte;
+das Testbed bildet daraus die per-frame Spalte
+`time_tick_emit_total_us`, ohne Frame-Reset-Logik in `core/` zu
+verlagern. `DerivedSnapshotCache` exponiert als `runtime/`-Cache
+read-only Refresh-Timer (`last_refresh_us`, `refresh_total_us`) sowie
+den bestehenden `refresh_throttled_count`; `orbit_testbed.gd` schreibt
+daraus die per-frame Diagnose `derived_snapshot_refresh_total_us`.
+`sim/`-Services bleiben dabei frei von `PerfProbe`-Abhaengigkeiten und
+exponieren hoechstens read-only Counter wie `free_drift_count`.
 
 **Konsequenz:** `PerfProbe` ist CSV-/Playtest-Diagnostik, keine
 Simulationswahrheit. Der JSON-Sidecar ist ebenfalls nur Diagnoseausgabe

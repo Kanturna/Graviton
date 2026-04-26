@@ -478,6 +478,15 @@ Ein direkter Architektur-Hygiene-Follow-up entkoppelt danach
 read-only Perf-Counter-Snapshots, waehrend `orbit_testbed.gd` diese
 Werte in die bestehenden `PerfProbe`-Spalten sampelt. Damit zeigt keine
 Abhaengigkeit mehr aus `src/sim/` nach `src/tools/debug/`.
+Der aktuelle Performance-Diagnose-Slice schliesst die Per-Tick/
+Per-Frame-Messluecke vor groesseren Refactors: `TimeService` behaelt
+`last_tick_emit_us` und exponiert additiv `tick_emit_total_us`;
+`orbit_testbed.gd` schreibt daraus sowie aus Orbit-Step, Asteroid-
+Advance und Derived-Cache die neuen per-frame `*_total_us`-Spalten.
+`DerivedSnapshotCache.refresh()` misst nun `last_refresh_us` und
+`refresh_total_us` inklusive billiger Throttle-Returns, und der
+Perf-Sidecar enthaelt die neuen Time-/Derived-Diagnosefelder plus den
+weiter interpretierenden `refresh_throttled_count`.
 Der naechste Hygiene-Follow-up legalisiert die bereits vorhandene
 `BubbleActivationSet`-Exit-Hysterese als rein geometrische read-only
 Relevanzklassifikation: sie stabilisiert nur das Aktiv-Set-Wish am

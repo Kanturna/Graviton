@@ -20,6 +20,7 @@ var time_scale: float = 1.0
 var paused: bool = false
 var last_sim_dt_s: float = 0.0
 var last_tick_emit_us: int = 0
+var tick_emit_total_us: int = 0
 
 
 func _ready() -> void:
@@ -42,6 +43,7 @@ func _emit_tick(sim_dt: float) -> void:
 	var emit_start_us: int = Time.get_ticks_usec()
 	sim_tick.emit(sim_dt)
 	last_tick_emit_us = Time.get_ticks_usec() - emit_start_us
+	tick_emit_total_us += last_tick_emit_us
 
 
 func set_time_scale(s: float) -> void:
@@ -64,3 +66,4 @@ func reset() -> void:
 	tick_count = 0
 	last_sim_dt_s = 0.0
 	last_tick_emit_us = 0
+	tick_emit_total_us = 0

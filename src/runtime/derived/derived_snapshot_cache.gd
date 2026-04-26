@@ -61,6 +61,8 @@ var _last_refreshed_body_count: int = 0
 var _last_sim_tick_refresh_usec: int = 0
 var _refresh_call_count_total: int = 0
 var _refresh_throttled_count: int = 0
+var _last_refresh_us: int = 0
+var _refresh_total_us: int = 0
 
 
 func configure(
@@ -172,14 +174,18 @@ func dispose() -> void:
 	_last_sim_tick_refresh_usec = 0
 	_refresh_call_count_total = 0
 	_refresh_throttled_count = 0
+	_last_refresh_us = 0
+	_refresh_total_us = 0
 
 
 func refresh(reason: StringName = REASON_MANUAL) -> void:
+	var refresh_start_us: int = Time.get_ticks_usec()
 	_refresh_call_count_total += 1
 	if reason == REASON_SIM_TICK:
 		var now_usec: int = Time.get_ticks_usec()
 		if now_usec - _last_sim_tick_refresh_usec < SIM_TICK_REFRESH_COOLDOWN_USEC:
 			_refresh_throttled_count += 1
+			_record_refresh_elapsed_us(refresh_start_us)
 			return
 		_last_sim_tick_refresh_usec = now_usec
 	_focus_id = StringName("") if _bubble == null else _bubble.get_focus()
@@ -267,6 +273,7 @@ func refresh(reason: StringName = REASON_MANUAL) -> void:
 	_revision += 1
 	_last_refresh_reason = reason
 	snapshot_refreshed.emit(reason)
+	_record_refresh_elapsed_us(refresh_start_us)
 
 
 func set_interest_ids(ids: Array[StringName]) -> void:
@@ -303,6 +310,14 @@ func get_refresh_call_count_total() -> int:
 
 func get_refresh_throttled_count() -> int:
 	return _refresh_throttled_count
+
+
+func get_last_refresh_us() -> int:
+	return _last_refresh_us
+
+
+func get_refresh_total_us() -> int:
+	return _refresh_total_us
 
 
 func get_focus_id() -> StringName:
@@ -464,6 +479,11 @@ func _on_world_loaded(_world_id: StringName) -> void:
 	_dirty_all_interest = true
 	_last_sim_tick_refresh_usec = 0
 	refresh(REASON_WORLD_RELOAD)
+
+
+func _record_refresh_elapsed_us(start_us: int) -> void:
+	_last_refresh_us = maxi(Time.get_ticks_usec() - start_us, 0)
+	_refresh_total_us += _last_refresh_us
 
 
 func _mark_affected_interest_ids_dirty(ids: Array[StringName]) -> void:

@@ -5,6 +5,7 @@ const OrbitCameraFramingScript = preload("res://src/tools/rendering/orbit_camera
 const LocalBubbleManagerScript = preload("res://src/runtime/local_bubble/local_bubble_manager.gd")
 const OrbitViewRendererScript = preload("res://src/tools/rendering/orbit_view_renderer.gd")
 const DebugOverlayScript = preload("res://src/tools/debug/debug_overlay.gd")
+const PerfProbeScript = preload("res://src/tools/debug/perf_probe.gd")
 
 
 class OrderTestbedProbe:
@@ -146,10 +147,70 @@ class DerivedSnapshotCacheProbe:
 	extends RefCounted
 
 	var last_interest_ids: Array[StringName] = []
+	var last_refresh_us: int = 5
+	var refresh_total_us: int = 17
+	var refresh_throttled_count: int = 2
 
 	func set_interest_ids(ids: Array[StringName]) -> void:
 		last_interest_ids = []
 		last_interest_ids.append_array(ids)
+
+	func get_revision() -> int:
+		return 3
+
+	func get_last_refresh_reason() -> StringName:
+		return &"probe"
+
+	func get_last_refreshed_body_count() -> int:
+		return 4
+
+	func get_refresh_call_count_total() -> int:
+		return 6
+
+	func get_refresh_throttled_count() -> int:
+		return refresh_throttled_count
+
+	func get_last_refresh_us() -> int:
+		return last_refresh_us
+
+	func get_refresh_total_us() -> int:
+		return refresh_total_us
+
+	func get_focus_id() -> StringName:
+		return &"alpha"
+
+	func get_focus_thermal_desc() -> Dictionary:
+		return {}
+
+	func get_focus_environment_desc() -> Dictionary:
+		return {}
+
+	func get_focus_planetary_state_desc() -> Dictionary:
+		return {}
+
+	func get_focus_life_potential_desc() -> Dictionary:
+		return {}
+
+	func get_focus_biosphere_desc() -> Dictionary:
+		return {}
+
+	func get_focus_biosphere_scale_desc() -> Dictionary:
+		return {}
+
+	func get_focus_orbit_readout_desc() -> Dictionary:
+		return {}
+
+	func get_focus_native_species_desc() -> Dictionary:
+		return {}
+
+	func get_focus_genetic_species_desc() -> Dictionary:
+		return {}
+
+	func get_focus_life_ecology_desc() -> Dictionary:
+		return {}
+
+	func get_focus_population_estimate_desc() -> Dictionary:
+		return {}
 
 	func get_environment_desc(id: StringName) -> Dictionary:
 		return {"present": true} if last_interest_ids.has(id) else {}
@@ -281,8 +342,10 @@ static func run(ctx) -> void:
 	_test_view_bookmark_shortcuts_route_to_slots(ctx)
 	_test_view_bookmark_slots_store_and_restore_camera_state(ctx)
 	_test_view_bookmark_restore_ignores_stale_or_cross_world_slots(ctx)
+	_test_monotonic_total_delta_handles_reset(ctx)
 	_test_perf_snapshot_json_safe_converts_godot_variants(ctx)
 	_test_perf_snapshot_builds_json_sidecar_dictionary(ctx)
+	_test_perf_probe_total_columns_are_emitted(ctx)
 
 
 static func _test_root_inspector_opens_only_explicitly_and_overrides_root_overview_interest(ctx) -> void:
@@ -543,14 +606,29 @@ static func _test_perf_snapshot_json_safe_converts_godot_variants(ctx) -> void:
 	ctx.assert_true(JSON.stringify(safe) != "", "Perf-Snapshot JSON-Safe bleibt JSON-stringifizierbar")
 
 
+static func _test_monotonic_total_delta_handles_reset(ctx) -> void:
+	ctx.assert_true(
+		OrbitTestbedScript._delta_from_monotonic_total(13, 10) == 3,
+		"Monotonic-Delta bildet normale Counter-Fortschritte"
+	)
+	ctx.assert_true(
+		OrbitTestbedScript._delta_from_monotonic_total(4, 10) == 4,
+		"Monotonic-Delta behandelt Counter-Reset ohne negatives Delta"
+	)
+
+
 static func _test_perf_snapshot_builds_json_sidecar_dictionary(ctx) -> void:
 	var testbed = OrbitTestbedScript.new()
 	var bubble := BubbleProbe.new()
 	var camera := CameraControllerProbe.new()
 	var topology := TopologyProbe.new()
+	var derived_cache := DerivedSnapshotCacheProbe.new()
 	camera.bubble = bubble
 	camera.frame_label = OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK
 	bubble.focus_id = &"alpha"
+	TimeService.reset()
+	TimeService.last_tick_emit_us = 11
+	TimeService.tick_emit_total_us = 37
 
 	UniverseRegistry.clear()
 	_register_probe_body(&"obsidian", BodyType.Kind.BLACK_HOLE, StringName(""))
@@ -560,6 +638,7 @@ static func _test_perf_snapshot_builds_json_sidecar_dictionary(ctx) -> void:
 	testbed._bubble = bubble
 	testbed._camera_controller = camera
 	testbed._topology = topology
+	testbed._derived_snapshot_cache = derived_cache
 	testbed._is_large_world = true
 	testbed._active_world_scope_id = &"probe_galaxy"
 	var focus_order: Array[StringName] = [&"obsidian", &"alpha", &"alpha_i"]
@@ -574,7 +653,40 @@ static func _test_perf_snapshot_builds_json_sidecar_dictionary(ctx) -> void:
 	ctx.assert_true(safe.get("focus", {}).get("id", "") == "alpha", "Perf-Snapshot Sidecar enthaelt den aktuellen Fokus")
 	ctx.assert_true(int(safe.get("registry", {}).get("body_count", 0)) == 3, "Perf-Snapshot Sidecar enthaelt Registry-Counts")
 	ctx.assert_true(safe.get("camera", {}).get("frame_label", "") == String(OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK), "Perf-Snapshot Sidecar enthaelt Kamera-Kontext")
+	ctx.assert_true(int(safe.get("time", {}).get("last_tick_emit_us", 0)) == 11, "Perf-Snapshot Sidecar enthaelt last_tick_emit_us")
+	ctx.assert_true(int(safe.get("time", {}).get("tick_emit_total_us", 0)) == 37, "Perf-Snapshot Sidecar enthaelt tick_emit_total_us")
+	ctx.assert_true(int(safe.get("derived_snapshot_cache", {}).get("last_refresh_us", 0)) == 5, "Perf-Snapshot Sidecar enthaelt last_refresh_us")
+	ctx.assert_true(int(safe.get("derived_snapshot_cache", {}).get("refresh_total_us", 0)) == 17, "Perf-Snapshot Sidecar enthaelt refresh_total_us")
+	ctx.assert_true(int(safe.get("derived_snapshot_cache", {}).get("refresh_throttled_count", 0)) == 2, "Perf-Snapshot Sidecar enthaelt refresh_throttled_count")
 	ctx.assert_true(JSON.stringify(safe) != "", "Perf-Snapshot Sidecar bleibt JSON-stringifizierbar")
+	TimeService.reset()
+	_destroy_testbed_probe(testbed)
+	bubble.free()
+
+
+static func _test_perf_probe_total_columns_are_emitted(ctx) -> void:
+	var probe := PerfProbeScript.new()
+	probe._ready()
+	var testbed = OrbitTestbedScript.new()
+	var derived_cache := DerivedSnapshotCacheProbe.new()
+	derived_cache.refresh_total_us = 19
+	testbed._derived_snapshot_cache = derived_cache
+	TimeService.reset()
+	TimeService.tick_emit_total_us = 23
+
+	testbed._sample_perf_probe()
+	PerfProbeScript.bump(&"orbit_step_core_total_us", 7)
+	PerfProbeScript.bump(&"asteroid_advance_total_us", 11)
+	probe._capture_frame_row()
+	var keys: Array = probe._collect_csv_keys()
+	ctx.assert_true(keys.has("time_tick_emit_total_us"), "PerfProbe CSV enthaelt time_tick_emit_total_us")
+	ctx.assert_true(keys.has("orbit_step_core_total_us"), "PerfProbe CSV enthaelt orbit_step_core_total_us")
+	ctx.assert_true(keys.has("asteroid_advance_total_us"), "PerfProbe CSV enthaelt asteroid_advance_total_us")
+	ctx.assert_true(keys.has("derived_snapshot_refresh_total_us"), "PerfProbe CSV enthaelt derived_snapshot_refresh_total_us")
+
+	TimeService.reset()
+	probe._exit_tree()
+	probe.free()
 	_destroy_testbed_probe(testbed)
 
 
