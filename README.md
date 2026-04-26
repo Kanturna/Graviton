@@ -23,6 +23,11 @@ oben als aktueller.
 - Auf dieser Basis liegen inzwischen planetare Derived-Services,
   `Life v2`, ein read-only Species-Layer, `Survey UX v2` und produktive
   Large-World-Welten bis `scaleup_galaxy_100`
+- Asteroiden v1 laufen als eigene Minor-Body-Simulation mit
+  read-only Snapshot-/Renderer-Pfad; Impacts, Kollisionen und
+  Life-Folgen sind weiterhin nicht implementiert
+- Unter `website/` liegt ein lokaler statischer Website-Prototyp mit
+  klar markierten Screenshot-Platzhaltern
 - Das fruehere minimalistische 3D-Testbed wurde durch eine stilisierte
   2D-Orbit-Ansicht ersetzt
 - Die Bootstrap-Szene leitet in das aktuelle Orbit-Testbed; der

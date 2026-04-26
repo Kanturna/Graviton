@@ -972,8 +972,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist weiter reproduzierbar: `run_tests.bat`
-  laeuft nach `Population Estimates v1` mit `7960`
-  erfolgreichen Assertions bei `0` Failures.
+  laeuft nach dem Asteroiden-v1.2-BH-Steering-/Influence-Zone-Slice
+  mit `8342` erfolgreichen Assertions bei `0` Failures.
 
 ### Aktuelle Praesentation
 
@@ -1295,6 +1295,15 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `website/index.html`
 - `website/styles.css`
 - `website/assets/README.md`
+- `src/sim/asteroids/asteroid_def.gd`
+- `src/sim/asteroids/asteroid_state.gd`
+- `src/sim/asteroids/asteroid_simulation_service.gd`
+- `src/sim/asteroids/restricted_gravity_integrator.gd`
+- `src/runtime/derived/asteroid_snapshot_cache.gd`
+- `src/tools/rendering/asteroid_field_renderer.gd`
+- `src/tests/sim/test_asteroid_simulation_service.gd`
+- `src/tests/runtime/test_asteroid_snapshot_cache.gd`
+- `src/tests/rendering/test_asteroid_field_renderer.gd`
 - `src/core/math/orbit_math.gd`
 - `src/tests/orbit/test_orbit.gd`
 - `src/sim/world/world_loader.gd`
@@ -1326,12 +1335,14 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/sim/life/native_species_service.gd`
 - `src/sim/life/genetic_species_service.gd`
 - `src/sim/life/life_ecology_service.gd`
+- `src/sim/life/life_population_estimate_service.gd`
 - `src/tests/sim/test_environment_service.gd`
 - `src/tests/sim/test_life_potential_service.gd`
 - `src/tests/sim/test_biosphere_scale_service.gd`
 - `src/tests/sim/test_native_species_service.gd`
 - `src/tests/sim/test_genetic_species_service.gd`
 - `src/tests/sim/test_life_ecology_service.gd`
+- `src/tests/sim/test_life_population_estimate_service.gd`
 - `docs/SIMULATIONSREGELN.md`
 - `docs/STARTER_WORLD.md`
 - `docs/ARCHITEKTUR.md`
@@ -1343,6 +1354,7 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - `src/tools/rendering/orbit_time_scale_controller.gd`
 - `src/tools/rendering/planet_badge_overlay.gd`
 - `src/tools/ui/root_inspector_overlay.gd`
+- `src/tools/ui/root_inspector_row.gd`
 - `src/tools/ui/life_detail_panel.gd`
 - `src/tools/ui/survey_visual_theme.gd`
 - `src/sim/topology/universe_topology.gd`
@@ -1540,25 +1552,29 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 ## Was als naechstes wahrscheinlich sinnvoll ist
 
 - zuerst kein neuer Simulationslayer, sondern das in
-  `docs/NEXT_STEPS.md` beschriebene Acceptance-Bundle:
-  Lifeform Pressure, Life Ecology, Genetic Lifeforms,
-  Survey-Color-/Life-Detail-Panel, Planet Summary, Survey UX,
-  Native Species, Orbit Readout, Time UX, View Bookmarks und die
-  aktuellen Performance-/Focus-Smoothing-Gates gemeinsam im Editor
-  validieren
+  `docs/NEXT_STEPS.md` beschriebene Acceptance-Bundle inklusive
+  `Asteroiden v1`:
+  Population Estimates, Lifeform Pressure, Life Ecology,
+  Genetic Lifeforms, Survey-Color-/Life-Detail-Panel, Planet Summary,
+  Survey UX, Native Species, Orbit Readout, Time UX, View Bookmarks,
+  Website-Screenshot-Gate und die aktuellen Performance-/
+  Focus-Smoothing-Gates gemeinsam im Editor validieren
 - die Headless-Basis ist dabei bereits sichtbar:
-  `./run_tests.bat` lief nach `Population Estimates v1` mit `7960`
-  Passed und `0` Failed; gezielte Tests decken unter anderem
-  HUD-Modi, Root-Inspector-Testbed-Regeln, Root-Inspector-
-  Model-Caching, Planet-Badge-Text-/Candidate-Caching,
+  `./run_tests.bat` lief nach dem Asteroiden-v1.2-BH-Steering-/
+  Influence-Zone-Slice mit `8342` Passed und `0` Failed; gezielte
+  Tests decken unter anderem HUD-Modi, Root-Inspector-Testbed-Regeln,
+  Root-Inspector-Model-Caching, Planet-Badge-Text-/Candidate-Caching,
   Perf-Snapshot-JSON-Konvertierung, Life-Detail-Panel,
-  Genetic-/Pressure-/Life-Ecology-/Population-Estimate-Ableitung und
-  `scaleup_galaxy_100`-Streaming ab
+  Genetic-/Pressure-/Life-Ecology-/Population-Estimate-Ableitung,
+  `scaleup_galaxy_100`-Streaming und die Asteroiden-v1.2-Pfade ab
 - diese Tests ersetzen das offene Editor-Gate nicht:
   `sample_system.planet_a`, `starter_world.gamma_iv`,
   `starter_world.alpha_iii`, `starter_world.gamma_iii` und mindestens
   ein Detailplanet in `scaleup_galaxy_100` muessen im Fokus-HUD,
-  Inspector, Life-Detail-Panel und Badge-Pfad wirklich gelesen werden
+  Inspector, Life-Detail-Panel und Badge-Pfad wirklich gelesen werden;
+  zusaetzlich muessen Asteroiden im Root-, Stern- und Detailfokus von
+  `scaleup_galaxy_100` sichtbar, performant und semantisch sauber
+  bleiben
 - dabei im Summary-/Details-Flow pruefen:
   `Environment` bleibt "jetzt", `World` bleibt "ueber das Jahr",
   `Life` bleibt quantitative Biosphaerenstufe, `Biomass` bleibt Menge,
@@ -1570,7 +1586,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   `scaleup_galaxy_30` und `scaleup_galaxy_100` mit offenem Inspector im
   `ROOT_OVERVIEW` pruefen, inklusive `model_apply_count`,
   `badge_text_apply_count`, `badge_candidate_rebuild_count`,
-  Proxy-Culling, Focus-Smoothing, View-Bookmarks und unlocked-FPS-Haptik
+  Proxy-Culling, Focus-Smoothing, View-Bookmarks, unlocked-FPS-Haptik
+  und den Asteroiden-Countern fuer aktive Roots, Influence-Zones,
+  BH-Attraktoren, Freiflug und echte Far-Retires
 - wenn dieses Bundle sauber ist, danach als naechsten Life-Slice
   `Population Dynamics v1` oder `Evolution Competition v1` planen:
   zeitliche Entwicklung und Konkurrenz sollen erst auf den jetzt
@@ -1585,8 +1603,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Screenshot-Capture die Platzhalter in `website/` ersetzen; keine
   externen Bilder, Stock-Weltraumbilder, Addon-Icons oder Rendering-
   Referenztexturen als Projektbeleg verwenden
-- Headless-Basis nach `Population Estimates v1`:
-  `./run_tests.bat` laeuft gruen mit `7960` Passed, `0` Failed;
+- Headless-Basis nach Asteroiden-v1.2:
+  `./run_tests.bat` laeuft gruen mit `8342` Passed, `0` Failed;
   der reale Lauf meldet am Prozessende aber weiter generische
   `ObjectDB instances leaked`- und
   `resources still in use`-Hinweise
