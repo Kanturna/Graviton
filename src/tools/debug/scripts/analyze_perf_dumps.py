@@ -20,13 +20,17 @@ from typing import Iterable
 
 APP_NAME = "Graviton"
 CSV_GLOB = "perf_probe_*.csv"
-INCLUSIVE_EXPLAIN_US = "time_tick_emit_total_us"
+INCLUSIVE_EXPLAIN_US = (
+    "time_physics_process_total_us",
+    "time_tick_emit_total_us",
+)
 FALLBACK_EXPLAIN_US = (
     "orbit_step_core_total_us",
     "asteroid_advance_total_us",
     "derived_snapshot_refresh_total_us",
 )
 COMPONENT_US = (
+    "time_physics_process_total_us",
     "time_tick_emit_total_us",
     "orbit_step_core_total_us",
     "asteroid_advance_total_us",
@@ -68,7 +72,8 @@ def main() -> int:
     print(f"Dump dir: {dump_dir}")
     print(
         "Note: component *_total_us columns can be nested; explained_ms uses "
-        f"{INCLUSIVE_EXPLAIN_US} when present to avoid double counting."
+        f"{INCLUSIVE_EXPLAIN_US[0]} or {INCLUSIVE_EXPLAIN_US[1]} when present "
+        "to avoid double counting."
     )
     for scenario_rows in sorted(scenarios.values(), key=_latest_modified_time, reverse=True):
         print_scenario(scenario_rows)
@@ -199,8 +204,9 @@ def dict_value(value) -> dict:
 
 
 def explain_source(fieldnames: set[str]) -> str:
-    if INCLUSIVE_EXPLAIN_US in fieldnames:
-        return INCLUSIVE_EXPLAIN_US
+    for column in INCLUSIVE_EXPLAIN_US:
+        if column in fieldnames:
+            return column
     for column in FALLBACK_EXPLAIN_US:
         if column in fieldnames:
             return "fallback_stage_sum"
@@ -208,8 +214,9 @@ def explain_source(fieldnames: set[str]) -> str:
 
 
 def explained_physics_ms(row: dict[str, str], fieldnames: set[str]) -> float:
-    if INCLUSIVE_EXPLAIN_US in fieldnames:
-        return us_to_ms(float_value(row.get(INCLUSIVE_EXPLAIN_US, "0")))
+    for column in INCLUSIVE_EXPLAIN_US:
+        if column in fieldnames:
+            return us_to_ms(float_value(row.get(column, "0")))
     return sum(
         us_to_ms(float_value(row.get(column, "0")))
         for column in FALLBACK_EXPLAIN_US

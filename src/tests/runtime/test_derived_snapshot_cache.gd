@@ -292,6 +292,7 @@ static func _test_cache_tracks_interest_and_dirty_updates(ctx) -> void:
 	ctx.assert_true(cache.get_last_refreshed_body_count() == 1, "configure refreshes nur den Fokuskoerper")
 	ctx.assert_true(cache.get_last_refresh_us() >= 0, "configure misst die letzte Refresh-Dauer")
 	ctx.assert_true(cache.get_refresh_total_us() >= cache.get_last_refresh_us(), "configure akkumuliert Refresh-Dauer")
+	ctx.assert_true(cache.get_sim_tick_refresh_cooldown_usec() == 250000, "sim_tick-Refresh-Cooldown ist auf die langsamere Readout-Cadence gesetzt")
 	ctx.assert_true(thermal_service.describe_calls == 1, "configure liest Thermalwerte nur fuer den Fokus")
 	ctx.assert_true(environment_service.describe_calls == 1, "configure liest Environment-Werte nur fuer den Fokus")
 	ctx.assert_true(cache.get_focus_id() == &"planet_a", "configure uebernimmt den aktuellen Fokus")

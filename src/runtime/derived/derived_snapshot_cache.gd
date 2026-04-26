@@ -10,7 +10,7 @@ const REASON_FOCUS_CHANGED: StringName = &"focus_changed"
 const REASON_WORLD_RELOAD: StringName = &"world_reload"
 const REASON_MANUAL: StringName = &"manual"
 const REASON_INTEREST_CHANGED: StringName = &"interest_changed"
-const SIM_TICK_REFRESH_COOLDOWN_USEC: int = 50_000
+const SIM_TICK_REFRESH_COOLDOWN_USEC: int = 250_000
 
 var _registry: Node = null
 var _time_service: Node = null
@@ -318,6 +318,10 @@ func get_last_refresh_us() -> int:
 
 func get_refresh_total_us() -> int:
 	return _refresh_total_us
+
+
+func get_sim_tick_refresh_cooldown_usec() -> int:
+	return SIM_TICK_REFRESH_COOLDOWN_USEC
 
 
 func get_focus_id() -> StringName:

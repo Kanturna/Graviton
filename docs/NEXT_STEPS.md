@@ -16,7 +16,8 @@ abgesicherten Slices, jetzt inklusive `Asteroiden v1`.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Asteroiden-v1.2-BH-Steering-/Influence-Zone-Slice mit `8342`
+- `run_tests.bat` lief nach dem DerivedSnapshotCache-Cadence-/
+  Physics-Walltime-Diagnose-Slice mit `8387`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -835,6 +836,7 @@ Konkreter Ablauf:
     Orbits dort ausgeblendet bleiben
   - wenn der Rest-Ruckler danach weiter sichtbar ist, beim naechsten
     `P`-Dump zuerst die Diagnose-Spalten
+    `time_physics_process_total_us`,
     `time_tick_emit_total_us`,
     `orbit_step_core_total_us`,
     `asteroid_advance_total_us`,
@@ -848,13 +850,21 @@ Konkreter Ablauf:
     Dump nicht zwischen Kamera-/Canvas-Invalidierung, leerer
     Proxy-Arbeit und Body-Visual-Skalierung trennt. Die JSON-Sidecars
     desselben Dumps dabei fuer punktuelle Zustaende wie
+    `time.last_physics_process_us`, `time.physics_process_total_us`,
     `time.last_tick_emit_us`, `time.tick_emit_total_us`,
     `derived_snapshot_cache.last_refresh_us`,
     `derived_snapshot_cache.refresh_total_us`,
     `derived_snapshot_cache.refresh_throttled_count`,
+    `derived_snapshot_cache.sim_tick_refresh_cooldown_usec`,
     `ui.root_inspector.visible_row_count`, `ui.root_inspector.full_row_count`,
     `derived_snapshot_cache.last_refreshed_body_count`, Registry-
-    Body-Counts und Streaming-/Kamera-State gegenueberstellen
+    Body-Counts und Streaming-/Kamera-State gegenueberstellen. Nach dem
+    `DerivedSnapshotCache`-Cadence-Follow-up sollte
+    `derived_snapshot_refresh_total_us p95` in stabilen Large-World-
+    Foki nahe `0 ms` liegen; wenn `physics_ms` trotzdem hoch bleibt,
+    zuerst `time_physics_process_total_us` und `process_ms` gegenueber
+    Godots Monitorwerten pruefen, bevor der naechste Optimierungsslice
+    gesetzt wird
 
 Wenn dieser Gate kippt:
 

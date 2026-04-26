@@ -150,6 +150,7 @@ class DerivedSnapshotCacheProbe:
 	var last_refresh_us: int = 5
 	var refresh_total_us: int = 17
 	var refresh_throttled_count: int = 2
+	var sim_tick_refresh_cooldown_usec: int = 250000
 
 	func set_interest_ids(ids: Array[StringName]) -> void:
 		last_interest_ids = []
@@ -175,6 +176,9 @@ class DerivedSnapshotCacheProbe:
 
 	func get_refresh_total_us() -> int:
 		return refresh_total_us
+
+	func get_sim_tick_refresh_cooldown_usec() -> int:
+		return sim_tick_refresh_cooldown_usec
 
 	func get_focus_id() -> StringName:
 		return &"alpha"
@@ -670,6 +674,8 @@ static func _test_perf_snapshot_builds_json_sidecar_dictionary(ctx) -> void:
 	TimeService.reset()
 	TimeService.last_tick_emit_us = 11
 	TimeService.tick_emit_total_us = 37
+	TimeService.last_physics_process_us = 13
+	TimeService.physics_process_total_us = 41
 
 	UniverseRegistry.clear()
 	_register_probe_body(&"obsidian", BodyType.Kind.BLACK_HOLE, StringName(""))
@@ -696,9 +702,12 @@ static func _test_perf_snapshot_builds_json_sidecar_dictionary(ctx) -> void:
 	ctx.assert_true(safe.get("camera", {}).get("frame_label", "") == String(OrbitCameraFramingScript.FRAME_LABEL_FOCUS_LOCK), "Perf-Snapshot Sidecar enthaelt Kamera-Kontext")
 	ctx.assert_true(int(safe.get("time", {}).get("last_tick_emit_us", 0)) == 11, "Perf-Snapshot Sidecar enthaelt last_tick_emit_us")
 	ctx.assert_true(int(safe.get("time", {}).get("tick_emit_total_us", 0)) == 37, "Perf-Snapshot Sidecar enthaelt tick_emit_total_us")
+	ctx.assert_true(int(safe.get("time", {}).get("last_physics_process_us", 0)) == 13, "Perf-Snapshot Sidecar enthaelt last_physics_process_us")
+	ctx.assert_true(int(safe.get("time", {}).get("physics_process_total_us", 0)) == 41, "Perf-Snapshot Sidecar enthaelt physics_process_total_us")
 	ctx.assert_true(int(safe.get("derived_snapshot_cache", {}).get("last_refresh_us", 0)) == 5, "Perf-Snapshot Sidecar enthaelt last_refresh_us")
 	ctx.assert_true(int(safe.get("derived_snapshot_cache", {}).get("refresh_total_us", 0)) == 17, "Perf-Snapshot Sidecar enthaelt refresh_total_us")
 	ctx.assert_true(int(safe.get("derived_snapshot_cache", {}).get("refresh_throttled_count", 0)) == 2, "Perf-Snapshot Sidecar enthaelt refresh_throttled_count")
+	ctx.assert_true(int(safe.get("derived_snapshot_cache", {}).get("sim_tick_refresh_cooldown_usec", 0)) == 250000, "Perf-Snapshot Sidecar enthaelt den Derived-Cooldown")
 	ctx.assert_true(JSON.stringify(safe) != "", "Perf-Snapshot Sidecar bleibt JSON-stringifizierbar")
 	TimeService.reset()
 	_destroy_testbed_probe(testbed)
@@ -714,12 +723,14 @@ static func _test_perf_probe_total_columns_are_emitted(ctx) -> void:
 	testbed._derived_snapshot_cache = derived_cache
 	TimeService.reset()
 	TimeService.tick_emit_total_us = 23
+	TimeService.physics_process_total_us = 29
 
 	testbed._sample_perf_probe()
 	PerfProbeScript.bump(&"orbit_step_core_total_us", 7)
 	PerfProbeScript.bump(&"asteroid_advance_total_us", 11)
 	probe._capture_frame_row()
 	var keys: Array = probe._collect_csv_keys()
+	ctx.assert_true(keys.has("time_physics_process_total_us"), "PerfProbe CSV enthaelt time_physics_process_total_us")
 	ctx.assert_true(keys.has("time_tick_emit_total_us"), "PerfProbe CSV enthaelt time_tick_emit_total_us")
 	ctx.assert_true(keys.has("orbit_step_core_total_us"), "PerfProbe CSV enthaelt orbit_step_core_total_us")
 	ctx.assert_true(keys.has("asteroid_advance_total_us"), "PerfProbe CSV enthaelt asteroid_advance_total_us")

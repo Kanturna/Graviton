@@ -21,6 +21,8 @@ var paused: bool = false
 var last_sim_dt_s: float = 0.0
 var last_tick_emit_us: int = 0
 var tick_emit_total_us: int = 0
+var last_physics_process_us: int = 0
+var physics_process_total_us: int = 0
 
 
 func _ready() -> void:
@@ -28,12 +30,16 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	var process_start_us: int = Time.get_ticks_usec()
 	if paused:
+		_record_physics_process_elapsed(process_start_us)
 		return
 	var sim_dt: float = delta * maxf(0.0, time_scale)
 	if sim_dt <= 0.0:
+		_record_physics_process_elapsed(process_start_us)
 		return
 	_emit_tick(sim_dt)
+	_record_physics_process_elapsed(process_start_us)
 
 
 func _emit_tick(sim_dt: float) -> void:
@@ -44,6 +50,11 @@ func _emit_tick(sim_dt: float) -> void:
 	sim_tick.emit(sim_dt)
 	last_tick_emit_us = Time.get_ticks_usec() - emit_start_us
 	tick_emit_total_us += last_tick_emit_us
+
+
+func _record_physics_process_elapsed(start_us: int) -> void:
+	last_physics_process_us = maxi(Time.get_ticks_usec() - start_us, 0)
+	physics_process_total_us += last_physics_process_us
 
 
 func set_time_scale(s: float) -> void:
@@ -67,3 +78,5 @@ func reset() -> void:
 	last_sim_dt_s = 0.0
 	last_tick_emit_us = 0
 	tick_emit_total_us = 0
+	last_physics_process_us = 0
+	physics_process_total_us = 0

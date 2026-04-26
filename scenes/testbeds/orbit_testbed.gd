@@ -110,6 +110,7 @@ var _hud_details_enabled: bool = false
 var _last_orbit_perf_counter_snapshot: Dictionary = {}
 var _last_asteroid_perf_counter_snapshot: Dictionary = {}
 var _last_time_tick_emit_total_us: int = 0
+var _last_time_physics_process_total_us: int = 0
 var _last_derived_snapshot_refresh_total_us: int = 0
 var _headless_perf_dump_config: Dictionary = {}
 var _headless_perf_dump_active: bool = false
@@ -390,6 +391,13 @@ func _process(delta: float) -> void:
 func _sample_perf_probe() -> void:
 	_sample_orbit_service_perf_probe()
 	_sample_asteroid_perf_probe()
+	PerfProbeScript.sample(&"time_physics_process_us", TimeService.last_physics_process_us)
+	var current_time_physics_process_total_us: int = TimeService.physics_process_total_us
+	PerfProbeScript.sample(
+		&"time_physics_process_total_us",
+		_delta_from_monotonic_total(current_time_physics_process_total_us, _last_time_physics_process_total_us)
+	)
+	_last_time_physics_process_total_us = current_time_physics_process_total_us
 	PerfProbeScript.sample(&"time_tick_emit_us", TimeService.last_tick_emit_us)
 	var current_time_tick_emit_total_us: int = TimeService.tick_emit_total_us
 	PerfProbeScript.sample(
@@ -597,6 +605,8 @@ func _time_debug_snapshot() -> Dictionary:
 		"time_scale": TimeService.time_scale,
 		"paused": TimeService.paused,
 		"last_sim_dt_s": TimeService.last_sim_dt_s,
+		"last_physics_process_us": TimeService.last_physics_process_us,
+		"physics_process_total_us": TimeService.physics_process_total_us,
 		"last_tick_emit_us": TimeService.last_tick_emit_us,
 		"tick_emit_total_us": TimeService.tick_emit_total_us,
 	}
@@ -705,6 +715,7 @@ func _derived_cache_debug_snapshot() -> Dictionary:
 		"last_refreshed_body_count": _derived_snapshot_cache.get_last_refreshed_body_count(),
 		"refresh_call_count_total": _derived_snapshot_cache.get_refresh_call_count_total(),
 		"refresh_throttled_count": _derived_snapshot_cache.get_refresh_throttled_count(),
+		"sim_tick_refresh_cooldown_usec": _derived_snapshot_cache.get_sim_tick_refresh_cooldown_usec(),
 		"last_refresh_us": _derived_snapshot_cache.get_last_refresh_us(),
 		"refresh_total_us": _derived_snapshot_cache.get_refresh_total_us(),
 		"focus_id": _derived_snapshot_cache.get_focus_id(),

@@ -1,5 +1,28 @@
 # Graviton - Decisions
 
+## 2026-04-26 - DerivedSnapshotCache sim_tick-Refresh ist cadence-limitiert
+
+Die frische Headless-Perf-Matrix fuer `scaleup_galaxy_100` zeigte einen
+gemessenen Derived-Hotpath: sobald 14-15 planetare Interest-Bodies
+aktiv waren, dominierte `DerivedSnapshotCache.refresh()` die erklaerte
+Physics-Zeit. Diese Readouts sind UI-/View-Glue ueber bestehenden
+Sim-Daten und muessen nicht bei jedem `sim_tick` neu gefaltet werden.
+
+Konsequenz:
+
+- normale `sim_tick`-Refreshes des `DerivedSnapshotCache` laufen nur
+  noch ueber eine `250 ms`-Cadence
+- Fokuswechsel, Interest-Aenderungen, Konfiguration und World-Reload
+  bleiben sofortige Refresh-Pfade
+- der Cache fuehrt keine neue Simulationswahrheit ein und schreibt
+  weiter keine `BodyState`
+- `TimeService` exponiert zusaetzlich read-only
+  `physics_process_total_us`, damit P-Dumps Godots `physics_ms`-Monitor
+  gegen die projektinterne Physics-Walltime abgrenzen koennen
+- der verbleibende hohe `physics_ms`-Residualblock ist ein weiteres
+  Diagnosegate, kein Beweis fuer einen Renderer- oder Asteroiden-
+  Bottleneck
+
 ## 2026-04-26 - Asteroiden v1.2 nutzen BH-effective-mu und Influence-Zones
 
 Das v1.1-BH-Steering war in der authored Root-Welt visuell zu schwach:

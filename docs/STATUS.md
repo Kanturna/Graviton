@@ -502,6 +502,22 @@ meldet pro Szenario `physics_ms` sowie erklaerte und verbleibend
 unerklaerte Physics-Zeit als p50/p95/max. Alte Dumps ohne die neuen
 Total-Spalten bleiben dabei sichtbar unerklaert, statt nachtraeglich
 geschaetzt zu werden.
+Die erste frische 4er-Headless-Matrix auf aktuellem Stand zeigte danach
+einen gemessenen Derived-Hotpath: Root-Overview geschlossen war leicht,
+aber Root-Overview offen und `onyx_d`-Sternfokus sammelten
+`DerivedSnapshotCache.refresh()`-p95 von grob `36-43 ms`, waehrend
+Orbit-Core unter `1 ms` und Asteroiden-Advance bei grob `3 ms` lagen.
+Der Folge-Slice verlangsamt deshalb nur normale `sim_tick`-Refreshes
+des `DerivedSnapshotCache` auf eine `250 ms`-Readout-Cadence; Fokus-,
+World-Reload- und Interest-Events refreshen weiter sofort. Zusaetzlich
+exponiert `TimeService` read-only `last_physics_process_us` und
+`physics_process_total_us`; das Testbed schreibt daraus
+`time_physics_process_total_us`, damit der Analyzer Godots
+`physics_ms`-Monitor besser gegen projektinterne Physics-Walltime
+abgrenzen kann. Der Nachdump reduziert
+`derived_snapshot_refresh_total_us p95` in den schweren Szenarien auf
+nahe `0 ms`; einzelne Max-Spikes bleiben sichtbar, und ein hoher
+`physics_ms`-Residualblock bleibt als naechstes Diagnosegate offen.
 Der naechste Hygiene-Follow-up legalisiert die bereits vorhandene
 `BubbleActivationSet`-Exit-Hysterese als rein geometrische read-only
 Relevanzklassifikation: sie stabilisiert nur das Aktiv-Set-Wish am
@@ -996,8 +1012,9 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist weiter reproduzierbar: `run_tests.bat`
-  laeuft nach dem Asteroiden-v1.2-BH-Steering-/Influence-Zone-Slice
-  mit `8342` erfolgreichen Assertions bei `0` Failures.
+  laeuft nach dem DerivedSnapshotCache-Cadence-/
+  Physics-Walltime-Diagnose-Slice mit `8387` erfolgreichen Assertions
+  bei `0` Failures.
 
 ### Aktuelle Praesentation
 
@@ -1584,8 +1601,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Website-Screenshot-Gate und die aktuellen Performance-/
   Focus-Smoothing-Gates gemeinsam im Editor validieren
 - die Headless-Basis ist dabei bereits sichtbar:
-  `./run_tests.bat` lief nach dem Asteroiden-v1.2-BH-Steering-/
-  Influence-Zone-Slice mit `8342` Passed und `0` Failed; gezielte
+  `./run_tests.bat` lief nach dem DerivedSnapshotCache-Cadence-/
+  Physics-Walltime-Diagnose-Slice mit `8387` Passed und `0` Failed; gezielte
   Tests decken unter anderem HUD-Modi, Root-Inspector-Testbed-Regeln,
   Root-Inspector-Model-Caching, Planet-Badge-Text-/Candidate-Caching,
   Perf-Snapshot-JSON-Konvertierung, Life-Detail-Panel,
@@ -1627,8 +1644,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Screenshot-Capture die Platzhalter in `website/` ersetzen; keine
   externen Bilder, Stock-Weltraumbilder, Addon-Icons oder Rendering-
   Referenztexturen als Projektbeleg verwenden
-- Headless-Basis nach Asteroiden-v1.2:
-  `./run_tests.bat` laeuft gruen mit `8342` Passed, `0` Failed;
+- Headless-Basis nach dem aktuellen Performance-Diagnose-Follow-up:
+  `./run_tests.bat` laeuft gruen mit `8387` Passed, `0` Failed;
   der reale Lauf meldet am Prozessende aber weiter generische
   `ObjectDB instances leaked`- und
   `resources still in use`-Hinweise

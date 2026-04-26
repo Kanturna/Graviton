@@ -87,13 +87,15 @@ Composition Root gemessen (`asteroid_advance_us`,
 letzten reinen Orbit-Step als read-only `orbit_step_core_us`, damit
 Physics-Zeit in `P`-Dumps nicht mit Asteroiden- oder View-Arbeit
 verwechselt wird. `TimeService` exponiert analog den letzten Tick-Emit
-und den kumulativen `tick_emit_total_us` als read-only Diagnosewerte;
-das Testbed bildet daraus die per-frame Spalte
-`time_tick_emit_total_us`, ohne Frame-Reset-Logik in `core/` zu
+und die kumulativen `tick_emit_total_us` /
+`physics_process_total_us` als read-only Diagnosewerte; das Testbed
+bildet daraus die per-frame Spalten `time_tick_emit_total_us` und
+`time_physics_process_total_us`, ohne Frame-Reset-Logik in `core/` zu
 verlagern. `DerivedSnapshotCache` exponiert als `runtime/`-Cache
-read-only Refresh-Timer (`last_refresh_us`, `refresh_total_us`) sowie
-den bestehenden `refresh_throttled_count`; `orbit_testbed.gd` schreibt
-daraus die per-frame Diagnose `derived_snapshot_refresh_total_us`.
+read-only Refresh-Timer (`last_refresh_us`, `refresh_total_us`), den
+bestehenden `refresh_throttled_count` sowie den Sim-Tick-Cooldown;
+`orbit_testbed.gd` schreibt daraus die per-frame Diagnose
+`derived_snapshot_refresh_total_us`.
 `sim/`-Services bleiben dabei frei von `PerfProbe`-Abhaengigkeiten und
 exponieren hoechstens read-only Counter wie `free_drift_count`.
 
@@ -531,8 +533,13 @@ keine `BodyState`-Mutation.
 **Invalidierung / Interesse:** Der Cache fuehrt ein explizites
 Interest-Set (Fokus plus angeforderte Bodies) und refreshes nur diese
 Bodies. Wenn ein `OrbitService` mit `bodies_updated(...)` verdrahtet
-ist, folgt die Invalidierung den dirty IDs plus Ancestor-Kette. Ohne
-diesen Hook bleibt `TimeService.sim_tick` der konservative Fallback.
+ist, folgt die Invalidierung den dirty IDs plus Ancestor-Kette. Normale
+`sim_tick`-Refreshes sind cadence-limitiert, damit hohe Time-Scale oder
+Catchup nicht dieselben planetaren Readouts mehrfach pro sichtbarem
+Zeitraum neu auffalten. Fokuswechsel, Interest-Aenderungen,
+Konfiguration und World-Reload refreshen weiter sofort. Ohne
+`OrbitService`-Hook bleibt `TimeService.sim_tick` der konservative
+Fallback, ebenfalls ueber diese Cadence.
 
 **Wichtig:** Keine stillen Rebuilds im Frame-Loop; `_process()`
 konsumiert nur den letzten Snapshot.
