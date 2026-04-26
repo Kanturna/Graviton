@@ -20,6 +20,7 @@ from typing import Iterable
 
 APP_NAME = "Graviton"
 CSV_GLOB = "perf_probe_*.csv"
+TICK_DELTA_COLUMN = "physics_tick_delta_per_render_frame"
 INCLUSIVE_EXPLAIN_US = (
     "time_physics_process_total_us",
     "time_tick_emit_total_us",
@@ -50,11 +51,14 @@ class ScenarioRows:
     scenario: str
     dumps: list[DumpPair]
     physics_ms: list[float]
+    tick_delta_per_frame: list[float]
+    engine_frame_ms: list[float]
     explained_ms: list[float]
     residual_ms: list[float]
     components_ms_by_name: dict[str, list[float]]
     explainable_rows: int
     explained_sources: set[str]
+    baseline_sources: set[str]
 
 
 def main() -> int:
@@ -71,9 +75,11 @@ def main() -> int:
     print(f"PerfProbe analysis: {len(pairs)} dump pair(s), {len(scenarios)} scenario(s)")
     print(f"Dump dir: {dump_dir}")
     print(
-        "Note: component *_total_us columns can be nested; explained_ms uses "
+        "Note: component *_total_us columns can be nested; explained frame time uses "
         f"{INCLUSIVE_EXPLAIN_US[0]} or {INCLUSIVE_EXPLAIN_US[1]} when present "
-        "to avoid double counting."
+        "to avoid double counting. If physics_tick_delta_per_render_frame is "
+        "present, residuals compare Godot physics_ms against TimeService work "
+        "on the same per-render-frame time basis."
     )
     for scenario_rows in sorted(scenarios.values(), key=_latest_modified_time, reverse=True):
         print_scenario(scenario_rows)
@@ -142,23 +148,33 @@ def group_pairs_by_scenario(pairs: Iterable[DumpPair]) -> dict[str, ScenarioRows
                 scenario=scenario,
                 dumps=[],
                 physics_ms=[],
+                tick_delta_per_frame=[],
+                engine_frame_ms=[],
                 explained_ms=[],
                 residual_ms=[],
                 components_ms_by_name={name: [] for name in COMPONENT_US},
                 explainable_rows=0,
                 explained_sources=set(),
+                baseline_sources=set(),
             )
             scenarios[scenario] = bucket
         bucket.dumps.append(pair)
         bucket.explained_sources.add(explained_source)
+        has_tick_delta = TICK_DELTA_COLUMN in fieldnames
+        bucket.baseline_sources.add("physics_ms*tick_delta" if has_tick_delta else "physics_ms")
         if explained_source != "none":
             bucket.explainable_rows += len(rows)
         for row in rows:
             physics_ms = float_value(row.get("physics_ms", "0"))
+            tick_delta = max(0.0, float_value(row.get(TICK_DELTA_COLUMN, "0"))) if has_tick_delta else 1.0
+            engine_frame_ms = physics_ms * tick_delta
             explained_ms = explained_physics_ms(row, fieldnames)
             bucket.physics_ms.append(physics_ms)
+            bucket.engine_frame_ms.append(engine_frame_ms)
+            if has_tick_delta:
+                bucket.tick_delta_per_frame.append(tick_delta)
             bucket.explained_ms.append(explained_ms)
-            bucket.residual_ms.append(physics_ms - explained_ms)
+            bucket.residual_ms.append(engine_frame_ms - explained_ms)
             for component in COMPONENT_US:
                 if component in fieldnames:
                     bucket.components_ms_by_name[component].append(us_to_ms(float_value(row.get(component, "0"))))
@@ -239,16 +255,19 @@ def float_value(value: str | None) -> float:
 
 def print_scenario(rows: ScenarioRows) -> None:
     physics = stats(rows.physics_ms)
+    tick_delta = stats(rows.tick_delta_per_frame)
+    engine_frame = stats(rows.engine_frame_ms)
     explained = stats(rows.explained_ms)
     residual = stats(rows.residual_ms)
     coverage = 0.0
-    physics_sum = sum(rows.physics_ms)
-    if physics_sum > 0.0:
-        coverage = sum(rows.explained_ms) / physics_sum * 100.0
+    engine_frame_sum = sum(rows.engine_frame_ms)
+    if engine_frame_sum > 0.0:
+        coverage = sum(rows.explained_ms) / engine_frame_sum * 100.0
 
     latest = max(rows.dumps, key=lambda pair: pair.modified_time)
     latest_time = datetime.fromtimestamp(latest.modified_time).isoformat(timespec="seconds")
     source_label = ",".join(sorted(rows.explained_sources))
+    baseline_label = ",".join(sorted(rows.baseline_sources))
     print("")
     print(rows.scenario)
     print(
@@ -260,13 +279,23 @@ def print_scenario(rows: ScenarioRows) -> None:
         "  physics_ms      "
         f"p50={physics['p50']:.3f} p95={physics['p95']:.3f} max={physics['max']:.3f}"
     )
+    if rows.tick_delta_per_frame:
+        print(
+            "  physics_ticks   "
+            f"p50={tick_delta['p50']:.0f} p95={tick_delta['p95']:.0f} max={tick_delta['max']:.0f}"
+        )
     print(
-        f"  explained_ms    source={source_label} "
+        f"  engine_frame_ms source={baseline_label} "
+        f"p50={engine_frame['p50']:.3f} p95={engine_frame['p95']:.3f} "
+        f"max={engine_frame['max']:.3f}"
+    )
+    print(
+        f"  explained_frame_ms source={source_label} "
         f"p50={explained['p50']:.3f} p95={explained['p95']:.3f} "
         f"max={explained['max']:.3f} coverage={coverage:.1f}%"
     )
     print(
-        "  residual_ms     "
+        "  residual_frame_ms "
         f"p50={residual['p50']:.3f} p95={residual['p95']:.3f} max={residual['max']:.3f}"
     )
     component_parts: list[str] = []

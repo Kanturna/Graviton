@@ -421,9 +421,19 @@ static func _test_cache_throttles_sim_tick_refresh_but_not_user_events(ctx) -> v
 		"auch der billige Throttle-Pfad bleibt im akkumulierten Refresh-Timer sichtbar"
 	)
 
-	bubble.set_focus(&"moon_a")
+	cache.set_interest_ids([&"planet_a", &"moon_a"])
 	ctx.assert_true(
 		cache.get_revision() == revision_after_configure + 2,
+		"interest change umgeht den sim_tick-Cooldown und refresht sofort"
+	)
+	ctx.assert_true(
+		cache.get_last_refresh_reason() == DerivedSnapshotCacheScript.REASON_INTEREST_CHANGED,
+		"interest change behaelt seinen reason auch nach einem throttled sim_tick"
+	)
+
+	bubble.set_focus(&"moon_a")
+	ctx.assert_true(
+		cache.get_revision() == revision_after_configure + 3,
 		"focus_changed umgeht den sim_tick-Cooldown und refresht sofort"
 	)
 	ctx.assert_true(
@@ -433,13 +443,13 @@ static func _test_cache_throttles_sim_tick_refresh_but_not_user_events(ctx) -> v
 
 	world_loader.emit_loaded(&"pilot_galaxy")
 	ctx.assert_true(
-		cache.get_revision() == revision_after_configure + 3,
+		cache.get_revision() == revision_after_configure + 4,
 		"world_loaded umgeht den Cooldown und resetet ihn fuer den naechsten sim_tick"
 	)
 
 	orbit_service.emit_bodies_updated([&"genesis"], DerivedSnapshotCacheScript.REASON_SIM_TICK)
 	ctx.assert_true(
-		cache.get_revision() == revision_after_configure + 4,
+		cache.get_revision() == revision_after_configure + 5,
 		"sim_tick nach world_loaded rebuildet sofort dank Cooldown-Reset"
 	)
 
@@ -470,6 +480,10 @@ static func _test_cache_falls_back_to_sim_tick_without_orbit_signal(ctx) -> void
 	ctx.assert_true(cache.get_revision() == 2, "sim_tick fallback invalidiert und rebuilt den Snapshot")
 	ctx.assert_true(cache.get_last_refresh_reason() == DerivedSnapshotCacheScript.REASON_SIM_TICK, "fallback sim_tick setzt den passenden Refresh-Grund")
 	ctx.assert_true(cache.get_last_refreshed_body_count() == 1, "fallback sim_tick refresht weiter nur den Fokus")
+	var throttled_before: int = cache.get_refresh_throttled_count()
+	time_service._emit_tick(1.0)
+	ctx.assert_true(cache.get_revision() == 2, "fallback sim_tick respektiert den sim_tick-Cooldown")
+	ctx.assert_true(cache.get_refresh_throttled_count() == throttled_before + 1, "fallback sim_tick erhoeht throttled_count im Cooldown")
 
 	cache.dispose()
 	bubble.free()

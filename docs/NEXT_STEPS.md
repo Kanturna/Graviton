@@ -16,8 +16,8 @@ abgesicherten Slices, jetzt inklusive `Asteroiden v1`.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem DerivedSnapshotCache-Cadence-/
-  Physics-Walltime-Diagnose-Slice mit `8387`
+- `run_tests.bat` lief nach dem Tick-Delta-/Analyzer-
+  Normalisierungs-Slice mit `8400`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -795,10 +795,11 @@ Konkreter Ablauf:
   das ersetzt keinen interaktiven Render-/Editor-Stotter-Dump
 - danach die neuesten Dump-Paare mit
   `py src/tools/debug/scripts/analyze_perf_dumps.py --limit 8`
-  auswerten; pro Szenario zuerst `physics_ms`, `explained_ms` und
-  `residual_ms` vergleichen. Ein hoher `residual_ms`-Anteil heisst:
-  erst weitere Diagnose-Spalten oder Sidecar-Vergleich, nicht direkt
-  Renderer-/Cache-Refactor
+  auswerten; pro Szenario zuerst `physics_ms`, `physics_ticks`,
+  `engine_frame_ms`, `explained_frame_ms` und `residual_frame_ms`
+  vergleichen. Ein hoher normalisierter `residual_frame_ms`-Anteil
+  heisst: erst weitere Diagnose-Spalten oder Sidecar-Vergleich, nicht
+  direkt Renderer-/Cache-Refactor
 - in beiden Welten bewusst dieselben Faelle pruefen:
   - `ROOT_OVERVIEW`, Inspector zu
   - `ROOT_OVERVIEW`, Inspector per `I` offen
@@ -836,6 +837,7 @@ Konkreter Ablauf:
     Orbits dort ausgeblendet bleiben
   - wenn der Rest-Ruckler danach weiter sichtbar ist, beim naechsten
     `P`-Dump zuerst die Diagnose-Spalten
+    `physics_tick_delta_per_render_frame`,
     `time_physics_process_total_us`,
     `time_tick_emit_total_us`,
     `orbit_step_core_total_us`,
@@ -862,9 +864,10 @@ Konkreter Ablauf:
     `DerivedSnapshotCache`-Cadence-Follow-up sollte
     `derived_snapshot_refresh_total_us p95` in stabilen Large-World-
     Foki nahe `0 ms` liegen; wenn `physics_ms` trotzdem hoch bleibt,
-    zuerst `time_physics_process_total_us` und `process_ms` gegenueber
-    Godots Monitorwerten pruefen, bevor der naechste Optimierungsslice
-    gesetzt wird
+    zuerst den Analyzer-Vergleich auf gleicher Zeitbasis
+    (`engine_frame_ms` minus `time_physics_process_total_us`) und
+    `process_ms` gegenueber Godots Monitorwerten pruefen, bevor der
+    naechste Optimierungsslice gesetzt wird
 
 Wenn dieser Gate kippt:
 

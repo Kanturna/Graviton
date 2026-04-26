@@ -18,10 +18,11 @@ Konsequenz:
   weiter keine `BodyState`
 - `TimeService` exponiert zusaetzlich read-only
   `physics_process_total_us`, damit P-Dumps Godots `physics_ms`-Monitor
-  gegen die projektinterne Physics-Walltime abgrenzen koennen
-- der verbleibende hohe `physics_ms`-Residualblock ist ein weiteres
-  Diagnosegate, kein Beweis fuer einen Renderer- oder Asteroiden-
-  Bottleneck
+  ueber ein per-Renderframe-Tick-Delta gegen die projektinterne
+  TimeService-Walltime abgrenzen koennen
+- der verbleibende hohe normalisierte Physics-Residualblock ist ein
+  weiteres Diagnosegate, kein Beweis fuer einen Renderer- oder
+  Asteroiden-Bottleneck
 
 ## 2026-04-26 - Asteroiden v1.2 nutzen BH-effective-mu und Influence-Zones
 

@@ -109,6 +109,7 @@ var _active_world_scope_id: StringName = StringName("")
 var _hud_details_enabled: bool = false
 var _last_orbit_perf_counter_snapshot: Dictionary = {}
 var _last_asteroid_perf_counter_snapshot: Dictionary = {}
+var _last_time_tick_count: int = 0
 var _last_time_tick_emit_total_us: int = 0
 var _last_time_physics_process_total_us: int = 0
 var _last_derived_snapshot_refresh_total_us: int = 0
@@ -391,6 +392,12 @@ func _process(delta: float) -> void:
 func _sample_perf_probe() -> void:
 	_sample_orbit_service_perf_probe()
 	_sample_asteroid_perf_probe()
+	var current_time_tick_count: int = TimeService.tick_count
+	PerfProbeScript.sample(
+		&"physics_tick_delta_per_render_frame",
+		_delta_from_monotonic_total(current_time_tick_count, _last_time_tick_count)
+	)
+	_last_time_tick_count = current_time_tick_count
 	PerfProbeScript.sample(&"time_physics_process_us", TimeService.last_physics_process_us)
 	var current_time_physics_process_total_us: int = TimeService.physics_process_total_us
 	PerfProbeScript.sample(

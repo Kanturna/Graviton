@@ -722,6 +722,7 @@ static func _test_perf_probe_total_columns_are_emitted(ctx) -> void:
 	derived_cache.refresh_total_us = 19
 	testbed._derived_snapshot_cache = derived_cache
 	TimeService.reset()
+	TimeService.tick_count = 31
 	TimeService.tick_emit_total_us = 23
 	TimeService.physics_process_total_us = 29
 
@@ -729,12 +730,30 @@ static func _test_perf_probe_total_columns_are_emitted(ctx) -> void:
 	PerfProbeScript.bump(&"orbit_step_core_total_us", 7)
 	PerfProbeScript.bump(&"asteroid_advance_total_us", 11)
 	probe._capture_frame_row()
+	var first_row: Dictionary = probe._ring[0]
 	var keys: Array = probe._collect_csv_keys()
+	ctx.assert_true(keys.has("physics_tick_delta_per_render_frame"), "PerfProbe CSV enthaelt physics_tick_delta_per_render_frame")
 	ctx.assert_true(keys.has("time_physics_process_total_us"), "PerfProbe CSV enthaelt time_physics_process_total_us")
 	ctx.assert_true(keys.has("time_tick_emit_total_us"), "PerfProbe CSV enthaelt time_tick_emit_total_us")
 	ctx.assert_true(keys.has("orbit_step_core_total_us"), "PerfProbe CSV enthaelt orbit_step_core_total_us")
 	ctx.assert_true(keys.has("asteroid_advance_total_us"), "PerfProbe CSV enthaelt asteroid_advance_total_us")
 	ctx.assert_true(keys.has("derived_snapshot_refresh_total_us"), "PerfProbe CSV enthaelt derived_snapshot_refresh_total_us")
+	ctx.assert_true(int(first_row.get("physics_tick_delta_per_render_frame", -1)) == 31, "Tick-Delta sampelt alle Physics-Ticks seit dem letzten Renderframe")
+	ctx.assert_true(int(first_row.get("time_physics_process_total_us", -1)) == 29, "Physics-Callback-Delta wird als Frame-Total gesampelt")
+	ctx.assert_true(int(first_row.get("time_tick_emit_total_us", -1)) == 23, "Tick-Emit-Delta wird als Frame-Total gesampelt")
+	ctx.assert_true(int(first_row.get("derived_snapshot_refresh_total_us", -1)) == 19, "Derived-Refresh-Delta wird als Frame-Total gesampelt")
+
+	TimeService.tick_count = 5
+	TimeService.tick_emit_total_us = 7
+	TimeService.physics_process_total_us = 11
+	derived_cache.refresh_total_us = 13
+	testbed._sample_perf_probe()
+	probe._capture_frame_row()
+	var reset_row: Dictionary = probe._ring[1]
+	ctx.assert_true(int(reset_row.get("physics_tick_delta_per_render_frame", -1)) == 5, "Tick-Delta wird nach TimeService.reset nicht negativ")
+	ctx.assert_true(int(reset_row.get("time_physics_process_total_us", -1)) == 11, "Physics-Callback-Delta wird nach Counter-Reset nicht negativ")
+	ctx.assert_true(int(reset_row.get("time_tick_emit_total_us", -1)) == 7, "Tick-Emit-Delta wird nach Counter-Reset nicht negativ")
+	ctx.assert_true(int(reset_row.get("derived_snapshot_refresh_total_us", -1)) == 13, "Derived-Refresh-Delta wird nach Counter-Reset nicht negativ")
 
 	TimeService.reset()
 	probe._exit_tree()

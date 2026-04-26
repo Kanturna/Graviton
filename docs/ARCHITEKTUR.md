@@ -90,8 +90,12 @@ verwechselt wird. `TimeService` exponiert analog den letzten Tick-Emit
 und die kumulativen `tick_emit_total_us` /
 `physics_process_total_us` als read-only Diagnosewerte; das Testbed
 bildet daraus die per-frame Spalten `time_tick_emit_total_us` und
-`time_physics_process_total_us`, ohne Frame-Reset-Logik in `core/` zu
-verlagern. `DerivedSnapshotCache` exponiert als `runtime/`-Cache
+`time_physics_process_total_us` sowie das
+`physics_tick_delta_per_render_frame`, ohne Frame-Reset-Logik in
+`core/` zu verlagern. Der externe Dump-Analyzer darf Godots
+`physics_ms`-Monitor nur ueber dieses Tick-Delta gegen die
+TimeService-Walltime vergleichen, weil beide Werte sonst unterschiedliche
+Zeitbasen haben. `DerivedSnapshotCache` exponiert als `runtime/`-Cache
 read-only Refresh-Timer (`last_refresh_us`, `refresh_total_us`), den
 bestehenden `refresh_throttled_count` sowie den Sim-Tick-Cooldown;
 `orbit_testbed.gd` schreibt daraus die per-frame Diagnose
