@@ -8,11 +8,14 @@ Die aktuell im Repo eingecheckte `orbit_testbed.tscn` startet derzeit mit
 Fuer Acceptance-Runs auf `starter_world` oder `sample_system` den
 Szenen-Override vor dem Editor-Run bewusst umstellen.
 
-## Aktiver Fokus - Acceptance-Bundle
+## Aktiver Fokus - Asteroiden-v2-Performance / Acceptance-Bundle
 
-Der naechste Arbeitsblock ist ein gebuendelter
-Editor-/Feel-/FPS-Acceptance-Run ueber die bereits headless
-abgesicherten Slices, jetzt inklusive `Asteroiden v2 Foundation`.
+Der naechste Arbeitsblock ist fuer Asteroiden zuerst ein kleiner
+v2-Performance-Slice auf Basis des gekippten Headless-Gates. Das
+gebuendelte Editor-/Feel-/FPS-Acceptance-Bundle ueber die bereits
+headless abgesicherten Slices bleibt danach bzw. parallel als
+Praxischeck relevant, aber Cross-Root-Gravitation wartet auf den
+Asteroiden-Performance-Befund.
 
 Headless-Basis:
 
@@ -52,6 +55,12 @@ Headless-Basis:
   Asteroiden-v1.2-Tests BH-`effective_mu`, Influence-Zone-Heterogenitaet,
   BH-Zone-Entry ohne Empty-Refresh-Delay, schnelle BH-Flyby-Kruemmung
   ohne saubere Bindung und Far-Retire erst jenseits `1.0e16m`
+- `Schritt 3: Asteroiden-v2 Acceptance- und Entscheidungsgate` fuer
+  `scaleup_galaxy_100` ist gelaufen:
+  `active_asteroids`, `total_state_count` und `spawned` liegen korrekt
+  bei 2400, aber `asteroid_advance_us` und `physics_ms p95` kippen die
+  harten Performance-Schwellen; Details stehen unten im Asteroiden-v2-
+  Performance-Slice
 
 Offene Editor-/Feel-/FPS-Gates:
 
@@ -78,7 +87,9 @@ Offene Editor-/Feel-/FPS-Gates:
   pruefen, ob der fruehere harte Sprung bei
   `body_star_closeup_phase_max > 0.35` wegfaellt; `render_objects`
   sollte im Alpha-Fokus nicht mehr von grob `465` auf `690` springen
-- Asteroiden v2 Foundation:
+- Asteroiden v2 Foundation / Performance-Gate:
+  headless ist entschieden, dass vor Cross-Root-Gravitation zuerst der
+  unten beschriebene v2-Performance-Slice faellig ist.
   `scaleup_galaxy_100` im Root-/Stern-/Planet-Fokus pruefen,
   sichtbare Punkte und kurze Trails beobachten, Bahnverformung nahe
   Major Bodies pruefen und sicherstellen, dass HUD/Inspector/Life-
@@ -126,99 +137,83 @@ Offene Editor-/Feel-/FPS-Gates:
 
 Erst wenn diese Gates sauber sind, ist ein Folgeblock wie
 `Population Dynamics v1` oder `Evolution Competition v1` sinnvoll.
-Wenn ein Gate kippt, wird zuerst der kleinste konkrete View-, Life-
-oder Performance-Fix geschnitten.
+Fuer Asteroiden ist das Gate bereits gekippt: dort wird zuerst der
+kleinste konkrete v2-Performance-Fix geschnitten, nicht Cross-Root-
+Gravity oder fremdes Root-Rendering.
 
-## Prioritaet 0 - Asteroiden v2 Foundation Acceptance Gate
+## Prioritaet 0 - Asteroiden v2 Performance Slice 1
 
 Ziel:
-Den headless-gruenen All-Root-Minor-Body-Slice im echten Editor
-validieren, bevor Cross-Root-Gravitation, Galaxy-Overview-Projektion,
-Impacts, Merge/Split, Life-Folgen oder Fokusnavigation fuer Asteroiden
-begonnen werden.
+`Schritt 3: Asteroiden-v2 Acceptance- und Entscheidungsgate` ist
+abgeschlossen und headless bereits gekippt. Die v2-Foundation-Counts
+sind korrekt, aber die 2400 aktiven Asteroiden sind fuer den aktuellen
+Tick-/Snapshot-/Projektionspfad zu teuer, bevor Cross-Root-
+Gravitation, Galaxy-Overview-Projektion, Impacts, Merge/Split,
+Life-Folgen oder Fokusnavigation fuer Asteroiden begonnen werden.
 
-Konkreter Ablauf:
+Gemessene Gate-Basis:
 
-- `scaleup_galaxy_100` starten und Root-/BH-Overview pruefen:
-  Asteroiden duerfen die bestehenden Galaxy-Proxies nicht als zweite
-  Simulationswahrheit ersetzen
-- auf einen Stern fokussieren:
-  Asteroiden sollen als kleine Punkte mit kurzen Trails sichtbar sein
-  und sich erkennbar gegen die planetaren Orbits bewegen; nach dem
-  Drift-/Attractor-Follow-up sollen sie nicht mehr als saubere kleine
-  Kreisbahn-Polygone um Sterne oder das Schwarze Loch lesen
-- einen Planeten-/Mondnahbereich beobachten:
-  nahe Major Bodies sollen die Bahn leicht verformen; harte Impacts
-  oder Kill-/Consume-Radien werden noch nicht behauptet
-- Root-/BH-Overview beobachten:
-  `BLACK_HOLE` ist in v1.2 ein radiusbegrenzter Lenkungs-Attraktor mit
-  asteroid-internem `effective_mu`. Sichtbare Asteroiden duerfen durch
-  den Root-BH gekruemmt werden, sollen aber nicht als globale
-  schwarze-Loch-Dauerschwerkraft oder saubere Miniorbits erscheinen
-- Freiflug beobachten:
-  ausserhalb aktiver BH-/Stern-/Planet-/Mond-Einflussradien sollen
-  Asteroiden gerade bzw. leicht gekruemmte Freiflugsegmente zeigen,
-  nicht weiter um leere Punkte kreisen
-- Streaming/Fokuswechsel zwischen Root-Systemen pruefen:
-  in Large-Worlds existieren Asteroiden fuer alle `GalaxyDef.root_ids()`
-  ab Weltstart. Streaming-Residency darf nur die lokalen Major-Body-
-  Influence-Zonen aktualisieren, aber nicht mehr bestimmen, welche
-  Asteroiden existieren oder integriert werden. In
-  `scaleup_galaxy_100` sollen `active_asteroids` und
-  `total_state_count` deshalb bei 2400 liegen; ein Fokuswechsel darf
-  `spawned` nicht erneut erhoehen und keine Duplikate erzeugen
-- im Sternfokus bei FPS-Einbruch `P`-Dump pruefen:
-  `active_asteroids` soll 2400 sein, `asteroid_renderer.visible_count`
-  aber typischerweise 24. Nicht-residente Root-Asteroiden sollen linear
-  driften und keine lokalen Attractor-Checks erzeugen; lokale
-  `attractor_checks` sollen durch das Attractor-Refresh-Fenster nicht
-  in jedem Catchup-Tick fuer alle sichtbaren Asteroiden voll neu steigen
-- vor Cross-Root-Gravitation oder Overview-Rendering den neuen
-  Performance-Befund einordnen:
-  der Headless-v2-Dump bestaetigt zwar die Counts, liegt bei
-  `asteroid_advance_us` aber deutlich ueber der alten
-  24-Asteroiden-Baseline (`p50 ~= 998`, `p95 ~= 2001`) und misst mit
-  2400 States im v2-Settled-Dump `p50 ~= 7680`, `p95 ~= 9766`. Falls
-  das im Editor spuerbar wird, zuerst einen kleinen Lazy-Drift-/
-  Snapshot-/lokale-Projektion-Slice planen, statt die Asteroidenlogik
-  groesser umzubauen
-- bei Kamerabewegung im Sternfokus `P`-Dump pruefen:
-  `body_screen_culled_count`, `orbit_screen_culled_line_count`,
-  `orbit_visible_point_count`, `render_primitives` und `draw_calls`
-  zeigen, ob Screen-Culling und Orbit-LOD den lokalen View-Hotpath
-  ausreichend reduzieren. Fuer Asteroiden zusaetzlich
-  `asteroid_screen_visible_count`, `asteroid_screen_culled_count`,
-  `asteroid_view_max_abs_ru` und `asteroid_screen_max_abs_px`
-  vergleichen: wenn `active_asteroids` stabil bleibt, aber
-  `asteroid_screen_culled_count` hoch ist, sind die Steine noch live,
-  liegen aber ausserhalb des aktuellen Screens oder zu weit weg fuer
-  die aktuelle Kamera-/Pan-Geschwindigkeit. Nach dem Offscreen-Culling
-  im `AsteroidFieldRenderer` sollten solche offscreen Asteroiden keine
-  relevanten Draw-Kosten mehr verursachen. `far_retired_count` darf
-  dabei nicht steigen; sonst ist es echter Sim-Retire statt Rendering-
-  Culling
-- `P`-Dump ausloesen:
-  Service-/Renderer-Snapshots und Perf-Counter fuer aktive
-  Asteroiden, Influence-Zone-Checks, BH-Attractors, aktive
-  Attractor-Summen, Attractor-Set-Wechsel, Substeps, Freiflug und
-  Far-Retires muessen
-  im Sidecar sichtbar sein; Stage-Timer fuer
-  `asteroid_advance_us`, `asteroid_snapshot_refresh_us`,
-  `asteroid_renderer_sync_us`, `orbit_renderer_sync_us`,
-  `orbit_step_core_us`, `orbit_trail_update_us` und
-  `time_tick_emit_us` muessen in der CSV-Zeitreihe auftauchen
-- dabei explizit pruefen:
-  kein HUD, Inspector oder Life-Panel behauptet Kollisionen,
-  Katastrophen, Life-Destruction, Merge/Split oder
-  Asteroid-Asteroid-Physik
+- frische Dump-Paare:
+  `perf_probe_ast_v2_gate_root_closed`,
+  `perf_probe_ast_v2_gate_star_closed`,
+  `perf_probe_ast_v2_gate_star_open`,
+  `perf_probe_ast_v2_gate_planet_closed`
+- alle Sidecars bestaetigen `active_asteroids = 2400`,
+  `total_state_count = 2400`, `spawned = 2400`, `despawned = 0` und
+  `far_retired_count = 0`
+- die Headless-Logs enthalten keine neuen `bubble_no_lca`-/LCA-
+  Warnings; der Snapshot-Quietpfad fuer fremde Root-Asteroiden haelt
+- `asteroid_renderer.visible_count` bleibt lokal bei 24; in Stern- und
+  Planet-Fokus-Captures waren diese 24 lokalen Asteroiden
+  screen-seitig komplett gecullt
+- gegen die Step-1-Baseline `asteroid_advance_us p50 ~= 998`,
+  `p95 ~= 2001` liegen die v2-Gate-Dumps deutlich ueber der harten
+  `+50%`-Schwelle:
+  Root `10983/14328`, Stern geschlossen `12036/14949`, Stern offen
+  `11139/16217`, Planet `9667/15473`
+- `physics_ms p95` liegt im Sternfokus mit etwa `69.81 ms`
+  geschlossen und `72.93 ms` offen klar ueber dem `20 ms`-Gate
 
-Wenn dieses Gate kippt:
+Naechster Code-Slice:
 
-- keinen Impact-, Merge-/Split- oder Katastrophen-Slice anfangen
-- zuerst nur den kleinen v2-Foundation-Pfad korrigieren:
-  Spawn-Dichte, Renderer-Sichtbarkeit, Snapshot-Projektion,
-  Attractor-Hysterese, Relative-State-Cache, Trail-Batching,
-  Perf-Counter oder Streaming-Lifecycle
+- keinen Rollback auf 24 Asteroiden und keine Reduktion von
+  `active_asteroids`
+- keine Cross-Root-Gravitation und kein fremdes Root-Rendering starten,
+  bevor der aktuelle 2400-State-Pfad billiger ist
+- zuerst einen kleinen Performance-Slice planen, der nur den
+  vorhandenen v2-Lifecycle entlastet:
+  Lazy-Drift fuer nicht-lokale Roots, Snapshot-/Renderer-Projektion nur
+  fuer lokal finite Eintraege, weniger per-frame Arbeit fuer
+  offscreen/nonfinite Asteroiden oder aehnliche cache-/dirty-basierte
+  Schnitte
+- dabei Sim-Wahrheit im `sim/asteroids/`-Service lassen:
+  `scenes/`, `runtime/` und `src/tools/` duerfen weiter nur
+  Composition, Snapshot-Projektion und Rendering machen
+
+Acceptance fuer den Performance-Slice:
+
+- `active_asteroids = 2400`, `total_state_count = 2400`,
+  `spawned = 2400`, `despawned = 0`, `far_retired_count = 0`
+  bleiben erhalten
+- `asteroid_renderer.visible_count` bleibt im lokalen Fokus
+  typischerweise 24; fremde Root-Asteroiden bleiben bis zum spaeteren
+  Galaxy-Overview-Slice nonfinite/unsichtbar
+- keine neuen Bubble-/LCA-Warnings
+- `asteroid_advance_us`, `asteroid_snapshot_refresh_us` und
+  `asteroid_renderer_sync_us` muessen in neuen Settled-Dumps
+  sichtbar sinken oder zumindest klar erklaerbar werden; bei weiterem
+  `physics_ms p95 > 20 ms` im Sternfokus erst analysieren, nicht in
+  Cross-Root-Gravity ausweichen
+
+Nutzer-Editor-Feel-Pass bleibt als Praxischeck offen:
+
+- `scaleup_galaxy_100` starten
+- ca. 30 s im Sternfokus beobachten und leicht pannen/zoomen
+- Root-/BH-Overview pruefen
+- auf einen Planeten oder Mond zoomen
+- notieren: FPS-Eindruck, sichtbare lokale Asteroiden,
+  Freiflug/BH-Ablenkung, auffaellige Ruckler oder verschwundene
+  Asteroiden
 
 ## Meta - Agentenvertrag / Repo-Hygiene - erledigt
 

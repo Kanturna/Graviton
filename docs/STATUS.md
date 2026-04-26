@@ -201,6 +201,33 @@ Settled-Dump `perf_probe_asteroid_settled_default.csv` bei
 `p50 ~= 7680` und `p95 ~= 9766`. Das ist ein gemessener Folgepunkt fuer
 Lazy-Drift-/Snapshot- oder lokale Projektionsoptimierung, nicht Teil
 dieses Foundation-Slices.
+`Schritt 3: Asteroiden-v2 Acceptance- und Entscheidungsgate` ist damit
+als Diagnose-/Doku-Slice umgesetzt. Das Gate lief headless ueber vier
+frische Dump-Paare in den Godot-Userdaten:
+`perf_probe_ast_v2_gate_root_closed`,
+`perf_probe_ast_v2_gate_star_closed`,
+`perf_probe_ast_v2_gate_star_open` und
+`perf_probe_ast_v2_gate_planet_closed`. Alle Sidecars bestaetigen die
+v2-Sim-Wahrheit: `active_asteroids = 2400`,
+`total_state_count = 2400`, `spawned = 2400`, `despawned = 0` und
+`far_retired_count = 0`; die Headless-Logs enthalten keine neuen
+Bubble-/LCA-Warnings. Der lokale Renderer sieht weiter nur die
+finiten Fokus-Root-Asteroiden (`asteroid_renderer.visible_count = 24`);
+in Stern-/Planet-Fokus-Captures lagen diese 24 lokalen Asteroiden
+screen-seitig allerdings komplett ausserhalb des Ausschnitts.
+Performance-seitig kippt das harte Gate: gegen die alte
+24-Asteroiden-Baseline `asteroid_advance_us p50 ~= 998` und
+`p95 ~= 2001` liegen die frischen 2400-State-Dumps deutlich ueber der
+`+50%`-Schwelle. Gemessen wurden fuer
+`asteroid_advance_us p50/p95` etwa `10983/14328` im Root-Overview,
+`12036/14949` im Sternfokus geschlossen, `11139/16217` im Sternfokus
+mit offenem Inspector und `9667/15473` im Planetfokus. Zusaetzlich
+liegt `physics_ms p95` im Sternfokus bei etwa `69.81 ms` geschlossen
+und `72.93 ms` offen, also klar ueber dem `20 ms`-Gate. Die naechste
+Codearbeit ist deshalb kein Cross-Root-Gravity- oder
+Galaxy-Overview-Rendering-Slice, sondern zuerst ein kleiner
+Asteroiden-v2-Performance-Slice, der die 2400 aktiven States beibehaelt
+und die Kosten fuer Free-Drift, Snapshot oder lokale Projektion senkt.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und
