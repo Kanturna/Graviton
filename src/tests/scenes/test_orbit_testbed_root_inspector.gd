@@ -343,6 +343,8 @@ static func run(ctx) -> void:
 	_test_view_bookmark_slots_store_and_restore_camera_state(ctx)
 	_test_view_bookmark_restore_ignores_stale_or_cross_world_slots(ctx)
 	_test_monotonic_total_delta_handles_reset(ctx)
+	_test_headless_perf_dump_arg_parser(ctx)
+	_test_perf_dump_paths_accept_csv_or_json_prefix(ctx)
 	_test_perf_snapshot_json_safe_converts_godot_variants(ctx)
 	_test_perf_snapshot_builds_json_sidecar_dictionary(ctx)
 	_test_perf_probe_total_columns_are_emitted(ctx)
@@ -615,6 +617,45 @@ static func _test_monotonic_total_delta_handles_reset(ctx) -> void:
 		OrbitTestbedScript._delta_from_monotonic_total(4, 10) == 4,
 		"Monotonic-Delta behandelt Counter-Reset ohne negatives Delta"
 	)
+
+
+static func _test_headless_perf_dump_arg_parser(ctx) -> void:
+	var config: Dictionary = OrbitTestbedScript._parse_headless_perf_dump_args(PackedStringArray([
+		"--graviton-perf-dump",
+		"--graviton-world=scaleup_galaxy_100",
+		"--graviton-focus=onyx_d",
+		"--graviton-inspector=open",
+		"--graviton-warmup-frames=7",
+		"--graviton-capture-frames=11",
+		"--graviton-output-prefix=user://probe",
+	]))
+	ctx.assert_true(bool(config.get("enabled", false)), "Headless-Perf-Parser aktiviert den Dump-Mode")
+	ctx.assert_true(config.get("world_id", "") == "scaleup_galaxy_100", "Headless-Perf-Parser liest world_id")
+	ctx.assert_true(config.get("focus_id", "") == "onyx_d", "Headless-Perf-Parser liest focus_id")
+	ctx.assert_true(config.get("inspector", "") == "open", "Headless-Perf-Parser liest Inspector-Modus")
+	ctx.assert_true(int(config.get("warmup_frames", 0)) == 7, "Headless-Perf-Parser liest Warmup-Frames")
+	ctx.assert_true(int(config.get("capture_frames", 0)) == 11, "Headless-Perf-Parser liest Capture-Frames")
+	ctx.assert_true(config.get("output_prefix", "") == "user://probe", "Headless-Perf-Parser liest Output-Prefix")
+
+	var fallback: Dictionary = OrbitTestbedScript._parse_headless_perf_dump_args(PackedStringArray([
+		"--graviton-perf-dump",
+		"--graviton-inspector=sideways",
+		"--graviton-warmup-frames=-4",
+		"--graviton-capture-frames=0",
+	]))
+	ctx.assert_true(fallback.get("inspector", "") == "unchanged", "ungueltiger Inspector-Modus bleibt unchanged")
+	ctx.assert_true(int(fallback.get("warmup_frames", -1)) == 0, "negative Warmup-Frames werden auf 0 geklemmt")
+	ctx.assert_true(int(fallback.get("capture_frames", 0)) == 1, "Capture-Frames werden mindestens 1")
+
+
+static func _test_perf_dump_paths_accept_csv_or_json_prefix(ctx) -> void:
+	var csv_paths: Dictionary = OrbitTestbedScript._perf_dump_paths("user://perf_probe_headless.csv")
+	ctx.assert_true(csv_paths.get("csv_path", "") == "user://perf_probe_headless.csv", "CSV-Prefix bleibt CSV-Pfad")
+	ctx.assert_true(csv_paths.get("json_path", "") == "user://perf_probe_headless.json", "CSV-Prefix erzeugt passenden JSON-Pfad")
+
+	var json_paths: Dictionary = OrbitTestbedScript._perf_dump_paths("user://perf_probe_headless.json")
+	ctx.assert_true(json_paths.get("csv_path", "") == "user://perf_probe_headless.csv", "JSON-Prefix erzeugt passenden CSV-Pfad")
+	ctx.assert_true(json_paths.get("json_path", "") == "user://perf_probe_headless.json", "JSON-Prefix bleibt JSON-Pfad")
 
 
 static func _test_perf_snapshot_builds_json_sidecar_dictionary(ctx) -> void:

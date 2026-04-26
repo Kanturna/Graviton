@@ -788,6 +788,10 @@ Large-World-Pfad nicht regressiert.
 Konkreter Ablauf:
 
 - `scaleup_galaxy_30` und `scaleup_galaxy_100` im Editor vergleichen
+- fuer reproduzierbare Runtime-Diagnose optional denselben P-Dump-Pfad
+  headless starten, z. B.:
+  `godot_console.exe --path . --headless --scene res://scenes/testbeds/orbit_testbed.tscn -- --graviton-perf-dump --graviton-world=scaleup_galaxy_100 --graviton-focus=onyx_d --graviton-inspector=closed --graviton-warmup-frames=120 --graviton-capture-frames=900`;
+  das ersetzt keinen interaktiven Render-/Editor-Stotter-Dump
 - in beiden Welten bewusst dieselben Faelle pruefen:
   - `ROOT_OVERVIEW`, Inspector zu
   - `ROOT_OVERVIEW`, Inspector per `I` offen

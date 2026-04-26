@@ -75,7 +75,11 @@ Werte in `PerfProbe` und uebersetzt kumulative Service-Counter dort in
 per-frame Diagnose-Counter. Der `P`-Hotkey schreibt die bestehende
 CSV-Zeitreihe und zusaetzlich einen JSON-Sidecar mit punktuellen
 On-Demand-Snapshots fuer Szene, Fokus, Registry, Kamera, Aktiv-Set,
-Derived-Cache, Renderer, Streaming, UI und Service-Counter.
+Derived-Cache, Renderer, Streaming, UI und Service-Counter. Derselbe
+Dump-Pfad kann headless ueber Godot-User-Args aktiviert werden
+(`--graviton-perf-dump` nach `--`); Warmup, Capture-Laenge, Welt,
+Fokus, Inspector-Modus und Output-Prefix bleiben reine
+Composition-Root-Diagnostik.
 Stage-Zeiten fuer Asteroiden- und Render-Hotpaths werden ebenfalls im
 Composition Root gemessen (`asteroid_advance_us`,
 `asteroid_snapshot_refresh_us`, `asteroid_renderer_sync_us`,
@@ -98,8 +102,8 @@ Simulationswahrheit. Der JSON-Sidecar ist ebenfalls nur Diagnoseausgabe
 und wird erst beim expliziten Dump gebaut, nicht pro Frame. Neue
 Messpunkte duerfen die Schichten nicht umdrehen: autoritative Schichten
 stellen hoechstens read-only Werte bereit; Sampling, Ringbuffer,
-Dumping und Hotkey-Bedienung bleiben im Composition Root oder in
-`src/tools/`.
+Dumping, Hotkey-Bedienung und Headless-CLI-Steuerung bleiben im
+Composition Root oder in `src/tools/`.
 
 ## Autoloads - ADR
 

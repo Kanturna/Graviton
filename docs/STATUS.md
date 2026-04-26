@@ -487,6 +487,13 @@ Advance und Derived-Cache die neuen per-frame `*_total_us`-Spalten.
 `refresh_total_us` inklusive billiger Throttle-Returns, und der
 Perf-Sidecar enthaelt die neuen Time-/Derived-Diagnosefelder plus den
 weiter interpretierenden `refresh_throttled_count`.
+Ein anschliessender Diagnose-Follow-up macht denselben P-Dump-Pfad
+auch headless ausfuehrbar: `orbit_testbed.gd` akzeptiert nach `--`
+Godot-User-Args fuer `--graviton-perf-dump`, Welt, Fokus,
+Inspector-Modus, Warmup-/Capture-Frames und Output-Prefix, schreibt
+weiter dieselben CSV-/JSON-Paare und beendet den Headless-Lauf danach
+mit passendem Exit-Code. Das ist reproduzierbare Runtime-Diagnostik,
+kein Ersatz fuer interaktive Render-/Editor-Stotter-Messung.
 Der naechste Hygiene-Follow-up legalisiert die bereits vorhandene
 `BubbleActivationSet`-Exit-Hysterese als rein geometrische read-only
 Relevanzklassifikation: sie stabilisiert nur das Aktiv-Set-Wish am

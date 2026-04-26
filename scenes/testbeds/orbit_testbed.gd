@@ -25,6 +25,20 @@ const PerfProbeScript = preload("res://src/tools/debug/perf_probe.gd")
 
 const ZOOM_FACTOR_STEP: float = 1.12
 const VIEW_BOOKMARK_SLOT_COUNT: int = 5
+const HEADLESS_PERF_DUMP_FLAG: String = "--graviton-perf-dump"
+const HEADLESS_PERF_DUMP_WORLD_ARG: String = "--graviton-world="
+const HEADLESS_PERF_DUMP_FOCUS_ARG: String = "--graviton-focus="
+const HEADLESS_PERF_DUMP_INSPECTOR_ARG: String = "--graviton-inspector="
+const HEADLESS_PERF_DUMP_WARMUP_FRAMES_ARG: String = "--graviton-warmup-frames="
+const HEADLESS_PERF_DUMP_CAPTURE_FRAMES_ARG: String = "--graviton-capture-frames="
+const HEADLESS_PERF_DUMP_OUTPUT_PREFIX_ARG: String = "--graviton-output-prefix="
+const HEADLESS_PERF_DUMP_INSPECTOR_UNCHANGED: String = "unchanged"
+const HEADLESS_PERF_DUMP_INSPECTOR_OPEN: String = "open"
+const HEADLESS_PERF_DUMP_INSPECTOR_CLOSED: String = "closed"
+const HEADLESS_PERF_DUMP_DEFAULT_WARMUP_FRAMES: int = 120
+const HEADLESS_PERF_DUMP_DEFAULT_CAPTURE_FRAMES: int = 900
+const HEADLESS_PERF_DUMP_PHASE_WARMUP: StringName = &"warmup"
+const HEADLESS_PERF_DUMP_PHASE_CAPTURE: StringName = &"capture"
 
 @export_enum("starter_world", "sample_system", "generated_system", "pilot_galaxy", "scaleup_galaxy_10", "scaleup_galaxy_30", "scaleup_galaxy_100") var initial_world_id: String = "starter_world"
 
@@ -97,9 +111,21 @@ var _last_orbit_perf_counter_snapshot: Dictionary = {}
 var _last_asteroid_perf_counter_snapshot: Dictionary = {}
 var _last_time_tick_emit_total_us: int = 0
 var _last_derived_snapshot_refresh_total_us: int = 0
+var _headless_perf_dump_config: Dictionary = {}
+var _headless_perf_dump_active: bool = false
+var _headless_perf_dump_phase: StringName = HEADLESS_PERF_DUMP_PHASE_WARMUP
+var _headless_perf_dump_warmup_frames: int = HEADLESS_PERF_DUMP_DEFAULT_WARMUP_FRAMES
+var _headless_perf_dump_capture_frames: int = HEADLESS_PERF_DUMP_DEFAULT_CAPTURE_FRAMES
+var _headless_perf_dump_warmup_frame_count: int = 0
+var _headless_perf_dump_capture_frame_count: int = 0
 
 
 func _ready() -> void:
+	_headless_perf_dump_config = _parse_headless_perf_dump_args(OS.get_cmdline_user_args())
+	if bool(_headless_perf_dump_config.get("enabled", false)):
+		var cli_world_id: String = String(_headless_perf_dump_config.get("world_id", ""))
+		if cli_world_id != "":
+			initial_world_id = cli_world_id
 	TimeService.reset()
 	TimeService.set_paused(false)
 	UniverseRegistry.clear()
@@ -290,6 +316,7 @@ func _ready() -> void:
 		_planet_badge_overlay.refresh()
 	_sync_asteroid_renderer(true)
 	_update_hud()
+	_configure_headless_perf_dump_run()
 
 
 func _exit_tree() -> void:
@@ -336,6 +363,8 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
+	if _update_headless_perf_dump_before_frame():
+		return
 	_activation_set.rebuild()
 	_orbit_service.request_numeric_local_candidates(_activation_set.get_active_ids())
 	_camera_controller.handle_pan_input(_pan_input_dir(), delta)
@@ -355,6 +384,7 @@ func _process(delta: float) -> void:
 		_planet_badge_overlay.refresh()
 	_update_hud()
 	_sample_perf_probe()
+	_update_headless_perf_dump_after_frame()
 
 
 func _sample_perf_probe() -> void:
@@ -472,6 +502,20 @@ func _dump_perf_probe_snapshot_json(path: String, csv_path: String, csv_rows: in
 	file.store_string("\n")
 	file.close()
 	return true
+
+
+func _dump_perf_probe_pair(path_prefix: String) -> Dictionary:
+	var paths: Dictionary = _perf_dump_paths(path_prefix)
+	var csv_path: String = String(paths.get("csv_path", ""))
+	var json_path: String = String(paths.get("json_path", ""))
+	var rows_written: int = PerfProbeScript.dump_csv(csv_path)
+	var snapshot_written: bool = _dump_perf_probe_snapshot_json(json_path, csv_path, rows_written)
+	return {
+		"csv_path": csv_path,
+		"json_path": json_path,
+		"rows_written": rows_written,
+		"snapshot_written": snapshot_written,
+	}
 
 
 func _build_perf_probe_snapshot(csv_path: String, csv_rows: int) -> Dictionary:
@@ -762,14 +806,19 @@ func _unhandled_input(event: InputEvent) -> void:
 					print("[PerfProbe] ring cleared")
 				else:
 					var dump_stamp: int = int(Time.get_unix_time_from_system())
-					var dump_path: String = "user://perf_probe_%d.csv" % dump_stamp
-					var rows_written: int = PerfProbeScript.dump_csv(dump_path)
-					var snapshot_path: String = "user://perf_probe_%d.json" % dump_stamp
-					var snapshot_written: bool = _dump_perf_probe_snapshot_json(snapshot_path, dump_path, rows_written)
-					if snapshot_written:
-						print("[PerfProbe] dumped %d rows to %s and snapshot to %s" % [rows_written, dump_path, snapshot_path])
+					var result: Dictionary = _dump_perf_probe_pair("user://perf_probe_%d" % dump_stamp)
+					if bool(result.get("snapshot_written", false)):
+						print("[PerfProbe] dumped %d rows to %s and snapshot to %s" % [
+							int(result.get("rows_written", 0)),
+							String(result.get("csv_path", "")),
+							String(result.get("json_path", "")),
+						])
 					else:
-						print("[PerfProbe] dumped %d rows to %s; snapshot write failed for %s" % [rows_written, dump_path, snapshot_path])
+						print("[PerfProbe] dumped %d rows to %s; snapshot write failed for %s" % [
+							int(result.get("rows_written", 0)),
+							String(result.get("csv_path", "")),
+							String(result.get("json_path", "")),
+						])
 				get_viewport().set_input_as_handled()
 			KEY_I:
 				_toggle_root_inspector_for_current_root()
@@ -821,6 +870,158 @@ func _set_focus(body_id: StringName, immediate: bool = false, force_fit: bool = 
 	_debug_overlay.mark_dirty(_debug_overlay.visible)
 	if immediate and _can_sync_immediate_view_state():
 		_sync_immediate_view_state(true)
+
+
+func _configure_headless_perf_dump_run() -> void:
+	if not bool(_headless_perf_dump_config.get("enabled", false)):
+		return
+	if not _apply_headless_perf_dump_scenario():
+		get_tree().quit(1)
+		return
+	_headless_perf_dump_active = true
+	_headless_perf_dump_phase = HEADLESS_PERF_DUMP_PHASE_WARMUP
+	_headless_perf_dump_warmup_frames = int(_headless_perf_dump_config.get(
+		"warmup_frames",
+		HEADLESS_PERF_DUMP_DEFAULT_WARMUP_FRAMES
+	))
+	_headless_perf_dump_capture_frames = int(_headless_perf_dump_config.get(
+		"capture_frames",
+		HEADLESS_PERF_DUMP_DEFAULT_CAPTURE_FRAMES
+	))
+	_headless_perf_dump_warmup_frame_count = 0
+	_headless_perf_dump_capture_frame_count = 0
+	PerfProbeScript.clear()
+	PerfProbeScript.set_enabled(false)
+	print("[PerfProbe] headless dump armed world=%s focus=%s inspector=%s warmup=%d capture=%d" % [
+		initial_world_id,
+		String(_headless_perf_dump_config.get("focus_id", "")),
+		String(_headless_perf_dump_config.get("inspector", HEADLESS_PERF_DUMP_INSPECTOR_UNCHANGED)),
+		_headless_perf_dump_warmup_frames,
+		_headless_perf_dump_capture_frames,
+	])
+
+
+func _apply_headless_perf_dump_scenario() -> bool:
+	var focus_id: StringName = StringName(String(_headless_perf_dump_config.get("focus_id", "")))
+	if focus_id != StringName(""):
+		if not _ensure_headless_perf_focus_resident(focus_id):
+			push_error("OrbitTestbed: headless perf focus '%s' cannot be made resident in world '%s'" % [focus_id, initial_world_id])
+			return false
+		if not UniverseRegistry.has_body(focus_id):
+			push_error("OrbitTestbed: headless perf focus '%s' is not resident in world '%s'" % [focus_id, initial_world_id])
+			return false
+		_focus_index = maxi(_focus_order.find(focus_id), 0)
+		_set_focus(focus_id, true, true)
+
+	var inspector_mode: String = String(_headless_perf_dump_config.get(
+		"inspector",
+		HEADLESS_PERF_DUMP_INSPECTOR_UNCHANGED
+	))
+	if inspector_mode == HEADLESS_PERF_DUMP_INSPECTOR_OPEN:
+		_open_root_inspector_for_current_root()
+	elif inspector_mode == HEADLESS_PERF_DUMP_INSPECTOR_CLOSED:
+		_close_root_inspector_for_headless_perf_dump()
+
+	_camera_controller.step(0.0, get_viewport_rect().size)
+	_sync_view_lod_state(true, false)
+	if _renderer != null:
+		_renderer.sync_visuals_now(true)
+	_sync_asteroid_renderer(true)
+	_sync_galaxy_proxy_transform()
+	if _planet_badge_overlay != null:
+		_planet_badge_overlay.refresh()
+	_update_hud()
+	return true
+
+
+func _ensure_headless_perf_focus_resident(focus_id: StringName) -> bool:
+	if UniverseRegistry.has_body(focus_id):
+		return true
+	if not _is_large_world or _current_galaxy == null or _streaming_controller == null:
+		return false
+	var focus_root_id: StringName = _find_headless_perf_focus_root_id(focus_id)
+	if focus_root_id == StringName(""):
+		return false
+	_streaming_controller.set_focus_root(focus_root_id)
+	_refresh_focus_order()
+	return UniverseRegistry.has_body(focus_id)
+
+
+func _find_headless_perf_focus_root_id(focus_id: StringName) -> StringName:
+	if _current_galaxy == null:
+		return StringName("")
+	if _current_galaxy.get_manifest(focus_id) != null:
+		return focus_id
+	for root_id in _current_galaxy.root_ids():
+		var manifest = _current_galaxy.get_manifest(root_id)
+		if manifest == null:
+			continue
+		var defs: Array[BodyDef] = _world_loader.build_defs_for_root_manifest(manifest, _current_galaxy.galaxy_id)
+		for def in defs:
+			if def != null and def.id == focus_id:
+				return root_id
+	return StringName("")
+
+
+func _close_root_inspector_for_headless_perf_dump() -> void:
+	if _root_inspector == null or not _root_inspector.has_method("is_open"):
+		return
+	if _root_inspector.is_open():
+		_root_inspector.close_panel(false)
+		_refresh_snapshot_interest_ids()
+		_debug_overlay.mark_dirty(_debug_overlay.visible)
+
+
+func _update_headless_perf_dump_before_frame() -> bool:
+	if not _headless_perf_dump_active:
+		return false
+	if _headless_perf_dump_phase == HEADLESS_PERF_DUMP_PHASE_CAPTURE \
+			and _headless_perf_dump_capture_frame_count >= _headless_perf_dump_capture_frames:
+		_finish_headless_perf_dump()
+		return true
+	if _headless_perf_dump_phase == HEADLESS_PERF_DUMP_PHASE_WARMUP \
+			and _headless_perf_dump_warmup_frame_count >= _headless_perf_dump_warmup_frames:
+		_headless_perf_dump_phase = HEADLESS_PERF_DUMP_PHASE_CAPTURE
+		_headless_perf_dump_capture_frame_count = 0
+		PerfProbeScript.clear()
+		PerfProbeScript.set_enabled(true)
+		print("[PerfProbe] headless capture started")
+	return false
+
+
+func _update_headless_perf_dump_after_frame() -> void:
+	if not _headless_perf_dump_active:
+		return
+	if _headless_perf_dump_phase == HEADLESS_PERF_DUMP_PHASE_WARMUP:
+		_headless_perf_dump_warmup_frame_count += 1
+	elif _headless_perf_dump_phase == HEADLESS_PERF_DUMP_PHASE_CAPTURE:
+		_headless_perf_dump_capture_frame_count += 1
+
+
+func _finish_headless_perf_dump() -> void:
+	_headless_perf_dump_active = false
+	PerfProbeScript.set_enabled(false)
+	var output_prefix: String = String(_headless_perf_dump_config.get("output_prefix", ""))
+	if output_prefix == "":
+		output_prefix = "user://perf_probe_headless_%d" % int(Time.get_unix_time_from_system())
+	var result: Dictionary = _dump_perf_probe_pair(output_prefix)
+	var rows_written: int = int(result.get("rows_written", 0))
+	var snapshot_written: bool = bool(result.get("snapshot_written", false))
+	if snapshot_written and rows_written > 0:
+		print("[PerfProbe] headless dumped %d rows to %s and snapshot to %s" % [
+			rows_written,
+			String(result.get("csv_path", "")),
+			String(result.get("json_path", "")),
+		])
+		get_tree().quit(0)
+	else:
+		push_error("[PerfProbe] headless dump failed rows=%d csv=%s json=%s snapshot_written=%s" % [
+			rows_written,
+			String(result.get("csv_path", "")),
+			String(result.get("json_path", "")),
+			str(snapshot_written),
+		])
+		get_tree().quit(1)
 
 
 func _update_hud() -> void:
@@ -1108,6 +1309,73 @@ static func _delta_from_monotonic_total(current: int, previous: int) -> int:
 	if current < previous:
 		return current
 	return current - previous
+
+
+static func _parse_headless_perf_dump_args(args: PackedStringArray) -> Dictionary:
+	var config: Dictionary = {
+		"enabled": false,
+		"world_id": "",
+		"focus_id": "",
+		"inspector": HEADLESS_PERF_DUMP_INSPECTOR_UNCHANGED,
+		"warmup_frames": HEADLESS_PERF_DUMP_DEFAULT_WARMUP_FRAMES,
+		"capture_frames": HEADLESS_PERF_DUMP_DEFAULT_CAPTURE_FRAMES,
+		"output_prefix": "",
+	}
+	for raw_arg in args:
+		var arg: String = String(raw_arg)
+		if arg == HEADLESS_PERF_DUMP_FLAG:
+			config["enabled"] = true
+		elif arg.begins_with(HEADLESS_PERF_DUMP_WORLD_ARG):
+			config["world_id"] = arg.substr(HEADLESS_PERF_DUMP_WORLD_ARG.length())
+		elif arg.begins_with(HEADLESS_PERF_DUMP_FOCUS_ARG):
+			config["focus_id"] = arg.substr(HEADLESS_PERF_DUMP_FOCUS_ARG.length())
+		elif arg.begins_with(HEADLESS_PERF_DUMP_INSPECTOR_ARG):
+			var inspector_mode: String = arg.substr(HEADLESS_PERF_DUMP_INSPECTOR_ARG.length()).to_lower()
+			if _is_valid_headless_perf_inspector_mode(inspector_mode):
+				config["inspector"] = inspector_mode
+		elif arg.begins_with(HEADLESS_PERF_DUMP_WARMUP_FRAMES_ARG):
+			config["warmup_frames"] = _parse_non_negative_int_arg(
+				arg.substr(HEADLESS_PERF_DUMP_WARMUP_FRAMES_ARG.length()),
+				HEADLESS_PERF_DUMP_DEFAULT_WARMUP_FRAMES
+			)
+		elif arg.begins_with(HEADLESS_PERF_DUMP_CAPTURE_FRAMES_ARG):
+			config["capture_frames"] = _parse_positive_int_arg(
+				arg.substr(HEADLESS_PERF_DUMP_CAPTURE_FRAMES_ARG.length()),
+				HEADLESS_PERF_DUMP_DEFAULT_CAPTURE_FRAMES
+			)
+		elif arg.begins_with(HEADLESS_PERF_DUMP_OUTPUT_PREFIX_ARG):
+			config["output_prefix"] = arg.substr(HEADLESS_PERF_DUMP_OUTPUT_PREFIX_ARG.length())
+	return config
+
+
+static func _is_valid_headless_perf_inspector_mode(mode: String) -> bool:
+	return mode == HEADLESS_PERF_DUMP_INSPECTOR_UNCHANGED \
+		or mode == HEADLESS_PERF_DUMP_INSPECTOR_OPEN \
+		or mode == HEADLESS_PERF_DUMP_INSPECTOR_CLOSED
+
+
+static func _parse_non_negative_int_arg(value: String, fallback: int) -> int:
+	if not value.is_valid_int():
+		return fallback
+	return maxi(int(value), 0)
+
+
+static func _parse_positive_int_arg(value: String, fallback: int) -> int:
+	if not value.is_valid_int():
+		return fallback
+	return maxi(int(value), 1)
+
+
+static func _perf_dump_paths(path_prefix: String) -> Dictionary:
+	var normalized_prefix: String = path_prefix
+	if normalized_prefix.ends_with(".csv"):
+		normalized_prefix = normalized_prefix.substr(0, normalized_prefix.length() - 4)
+	elif normalized_prefix.ends_with(".json"):
+		normalized_prefix = normalized_prefix.substr(0, normalized_prefix.length() - 5)
+	return {
+		"csv_path": "%s.csv" % normalized_prefix,
+		"json_path": "%s.json" % normalized_prefix,
+	}
 
 
 static func _is_large_world_id(world_id: StringName) -> bool:
