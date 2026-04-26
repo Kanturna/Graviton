@@ -194,9 +194,13 @@ typischerweise bei den 24 lokalen Fokus-Root-Asteroiden bleibt.
 Der frische Headless-T0-/Settled-Dump bestaetigt diese Counts, zeigt
 aber auch das naechste Performance-Gate: gegenueber der alten
 24-Asteroiden-Baseline liegt `asteroid_advance_us` trotz Fast-Drift-
-Pfad fuer leere Influence-Zonen deutlich hoeher. Das ist ein
-gemessener Folgepunkt fuer Lazy-Drift-/Snapshot- oder lokale
-Projektionsoptimierung, nicht Teil dieses Foundation-Slices.
+Pfad fuer leere Influence-Zonen deutlich hoeher. Konkret lag der alte
+Settled-Dump `perf_probe_asteroid_settled_default.csv` bei
+`asteroid_advance_us p50 ~= 998` und `p95 ~= 2001`; der neue
+`perf_probe_asteroid_v2_settled.csv` mit 2400 States lag bei
+`p50 ~= 7680` und `p95 ~= 9766`. Das ist ein gemessener Folgepunkt fuer
+Lazy-Drift-/Snapshot- oder lokale Projektionsoptimierung, nicht Teil
+dieses Foundation-Slices.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und

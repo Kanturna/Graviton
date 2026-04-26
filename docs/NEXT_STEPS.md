@@ -177,9 +177,11 @@ Konkreter Ablauf:
   Performance-Befund einordnen:
   der Headless-v2-Dump bestaetigt zwar die Counts, liegt bei
   `asteroid_advance_us` aber deutlich ueber der alten
-  24-Asteroiden-Baseline. Falls das im Editor spuerbar wird, zuerst
-  einen kleinen Lazy-Drift-/Snapshot-/lokale-Projektion-Slice planen,
-  statt die Asteroidenlogik groesser umzubauen
+  24-Asteroiden-Baseline (`p50 ~= 998`, `p95 ~= 2001`) und misst mit
+  2400 States im v2-Settled-Dump `p50 ~= 7680`, `p95 ~= 9766`. Falls
+  das im Editor spuerbar wird, zuerst einen kleinen Lazy-Drift-/
+  Snapshot-/lokale-Projektion-Slice planen, statt die Asteroidenlogik
+  groesser umzubauen
 - bei Kamerabewegung im Sternfokus `P`-Dump pruefen:
   `body_screen_culled_count`, `orbit_screen_culled_line_count`,
   `orbit_visible_point_count`, `render_primitives` und `draw_calls`
