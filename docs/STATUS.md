@@ -494,6 +494,14 @@ Inspector-Modus, Warmup-/Capture-Frames und Output-Prefix, schreibt
 weiter dieselben CSV-/JSON-Paare und beendet den Headless-Lauf danach
 mit passendem Exit-Code. Das ist reproduzierbare Runtime-Diagnostik,
 kein Ersatz fuer interaktive Render-/Editor-Stotter-Messung.
+Der aktuelle Analyse-Slice ergaenzt dafuer ein externes Python-Script
+unter `src/tools/debug/scripts/analyze_perf_dumps.py`: es liest die
+neuesten gepaarten `perf_probe_*.csv`-/JSON-Sidecars aus den Godot-
+Userdaten, gruppiert sie nach Welt/Fokus/Frame/Inspector-Szenario und
+meldet pro Szenario `physics_ms` sowie erklaerte und verbleibend
+unerklaerte Physics-Zeit als p50/p95/max. Alte Dumps ohne die neuen
+Total-Spalten bleiben dabei sichtbar unerklaert, statt nachtraeglich
+geschaetzt zu werden.
 Der naechste Hygiene-Follow-up legalisiert die bereits vorhandene
 `BubbleActivationSet`-Exit-Hysterese als rein geometrische read-only
 Relevanzklassifikation: sie stabilisiert nur das Aktiv-Set-Wish am

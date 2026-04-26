@@ -103,7 +103,10 @@ und wird erst beim expliziten Dump gebaut, nicht pro Frame. Neue
 Messpunkte duerfen die Schichten nicht umdrehen: autoritative Schichten
 stellen hoechstens read-only Werte bereit; Sampling, Ringbuffer,
 Dumping, Hotkey-Bedienung und Headless-CLI-Steuerung bleiben im
-Composition Root oder in `src/tools/`.
+Composition Root oder in `src/tools/`. Abgeschlossene CSV-/JSON-Dumps
+duerfen durch externe Hilfsskripte unter `src/tools/debug/scripts/`
+ausgewertet werden; diese Scripts lesen nur Artefakte und fuehren keine
+Ergebnisse in Runtime, Simulation oder View zurueck.
 
 ## Autoloads - ADR
 

@@ -792,6 +792,12 @@ Konkreter Ablauf:
   headless starten, z. B.:
   `godot_console.exe --path . --headless --scene res://scenes/testbeds/orbit_testbed.tscn -- --graviton-perf-dump --graviton-world=scaleup_galaxy_100 --graviton-focus=onyx_d --graviton-inspector=closed --graviton-warmup-frames=120 --graviton-capture-frames=900`;
   das ersetzt keinen interaktiven Render-/Editor-Stotter-Dump
+- danach die neuesten Dump-Paare mit
+  `py src/tools/debug/scripts/analyze_perf_dumps.py --limit 8`
+  auswerten; pro Szenario zuerst `physics_ms`, `explained_ms` und
+  `residual_ms` vergleichen. Ein hoher `residual_ms`-Anteil heisst:
+  erst weitere Diagnose-Spalten oder Sidecar-Vergleich, nicht direkt
+  Renderer-/Cache-Refactor
 - in beiden Welten bewusst dieselben Faelle pruefen:
   - `ROOT_OVERVIEW`, Inspector zu
   - `ROOT_OVERVIEW`, Inspector per `I` offen
