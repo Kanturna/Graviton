@@ -95,14 +95,14 @@ Renderpfad im naechsten `P`-Dump direkt messbar.
 Der danach gemessene Sternfokus-Einbruch kam von Large-World-
 Residency: waehrend im lokalen Fokus nur 24 Asteroiden sichtbar waren,
 wurden durch einen residenten Neighbor-Root 48 Asteroiden simuliert.
-Der Testbed-Composition-Root bridged Asteroiden in Large-Worlds deshalb
-jetzt nur noch fuer den aktuellen Fokus-Root; Single-Worlds behalten
-weiter ihre geladenen Roots. Nach Editor-Feedback wurde der Lifecycle
-dabei korrigiert: ein Large-World-Fokuswechsel loescht die Asteroiden
-des alten Roots nicht mehr. Bereits erzeugte Root-Asteroiden bleiben im
-Service geparkt, werden aber nicht gesnapshottet oder integriert, bis
-dieser Root wieder aktiver Asteroiden-Root ist. Rueckkehr zu einem Root
-respawnt deshalb nicht erneut deterministisch vom Stern/BH-Kontext.
+Der Testbed-Composition-Root begrenzte Asteroiden in Large-Worlds
+deshalb zwischenzeitlich auf den aktuellen Fokus-Root; Single-Worlds
+behielten weiter ihre geladenen Roots. Nach Editor-Feedback wurde der
+Lifecycle dabei korrigiert: ein Large-World-Fokuswechsel loeschte die
+Asteroiden des alten Roots nicht mehr, sondern parkte sie im Service.
+Diese v1-Parking-Semantik ist durch die spaetere v2-Foundation ersetzt:
+alle Galaxy-Roots sind jetzt tracked, waehrend Major-Body-Residency nur
+noch lokale Influence-Zonen steuert.
 Beim Fokuswechsel wird ausserdem die reine Renderer-Trail-History nur
 noch bei Root-/World-Wechsel oder echtem Despawn geleert; Fokuswechsel
 innerhalb desselben Roots duerfen Trails behalten, weil sie aus stabilen
@@ -175,6 +175,28 @@ Screen-Ausschnitt. Zusaetzlich werden `orbit_trail_update_us` und
 `physics_ms`-Block zeigte, den `orbit_step_core_us`,
 `asteroid_advance_us` und die Renderer-Stage-Timer noch nicht
 vollstaendig erklaerten.
+Asteroiden v2 Foundation erweitert danach den Lifecycle auf alle
+Galaxy-Roots: Large-Worlds setzen dem `AsteroidSimulationService` einen
+read-only Root-Spawn-Katalog aus vorbereiteten `WorldLoader`-Defs, und
+`reset_for_world(...)` erzeugt States fuer alle
+`current_galaxy.root_ids()`. Nicht-residente Roots werden nicht in die
+`UniverseRegistry` geschrieben; ihre Asteroiden nutzen Catalog-STARs,
+Catalog-Belt-Grenzen und analytische Spawn-Origin-Position/-Velocity
+bei `t_s` und driften mit leerem Influence-Index linear weiter. Die
+Streaming-Residency bestimmt nur noch, fuer welche materialisierten
+Major-Body-Roots lokale Influence-Zonen erzwungen neu gebaut werden.
+`AsteroidSnapshotCache` markiert fremde Root-Asteroiden ohne Bubble-
+Compose-Warning als `is_finite=false`, sodass der aktuelle Renderer
+weiter nur lokale finite Asteroiden zeigt. In `scaleup_galaxy_100` sind
+damit `active_asteroids = 2400` und `total_state_count = 2400`
+erwartbar, waehrend `asteroid_renderer.visible_count` in diesem Slice
+typischerweise bei den 24 lokalen Fokus-Root-Asteroiden bleibt.
+Der frische Headless-T0-/Settled-Dump bestaetigt diese Counts, zeigt
+aber auch das naechste Performance-Gate: gegenueber der alten
+24-Asteroiden-Baseline liegt `asteroid_advance_us` trotz Fast-Drift-
+Pfad fuer leere Influence-Zonen deutlich hoeher. Das ist ein
+gemessener Folgepunkt fuer Lazy-Drift-/Snapshot- oder lokale
+Projektionsoptimierung, nicht Teil dieses Foundation-Slices.
 
 Darauf sitzt jetzt zusaetzlich ein erster grosser Large-World-Pfad:
 ein validierter 3-Root-Pilot plus separate produktive 10-, 30- und
@@ -1016,8 +1038,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 - Die Sim-Mathematik nutzt weiter `Vector3`, auch wenn die aktuelle
   Praesentation 2D ist. Das ist bewusst und kein Fehler.
 - Die Headless-Testbasis ist weiter reproduzierbar: `run_tests.bat`
-  laeuft nach dem Tick-Delta-/Analyzer-Normalisierungs-Slice mit
-  `8400` erfolgreichen Assertions bei `0` Failures.
+  laeuft nach dem Asteroiden-v2-Foundation-Slice mit `8425`
+  erfolgreichen Assertions bei `0` Failures.
 
 ### Aktuelle Praesentation
 
@@ -1597,15 +1619,15 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
 
 - zuerst kein neuer Simulationslayer, sondern das in
   `docs/NEXT_STEPS.md` beschriebene Acceptance-Bundle inklusive
-  `Asteroiden v1`:
+  `Asteroiden v2 Foundation`:
   Population Estimates, Lifeform Pressure, Life Ecology,
   Genetic Lifeforms, Survey-Color-/Life-Detail-Panel, Planet Summary,
   Survey UX, Native Species, Orbit Readout, Time UX, View Bookmarks,
   Website-Screenshot-Gate und die aktuellen Performance-/
   Focus-Smoothing-Gates gemeinsam im Editor validieren
 - die Headless-Basis ist dabei bereits sichtbar:
-  `./run_tests.bat` lief nach dem Tick-Delta-/Analyzer-
-  Normalisierungs-Slice mit `8400` Passed und `0` Failed; gezielte
+  `./run_tests.bat` lief nach dem Asteroiden-v2-Foundation-Slice mit
+  `8425` Passed und `0` Failed; gezielte
   Tests decken unter anderem HUD-Modi, Root-Inspector-Testbed-Regeln,
   Root-Inspector-Model-Caching, Planet-Badge-Text-/Candidate-Caching,
   Perf-Snapshot-JSON-Konvertierung, Life-Detail-Panel,
@@ -1647,8 +1669,8 @@ Die Simulationsbasis bleibt getrennt von der Darstellung:
   Screenshot-Capture die Platzhalter in `website/` ersetzen; keine
   externen Bilder, Stock-Weltraumbilder, Addon-Icons oder Rendering-
   Referenztexturen als Projektbeleg verwenden
-- Headless-Basis nach dem aktuellen Performance-Diagnose-Follow-up:
-  `./run_tests.bat` laeuft gruen mit `8400` Passed, `0` Failed;
+- Headless-Basis nach dem Asteroiden-v2-Foundation-Slice:
+  `./run_tests.bat` laeuft gruen mit `8425` Passed, `0` Failed;
   der reale Lauf meldet am Prozessende aber weiter generische
   `ObjectDB instances leaked`- und
   `resources still in use`-Hinweise

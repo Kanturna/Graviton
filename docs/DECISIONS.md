@@ -1,5 +1,48 @@
 # Graviton - Decisions
 
+## 2026-04-26 - Asteroiden v2 Foundation: Always-on Root-Katalog und Drift
+
+Die Performance-Diagnose hat gezeigt, dass der aktuelle Fokus-Root-
+Pfad sauber spawnt und rendert. Das eigentliche Modellziel ist aber
+nicht "Asteroiden entstehen beim Fokus", sondern: jeder Galaxy-Root
+besitzt seine Minor Bodies ab Weltstart. Asteroiden v2 ersetzt deshalb
+den v1-Lifecycle "aktueller Fokus-Root plus geparkte besuchte Roots"
+durch einen Catalog-tracked All-Root-Lifecycle.
+
+Konsequenz:
+
+- Large-World-Asteroiden werden fuer alle `GalaxyDef.root_ids()` als
+  `AsteroidState` erzeugt, auch wenn der jeweilige Major-Body-Root noch
+  nicht in der `UniverseRegistry` resident ist
+- nicht-residente Root-Slices werden aus den vorbereiteten
+  `WorldLoader.build_defs_for_root_ids(...)`-Defs gelesen; sie werden
+  nicht in die Registry geschrieben und fuehren keine zweite
+  Registry-Wahrheit ein
+- `AsteroidSimulationService` trennt getrackte Asteroiden-Roots von
+  Major-Body-Residency: Existenz und Drift haengen an tracked Roots,
+  lokale Influence-Zonen nur an aktuell materialisierten Major-Body-
+  Roots
+- nicht-residente Root-Asteroiden driften mit leerem Influence-Index
+  billig linear weiter
+- Spawn-Geometrie fuer nicht-residente Roots nutzt Catalog-STARs und
+  deren Planet-/Moon-Distanzen; Spawn-Origin-Position und -Velocity
+  werden analytisch bei `t_s` ausgewertet, statt auf `v=0`
+  zurueckzufallen
+- wenn ein zuvor nicht-residenter Root materialisiert wird, muss der
+  Influence-Index erzwungen neu gebaut werden, auch wenn fuer diesen
+  Root bereits eine leere Zone-Liste existierte
+- `AsteroidSnapshotCache` darf fremde Root-Asteroiden als
+  `is_finite=false` markieren, ruft dafuer aber nicht den
+  `LocalBubbleManager`-Compose-Pfad auf und erzeugt keinen Bubble-
+  Warning-Spam
+- in `scaleup_galaxy_100` ist `active_asteroids = 2400` jetzt die
+  erwartete Existenz-/Drift-Semantik; der aktuelle Renderer zeigt in
+  diesem Slice weiter typischerweise nur die 24 finite Asteroiden des
+  lokalen Fokus-Roots
+- Cross-Root-Gravitation, Anchor-Wechsel, Galaxy-Space-Projektion und
+  Overview-Sichtbarkeit fremder Root-Asteroiden bleiben separate
+  Folgeentscheidungen
+
 ## 2026-04-26 - DerivedSnapshotCache sim_tick-Refresh ist cadence-limitiert
 
 Die frische Headless-Perf-Matrix fuer `scaleup_galaxy_100` zeigte einen

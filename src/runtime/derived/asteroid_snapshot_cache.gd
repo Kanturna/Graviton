@@ -9,6 +9,8 @@ const REASON_WORLD_RELOAD: StringName = &"world_reload"
 
 var _asteroid_service = null
 var _bubble = null
+var _registry = null
+var _topology: UniverseTopology = null
 var _entries: Array = []
 var _revision: int = 0
 var _source_revision: int = -1
@@ -16,18 +18,26 @@ var _last_refresh_reason: StringName = REASON_MANUAL
 var _refresh_call_count: int = 0
 
 
-func configure(asteroid_service, bubble) -> void:
+func configure(asteroid_service, bubble, registry = null, topology: UniverseTopology = null) -> void:
 	assert(asteroid_service != null, "AsteroidSnapshotCache.configure: asteroid_service is null")
 	assert(bubble != null, "AsteroidSnapshotCache.configure: bubble is null")
 	dispose()
 	_asteroid_service = asteroid_service
 	_bubble = bubble
+	_registry = registry
+	if topology != null:
+		_topology = topology
+	elif registry != null:
+		_topology = UniverseTopology.new()
+		_topology.configure(registry)
 	refresh(REASON_CONFIGURE)
 
 
 func dispose() -> void:
 	_asteroid_service = null
 	_bubble = null
+	_registry = null
+	_topology = null
 	_entries.clear()
 	_revision = 0
 	_source_revision = -1
@@ -51,7 +61,7 @@ func refresh(reason: StringName = REASON_MANUAL) -> void:
 		if typeof(entry) != TYPE_DICTIONARY:
 			continue
 		var anchor_id: StringName = entry.get("anchor_id", StringName(""))
-		var anchor_view_m: Vector3 = _anchor_view_m(anchor_id, anchor_view_by_id)
+		var anchor_view_m: Vector3 = _entry_anchor_view_m(entry, anchor_id, anchor_view_by_id)
 		var x_m: float = float(entry.get("x_m", 0.0))
 		var y_m: float = float(entry.get("y_m", 0.0))
 		var z_m: float = float(entry.get("z_m", 0.0))
@@ -113,6 +123,36 @@ func _anchor_view_m(anchor_id: StringName, anchor_view_by_id: Dictionary) -> Vec
 	var view_m: Vector3 = _bubble.compose_view_position_m(anchor_id)
 	anchor_view_by_id[anchor_id] = view_m
 	return view_m
+
+
+func _entry_anchor_view_m(entry: Dictionary, anchor_id: StringName, anchor_view_by_id: Dictionary) -> Vector3:
+	var focus_root_id: StringName = _focus_root_id()
+	var entry_root_id: StringName = _entry_root_id(entry, anchor_id)
+	if focus_root_id != StringName("") and entry_root_id != StringName("") and focus_root_id != entry_root_id:
+		return Vector3.INF
+	return _anchor_view_m(anchor_id, anchor_view_by_id)
+
+
+func _focus_root_id() -> StringName:
+	if _bubble == null or _topology == null or not _bubble.has_method("get_focus"):
+		return StringName("")
+	var focus_id: StringName = _bubble.get_focus()
+	if focus_id == StringName(""):
+		return StringName("")
+	if _registry != null and _registry.has_method("has_body") and not _registry.has_body(focus_id):
+		return StringName("")
+	return _topology.root_id_of(focus_id)
+
+
+func _entry_root_id(entry: Dictionary, anchor_id: StringName) -> StringName:
+	var root_id: StringName = entry.get("root_id", StringName(""))
+	if root_id != StringName(""):
+		return root_id
+	if _topology == null or anchor_id == StringName(""):
+		return StringName("")
+	if _registry != null and _registry.has_method("has_body") and not _registry.has_body(anchor_id):
+		return StringName("")
+	return _topology.root_id_of(anchor_id)
 
 
 static func _is_finite_vec3(value: Vector3) -> bool:

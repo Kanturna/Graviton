@@ -32,6 +32,17 @@ class AsteroidServiceProbe:
 				"radius_m": 120.0,
 				"visual_class": &"metal",
 			},
+			{
+				"id": &"ast_foreign",
+				"root_id": &"other_root",
+				"anchor_id": &"other_root",
+				"spawn_origin_id": &"other_star",
+				"x_m": 1.0,
+				"y_m": 2.0,
+				"z_m": 3.0,
+				"radius_m": 80.0,
+				"visual_class": &"carbon",
+			},
 		],
 	}
 
@@ -43,6 +54,10 @@ class BubbleProbe:
 	extends RefCounted
 
 	var compose_calls: int = 0
+	var focus_id: StringName = &"root"
+
+	func get_focus() -> StringName:
+		return focus_id
 
 	func compose_view_position_m(id: StringName, _presentation_offset_s: float = 0.0) -> Vector3:
 		compose_calls += 1
@@ -60,10 +75,15 @@ static func _test_cache_projects_read_only_snapshots(ctx) -> void:
 	var cache = AsteroidSnapshotCacheScript.new()
 	var service := AsteroidServiceProbe.new()
 	var bubble := BubbleProbe.new()
-	cache.configure(service, bubble)
+	UniverseRegistry.clear()
+	_register_root(&"root")
+	_register_root(&"other_root")
+	var topology := UniverseTopology.new()
+	topology.configure(UniverseRegistry)
+	cache.configure(service, bubble, UniverseRegistry, topology)
 
 	var entries: Array = cache.get_entries()
-	ctx.assert_true(entries.size() == 2, "AsteroidSnapshotCache liefert separate Entry-Snapshots")
+	ctx.assert_true(entries.size() == 3, "AsteroidSnapshotCache liefert separate Entry-Snapshots")
 	var entry: Dictionary = entries[0]
 	ctx.assert_true(entry.get("id", StringName("")) == &"ast_a", "AsteroidSnapshotCache uebernimmt die Asteroid-ID")
 	ctx.assert_true(entry.get("view_position_m", Vector3.ZERO) == Vector3(110.0, 220.0, 330.0),
@@ -76,6 +96,26 @@ static func _test_cache_projects_read_only_snapshots(ctx) -> void:
 		"AsteroidSnapshotCache stellt die Anchor-View-Projektion getrennt bereit")
 	ctx.assert_true(bubble.compose_calls == 1,
 		"AsteroidSnapshotCache komponiert pro unique anchor_id nur einmal pro Refresh")
+	var foreign_entry: Dictionary = entries[2]
+	ctx.assert_true(not bool(foreign_entry.get("is_finite", true)),
+		"AsteroidSnapshotCache markiert fremde Root-Asteroiden als nicht finit")
+	ctx.assert_true(foreign_entry.get("anchor_view_m", Vector3.ZERO) == Vector3.INF,
+		"fremde Root-Asteroiden bekommen keinen Bubble-Compose-Pfad")
+	ctx.assert_true(bubble.compose_calls == 1,
+		"fremde Root-Asteroiden erzeugen keine zusaetzlichen Bubble-Compose-Calls")
 	ctx.assert_true(cache.get_source_revision() == 7, "AsteroidSnapshotCache merkt die Sim-Revision getrennt")
 	ctx.assert_true(cache.get_script() == AsteroidSnapshotCacheScript, "AsteroidSnapshotCache ist ein eigener Runtime-Helfer")
 	ctx.assert_true(cache.get_script() != DerivedSnapshotCacheScript, "AsteroidSnapshotCache erweitert nicht den planetaren DerivedSnapshotCache")
+	UniverseRegistry.clear()
+
+
+static func _register_root(id: StringName) -> void:
+	var def := BodyDef.new()
+	def.id = id
+	def.display_name = String(id)
+	def.kind = BodyType.Kind.BLACK_HOLE
+	def.mass_kg = 1.0
+	def.radius_m = 1.0
+	def.parent_id = StringName("")
+	def.orbit_profile = null
+	UniverseRegistry.register_body(def)

@@ -21,6 +21,10 @@ static func run(ctx) -> void:
 	_test_far_retire_threshold_deactivates(ctx)
 	_test_sync_resident_roots_lifecycle_is_idempotent(ctx)
 	_test_single_world_spawns_without_streaming_controller(ctx)
+	_test_catalog_spawn_creates_states_for_nonresident_roots(ctx)
+	_test_nonresident_catalog_asteroids_drift_linearly(ctx)
+	_test_catalog_spawn_uses_analytic_origin_geometry(ctx)
+	_test_major_body_residency_forces_influence_rebuild(ctx)
 	_test_sim_asteroids_imports_no_runtime_tools_or_scenes(ctx)
 
 
@@ -62,6 +66,21 @@ static func _make_two_root_registry() -> Node:
 	orbit_service.free()
 	time_service.free()
 	return reg
+
+
+static func _catalog_root_defs(root_id: StringName, star_id: StringName, planet_id: StringName, star_radius_m: float = 2.0e10, planet_axis_m: float = 9.0e10, star_phase_rad: float = 0.0) -> Array[BodyDef]:
+	var defs: Array[BodyDef] = []
+	defs.append(_root_def(root_id))
+	defs.append(_star_def(star_id, root_id, star_radius_m, star_phase_rad, 5.0e6))
+	defs.append(_planet_def(planet_id, star_id, planet_axis_m, 0.4, UnitSystem.EARTH_MASS_KG))
+	return defs
+
+
+static func _catalog_for_nonresident_roots() -> Dictionary:
+	return {
+		&"root_b": _catalog_root_defs(&"root_b", &"star_c", &"planet_f", 2.0e10, 9.0e10, 0.1),
+		&"root_c": _catalog_root_defs(&"root_c", &"star_d", &"planet_g", 3.0e10, 1.1e11, 0.3),
+	}
 
 
 static func _make_bh_fit_registry() -> Node:
@@ -616,6 +635,126 @@ static func _test_single_world_spawns_without_streaming_controller(ctx) -> void:
 	loader.free()
 
 
+static func _test_catalog_spawn_creates_states_for_nonresident_roots(ctx) -> void:
+	var reg := _make_registry()
+	var service = _make_service(reg)
+	var catalog: Dictionary = _catalog_for_nonresident_roots()
+	service.set_root_spawn_catalog(&"scope_catalog", catalog)
+	service.reset_for_world(&"scope_catalog", [&"root_a", &"root_b", &"root_c"], 100.0)
+
+	var snapshot: Dictionary = service.get_state_snapshot()
+	var counts: Dictionary = _entry_counts_by_root(snapshot.get("entries", []))
+	ctx.assert_true(int(snapshot.get("count", 0)) == AsteroidSimulationServiceScript.ASTEROIDS_PER_ROOT * 3,
+		"Catalog-tracked Roots erzeugen auch ohne Registry-Residency Asteroiden")
+	ctx.assert_true(int(counts.get(&"root_b", 0)) == AsteroidSimulationServiceScript.ASTEROIDS_PER_ROOT,
+		"nicht-residenter Catalog-Root root_b hat sein volles Asteroiden-Budget")
+	ctx.assert_true(int(counts.get(&"root_c", 0)) == AsteroidSimulationServiceScript.ASTEROIDS_PER_ROOT,
+		"nicht-residenter Catalog-Root root_c hat sein volles Asteroiden-Budget")
+	var perf: Dictionary = service.get_perf_counter_snapshot()
+	ctx.assert_true(int(perf.get(AsteroidSimulationServiceScript.PERF_KEY_ACTIVE_ASTEROIDS, 0)) == AsteroidSimulationServiceScript.ASTEROIDS_PER_ROOT * 3,
+		"active_asteroids zaehlt alle getrackten Root-Asteroiden")
+	ctx.assert_true(int(perf.get("total_state_count", 0)) == AsteroidSimulationServiceScript.ASTEROIDS_PER_ROOT * 3,
+		"total_state_count zaehlt alle gespeicherten Root-Asteroiden")
+	ctx.assert_true(service.call("_influence_zones_for_root", &"root_b").is_empty(),
+		"nicht-residente Catalog-Roots starten ohne lokale Influence-Zonen")
+
+	service.free()
+	reg.free()
+
+
+static func _test_nonresident_catalog_asteroids_drift_linearly(ctx) -> void:
+	var reg = load("res://src/sim/universe/universe_registry.gd").new()
+	var service = _make_service(reg)
+	var catalog: Dictionary = {&"root_b": _catalog_root_defs(&"root_b", &"star_c", &"planet_f", 2.0e10, 9.0e10, 0.1)}
+	service.set_root_spawn_catalog(&"scope_catalog", catalog)
+	service.reset_for_world(&"scope_catalog", [&"root_b"], 50.0)
+	var state = _state_for_root(service, &"root_b")
+	ctx.assert_true(state != null, "nicht-residenter Catalog-Root erzeugt einen testbaren State")
+	var before_x: float = state.x_m
+	var before_y: float = state.y_m
+	var before_z: float = state.z_m
+	var vx: float = state.vx_mps
+	var vy: float = state.vy_mps
+	var vz: float = state.vz_mps
+
+	service.advance_to_time(62.0, 12.0)
+
+	ctx.assert_almost(state.x_m, before_x + vx * 12.0, 1.0e-3,
+		"nicht-residente Asteroiden driften ohne Influence-Zonen linear in x")
+	ctx.assert_almost(state.y_m, before_y + vy * 12.0, 1.0e-3,
+		"nicht-residente Asteroiden driften ohne Influence-Zonen linear in y")
+	ctx.assert_almost(state.z_m, before_z + vz * 12.0, 1.0e-3,
+		"nicht-residente Asteroiden driften ohne Influence-Zonen linear in z")
+	ctx.assert_true(state.current_attractor_ids.is_empty(),
+		"nicht-residente Asteroiden bauen kein Attractor-Set aus leerem Index")
+
+	service.free()
+	reg.free()
+
+
+static func _test_catalog_spawn_uses_analytic_origin_geometry(ctx) -> void:
+	var reg = load("res://src/sim/universe/universe_registry.gd").new()
+	var service = _make_service(reg)
+	var planet_axis_m: float = 1.2e11
+	var t_s: float = 1234.0
+	var catalog: Dictionary = {&"root_b": _catalog_root_defs(&"root_b", &"star_c", &"planet_f", 3.0e10, planet_axis_m, 0.25)}
+	service.set_root_spawn_catalog(&"scope_catalog", catalog)
+	service.reset_for_world(&"scope_catalog", [&"root_b"], t_s)
+	var entries: Array = service.get_state_snapshot().get("entries", [])
+	var entry: Dictionary = entries[0]
+	var origin: Dictionary = service.call("_resolve_catalog_body_relative_to_root", &"star_c", &"root_b", t_s)
+	ctx.assert_true(bool(origin.get("ok", false)), "Catalog-Spawn-Origin wird analytisch im Root-Frame aufgeloest")
+	ctx.assert_true(absf(float(origin.get("vx_mps", 0.0))) > 1.0 or absf(float(origin.get("vy_mps", 0.0))) > 1.0,
+		"Catalog-Spawn-Origin hat eine analytische Velocity statt v=0-Fallback")
+	ctx.assert_true(entry.get("spawn_origin_id", StringName("")) == &"star_c",
+		"Catalog-Spawn nutzt den Stern als Spawn-Origin")
+	var dx: float = float(entry.get("x_m", 0.0)) - float(origin.get("x_m", 0.0))
+	var dy: float = float(entry.get("y_m", 0.0)) - float(origin.get("y_m", 0.0))
+	var dz: float = float(entry.get("z_m", 0.0)) - float(origin.get("z_m", 0.0))
+	var radius_m: float = sqrt(dx * dx + dy * dy + dz * dz)
+	ctx.assert_true(radius_m >= planet_axis_m * 0.72 and radius_m <= planet_axis_m * 1.35,
+		"Catalog-Spawn-Geometrie nutzt Planet-/Moon-Distanzen statt Fallback-Belt")
+
+	service.free()
+	reg.free()
+
+
+static func _test_major_body_residency_forces_influence_rebuild(ctx) -> void:
+	var reg = load("res://src/sim/universe/universe_registry.gd").new()
+	var service = _make_service(reg)
+	var root_defs: Array[BodyDef] = _catalog_root_defs(&"root_b", &"star_c", &"planet_f", 2.0e10, 9.0e10, 0.1)
+	service.set_root_spawn_catalog(&"scope_catalog", {&"root_b": root_defs})
+	service.reset_for_world(&"scope_catalog", [&"root_b"], 0.0)
+	ctx.assert_true(service.call("_influence_zones_for_root", &"root_b").is_empty(),
+		"initial nicht-residenter Catalog-Root hat einen leeren Influence-Index")
+
+	for def in root_defs:
+		reg.register_body(def)
+	var orbit_service = load("res://src/sim/orbit/orbit_service.gd").new()
+	var time_service = load("res://src/core/time/time_service.gd").new()
+	orbit_service.configure(reg, time_service)
+	orbit_service.recompute_all_at_time(0.0)
+	service.set_major_body_resident_roots([&"root_b"], 0.0)
+	var zones: Array = service.call("_influence_zones_for_root", &"root_b")
+	ctx.assert_true(not zones.is_empty(),
+		"Major-Body-Residency erzwingt Rebuild auch wenn vorher eine leere Zone-Liste existierte")
+
+	var state = _state_for_root(service, &"root_b")
+	state.current_attractor_ids.clear()
+	state.x_m = float(service.call("_influence_radius_m", reg.get_def(&"root_b"))) * 0.5
+	state.y_m = 0.0
+	state.z_m = 0.0
+	service._relative_state_cache.clear()
+	var selected: Array[StringName] = service.call("_select_attractors_for", state)
+	ctx.assert_true(selected.has(&"root_b"),
+		"frisch residente Root-Asteroiden sehen nach dem Rebuild wieder lokale Attractor-Kandidaten")
+
+	service.free()
+	orbit_service.free()
+	time_service.free()
+	reg.free()
+
+
 static func _test_sim_asteroids_imports_no_runtime_tools_or_scenes(ctx) -> void:
 	var dir_path: String = "res://src/sim/asteroids"
 	for file_name in DirAccess.get_files_at(dir_path):
@@ -641,6 +780,24 @@ static func _capture_body_states(registry: Node) -> Dictionary:
 			"velocity": state.velocity_parent_frame_mps,
 			"mode": state.current_mode,
 		}
+	return out
+
+
+static func _state_for_root(service, root_id: StringName):
+	for id in service._state_order:
+		var state = service._states_by_id.get(id, null)
+		if state != null and state.root_id == root_id:
+			return state
+	return null
+
+
+static func _entry_counts_by_root(entries: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for entry in entries:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var root_id: StringName = entry.get("root_id", StringName(""))
+		out[root_id] = int(out.get(root_id, 0)) + 1
 	return out
 
 

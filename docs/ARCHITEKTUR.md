@@ -581,18 +581,24 @@ zu naeheren Major-Body-Frames, Stetigkeitsgarantien beim Switch und
 eine moegliche Vereinheitlichung mit einem spaeteren Frame-Modell sind
 Folge-Slices.
 
-**Lifecycle v1:** In Single-World-Szenen werden Asteroiden fuer die
-geladenen Root-IDs gespawnt. In Large-World-Szenen folgt der
-Asteroiden-Slice bewusst nur dem aktuellen Fokus-Root, nicht allen
-residenten oder vorgewaermten Neighbor-Roots. Neighbor-Residency bleibt
-Streaming-/Registry-Zustand fuer Major Bodies; sie erweitert in v1
-nicht automatisch die aktive Minor-Body-Physik. Fokus-Root-Wechsel
-loeschen bereits erzeugte Asteroiden aber nicht mehr: nicht aktive
-Root-Asteroiden werden im `AsteroidSimulationService` geparkt, aus dem
-Snapshot ausgeblendet und nicht weiter integriert, bis dieser Root
-wieder aktiver Asteroiden-Root ist. Dadurch bleibt der aktive
-Large-World-Pfad bei 24 Asteroiden pro Fokus-Root, ohne deterministisch
-neu zu spawnen.
+**Lifecycle v2 Foundation:** In Single-World-Szenen werden Asteroiden
+weiter fuer die geladenen Root-IDs gespawnt. In Large-World-Szenen
+existieren Asteroiden jetzt fuer alle `GalaxyDef.root_ids()` ab
+Weltstart als `AsteroidState`, nicht erst fuer fokussierte oder
+streaming-residente Roots. Nicht-residente Root-Slices kommen aus einem
+read-only Root-Spawn-Katalog, den der Composition Root ueber
+`WorldLoader.build_defs_for_root_ids(...)` vorbereitet. Diese Catalog-
+Defs werden nicht in die `UniverseRegistry` geschrieben. Der Service
+trennt deshalb zwei Begriffe: tracked Roots bestimmen Existenz,
+Integration und Snapshot; Major-Body-Residency bestimmt nur, fuer
+welche Roots lokale Influence-Zonen aus Registry-Bodies gebaut werden.
+Nicht-residente Roots haben leere Influence-Zonen und driften linear
+weiter. Wenn ein zuvor nicht-residenter Root materialisiert wird, muss
+der Influence-Index fuer diesen Root erzwungen neu gebaut werden, auch
+wenn bereits eine leere Zone-Liste existiert. In
+`scaleup_galaxy_100` sind damit 2400 aktive Asteroiden erwartbar,
+waehrend der aktuelle Renderer in diesem Slice typischerweise weiter
+nur die 24 finite Asteroiden des lokalen Fokus-Roots zeigt.
 
 **Physik v1.2:** Restricted Gravity mit Freiflug. `BLACK_HOLE`, `STAR`,
 `PLANET` und `MOON` ziehen Asteroiden nur innerhalb expliziter
@@ -646,11 +652,15 @@ werden trotzdem in jedem Tick neu gelesen.
 **Runtime/View:** `AsteroidSnapshotCache` lebt getrennt von
 `DerivedSnapshotCache` in `runtime/derived/` und ist read-only Glue fuer
 Renderer. Er exponiert Root-Frame-Komponenten plus abgeleitete
-View-Positionen, ohne Sim-State zu schreiben. `AsteroidFieldRenderer`
-rendert Punkte und kurze Trails aus Snapshots. Trail-History ist ein
-reiner Renderer-Ringbuffer aus stabilen Samples und keine Simulations-
-oder Snapshot-Wahrheit; die Reprojektion nutzt pro Frame einen
-Anchor-View-Cache, damit pro unique `anchor_id` nur eine
+View-Positionen, ohne Sim-State zu schreiben. Fremde Root-Asteroiden
+werden im Cache als `is_finite=false` markiert, ohne dafuer
+`LocalBubbleManager.compose_view_position_m(...)` aufzurufen; der
+Bubble-Compose-Pfad bleibt same-root/LCA-basiert und erzeugt fuer
+legitime nonlocal Asteroiden keinen Warning-Spam. `AsteroidFieldRenderer`
+rendert Punkte und kurze Trails aus finiten Snapshots. Trail-History
+ist ein reiner Renderer-Ringbuffer aus stabilen Samples und keine
+Simulations- oder Snapshot-Wahrheit; die Reprojektion nutzt pro Frame
+einen Anchor-View-Cache, damit pro unique `anchor_id` nur eine
 `compose_view_position_m`-Komposition anfaellt. Trails duerfen bei
 Fokuswechseln innerhalb desselben Roots erhalten bleiben, muessen bei
 Root-/World-Wechsel und Despawn aber geloescht werden.

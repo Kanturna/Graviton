@@ -26,6 +26,7 @@ const MAX_SUBSTEPS_PER_TICK: int = 32
 const ASTEROID_FAR_RETIRE_RADIUS_M: float = 1.0e16
 const FALLBACK_BELT_INNER_M: float = 2.2e11
 const FALLBACK_BELT_OUTER_M: float = 5.0e11
+const VELOCITY_SEED_EPSILON_S: float = 1.0
 const PERF_KEY_ACTIVE_ASTEROIDS: StringName = &"active_asteroids"
 const PERF_KEY_ATTRACTOR_CHECKS: StringName = &"attractor_checks"
 const PERF_KEY_SUBSTEPS: StringName = &"substeps"
@@ -46,7 +47,10 @@ var _topology: UniverseTopology = UniverseTopology.new()
 var _relative_resolver = RELATIVE_STATE_RESOLVER_SCRIPT.new()
 var _configured: bool = false
 var _scope_id: StringName = &""
-var _resident_root_ids: Array[StringName] = []
+var _tracked_root_ids: Array[StringName] = []
+var _major_body_resident_root_ids: Array[StringName] = []
+var _root_spawn_catalog_scope_id: StringName = &""
+var _root_spawn_catalog_by_root: Dictionary = {}
 var _defs_by_id: Dictionary = {}
 var _states_by_id: Dictionary = {}
 var _state_order: Array[StringName] = []
@@ -79,40 +83,87 @@ func configure(registry: Node) -> void:
 	_configured = true
 
 
+func set_root_spawn_catalog(scope_id: StringName, root_defs_by_root: Dictionary) -> void:
+	_root_spawn_catalog_scope_id = scope_id
+	_root_spawn_catalog_by_root.clear()
+	for raw_root_id in root_defs_by_root.keys():
+		var root_id: StringName = _to_string_name(raw_root_id)
+		if root_id == StringName(""):
+			continue
+		var raw_defs = root_defs_by_root.get(raw_root_id, [])
+		if typeof(raw_defs) != TYPE_ARRAY:
+			continue
+		var defs: Array[BodyDef] = []
+		for raw_def in raw_defs:
+			var body_def: BodyDef = raw_def as BodyDef
+			if body_def != null:
+				defs.append(body_def)
+		if not defs.is_empty():
+			_root_spawn_catalog_by_root[root_id] = defs
+
+
 func reset_for_world(scope_id: StringName, root_ids: Array[StringName], t_s: float) -> void:
 	_scope_id = scope_id
-	_resident_root_ids = _normalized_root_ids(root_ids)
+	_tracked_root_ids = _normalized_root_ids(root_ids)
+	_major_body_resident_root_ids = _registry_root_ids_from(_tracked_root_ids)
 	_defs_by_id.clear()
 	_states_by_id.clear()
 	_state_order.clear()
 	_influence_zones_by_root.clear()
 	_reset_perf_counters()
-	for root_id in _resident_root_ids:
+	for root_id in _tracked_root_ids:
 		_spawn_root(root_id, t_s)
+	for root_id in _major_body_resident_root_ids:
+		_rebuild_influence_index_for_root(root_id)
 	_revision += 1
 	_update_active_counter()
 
 
+# Deprecated compatibility wrapper. New scene code must use tracked roots
+# for asteroid existence and set_major_body_resident_roots() for streaming.
 func sync_resident_roots(scope_id: StringName, root_ids: Array[StringName], t_s: float) -> void:
+	sync_tracked_roots(scope_id, root_ids, t_s)
+	set_major_body_resident_roots(_registry_root_ids_from(_normalized_root_ids(root_ids)), t_s)
+
+
+func sync_tracked_roots(scope_id: StringName, root_ids: Array[StringName], t_s: float) -> void:
 	if not _configured:
 		return
 	if scope_id != _scope_id:
 		reset_for_world(scope_id, root_ids, t_s)
 		return
 	var next_roots: Array[StringName] = _normalized_root_ids(root_ids)
-	var changed: bool = not _root_id_arrays_equal(_resident_root_ids, next_roots)
+	var changed: bool = not _root_id_arrays_equal(_tracked_root_ids, next_roots)
 	for root_id in next_roots:
-		if not _influence_zones_by_root.has(root_id):
-			_rebuild_influence_index_for_root(root_id)
 		if _has_root_state(root_id):
 			continue
 		_spawn_root(root_id, t_s)
 		changed = true
 
 	if changed:
-		_resident_root_ids = next_roots
+		_tracked_root_ids = next_roots
+		_major_body_resident_root_ids = _intersection_root_ids(_major_body_resident_root_ids, _tracked_root_ids)
 		_revision += 1
 		_update_active_counter()
+
+
+func set_major_body_resident_roots(root_ids: Array[StringName], _t_s: float = 0.0) -> void:
+	if not _configured:
+		return
+	var next_roots: Array[StringName] = _registry_root_ids_from(_normalized_root_ids(root_ids))
+	var previous_roots: Array[StringName] = _major_body_resident_root_ids.duplicate()
+	var changed: bool = not _root_id_arrays_equal(previous_roots, next_roots)
+	_major_body_resident_root_ids = next_roots
+	for root_id in _tracked_root_ids:
+		if next_roots.has(root_id):
+			if not previous_roots.has(root_id) or not _influence_zones_by_root.has(root_id) or _influence_zones_for_root(root_id).is_empty():
+				_rebuild_influence_index_for_root(root_id)
+		else:
+			_influence_zones_by_root[root_id] = []
+			_clear_attractor_sets_for_root(root_id)
+	if changed:
+		_revision += 1
+	_update_active_counter()
 
 
 func advance_to_time(t_s: float, dt_s: float) -> void:
@@ -121,11 +172,15 @@ func advance_to_time(t_s: float, dt_s: float) -> void:
 	_relative_state_cache.clear()
 	var tick_index: int = int(_perf_counters.get(PERF_KEY_ADVANCE_TICKS, 0))
 	var changed: bool = false
-	for id in _state_order.duplicate():
+	for id in _state_order:
 		var state = _states_by_id.get(id, null)
 		if state == null or not state.is_active:
 			continue
-		if not _resident_root_ids.has(state.root_id):
+		if not _tracked_root_ids.has(state.root_id):
+			continue
+		if _can_fast_linear_drift(state):
+			_advance_fast_linear_drift(state, t_s, dt_s)
+			changed = true
 			continue
 		var attractor_ids: Array[StringName] = state.current_attractor_ids
 		if _should_refresh_attractors(state, tick_index):
@@ -169,13 +224,15 @@ func get_state_snapshot() -> Dictionary:
 		var state = _states_by_id.get(id, null)
 		if state == null or not state.is_active:
 			continue
-		if not _resident_root_ids.has(state.root_id):
+		if not _tracked_root_ids.has(state.root_id):
 			continue
 		var def = _defs_by_id.get(id, null)
 		entries.append(state.clone_snapshot(def))
 	return {
 		"scope_id": _scope_id,
-		"resident_root_ids": _resident_root_ids.duplicate(),
+		"tracked_root_ids": _tracked_root_ids.duplicate(),
+		"major_body_resident_root_ids": _major_body_resident_root_ids.duplicate(),
+		"resident_root_ids": _major_body_resident_root_ids.duplicate(),
 		"revision": _revision,
 		"count": entries.size(),
 		"entries": entries,
@@ -185,7 +242,10 @@ func get_state_snapshot() -> Dictionary:
 func get_perf_counter_snapshot() -> Dictionary:
 	var out: Dictionary = _perf_counters.duplicate(true)
 	out["revision"] = _revision
-	out["resident_root_count"] = _resident_root_ids.size()
+	out["tracked_root_count"] = _tracked_root_ids.size()
+	out["resident_root_count"] = _major_body_resident_root_ids.size()
+	out["major_body_resident_root_count"] = _major_body_resident_root_ids.size()
+	out["catalog_root_count"] = _root_spawn_catalog_by_root.size()
 	out["total_state_count"] = _state_order.size()
 	out["stored_root_count"] = _stored_root_count()
 	out["influence_zone_count"] = _resident_influence_zone_count()
@@ -195,7 +255,11 @@ func get_perf_counter_snapshot() -> Dictionary:
 func get_debug_snapshot() -> Dictionary:
 	return {
 		"scope_id": _scope_id,
-		"resident_root_ids": _resident_root_ids.duplicate(),
+		"tracked_root_ids": _tracked_root_ids.duplicate(),
+		"major_body_resident_root_ids": _major_body_resident_root_ids.duplicate(),
+		"resident_root_ids": _major_body_resident_root_ids.duplicate(),
+		"root_spawn_catalog_scope_id": _root_spawn_catalog_scope_id,
+		"root_spawn_catalog_root_count": _root_spawn_catalog_by_root.size(),
 		"revision": _revision,
 		"state_count": _state_order.size(),
 		"perf": get_perf_counter_snapshot(),
@@ -203,9 +267,10 @@ func get_debug_snapshot() -> Dictionary:
 
 
 func _spawn_root(root_id: StringName, t_s: float) -> void:
-	if _registry == null or not _registry.has_body(root_id):
+	if root_id == StringName("") or not _has_spawn_source_for_root(root_id):
 		return
-	_rebuild_influence_index_for_root(root_id)
+	if not _influence_zones_by_root.has(root_id):
+		_influence_zones_by_root[root_id] = []
 	var spawn_origins: Array[StringName] = _select_spawn_origins(root_id)
 	if spawn_origins.is_empty():
 		spawn_origins.append(root_id)
@@ -224,8 +289,6 @@ func _spawn_root(root_id: StringName, t_s: float) -> void:
 		_states_by_id[asteroid_id] = state
 		_state_order.append(asteroid_id)
 		_perf_counters[PERF_KEY_SPAWNED] = int(_perf_counters.get(PERF_KEY_SPAWNED, 0)) + 1
-	if not _resident_root_ids.has(root_id):
-		_resident_root_ids.append(root_id)
 
 
 func _despawn_root(root_id: StringName) -> void:
@@ -237,7 +300,8 @@ func _despawn_root(root_id: StringName) -> void:
 		_defs_by_id.erase(id)
 		_state_order.erase(id)
 		_perf_counters[PERF_KEY_DESPAWNED] = int(_perf_counters.get(PERF_KEY_DESPAWNED, 0)) + 1
-	_resident_root_ids.erase(root_id)
+	_tracked_root_ids.erase(root_id)
+	_major_body_resident_root_ids.erase(root_id)
 
 
 func _has_root_state(root_id: StringName) -> bool:
@@ -259,7 +323,7 @@ func _stored_root_count() -> int:
 
 func _resident_influence_zone_count() -> int:
 	var count: int = 0
-	for root_id in _resident_root_ids:
+	for root_id in _major_body_resident_root_ids:
 		count += _influence_zones_for_root(root_id).size()
 	return count
 
@@ -304,12 +368,17 @@ func _influence_zone_for_id(root_id: StringName, body_id: StringName) -> Diction
 
 func _select_spawn_origins(root_id: StringName) -> Array[StringName]:
 	var origins: Array[StringName] = []
-	for id in _registry.get_update_order():
-		var def: BodyDef = _registry.get_def(id)
-		if def == null or def.kind != BodyType.Kind.STAR:
-			continue
-		if _topology.root_id_of(id) == root_id:
-			origins.append(id)
+	if _registry != null:
+		for id in _registry.get_update_order():
+			var def: BodyDef = _registry.get_def(id)
+			if def == null or def.kind != BodyType.Kind.STAR:
+				continue
+			if _topology.root_id_of(id) == root_id:
+				origins.append(id)
+	if origins.is_empty():
+		for def in _catalog_defs_for_root(root_id):
+			if def != null and def.kind == BodyType.Kind.STAR:
+				origins.append(def.id)
 	if origins.is_empty():
 		origins.append(root_id)
 	return origins
@@ -321,7 +390,7 @@ func _build_initial_state(def, t_s: float):
 	state.root_id = def.root_id
 	state.anchor_id = def.root_id
 	state.last_update_time_s = t_s
-	var bounds: Dictionary = _spawn_radius_bounds(def.spawn_origin_id)
+	var bounds: Dictionary = _spawn_radius_bounds(def.spawn_origin_id, def.root_id)
 	var inner_m: float = float(bounds.get("inner_m", FALLBACK_BELT_INNER_M))
 	var outer_m: float = maxf(float(bounds.get("outer_m", FALLBACK_BELT_OUTER_M)), inner_m * 1.05)
 	var radius_m: float = _range_from_seed(def.seed, 2, inner_m, outer_m)
@@ -332,6 +401,10 @@ func _build_initial_state(def, t_s: float):
 	var local_z_m: float = z_m
 	var origin_relative: Dictionary = _resolve_body_relative_to_anchor_cached(def.spawn_origin_id, def.root_id)
 	if not bool(origin_relative.get("ok", false)):
+		origin_relative = _resolve_catalog_body_relative_to_root(def.spawn_origin_id, def.root_id, t_s)
+	if not bool(origin_relative.get("ok", false)):
+		if _catalog_def_for_id(def.root_id, def.spawn_origin_id) != null:
+			push_warning("AsteroidSimulationService: Catalog-Spawn-Origin '%s' konnte nicht analytisch im Root '%s' aufgeloest werden" % [def.spawn_origin_id, def.root_id])
 		origin_relative = {
 			"ok": true,
 			"x_m": 0.0,
@@ -345,7 +418,7 @@ func _build_initial_state(def, t_s: float):
 	state.y_m = float(origin_relative.get("y_m", 0.0)) + local_y_m
 	state.z_m = float(origin_relative.get("z_m", 0.0)) + local_z_m
 
-	var origin_def: BodyDef = _registry.get_def(def.spawn_origin_id)
+	var origin_def: BodyDef = _body_def_for(def.root_id, def.spawn_origin_id)
 	var origin_mass_kg: float = origin_def.mass_kg if origin_def != null and _is_v1_attractor_kind(origin_def.kind) else UnitSystem.SOLAR_MASS_KG
 	var mu: float = UnitSystem.mu_from_mass(maxf(origin_mass_kg, 1.0))
 	var circular_speed_mps: float = sqrt(mu / maxf(radius_m, 1.0))
@@ -370,18 +443,28 @@ func _build_initial_state(def, t_s: float):
 	return state
 
 
-func _spawn_radius_bounds(anchor_id: StringName) -> Dictionary:
+func _spawn_radius_bounds(anchor_id: StringName, root_id: StringName = StringName("")) -> Dictionary:
 	var min_a: float = INF
 	var max_a: float = 0.0
-	for child_id in _registry.get_children_of(anchor_id):
-		var child_def: BodyDef = _registry.get_def(child_id)
-		if child_def == null or child_def.orbit_profile == null:
-			continue
-		if child_def.kind != BodyType.Kind.PLANET and child_def.kind != BodyType.Kind.MOON:
-			continue
-		var axis_m: float = maxf(_orbit_radius_m(child_def), 1.0)
-		min_a = minf(min_a, axis_m)
-		max_a = maxf(max_a, axis_m)
+	if _registry != null and _registry.has_body(anchor_id):
+		for child_id in _registry.get_children_of(anchor_id):
+			var child_def: BodyDef = _registry.get_def(child_id)
+			if child_def == null or child_def.orbit_profile == null:
+				continue
+			if child_def.kind != BodyType.Kind.PLANET and child_def.kind != BodyType.Kind.MOON:
+				continue
+			var axis_m: float = maxf(_orbit_radius_m(child_def), 1.0)
+			min_a = minf(min_a, axis_m)
+			max_a = maxf(max_a, axis_m)
+	if (not is_finite(min_a) or max_a <= 0.0) and root_id != StringName(""):
+		for child_def in _catalog_children_of(root_id, anchor_id):
+			if child_def == null or child_def.orbit_profile == null:
+				continue
+			if child_def.kind != BodyType.Kind.PLANET and child_def.kind != BodyType.Kind.MOON:
+				continue
+			var axis_m: float = maxf(_orbit_radius_m(child_def), 1.0)
+			min_a = minf(min_a, axis_m)
+			max_a = maxf(max_a, axis_m)
 	if not is_finite(min_a) or max_a <= 0.0:
 		return {"inner_m": FALLBACK_BELT_INNER_M, "outer_m": FALLBACK_BELT_OUTER_M}
 	return {
@@ -498,6 +581,24 @@ func _build_attractor_entries(state, attractor_ids: Array[StringName]) -> Packed
 		out.append(float(relative.get("z_m", 0.0)))
 		out.append(_zone_effective_mu_m3ps2(zone, distance_m))
 	return out
+
+
+func _can_fast_linear_drift(state) -> bool:
+	return state != null \
+		and state.current_attractor_ids.is_empty() \
+		and _influence_zones_for_root(state.root_id).is_empty()
+
+
+func _advance_fast_linear_drift(state, t_s: float, dt_s: float) -> void:
+	state.x_m += state.vx_mps * dt_s
+	state.y_m += state.vy_mps * dt_s
+	state.z_m += state.vz_mps * dt_s
+	state.last_update_time_s = t_s
+	_perf_counters[PERF_KEY_FREE_DRIFT_COUNT] = int(_perf_counters.get(PERF_KEY_FREE_DRIFT_COUNT, 0)) + 1
+	if _is_far_retired(state):
+		state.is_active = false
+		state.current_attractor_ids.clear()
+		_perf_counters[PERF_KEY_FAR_RETIRED_COUNT] = int(_perf_counters.get(PERF_KEY_FAR_RETIRED_COUNT, 0)) + 1
 
 
 func _zone_effective_mu_m3ps2(zone: Dictionary, distance_m: float) -> float:
@@ -671,12 +772,170 @@ func _influence_radius_m(def: BodyDef) -> float:
 
 func _max_child_orbit_radius_m(parent_id: StringName) -> float:
 	var out: float = 0.0
+	if _registry == null:
+		return out
 	for child_id in _registry.get_children_of(parent_id):
 		var child_def: BodyDef = _registry.get_def(child_id)
 		if child_def == null:
 			continue
 		out = maxf(out, _orbit_radius_m(child_def))
 	return out
+
+
+func _has_spawn_source_for_root(root_id: StringName) -> bool:
+	if _registry != null and _registry.has_body(root_id):
+		return true
+	return _root_spawn_catalog_by_root.has(root_id)
+
+
+func _catalog_defs_for_root(root_id: StringName) -> Array:
+	return _root_spawn_catalog_by_root.get(root_id, [])
+
+
+func _catalog_def_for_id(root_id: StringName, body_id: StringName) -> BodyDef:
+	for raw_def in _catalog_defs_for_root(root_id):
+		var def: BodyDef = raw_def as BodyDef
+		if def != null and def.id == body_id:
+			return def
+	return null
+
+
+func _body_def_for(root_id: StringName, body_id: StringName) -> BodyDef:
+	if _registry != null and _registry.has_body(body_id):
+		return _registry.get_def(body_id)
+	return _catalog_def_for_id(root_id, body_id)
+
+
+func _catalog_children_of(root_id: StringName, parent_id: StringName) -> Array[BodyDef]:
+	var out: Array[BodyDef] = []
+	for raw_def in _catalog_defs_for_root(root_id):
+		var def: BodyDef = raw_def as BodyDef
+		if def != null and def.parent_id == parent_id:
+			out.append(def)
+	return out
+
+
+func _resolve_catalog_body_relative_to_root(body_id: StringName, root_id: StringName, t_s: float, depth: int = 0) -> Dictionary:
+	if body_id == StringName("") or root_id == StringName("") or depth > 64:
+		return {"ok": false}
+	if body_id == root_id:
+		return _zero_relative_state()
+	var def: BodyDef = _catalog_def_for_id(root_id, body_id)
+	if def == null:
+		return {"ok": false}
+	if def.parent_id == StringName(""):
+		return _zero_relative_state() if def.id == root_id else {"ok": false}
+	var parent_relative: Dictionary = _resolve_catalog_body_relative_to_root(def.parent_id, root_id, t_s, depth + 1)
+	if not bool(parent_relative.get("ok", false)):
+		return {"ok": false}
+	var local_state: Dictionary = _evaluate_catalog_orbit_state(def, root_id, t_s)
+	if not bool(local_state.get("ok", false)):
+		return {"ok": false}
+	return {
+		"ok": true,
+		"x_m": float(parent_relative.get("x_m", 0.0)) + float(local_state.get("x_m", 0.0)),
+		"y_m": float(parent_relative.get("y_m", 0.0)) + float(local_state.get("y_m", 0.0)),
+		"z_m": float(parent_relative.get("z_m", 0.0)) + float(local_state.get("z_m", 0.0)),
+		"vx_mps": float(parent_relative.get("vx_mps", 0.0)) + float(local_state.get("vx_mps", 0.0)),
+		"vy_mps": float(parent_relative.get("vy_mps", 0.0)) + float(local_state.get("vy_mps", 0.0)),
+		"vz_mps": float(parent_relative.get("vz_mps", 0.0)) + float(local_state.get("vz_mps", 0.0)),
+	}
+
+
+func _evaluate_catalog_orbit_state(def: BodyDef, root_id: StringName, t_s: float) -> Dictionary:
+	if def == null or def.orbit_profile == null:
+		return {"ok": false}
+	var profile: OrbitProfile = def.orbit_profile
+	match profile.mode:
+		OrbitMode.Kind.AUTHORED_ORBIT:
+			var authored_pos: Vector3 = OrbitMath.authored_circular_position(
+				profile.authored_radius_m,
+				profile.authored_period_s,
+				profile.authored_phase_rad,
+				t_s
+			)
+			var authored_pos_prev: Vector3 = OrbitMath.authored_circular_position(
+				profile.authored_radius_m,
+				profile.authored_period_s,
+				profile.authored_phase_rad,
+				t_s - VELOCITY_SEED_EPSILON_S
+			)
+			var authored_pos_next: Vector3 = OrbitMath.authored_circular_position(
+				profile.authored_radius_m,
+				profile.authored_period_s,
+				profile.authored_phase_rad,
+				t_s + VELOCITY_SEED_EPSILON_S
+			)
+			var authored_vel: Vector3 = (authored_pos_next - authored_pos_prev) / (2.0 * VELOCITY_SEED_EPSILON_S)
+			return _relative_state_from_vectors(authored_pos, authored_vel)
+		OrbitMode.Kind.KEPLER_APPROX:
+			var parent_def: BodyDef = _body_def_for(root_id, def.parent_id)
+			if parent_def == null:
+				return {"ok": false}
+			var mu: float = UnitSystem.mu_from_mass(maxf(parent_def.mass_kg, 0.0))
+			if mu <= 0.0:
+				return {"ok": false}
+			var kepler_pos: Vector3 = OrbitMath.kepler_position(
+				profile.semi_major_axis_m,
+				profile.eccentricity,
+				profile.inclination_rad,
+				profile.longitude_ascending_node_rad,
+				profile.argument_periapsis_rad,
+				profile.mean_anomaly_epoch_rad,
+				profile.epoch_s,
+				mu,
+				t_s
+			)
+			var kepler_pos_prev: Vector3 = OrbitMath.kepler_position(
+				profile.semi_major_axis_m,
+				profile.eccentricity,
+				profile.inclination_rad,
+				profile.longitude_ascending_node_rad,
+				profile.argument_periapsis_rad,
+				profile.mean_anomaly_epoch_rad,
+				profile.epoch_s,
+				mu,
+				t_s - VELOCITY_SEED_EPSILON_S
+			)
+			var kepler_pos_next: Vector3 = OrbitMath.kepler_position(
+				profile.semi_major_axis_m,
+				profile.eccentricity,
+				profile.inclination_rad,
+				profile.longitude_ascending_node_rad,
+				profile.argument_periapsis_rad,
+				profile.mean_anomaly_epoch_rad,
+				profile.epoch_s,
+				mu,
+				t_s + VELOCITY_SEED_EPSILON_S
+			)
+			var kepler_vel: Vector3 = (kepler_pos_next - kepler_pos_prev) / (2.0 * VELOCITY_SEED_EPSILON_S)
+			return _relative_state_from_vectors(kepler_pos, kepler_vel)
+		_:
+			return {"ok": false}
+
+
+static func _relative_state_from_vectors(pos: Vector3, vel: Vector3) -> Dictionary:
+	return {
+		"ok": true,
+		"x_m": pos.x,
+		"y_m": pos.y,
+		"z_m": pos.z,
+		"vx_mps": vel.x,
+		"vy_mps": vel.y,
+		"vz_mps": vel.z,
+	}
+
+
+static func _zero_relative_state() -> Dictionary:
+	return {
+		"ok": true,
+		"x_m": 0.0,
+		"y_m": 0.0,
+		"z_m": 0.0,
+		"vx_mps": 0.0,
+		"vy_mps": 0.0,
+		"vz_mps": 0.0,
+	}
 
 
 static func _orbit_radius_m(def: BodyDef) -> float:
@@ -705,6 +964,42 @@ static func _normalized_root_ids(root_ids: Array[StringName]) -> Array[StringNam
 		out.append(root_id)
 	out.sort_custom(func(a: StringName, b: StringName) -> bool: return str(a) < str(b))
 	return out
+
+
+func _registry_root_ids_from(root_ids: Array[StringName]) -> Array[StringName]:
+	var out: Array[StringName] = []
+	if _registry == null:
+		return out
+	for root_id in root_ids:
+		if root_id == StringName("") or out.has(root_id):
+			continue
+		if _registry.has_body(root_id):
+			out.append(root_id)
+	out.sort_custom(func(a: StringName, b: StringName) -> bool: return str(a) < str(b))
+	return out
+
+
+static func _intersection_root_ids(a: Array[StringName], b: Array[StringName]) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for root_id in a:
+		if root_id == StringName("") or out.has(root_id) or not b.has(root_id):
+			continue
+		out.append(root_id)
+	out.sort_custom(func(left: StringName, right: StringName) -> bool: return str(left) < str(right))
+	return out
+
+
+func _clear_attractor_sets_for_root(root_id: StringName) -> void:
+	for id in _state_order:
+		var state = _states_by_id.get(id, null)
+		if state != null and state.root_id == root_id:
+			state.current_attractor_ids.clear()
+
+
+static func _to_string_name(value) -> StringName:
+	if typeof(value) == TYPE_STRING_NAME:
+		return value
+	return StringName(str(value))
 
 
 static func _root_id_arrays_equal(a: Array[StringName], b: Array[StringName]) -> bool:
@@ -771,7 +1066,7 @@ func _update_active_counter() -> void:
 	var count: int = 0
 	for id in _state_order:
 		var state = _states_by_id.get(id, null)
-		if state != null and state.is_active and _resident_root_ids.has(state.root_id):
+		if state != null and state.is_active and _tracked_root_ids.has(state.root_id):
 			count += 1
 	_perf_counters[PERF_KEY_ACTIVE_ASTEROIDS] = count
 

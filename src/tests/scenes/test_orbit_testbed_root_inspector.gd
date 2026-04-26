@@ -258,6 +258,36 @@ class StreamingControllerProbe:
 		return out
 
 
+class AsteroidServiceProbe:
+	extends RefCounted
+
+	var major_body_resident_root_calls: Array = []
+	var sync_resident_roots_call_count: int = 0
+
+	func set_root_spawn_catalog(_scope_id: StringName, _root_defs_by_root: Dictionary) -> void:
+		pass
+
+	func reset_for_world(_scope_id: StringName, _root_ids: Array[StringName], _t_s: float) -> void:
+		pass
+
+	func set_major_body_resident_roots(root_ids: Array[StringName], _t_s: float = 0.0) -> void:
+		major_body_resident_root_calls.append(root_ids.duplicate())
+
+	func sync_resident_roots(_scope_id: StringName, _root_ids: Array[StringName], _t_s: float) -> void:
+		sync_resident_roots_call_count += 1
+
+
+class GalaxyProbe:
+	extends RefCounted
+
+	var ids: Array[StringName] = [&"obsidian", &"onyx", &"umbra"]
+
+	func root_ids() -> Array[StringName]:
+		var out: Array[StringName] = []
+		out.append_array(ids)
+		return out
+
+
 class TopologyProbe:
 	extends RefCounted
 
@@ -352,6 +382,7 @@ static func run(ctx) -> void:
 	_test_perf_snapshot_json_safe_converts_godot_variants(ctx)
 	_test_perf_snapshot_builds_json_sidecar_dictionary(ctx)
 	_test_perf_probe_total_columns_are_emitted(ctx)
+	_test_large_world_asteroids_track_galaxy_roots_and_streaming_updates_major_body_residency(ctx)
 
 
 static func _test_root_inspector_opens_only_explicitly_and_overrides_root_overview_interest(ctx) -> void:
@@ -436,6 +467,28 @@ static func _test_root_inspector_stays_closed_for_focus_and_streaming_events_and
 	ctx.assert_true(not testbed._root_inspector.is_open(), "Welt-Wechsel schliesst den Inspector hart")
 	ctx.assert_true(testbed._root_inspector.get_root_id() == StringName(""), "Welt-Wechsel loescht den Inspector-Kontext")
 	ctx.assert_true(testbed._derived_snapshot_cache.last_interest_ids.is_empty(), "Welt-Wechsel hebt jeden aktiven Interest-Override sofort wieder auf")
+	_destroy_testbed_probe(testbed)
+
+
+static func _test_large_world_asteroids_track_galaxy_roots_and_streaming_updates_major_body_residency(ctx) -> void:
+	var testbed = _build_testbed_probe(true)
+	var galaxy := GalaxyProbe.new()
+	var asteroid_service := AsteroidServiceProbe.new()
+	testbed._current_galaxy = galaxy
+	testbed._asteroid_service = asteroid_service
+
+	var root_ids: Array[StringName] = testbed._current_asteroid_root_ids()
+	ctx.assert_true(root_ids == galaxy.ids,
+		"Large-World-Asteroiden nutzen alle Galaxy-Roots statt Fokus-/Resident-Roots")
+
+	var resident_root_ids: Array[StringName] = [&"obsidian", &"onyx"]
+	testbed._on_streaming_residency_changed(resident_root_ids, &"obsidian")
+	ctx.assert_true(asteroid_service.sync_resident_roots_call_count == 0,
+		"Streaming-Events nutzen nicht mehr den alten sync_resident_roots-Pfad")
+	ctx.assert_true(asteroid_service.major_body_resident_root_calls.size() == 1,
+		"Streaming-Events aktualisieren nur die Major-Body-Residency")
+	ctx.assert_true(asteroid_service.major_body_resident_root_calls[0] == resident_root_ids,
+		"Major-Body-Residency bekommt die Streaming-Resident-Roots")
 	_destroy_testbed_probe(testbed)
 
 

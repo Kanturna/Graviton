@@ -240,7 +240,7 @@ func _ready() -> void:
 
 	_renderer.configure(UniverseRegistry, _bubble, _topology, TimeService)
 	_renderer.set_environment_service(_environment_service)
-	_asteroid_snapshot_cache.configure(_asteroid_service, _bubble)
+	_asteroid_snapshot_cache.configure(_asteroid_service, _bubble, UniverseRegistry, _topology)
 	_configure_asteroid_renderer()
 	if not _world_loader.world_loaded.is_connected(_on_world_loader_world_loaded):
 		_world_loader.world_loaded.connect(_on_world_loader_world_loaded)
@@ -1296,7 +1296,7 @@ func _on_streaming_residency_changed(_resident_root_ids: Array[StringName], focu
 	_refresh_focus_order()
 	_renderer.rebuild_from_registry()
 	if _asteroid_service != null:
-		_asteroid_service.sync_resident_roots(_active_world_scope_id, _asteroid_root_ids_for_focus(focus_root_id), TimeService.sim_time_s)
+		_asteroid_service.set_major_body_resident_roots(_resident_root_ids, TimeService.sim_time_s)
 	if not UniverseRegistry.has_body(_bubble.get_focus()) and UniverseRegistry.has_body(focus_root_id):
 		_focus_index = maxi(_focus_order.find(focus_root_id), 0)
 		_set_focus(focus_root_id, true, true)
@@ -1460,12 +1460,18 @@ func _focuses_share_root(a: StringName, b: StringName) -> bool:
 func _reset_asteroids_for_current_roots(t_s: float) -> void:
 	if _asteroid_service == null:
 		return
-	_asteroid_service.reset_for_world(_active_world_scope_id, _current_asteroid_root_ids(), t_s)
+	var root_ids: Array[StringName] = _current_asteroid_root_ids()
+	if _is_large_world:
+		_asteroid_service.set_root_spawn_catalog(_active_world_scope_id, _build_asteroid_root_spawn_catalog(root_ids))
+	else:
+		_asteroid_service.set_root_spawn_catalog(_active_world_scope_id, {})
+	_asteroid_service.reset_for_world(_active_world_scope_id, root_ids, t_s)
+	_asteroid_service.set_major_body_resident_roots(_current_major_body_resident_root_ids(root_ids), t_s)
 
 
 func _current_asteroid_root_ids() -> Array[StringName]:
-	if _is_large_world and _streaming_controller != null and _streaming_controller.has_method("get_focus_root_id"):
-		return _asteroid_root_ids_for_focus(_streaming_controller.get_focus_root_id())
+	if _is_large_world and _current_galaxy != null and _current_galaxy.has_method("root_ids"):
+		return _current_galaxy.root_ids()
 	var root_ids: Array[StringName] = []
 	for id in UniverseRegistry.get_update_order_ref():
 		var def: BodyDef = UniverseRegistry.get_def(id)
@@ -1474,10 +1480,48 @@ func _current_asteroid_root_ids() -> Array[StringName]:
 	return root_ids
 
 
-func _asteroid_root_ids_for_focus(focus_root_id: StringName) -> Array[StringName]:
-	if focus_root_id == StringName("") or not UniverseRegistry.has_body(focus_root_id):
-		return []
-	return [focus_root_id]
+func _current_major_body_resident_root_ids(fallback_root_ids: Array[StringName]) -> Array[StringName]:
+	if _is_large_world and _streaming_controller != null and _streaming_controller.has_method("get_resident_root_ids"):
+		return _streaming_controller.get_resident_root_ids()
+	return fallback_root_ids
+
+
+func _build_asteroid_root_spawn_catalog(root_ids: Array[StringName]) -> Dictionary:
+	var catalog: Dictionary = {}
+	if not _is_large_world or _current_galaxy == null or _world_loader == null:
+		return catalog
+	for root_id in root_ids:
+		if root_id != StringName(""):
+			catalog[root_id] = []
+	var defs: Array[BodyDef] = _world_loader.build_defs_for_root_ids(_current_galaxy, root_ids, _active_world_scope_id)
+	var defs_by_id: Dictionary = {}
+	for def in defs:
+		if def != null:
+			defs_by_id[def.id] = def
+	for def in defs:
+		if def == null:
+			continue
+		var root_id: StringName = _catalog_root_id_for_def(def, defs_by_id)
+		if root_id == StringName("") or not catalog.has(root_id):
+			continue
+		catalog[root_id].append(def)
+	return catalog
+
+
+func _catalog_root_id_for_def(def: BodyDef, defs_by_id: Dictionary) -> StringName:
+	if def == null:
+		return StringName("")
+	var cursor_id: StringName = def.id
+	var hop_limit: int = 64
+	while cursor_id != StringName("") and hop_limit > 0:
+		var cursor_def: BodyDef = defs_by_id.get(cursor_id, null)
+		if cursor_def == null:
+			return StringName("")
+		if cursor_def.is_root():
+			return cursor_def.id
+		cursor_id = cursor_def.parent_id
+		hop_limit -= 1
+	return StringName("")
 
 
 func _configure_root_inspector() -> void:

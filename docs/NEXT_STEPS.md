@@ -12,12 +12,12 @@ Szenen-Override vor dem Editor-Run bewusst umstellen.
 
 Der naechste Arbeitsblock ist ein gebuendelter
 Editor-/Feel-/FPS-Acceptance-Run ueber die bereits headless
-abgesicherten Slices, jetzt inklusive `Asteroiden v1`.
+abgesicherten Slices, jetzt inklusive `Asteroiden v2 Foundation`.
 
 Headless-Basis:
 
-- `run_tests.bat` lief nach dem Tick-Delta-/Analyzer-
-  Normalisierungs-Slice mit `8400`
+- `run_tests.bat` lief nach dem Asteroiden-v2-Foundation-Slice mit
+  `8425`
   Passed und `0` Failed; am Prozessende bleiben generische
   `ObjectDB instances leaked`-/`resources still in use`-Hinweise
   sichtbar
@@ -78,19 +78,22 @@ Offene Editor-/Feel-/FPS-Gates:
   pruefen, ob der fruehere harte Sprung bei
   `body_star_closeup_phase_max > 0.35` wegfaellt; `render_objects`
   sollte im Alpha-Fokus nicht mehr von grob `465` auf `690` springen
-- Asteroiden v1:
+- Asteroiden v2 Foundation:
   `scaleup_galaxy_100` im Root-/Stern-/Planet-Fokus pruefen,
   sichtbare Punkte und kurze Trails beobachten, Bahnverformung nahe
   Major Bodies pruefen und sicherstellen, dass HUD/Inspector/Life-
   Panels keine Kollisionen, Katastrophen oder Life-Folgen behaupten.
-  Nach dem Relative-State-Cache-, Trail-Batching-, Fokus-Root-
-  Lifecycle- und Integrator-Hotpath-Follow-up speziell die vorherigen
-  3-6-FPS-Sternfoki erneut pruefen: im lokalen Sternfokus sollte
-  `active_asteroids` bei 24 statt 48 liegen, Trails sollten bei
-  Root-/World-Wechsel und Despawn verschwinden, aber innerhalb
-  desselben Roots stabil re-projiziert werden. Nach v1.2 sollten
-  ausserdem freie Segmente ausserhalb aller BH-/Stern-/Planet-/Mond-
-  Einflussradien sichtbar sein. BHs nutzen jetzt ein asteroid-internes
+  Nach dem All-Root-Catalog-Follow-up speziell pruefen, dass
+  `active_asteroids` und `total_state_count` in `scaleup_galaxy_100`
+  bei 2400 liegen, waehrend `asteroid_renderer.visible_count`
+  typischerweise bei den 24 finiten Fokus-Root-Asteroiden bleibt.
+  Fremde Root-Asteroiden duerfen im aktuellen Slice existieren und
+  linear driften, sollen aber noch nicht als Galaxy-Overview-Steine
+  gerendert werden. Trails sollten bei Root-/World-Wechsel und Despawn
+  verschwinden, aber innerhalb desselben Roots stabil re-projiziert
+  werden. Nach v1.2/v2 sollten ausserdem freie Segmente ausserhalb
+  aller BH-/Stern-/Planet-/Mond-Einflussradien sichtbar sein. BHs
+  nutzen jetzt ein asteroid-internes
   `effective_mu`, duerfen schnelle Flybys sichtbar lenken und sollen
   keine sauberen kleinen Asteroidenkreisbahnen erzwingen.
   `free_drift_count` soll im Dump weiter steigen. `bh_attractor_count`,
@@ -126,12 +129,13 @@ Erst wenn diese Gates sauber sind, ist ein Folgeblock wie
 Wenn ein Gate kippt, wird zuerst der kleinste konkrete View-, Life-
 oder Performance-Fix geschnitten.
 
-## Prioritaet 0 - Asteroiden v1 Acceptance Gate
+## Prioritaet 0 - Asteroiden v2 Foundation Acceptance Gate
 
 Ziel:
-Den headless-gruenen Minor-Body-Slice im echten Editor validieren,
-bevor Impacts, Merge/Split, Life-Folgen oder Fokusnavigation fuer
-Asteroiden begonnen werden.
+Den headless-gruenen All-Root-Minor-Body-Slice im echten Editor
+validieren, bevor Cross-Root-Gravitation, Galaxy-Overview-Projektion,
+Impacts, Merge/Split, Life-Folgen oder Fokusnavigation fuer Asteroiden
+begonnen werden.
 
 Konkreter Ablauf:
 
@@ -156,18 +160,26 @@ Konkreter Ablauf:
   Asteroiden gerade bzw. leicht gekruemmte Freiflugsegmente zeigen,
   nicht weiter um leere Punkte kreisen
 - Streaming/Fokuswechsel zwischen Root-Systemen pruefen:
-  in Large-Worlds spawnt v1 Asteroiden nur fuer den aktuellen Fokus-
-  Root; residenter Neighbor-/Prewarm-Zustand darf keine zusaetzlichen
-  aktiven Asteroiden im lokalen Fokus erzeugen. Bereits besuchte Roots
-  duerfen beim Verlassen aber nicht despawnen; `total_state_count` darf
-  gespeicherte/geparkte Root-Asteroiden enthalten, waehrend
-  `active_asteroids` im Fokus-Root bei 24 bleibt. Rueckwechsel zu einem
-  Root darf `spawned` nicht erneut erhoehen. Fokuswechsel muessen ohne
-  Duplikate und ohne alte Trail-Reste bleiben
+  in Large-Worlds existieren Asteroiden fuer alle `GalaxyDef.root_ids()`
+  ab Weltstart. Streaming-Residency darf nur die lokalen Major-Body-
+  Influence-Zonen aktualisieren, aber nicht mehr bestimmen, welche
+  Asteroiden existieren oder integriert werden. In
+  `scaleup_galaxy_100` sollen `active_asteroids` und
+  `total_state_count` deshalb bei 2400 liegen; ein Fokuswechsel darf
+  `spawned` nicht erneut erhoehen und keine Duplikate erzeugen
 - im Sternfokus bei FPS-Einbruch `P`-Dump pruefen:
-  `active_asteroids` soll 24 sein und `attractor_checks` soll durch
-  das Attractor-Refresh-Fenster nicht mehr in jedem Catchup-Tick fuer
-  alle Asteroiden voll neu steigen
+  `active_asteroids` soll 2400 sein, `asteroid_renderer.visible_count`
+  aber typischerweise 24. Nicht-residente Root-Asteroiden sollen linear
+  driften und keine lokalen Attractor-Checks erzeugen; lokale
+  `attractor_checks` sollen durch das Attractor-Refresh-Fenster nicht
+  in jedem Catchup-Tick fuer alle sichtbaren Asteroiden voll neu steigen
+- vor Cross-Root-Gravitation oder Overview-Rendering den neuen
+  Performance-Befund einordnen:
+  der Headless-v2-Dump bestaetigt zwar die Counts, liegt bei
+  `asteroid_advance_us` aber deutlich ueber der alten
+  24-Asteroiden-Baseline. Falls das im Editor spuerbar wird, zuerst
+  einen kleinen Lazy-Drift-/Snapshot-/lokale-Projektion-Slice planen,
+  statt die Asteroidenlogik groesser umzubauen
 - bei Kamerabewegung im Sternfokus `P`-Dump pruefen:
   `body_screen_culled_count`, `orbit_screen_culled_line_count`,
   `orbit_visible_point_count`, `render_primitives` und `draw_calls`
@@ -201,7 +213,7 @@ Konkreter Ablauf:
 Wenn dieses Gate kippt:
 
 - keinen Impact-, Merge-/Split- oder Katastrophen-Slice anfangen
-- zuerst nur den kleinen V1-Pfad korrigieren:
+- zuerst nur den kleinen v2-Foundation-Pfad korrigieren:
   Spawn-Dichte, Renderer-Sichtbarkeit, Snapshot-Projektion,
   Attractor-Hysterese, Relative-State-Cache, Trail-Batching,
   Perf-Counter oder Streaming-Lifecycle
